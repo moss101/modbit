@@ -509,17 +509,27 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-145/live-desktop-run-5.json` | retained evidence | 757 | `62a8b1be0c876cb0bae373249d5169128cf6a51f5385b64eedf6a981cbccea80` |
 | `evidence/m10/PX-145/rust-tests.txt` | retained evidence | 1511 | `8938ce82af03ced81a3d6cc2c29e4b80b7775e0e7aabe3c5741ab4281b14f90a` |
 | `evidence/m10/PX-146/TASK_CARD.md` | retained evidence | 799 | `9ec357e608432e28137e426489c95d03bb2f83633865549c2f3a18bfb2fd7ae0` |
-| `evidence/m10/PX-147/TASK_CARD.md` | retained evidence | 944 | `9ce49b5bbbc733db517ea563f6467c7bb3b2bb12690d7635dd36c1a71215bf1c` |
+| `evidence/m10/PX-147/TASK_CARD.md` | retained evidence | 1226 | `1a2c3b745b8479fbd6fdf52d66b02214cb9fbcbb33bbc253c1ab230b7d63aa11` |
+| `evidence/m10/PX-147/ci-per-os-42384475339.txt` | retained evidence | 1097 | `55a11e96a9fd9d19c3c8cb0cfa98ca2f251810d57c65d83030c64aae1abc0f6d` |
+| `evidence/m10/PX-147/ci-run-42384475339.json` | retained evidence | 1462 | `d86206b83d32013225bab8761c3be43e0242c7cf1c6a04031f6629ac5d4d1bbe` |
 | `evidence/m10/PX-147/rust-tests.txt` | retained evidence | 49004 | `efe82e4127e8ec867520fb82ff8b81d723277022abafb032916a9bc54961938e` |
-| `evidence/m10/PX-148/TASK_CARD.md` | retained evidence | 1083 | `54e8705619d0946c7fc679134a065877ecfd2cee07248c70b29672e3449d9883` |
+| `evidence/m10/PX-148/TASK_CARD.md` | retained evidence | 1486 | `80200638f217627850baac92c528b80df9840a0bf231be55eb612b080828aa5d` |
+| `evidence/m10/PX-148/ci-per-os-42384475339.txt` | retained evidence | 1097 | `55a11e96a9fd9d19c3c8cb0cfa98ca2f251810d57c65d83030c64aae1abc0f6d` |
+| `evidence/m10/PX-148/ci-run-42384475339.json` | retained evidence | 1462 | `d86206b83d32013225bab8761c3be43e0242c7cf1c6a04031f6629ac5d4d1bbe` |
 | `evidence/m10/PX-148/rust-tests.txt` | retained evidence | 49004 | `efe82e4127e8ec867520fb82ff8b81d723277022abafb032916a9bc54961938e` |
-| `evidence/m10/PX-149/TASK_CARD.md` | retained evidence | 999 | `72d78ba5c6ee57374c73891309a8984ef381db7b46887e37896bebfdf3a28584` |
+| `evidence/m10/PX-149/TASK_CARD.md` | retained evidence | 1336 | `84d63c6657bc80cf54229b1540b68eb65eecdcf277df9c97f1578b0ba77f3134` |
+| `evidence/m10/PX-149/ci-per-os-42384475339.txt` | retained evidence | 1097 | `55a11e96a9fd9d19c3c8cb0cfa98ca2f251810d57c65d83030c64aae1abc0f6d` |
+| `evidence/m10/PX-149/ci-run-42384475339.json` | retained evidence | 1462 | `d86206b83d32013225bab8761c3be43e0242c7cf1c6a04031f6629ac5d4d1bbe` |
 | `evidence/m10/PX-149/rust-tests.txt` | retained evidence | 49004 | `efe82e4127e8ec867520fb82ff8b81d723277022abafb032916a9bc54961938e` |
-| `evidence/m10/PX-150/TASK_CARD.md` | retained evidence | 933 | `18232a293112f5d73c19a7ce6294bbcb0c29eddf52f8e5619bcd358729339a34` |
+| `evidence/m10/PX-150/TASK_CARD.md` | retained evidence | 1243 | `5e656b8fb2c458d6d6fdd3b035db5719d68353c49222d42bdd204c9c219b1259` |
+| `evidence/m10/PX-150/ci-per-os-42384475339.txt` | retained evidence | 1097 | `55a11e96a9fd9d19c3c8cb0cfa98ca2f251810d57c65d83030c64aae1abc0f6d` |
+| `evidence/m10/PX-150/ci-run-42384475339.json` | retained evidence | 1462 | `d86206b83d32013225bab8761c3be43e0242c7cf1c6a04031f6629ac5d4d1bbe` |
 | `evidence/m10/PX-150/rust-tests.txt` | retained evidence | 49004 | `efe82e4127e8ec867520fb82ff8b81d723277022abafb032916a9bc54961938e` |
 | `evidence/m10/PX-152/TASK_CARD.md` | retained evidence | 970 | `2cc7082c407dcf6ae936ebae9b050e5cbbcfcdb5226823ee7062e9c583114635` |
 | `evidence/m10/PX-152/rust-tests.txt` | retained evidence | 49004 | `efe82e4127e8ec867520fb82ff8b81d723277022abafb032916a9bc54961938e` |
-| `evidence/m10/PX-153/TASK_CARD.md` | retained evidence | 961 | `b74ef5be9a26f8b924ae73e1ad20441a711ea63c445acb554c0cd7cf000da5b4` |
+| `evidence/m10/PX-153/TASK_CARD.md` | retained evidence | 1314 | `4b0360cc13212e99dfd5738d914656ec38e6d056312a7bfe6c0bcf9297315145` |
+| `evidence/m10/PX-153/ci-per-os-42384475339.txt` | retained evidence | 1097 | `55a11e96a9fd9d19c3c8cb0cfa98ca2f251810d57c65d83030c64aae1abc0f6d` |
+| `evidence/m10/PX-153/ci-run-42384475339.json` | retained evidence | 1462 | `d86206b83d32013225bab8761c3be43e0242c7cf1c6a04031f6629ac5d4d1bbe` |
 | `evidence/m10/PX-153/rust-tests.txt` | retained evidence | 49004 | `efe82e4127e8ec867520fb82ff8b81d723277022abafb032916a9bc54961938e` |
 | `evidence/m10/PX-155/TASK_CARD.md` | retained evidence | 2982 | `e0a08728e4200cf1c3fd47ed4e59f5ff311321375fdd65317b838b1bfa3dd697` |
 | `evidence/m10/PX-155/ci-run-40636221020.json` | retained evidence | 59119 | `e23150a23aca7e7cea8d31b3bf42598ef4eb1436c8d906eb89ef5f65e57d55a4` |
@@ -2106,8 +2116,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/zcode-ui/reference/zcode-colors-rgba.json` | retained evidence | 18690 | `76372c3edbcd50fe596d5e4b7fcd7991adab9686588ddc578a728afa24b4f028` |
 | `evidence/zcode-ui/reference/zcode-computed.json` | retained evidence | 718674 | `9ae8821ce72aa0fff3be44aacd0f4c9d995465c54bad7f17d1a81f92841d1c2d` |
 | `evidence/zcode-ui/reference/zcode-tokens-resolved.json` | retained evidence | 30635 | `066725c00059a05d073fbcdac9a8d965eab05f05c1f5df16e654854ff3e22b91` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 47138 | `461f4623d79e0fe404b36bb61db568b527dc31024515646fec67d1f8f0406d29` |
-| `graph/project-graph.json` | project driver graph with live status | 2537052 | `bcb6f431c2ea6a7f14f08d4d23a71414b3a7b4a9a0b665d122d0e2e542721d7c` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 47138 | `773f03ce96943a58ea4beb37c3160d882850376df7322796c7f57c491e4b7e0f` |
+| `graph/project-graph.json` | project driver graph with live status | 2540867 | `55f5ee94736fe449d890d57573bd00b497da20cd5f42d7cda393d334491bbe6f` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 66687 | `3df787bdd1053b447b28e905d9d859d4c4f440e8a2761649b122e0c1983b04b0` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |

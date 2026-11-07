@@ -39463,11 +39463,15 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-147",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m10/PX-147/TASK_CARD.md",
     "commit:a977c779",
-    "artifact:evidence/m10/PX-147/rust-tests.txt"
+    "artifact:evidence/m10/PX-147/rust-tests.txt",
+    "run:42384475339",
+    "artifact:evidence/m10/PX-147/ci-run-42384475339.json",
+    "artifact:evidence/m10/PX-147/ci-per-os-42384475339.txt",
+    "commit:bc505574"
    ],
    "notes": [
     {
@@ -39475,9 +39479,21 @@
      "from": "NOT_STARTED",
      "to": "AUDITING",
      "note": "task card"
+    },
+    {
+     "at": "2026-11-07T17:03:23Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "Retained CI legs: run 42384475339 green on macOS, Linux and Windows; the row's tests passed per OS as listed in ci-per-os-42384475339.txt. Limits kept: a resolver fixture stands in for a real DNS answer of a private address."
+    },
+    {
+     "at": "2026-11-07T17:03:23Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "On main since 76050ad7 (#156); proven on CI run 42384475339 at a head merged as bc505574"
     }
    ],
-   "status_changed_on": "2026-10-26T19:16:14Z"
+   "status_changed_on": "2026-11-07T17:03:23Z"
   },
   {
    "id": "PX-148",
@@ -39498,11 +39514,15 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-148",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m10/PX-148/TASK_CARD.md",
     "commit:a977c779",
-    "artifact:evidence/m10/PX-148/rust-tests.txt"
+    "artifact:evidence/m10/PX-148/rust-tests.txt",
+    "run:42384475339",
+    "artifact:evidence/m10/PX-148/ci-run-42384475339.json",
+    "artifact:evidence/m10/PX-148/ci-per-os-42384475339.txt",
+    "commit:bc505574"
    ],
    "notes": [
     {
@@ -39510,9 +39530,21 @@
      "from": "NOT_STARTED",
      "to": "AUDITING",
      "note": "task card"
+    },
+    {
+     "at": "2026-11-07T17:03:23Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "Retained CI legs: run 42384475339 green on macOS, Linux and Windows; the row's tests passed per OS as listed in ci-per-os-42384475339.txt. Linux legs run in CI (dumpable 0, /proc limits 0/0, environ unreadable, LD_PRELOAD not loaded); Windows is out of the QUAL's platforms (cfg(unix)); macOS attach denial is read from the process's own report."
+    },
+    {
+     "at": "2026-11-07T17:03:23Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "On main since 76050ad7 (#156); proven on CI run 42384475339 at a head merged as bc505574"
     }
    ],
-   "status_changed_on": "2026-10-26T19:16:15Z"
+   "status_changed_on": "2026-11-07T17:03:23Z"
   },
   {
    "id": "PX-149",
@@ -39533,11 +39565,15 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-149",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m10/PX-149/TASK_CARD.md",
     "commit:a977c779",
-    "artifact:evidence/m10/PX-149/rust-tests.txt"
+    "artifact:evidence/m10/PX-149/rust-tests.txt",
+    "run:42384475339",
+    "artifact:evidence/m10/PX-149/ci-run-42384475339.json",
+    "artifact:evidence/m10/PX-149/ci-per-os-42384475339.txt",
+    "commit:bc505574"
    ],
    "notes": [
     {
@@ -39545,9 +39581,21 @@
      "from": "NOT_STARTED",
      "to": "AUDITING",
      "note": "task card"
+    },
+    {
+     "at": "2026-11-07T17:03:23Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "Retained CI legs: run 42384475339 green on macOS, Linux and Windows; the row's tests passed per OS as listed in ci-per-os-42384475339.txt. Windows PATHEXT resolution ran in run_modes on windows-latest; rules made before the change ask once (RULE_NOT_PINNED) as the record states."
+    },
+    {
+     "at": "2026-11-07T17:03:23Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "On main since 76050ad7 (#156); proven on CI run 42384475339 at a head merged as bc505574"
     }
    ],
-   "status_changed_on": "2026-10-26T19:16:15Z"
+   "status_changed_on": "2026-11-07T17:03:23Z"
   },
   {
    "id": "PX-150",
@@ -39568,11 +39616,15 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-150",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m10/PX-150/TASK_CARD.md",
     "commit:a977c779",
-    "artifact:evidence/m10/PX-150/rust-tests.txt"
+    "artifact:evidence/m10/PX-150/rust-tests.txt",
+    "run:42384475339",
+    "artifact:evidence/m10/PX-150/ci-run-42384475339.json",
+    "artifact:evidence/m10/PX-150/ci-per-os-42384475339.txt",
+    "commit:bc505574"
    ],
    "notes": [
     {
@@ -39580,9 +39632,21 @@
      "from": "NOT_STARTED",
      "to": "AUDITING",
      "note": "task card"
+    },
+    {
+     "at": "2026-11-07T17:03:23Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "Retained CI legs: run 42384475339 green on macOS, Linux and Windows; the row's tests passed per OS as listed in ci-per-os-42384475339.txt. Linux seccomp does not confine files and says so (QUAL: Linux where supported); Windows out of scope (cfg(unix))."
+    },
+    {
+     "at": "2026-11-07T17:03:24Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "On main since 76050ad7 (#156); proven on CI run 42384475339 at a head merged as bc505574"
     }
    ],
-   "status_changed_on": "2026-10-26T19:16:15Z"
+   "status_changed_on": "2026-11-07T17:03:24Z"
   },
   {
    "id": "PX-152",
@@ -39626,11 +39690,15 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-153",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m10/PX-153/TASK_CARD.md",
     "commit:a977c779",
-    "artifact:evidence/m10/PX-153/rust-tests.txt"
+    "artifact:evidence/m10/PX-153/rust-tests.txt",
+    "run:42384475339",
+    "artifact:evidence/m10/PX-153/ci-run-42384475339.json",
+    "artifact:evidence/m10/PX-153/ci-per-os-42384475339.txt",
+    "commit:bc505574"
    ],
    "notes": [
     {
@@ -39638,9 +39706,21 @@
      "from": "NOT_STARTED",
      "to": "AUDITING",
      "note": "task card"
+    },
+    {
+     "at": "2026-11-07T17:03:24Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "Retained CI legs: run 42384475339 green on macOS, Linux and Windows; the row's tests passed per OS as listed in ci-per-os-42384475339.txt. The real-Core suite (run_control) is cfg(unix) and ran on macOS and Linux; the denial fold's unit tests ran on all three, including the ten-of-fifty window."
+    },
+    {
+     "at": "2026-11-07T17:03:24Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "On main since 76050ad7 (#156); proven on CI run 42384475339 at a head merged as bc505574"
     }
    ],
-   "status_changed_on": "2026-10-26T19:16:16Z"
+   "status_changed_on": "2026-11-07T17:03:24Z"
   },
   {
    "id": "PX-155",
