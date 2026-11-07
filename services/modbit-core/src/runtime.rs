@@ -9712,6 +9712,9 @@ async fn execute_tool_call(
                 });
             obs.text.push_str(&diagnostic.render());
         }
+        if name == modbit_tools::handover::NAME && r.status == ToolStatus::Success {
+            core.tools.computer.handed_back(task.task_id);
+        }
         // PX-176: a computer-use child hears every step as one structured record.
         if let Some(record) =
             core.tools
