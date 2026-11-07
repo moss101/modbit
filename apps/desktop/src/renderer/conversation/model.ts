@@ -317,7 +317,10 @@ export function callStatus(status: string, failureCode: string): string {
 export function unfinishedCalls(statuses: readonly string[]): string[] {
   const n = (...of: string[]) => statuses.filter((s) => of.includes(s)).length;
   const parts: string[] = [];
-  const open = n("PENDING", "RUNNING", "AWAITING_APPROVAL");
+  // Any status that is not an end (succeeded, failed, unknown, not run) is not finished yet, whatever the Core calls the
+  // state in between (an empty hint before the first fact, a dispatch): a step always says what became of each call.
+  const ended = new Set(["SUCCEEDED", "FAILED", "UNKNOWN_OUTCOME", "DENIED", "CANCELLED"]);
+  const open = statuses.filter((s) => !ended.has(s)).length;
   const failed = n("FAILED");
   const unknown = n("UNKNOWN_OUTCOME");
   const notRun = n("DENIED", "CANCELLED");
