@@ -40065,10 +40065,13 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-177",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "test:services/modbit-core/tests/px_computer.rs::qual_px_177_a_handover_parks_for_the_person_and_the_run_resumes_from_a_fresh_observation",
-    "artifact:evidence/m10/PX-177/mutation-check.txt"
+    "artifact:evidence/m10/PX-177/mutation-check.txt",
+    "run:42394289098",
+    "artifact:evidence/m10/PX-177/ci-run-42394289098.json",
+    "commit:3cbae681"
    ],
    "notes": [
     {
@@ -40094,9 +40097,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "Local real Core, real fixture actuator, real approvals, scripted model: the three qual_px_177 tests pass (parks and resumes from a fresh observation; a denied or expired handover acts on nothing; a restart keeps it parked); full px_computer 35/35; mutation-check.txt. CI on the rebased branch (#166) still to run."
+    },
+    {
+     "at": "2026-11-07T20:26:20Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "CI run 42394289098 green on all 15 jobs: the three qual_px_177 tests pass against the real Core and fixture actuator on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-11-07T20:26:21Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Landed on main as 3cbae681 (#166)"
     }
    ],
-   "status_changed_on": "2026-11-07T16:05:26Z"
+   "status_changed_on": "2026-11-07T20:26:21Z"
   },
   {
    "id": "PX-178",

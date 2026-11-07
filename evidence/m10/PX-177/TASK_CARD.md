@@ -24,3 +24,4 @@ Full `px_computer` (35 tests), `modbit-tools`, `modbit-computer` and the core un
 - The "live view" is the existing desktop approval and attention surfaces showing the bound instruction; no new live-view surface was built.
 - After a restart the run itself is not resumed by the Core; the approval stays pending and the person resumes the task as for any parked approval.
 - In an unattended profile the tool is refused like any approval-bound call; it is a tool for attended runs.
+- Closed 2026-11-07: CI run 42394289098 (head e3c2004a) green on all 15 jobs, including the qual_px_177 tests in px_computer on macOS, Linux and Windows (ci-run-42394289098.json). Landed on main as 3cbae681 (squash of moss101/modbit#166). Limits as above: browser stack not exercised; no new live-view surface; a restart leaves the approval pending for the person to resume.
