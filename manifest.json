@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 1974,
-    "docs_bytes": 2336191
+    "root_and_tooling": 1976,
+    "docs_bytes": 2336672
   },
   "sections": [
     {
@@ -221,8 +221,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Workspace, Git, Worktrees, Diagnostics, and Trusted Code Surface",
-      "bytes": 8023,
-      "sha256": "a20c03022f1edd6debf6b76853d1edfd6625153d2680f11057b63535176f1b96"
+      "bytes": 8504,
+      "sha256": "3bdb3079f97ceaac3fdf2287d3d4caecdc0d26900e740ea9662ae53323879a98"
     },
     {
       "path": "docs/21_TERMINAL_EXECUTION_AND_SANDBOX.md",
@@ -2150,8 +2150,18 @@
     },
     {
       "path": "evidence/m10/PX-048/TASK_CARD.md",
-      "bytes": 1892,
-      "sha256": "2f8ed1ee7e3ef5d1615326fd88bf32979c5f98bf8bb2d260584430e176ee40c4"
+      "bytes": 5728,
+      "sha256": "00e6d9d8ad04f42b6295d9d84d253072c9ebc161a0cb1f2d99ea0c6f80e3d3e9"
+    },
+    {
+      "path": "evidence/m10/PX-048/read-leaves-index/mutations.log",
+      "bytes": 2510,
+      "sha256": "6736d5f6f697646065beec5a33fc0f9f252feb9e8321ffa4f0dbbe907f77a551"
+    },
+    {
+      "path": "evidence/m10/PX-048/read-leaves-index/tests.log",
+      "bytes": 9245,
+      "sha256": "7194390f084f1ceb65083e85676f7b357ac7b6ee6104417598632bc42a799b62"
     },
     {
       "path": "evidence/m10/PX-049/TASK_CARD.md",

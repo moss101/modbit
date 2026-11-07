@@ -14,14 +14,14 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | Section | Range | Files | Bytes |
 |---|---|---:|---:|
 | Authority and orientation | 00–09 | 8 | 90516 |
-| Architecture and subsystems | 10–29 | 20 | 393373 |
+| Architecture and subsystems | 10–29 | 20 | 393854 |
 | Implementation specifications | 30–39 | 10 | 179221 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351840 |
 | Verification and testing | 50–69 | 20 | 970925 |
 | Delivery and operations | 70–79 | 10 | 125383 |
 | Agent process and governance | 80–97 | 18 | 209972 |
 | Live state | 98–99 | 1 | 14961 |
-| **Total docs** | | **97** | **2336191** |
+| **Total docs** | | **97** | **2336672** |
 
 ## Specification files (`docs/`)
 
@@ -45,7 +45,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 17 | `docs/17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md` | Canonical Tool and Capability Inventory | architecture | 7044 | `3542409ed94a42a9479b38ff322e578a06eefab925fb3cc60b7bc8cded4c4b65` |
 | 18 | `docs/18_CONTEXT_RETRIEVAL_AND_ENGINEERING_KNOWLEDGE.md` | Context, Retrieval, and Engineering Knowledge Engine | architecture | 5728 | `c6a362588d301b22d0f57bd11accecd6af33a9a5f7abc391afb15d7bef6f2303` |
 | 19 | `docs/19_DURABLE_STATE_MEMORY_COMPACTION_CHECKPOINTS.md` | Durable State, Memory, Compaction, and Checkpoints | architecture | 16793 | `acff8854dd43baf890236375c579746100e05a57eccdfd450a41cba70aed3ad9` |
-| 20 | `docs/20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md` | Workspace, Git, Worktrees, Diagnostics, and Trusted Code Surface | architecture | 8023 | `a20c03022f1edd6debf6b76853d1edfd6625153d2680f11057b63535176f1b96` |
+| 20 | `docs/20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md` | Workspace, Git, Worktrees, Diagnostics, and Trusted Code Surface | architecture | 8504 | `3bdb3079f97ceaac3fdf2287d3d4caecdc0d26900e740ea9662ae53323879a98` |
 | 21 | `docs/21_TERMINAL_EXECUTION_AND_SANDBOX.md` | Terminal, Execution Router, and Sandbox Architecture | architecture | 30764 | `7373d4480d7ff4165b57db3204cb2df9eb13d3df2050471f6838af1a67329f4f` |
 | 22 | `docs/22_BROWSER_AND_COMPUTER_USE.md` | Browser and Computer-Use Architecture | architecture | 31715 | `0a846ff68035d09959118091e559439cd5d0f893e9d005e4d52b2ce495baebf7` |
 | 23 | `docs/23_SECURITY_POLICY_EFFECT_LEDGER.md` | Security, Policy, Capabilities, Secrets, and Effect Ledger | architecture | 20490 | `5b46eabc1fe83deee7155bc40860a8d2e98d658d2810e40d3183c6ccce5c1364` |
@@ -373,7 +373,9 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-045/TASK_CARD.md` | retained evidence | 2091 | `2b67d21ff7e968b175197d1b83baa80341294e4d0dd4e94e51d0442f614ef7d0` |
 | `evidence/m10/PX-045/ci-run-40018683027.json` | retained evidence | 46978 | `4c8f2b65e0e6636167fab16c719c969ad08b38234e126f8d31b52d77d3e8c10e` |
 | `evidence/m10/PX-045/evidence.json` | retained evidence | 2016 | `3a560df28f9b64ca68eb3bbbe39999bf70253105e64eda9f1ce0e9482840a6dc` |
-| `evidence/m10/PX-048/TASK_CARD.md` | retained evidence | 1892 | `2f8ed1ee7e3ef5d1615326fd88bf32979c5f98bf8bb2d260584430e176ee40c4` |
+| `evidence/m10/PX-048/TASK_CARD.md` | retained evidence | 5728 | `00e6d9d8ad04f42b6295d9d84d253072c9ebc161a0cb1f2d99ea0c6f80e3d3e9` |
+| `evidence/m10/PX-048/read-leaves-index/mutations.log` | retained evidence | 2510 | `6736d5f6f697646065beec5a33fc0f9f252feb9e8321ffa4f0dbbe907f77a551` |
+| `evidence/m10/PX-048/read-leaves-index/tests.log` | retained evidence | 9245 | `7194390f084f1ceb65083e85676f7b357ac7b6ee6104417598632bc42a799b62` |
 | `evidence/m10/PX-049/TASK_CARD.md` | retained evidence | 2291 | `e98ec599dff77dcb6058f16967e9798e33d3af05b5bf1179c60037fba07622c0` |
 | `evidence/m10/PX-049/ci-run-40076778858.json` | retained evidence | 46978 | `16c350396d23347c7da97b19d930be458ae150460cd60df6435469573b252e5e` |
 | `evidence/m10/PX-049/evidence.json` | retained evidence | 2080 | `f19a33d095f3910654493009f9570912653ff05218562b1c372c036ca67a3003` |

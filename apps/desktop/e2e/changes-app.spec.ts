@@ -108,6 +108,9 @@ test("the Changes tab shows the finished task's change set with its index, branc
   await expect(rows()).toHaveCount(2);
   await expect(page.getByTestId("changes-branch")).toContainText("On main → origin");
   await expect(page.getByTestId("changes-branch")).toHaveAttribute("data-unpushed", "0");
+  // Showing the new file changed nothing in the person's index: it is still untracked, so a `git clean` would remove it.
+  expect(g("status", "--porcelain", "--", "fresh.txt")).toBe("?? fresh.txt");
+  expect(g("clean", "-n", "--", "fresh.txt")).toBe("Would remove fresh.txt");
   await select("notes.txt");
   await expect(page.getByTestId("changes-hunk")).toHaveCount(2);
   await expect(page.getByTestId("changes-commit")).toHaveAttribute("data-mode", "none");
