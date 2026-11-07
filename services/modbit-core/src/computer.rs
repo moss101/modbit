@@ -246,6 +246,12 @@ pub(crate) fn policy_of(config: &ResolvedConfig) -> ComputerPolicy {
     }
 }
 
+/// PX-174: how many of a computer-use run's most recent frames the model is
+/// sent as images under `config`: the policy's number, clamped.
+pub(crate) fn frames_kept(config: &ResolvedConfig) -> usize {
+    policy::frame_window(config.computer_frame_window.as_ref().map(|r| r.value))
+}
+
 impl ComputerHost {
     pub(crate) fn new(data_dir: &Path) -> Self {
         let runtime = ComputerRuntime::new(RuntimeConfig::from_env());

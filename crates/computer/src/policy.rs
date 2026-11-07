@@ -204,9 +204,41 @@ impl ComputerPolicy {
     }
 }
 
+/// PX-174: how many of a computer-use run's most recent frames reach the
+/// model as images when policy names no number. Three, as in the reference
+/// loop the decision record cites (MAI-UI); older frames reach the model as
+/// the text record of their step.
+pub const DEFAULT_FRAME_WINDOW: u32 = 3;
+
+/// The most frames policy may ask for. A 1280 x 800 frame is charged about
+/// 1,365 tokens (PX-158, at most 1,600 for any image), so eight frames stay
+/// near 13,000 tokens: the size of the default compaction budget, and a share
+/// of any vision model's window that leaves room for the text history.
+pub const FRAME_WINDOW_CEILING: u32 = 8;
+
+/// The frame window in force for a configured value: the default when none is
+/// configured, never below one (a coordinate action needs the latest frame)
+/// and never above [`FRAME_WINDOW_CEILING`].
+#[must_use]
+pub fn frame_window(configured: Option<u32>) -> usize {
+    configured
+        .unwrap_or(DEFAULT_FRAME_WINDOW)
+        .clamp(1, FRAME_WINDOW_CEILING) as usize
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_frame_window_defaults_to_three_and_is_clamped_to_one_and_the_ceiling() {
+        assert_eq!(frame_window(None), 3);
+        assert_eq!(frame_window(Some(1)), 1);
+        assert_eq!(frame_window(Some(0)), 1);
+        assert_eq!(frame_window(Some(8)), 8);
+        assert_eq!(frame_window(Some(99)), 8);
+        assert_eq!(frame_window(Some(u32::MAX)), 8);
+    }
 
     fn app(bundle: &str, exe: &str) -> AppIdentity {
         AppIdentity {
