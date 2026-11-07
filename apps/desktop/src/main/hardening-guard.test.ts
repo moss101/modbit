@@ -20,7 +20,10 @@ const sha256 = (s: string | Buffer): string => createHash("sha256").update(s.toS
 
 /** The pins. Update one only for a reviewed change to the boundary it names. */
 const PINS = {
-  preloadSha256: "d791e491a29f4434738752354612a60b01e8fa2fdb0c08d679c3e685e4d675d4",
+  // M10.2 (reviewed 2026-11-07): four argument-less update channels (view, check, install, rollback). The renderer
+  // chooses nothing: the main process fetches, verifies against the pinned keys, decides and installs only a staged,
+  // verified update; a build with no pinned key refuses every update.
+  preloadSha256: "5b32dfd9ca6fdbc5c8e8b61c74b6ad7f7974bc691af0e39ccd2048aaffa785c1",
   cspSha256: "e8c3fcc4286ba170b02ea95b02189f132b16228341d2002412facfec6eb929d1",
   webPreferencesSha256: "28515878dc43e119f2360de779e5a3733283d120b31a113837f7f7a6cf2356ee",
   windowOptionKeys: ["width", "height", "minWidth", "minHeight", "show", "webPreferences"],

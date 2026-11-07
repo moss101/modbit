@@ -7,6 +7,11 @@ copyright: Modbit
 directories:
   output: release
   buildResources: build-resources
+# Every artifact this config makes is UNSIGNED (no code-signing identity, no
+# notarization; the owner holds both, docs/77 section 5 item 4). The name says
+# so, so an unsigned build can never pass for a release. The owner's signing
+# pipeline overrides this with -c.artifactName once it signs.
+artifactName: ${productName}-${version}-${os}-${arch}-UNSIGNED.${ext}
 files:
   - dist/**
   - package.json
@@ -25,7 +30,7 @@ extraResources:
     filter: [apply-helper.cjs]
   - from: package-resources
     to: .
-    filter: [update-keys.json, update-config.json]
+    filter: [update-keys.json, update-config.json, build-info.json]
 compression: normal
 npmRebuild: false
 nodeGypRebuild: false

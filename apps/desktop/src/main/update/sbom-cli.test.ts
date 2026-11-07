@@ -6,6 +6,7 @@
  */
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -108,6 +109,45 @@ test("verify checks every SBOM against the digest the signed manifest carries, s
     const bare = join(dir, "bare.json");
     assert.equal(run(["manifest", "--version", "1.0.0", "--artifact", `macos:arm64:https://feed.example.test/app.zip|${art}`, "--out", bare], { MODBIT_UPDATE_SIGNING_KEY: readFileSync(priv, "utf8") }).code, 0);
     assert.match(run(["verify", bare, "--keys", keys, "--sbom-dir", sbomDir]).err, /lists no SBOM/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("package-sbom names the package's files by digest and carries its UNSIGNED label; a package that does not say what it is, or lacks a file, is refused", () => {
+  const dir = mkdtempSync(join(tmpdir(), "modbit-pkg-sbom-"));
+  try {
+    const resources = join(dir, "Contents", "Resources");
+    mkdirSync(join(dir, "Contents", "MacOS"), { recursive: true });
+    mkdirSync(resources, { recursive: true });
+    const exe = join(dir, "Contents", "MacOS", "Modbit");
+    writeFileSync(exe, "electron");
+    const bin = (n: string) => (process.platform === "win32" ? `${n}.exe` : n);
+    for (const n of [bin("modbit-core"), bin("modbit-execd"), "app.asar", "apply-helper.cjs", "update-keys.json", "update-config.json"]) writeFileSync(join(resources, n), `bytes of ${n}`);
+    const out = join(dir, "package.cdx.json");
+    const args = ["package-sbom", "--resources", resources, "--executable", exe, "--out", out];
+
+    const missing = run(args);
+    assert.notEqual(missing.code, 0);
+    assert.match(missing.err, /build-info\.json is missing/);
+
+    writeFileSync(join(resources, "build-info.json"), JSON.stringify({ label: "UNSIGNED", signed: false, notarized: false, version: "0.0.0", electron: "44.3.0", commit: "abc" }));
+    const ok = run(args);
+    assert.equal(ok.code, 0, ok.err);
+    const bom = JSON.parse(readFileSync(out, "utf8"));
+    assert.equal(bom.bomFormat, "CycloneDX");
+    const props = Object.fromEntries(bom.metadata.properties.map((p: { name: string; value: string }) => [p.name, p.value]));
+    assert.equal(props["modbit:label"], "UNSIGNED");
+    assert.equal(props["modbit:signed"], "false");
+    const core = bom.components.find((c: { name: string }) => c.name.endsWith(bin("modbit-core")));
+    assert.ok(core, "the bundled Core is a component");
+    assert.equal(core.hashes[0].content, createHash("sha256").update(`bytes of ${bin("modbit-core")}`).digest("hex"));
+
+    // A package missing a file it must ship is refused, not described without it.
+    rmSync(join(resources, bin("modbit-execd")));
+    const gone = run(args);
+    assert.notEqual(gone.code, 0);
+    assert.match(gone.err, /missing from the package/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

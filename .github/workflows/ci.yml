@@ -293,13 +293,20 @@ jobs:
           if-no-files-found: ignore
 
   desktop-packaged:
-    name: packaged desktop — the package starts its own Core and updates itself (${{ matrix.os }})
+    name: packaged desktop (UNSIGNED test build) — starts its own Core, runs the packaged subset, updates itself (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 90
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        include:
+          - { os: macos-latest, tag: mac-arm64 }
+          - { os: ubuntu-latest, tag: linux-x64 }
+          - { os: windows-latest, tag: win-x64 }
+    env:
+      # No code-signing identity exists (the owner's, docs/77 section 5 item 4): never let electron-builder find one on
+      # the runner. Every artifact this job makes is UNSIGNED by name and by its build-info.json.
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Install pinned Rust toolchain (rust-toolchain.toml)
@@ -314,9 +321,9 @@ jobs:
       # RUSTFLAGS "-D warnings" is for our own crates; the release Core is what ships.
       - name: Build the release Core and execd that the package carries
         run: cargo build --release --locked -p modbit-core -p modbit-execd
-      - name: Package the desktop app (unpacked, with no signing identity, so the candidate says it is unsigned)
-        run: pnpm --filter @modbit/desktop run package:dir
-      - name: Packaged app starts the Core it carries (Linux under xvfb)
+      - name: Package the desktop app, UNSIGNED (macOS dmg+zip, Windows NSIS+zip, Linux AppImage+tar.gz)
+        run: pnpm --filter @modbit/desktop run package
+      - name: Packaged suite — the package starts the Core it carries, the representative subset, the update suite (Linux under xvfb)
         shell: bash
         run: |
           if [ "$RUNNER_OS" = "Linux" ]; then
@@ -325,11 +332,20 @@ jobs:
           else
             pnpm --filter @modbit/desktop run e2e:packaged
           fi
+      - name: Gather the UNSIGNED artifacts, the package SBOM and checksums (refuses an unlabelled or signed-claiming build)
+        run: node tools/release/unsigned-bundle.mjs --out target/unsigned
+      - name: Upload the UNSIGNED test build (not a release; tests only)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: modbit-desktop-${{ matrix.tag }}-UNSIGNED
+          path: target/unsigned
+          retention-days: 14
+          if-no-files-found: error
       - name: Upload traces on failure
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: desktop-packaged-traces-${{ matrix.os }}
+          name: desktop-packaged-traces-${{ matrix.tag }}
           path: apps/desktop/test-results
           if-no-files-found: ignore
 

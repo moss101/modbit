@@ -10,6 +10,8 @@
 //   verify    <manifest.json> --keys <update-keys.json> [--artifact-dir dir] [--sbom-dir dir]
 //   sbom      --out-dir D                CycloneDX 1.5 JSON for modbit-core, modbit-execd and the desktop
 //   licenses  <sbom.json>...             fail on a license outside tools/release/license-policy.json
+//   package-sbom --resources D --executable F --out F [--sbom-dir D] [--artifact F ...]
+//                                        CycloneDX 1.5 of one built package, by file digest, with its signed/UNSIGNED label
 //
 // The signing key comes from the MODBIT_UPDATE_SIGNING_KEY environment variable
 // (the CI secret store) or --private-key-file; never from an argument, never
@@ -332,6 +334,70 @@ switch (command) {
     }
     break;
   }
+  case "package-sbom": {
+    // The SBOM of one built package: every file the package ships that this
+    // workspace or its runtime produced, by sha256, so the SBOM names the bytes
+    // the person runs and not only the source tree. It links the per-source
+    // SBOMs (`sbom`) by digest. The package's own build-info.json says whether
+    // it is signed; this command records what it says and never upgrades it.
+    const resources = resolve(required(flags, "resources"));
+    const executable = resolve(required(flags, "executable"));
+    const outPath = resolve(required(flags, "out"));
+    const infoPath = join(resources, "build-info.json");
+    if (!existsSync(infoPath)) fail(`${infoPath} is missing: the package does not say what it is`);
+    const info = JSON.parse(readFileSync(infoPath, "utf8"));
+    if (typeof info.signed !== "boolean" || typeof info.label !== "string") fail(`${infoPath} has no signed/label fields`);
+    const fileComponent = (path, extra = {}) => {
+      if (!existsSync(path)) fail(`${path} is missing from the package`);
+      const bytes = readFileSync(path);
+      const name = relative(dirname(resources), path).split(sep).join("/");
+      return { type: "file", "bom-ref": `file:${name}`, name, version: info.version, hashes: [{ alg: "SHA-256", content: sha256(bytes) }], properties: [{ name: "modbit:size", value: String(bytes.length) }], ...extra };
+    };
+    const shipped = [
+      ...SHIPPED_RUST.map(({ name }) => {
+        const file = join(resources, process.platform === "win32" ? `${name}.exe` : name);
+        return fileComponent(file, { type: "application", description: `${name}, release build, bundled in the package resources` });
+      }),
+      fileComponent(join(resources, "app.asar"), { description: "the desktop main, preload and renderer bundle (packages: desktop.cdx.json)" }),
+      fileComponent(join(resources, "apply-helper.cjs"), { description: "the update install helper, run as plain Node beside the app" }),
+      ...["update-keys.json", "update-config.json", "build-info.json"].map((n) => fileComponent(join(resources, n))),
+      fileComponent(executable, { type: "application", description: `the Electron ${info.electron} executable the packager copied in (Chromium and Node.js inside)` }),
+    ];
+    const refs = [];
+    const sbomDir = one(flags, "sbom-dir");
+    if (sbomDir !== undefined) {
+      for (const n of readdirSync(sbomDir).filter((f) => f.endsWith(".cdx.json")).sort()) {
+        const p = join(sbomDir, n);
+        checkSbom(p);
+        refs.push({ type: "bom", url: n, hashes: [{ alg: "SHA-256", content: sha256(readFileSync(p)) }], comment: "per-source SBOM of a shipped component" });
+      }
+    }
+    const artifacts = (flags.get("artifact") ?? []).map((a) => fileComponent(resolve(a), { type: "file", "bom-ref": `artifact:${a.split(/[\\/]/).pop()}`, name: a.split(/[\\/]/).pop(), description: "a distributable artifact of this package" }));
+    const bom = {
+      bomFormat: "CycloneDX",
+      specVersion: "1.5",
+      serialNumber: `urn:uuid:${createHash("sha256").update(JSON.stringify(shipped)).digest("hex").replace(/^(.{8})(.{4})(.{3})(.{3})(.{12}).*/, "$1-$2-5$3-8$4-$5")}`,
+      version: 1,
+      metadata: {
+        component: { type: "application", "bom-ref": "pkg:modbit-desktop", name: "modbit-desktop", version: info.version, description: `Modbit desktop package (${info.label})` },
+        properties: [
+          { name: "modbit:label", value: info.label },
+          { name: "modbit:signed", value: String(info.signed) },
+          { name: "modbit:notarized", value: String(info.notarized ?? false) },
+          { name: "modbit:purpose", value: String(info.purpose ?? "") },
+          { name: "modbit:commit", value: String(info.commit ?? "unknown") },
+          { name: "modbit:platform", value: `${process.platform}-${process.arch}` },
+        ],
+      },
+      components: [...shipped, ...artifacts],
+      ...(refs.length > 0 ? { externalReferences: refs } : {}),
+    };
+    mkdirSync(dirname(outPath), { recursive: true });
+    writeFileSync(outPath, `${JSON.stringify(bom, null, 2)}\n`);
+    checkSbom(outPath);
+    console.log(`${outPath}: CycloneDX 1.5 package SBOM (${info.label}, signed=${info.signed}), ${bom.components.length} components, ${refs.length} linked SBOMs, sha256 ${sha256(readFileSync(outPath))}`);
+    break;
+  }
   case "key-id": {
     const file = positional[0];
     if (!file) fail("key-id <public-key.pem>");
@@ -339,5 +405,5 @@ switch (command) {
     break;
   }
   default:
-    fail("commands: keygen | schema-version | checksums | sbom | licenses | manifest | verify | key-id");
+    fail("commands: keygen | schema-version | checksums | sbom | package-sbom | licenses | manifest | verify | key-id");
 }
