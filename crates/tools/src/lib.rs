@@ -30,6 +30,7 @@ pub mod extensions;
 pub mod external;
 pub mod forge;
 pub mod gitstate;
+pub mod handover;
 pub mod hooks;
 pub mod media;
 pub mod notebook;
