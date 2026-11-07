@@ -1,2 +1,35 @@
 PX-158 mutation: message_tokens ignores images (ContentPart::Media => 0)
 result: many_frames_reach_a_threshold_their_captions_never_would FAILED (killed)
+
+## Integration legs (2026-11-07, base 9915c074, branch wip/px-158-legs)
+
+Command (each mutation applied to services/modbit-core/src/runtime.rs, then
+reverted with `git checkout -- services/modbit-core/src/runtime.rs`; the
+test file is new and was never touched by a mutation):
+
+  cargo test -p modbit-core --test px_158_image_tokens -- --nocapture --test-threads=4
+
+Unmutated: 2 passed.
+  PX-158 text-only: trigger before request 11; provider crossed the soft threshold 10569 at request 11; provider transcript 10255 -> 11404; hard 12834; margin 480; tokens_before 11271
+  PX-158 1280x800: trigger before request 9; provider crossed the soft threshold 10452 at request 9; provider transcript 10397 -> 11874; hard 12692; margin 480; tokens_before 13766
+  PX-158 1920x1080: trigger before request 8 (one request before the provider's count would cross: 10397 + 480 > 10759); hard 13065; margin 480; tokens_before 13703
+
+Mutation A (the trigger site exercised): in `measured_tokens`,
+  .map(|m| message_tokens(m, modbit_compaction::estimate_tokens_v2))
+  ->
+  .map(|m| modbit_compaction::estimate_tokens_v2(&message_text(m)))
+result: qual_px_158_frames_reach_the_compaction_threshold_where_reported_usage_does FAILED (killed):
+  "no compaction started; provider transcript counts: [0, 58, 1535, 3012, 4489, 5966, 7443, 8920, 10397, 11874, 13351, 14829, 16307, 17785, 19263, 20741]"
+  (the provider counted twice the soft threshold, 20741 of a 24000 window, and the Core never compacted)
+  qual_px_158_a_text_only_transcript_is_estimated_as_before: ok (trigger before request 11, tokens_before 11271: unchanged)
+
+Mutation B / differential (the estimator before PX-158, every site): in `message_tokens`,
+  ContentPart::Media { mime, alt, .. } => image_tokens(mime, alt),
+  ->
+  ContentPart::Media { .. } => 0,
+result: qual_px_158_frames_reach_the_compaction_threshold_where_reported_usage_does FAILED (killed):
+  "1280x800: request 2: the Core estimated 8470 (6755 calibrated), the provider reported 7886; the margin is 480"
+  qual_px_158_a_text_only_transcript_is_estimated_as_before: ok, and the same figures as unmutated
+  (trigger before request 11, hard 12834, tokens_before 11271): a text-only transcript is estimated as before.
+
+Both mutations reverted; `git diff services/modbit-core/src/runtime.rs` is empty.

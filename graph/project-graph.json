@@ -39745,9 +39745,22 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-158",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "WIRED",
-   "evidence": [],
-   "status_changed_on": "2026-10-28T09:42:38Z"
+   "status": "REAL_TESTING",
+   "evidence": [
+    "test:services/modbit-core/tests/px_158_image_tokens.rs::qual_px_158_frames_reach_the_compaction_threshold_where_reported_usage_does",
+    "test:services/modbit-core/tests/px_158_image_tokens.rs::qual_px_158_a_text_only_transcript_is_estimated_as_before",
+    "artifact:evidence/m10/PX-158/mutation-check.txt",
+    "artifact:evidence/m10/PX-158/evidence.json"
+   ],
+   "notes": [
+    {
+     "at": "2026-11-07T15:29:51Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Integration legs on the real Core against a scripted OpenAI-compatible server reporting usage from the received body (OpenAI high-detail tile rule for images, 4 chars/token text): frames at 1280x800 and 1920x1080 trigger compaction within window/50 of the provider crossing, calibrated estimates within the margin, no orphaned image after the epoch; text-only control unchanged (differential vs pre-PX-158 estimator). Not live; one image rule for all providers (no per-provider rule or detail class); no CI yet."
+    }
+   ],
+   "status_changed_on": "2026-11-07T15:29:51Z"
   },
   {
    "id": "PX-159",
