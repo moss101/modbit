@@ -1796,6 +1796,22 @@ async fn px_084_kill_switches_stop_queued_and_running_runs_and_hold_new_firings(
     let _: AutomationRunStarted = cmd(&mut f.c, "RunAutomation", ask(&by.automation_id, "x"))
         .await
         .unwrap();
+    // "Running" is admitted before its task exists; the run whose session is checked below has dispatched its task.
+    // (A kill inside that window stops the stage the dispatch then launches; the Core does that, not this wait.)
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    loop {
+        let r = runs(&mut f.c, &k.automation_id).await;
+        if r.iter()
+            .any(|x| x.event_id == "a" && !x.session_id.is_empty())
+        {
+            break;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "run a dispatched its task: {r:?}"
+        );
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
     // Kill one definition.
     let rep: KillReport = cmd(
         &mut f.c,
