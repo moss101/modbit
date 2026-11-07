@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 1984,
-    "docs_bytes": 2338661
+    "root_and_tooling": 1986,
+    "docs_bytes": 2339419
   },
   "sections": [
     {
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 56652,
-      "sha256": "ebd983e7b0cb813b8987c128135c5c34e307c8261783feb2ab0be7ccc80f6271"
+      "bytes": 57410,
+      "sha256": "583f80308ee51c27e0fa76b5738947559ed78e6de89e8464bae68d031d89a554"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -3310,8 +3310,8 @@
     },
     {
       "path": "evidence/m10/PX-196/TASK_CARD.md",
-      "bytes": 5411,
-      "sha256": "155438dace1d712a133d5fa458b0afd5ae6bdb0e998e29301e30f742e13e3047"
+      "bytes": 6024,
+      "sha256": "413e070754522dbf523777b5bcdd5555813a682600af05b2385f02ed541ad69f"
     },
     {
       "path": "evidence/m10/PX-196/after/list-attention-view.png",
@@ -3349,6 +3349,11 @@
       "sha256": "c78dbff9a5208db1bbc762886439d1719d198a7a74d3808fb5fee510778dbf9c"
     },
     {
+      "path": "evidence/m10/PX-196/desktop-e2e-full-2026-11-07.log",
+      "bytes": 93626,
+      "sha256": "cbf96484e5ef0662d9bfdef3a0e87f421468927c2dec19673338a57f647da5ab"
+    },
+    {
       "path": "evidence/m10/PX-196/desktop-e2e-full-after-section-5-9.log",
       "bytes": 461706,
       "sha256": "86ce7cae06b9f28eb02f28ef6505ce15425095a5e22b167604815102d7d6264a"
@@ -3365,8 +3370,8 @@
     },
     {
       "path": "evidence/m10/PX-197/TASK_CARD.md",
-      "bytes": 5487,
-      "sha256": "224b55913f7d646308ba4065c69470128ec3cda7499f7e41dc043d83c38c3052"
+      "bytes": 6081,
+      "sha256": "915a252617e312c7f9a45ff4aaf0f30eb45844b793f296aa7c843a5afab07e32"
     },
     {
       "path": "evidence/m10/PX-197/after/conv-light.png",
@@ -3402,6 +3407,11 @@
       "path": "evidence/m10/PX-197/evidence.json",
       "bytes": 4879,
       "sha256": "f96a11e2affd29a6de999a7b29a4306b2b15c598d33c112891bccf92fc1fefc9"
+    },
+    {
+      "path": "evidence/m10/PX-197/mutation-check-2026-11-07.txt",
+      "bytes": 625,
+      "sha256": "234964ea438c7b631145bb92245b7a8adc40fff0138845c3df5946b48173ae34"
     },
     {
       "path": "evidence/m10/graph-audit-2026-11-07/AUDIT.md",

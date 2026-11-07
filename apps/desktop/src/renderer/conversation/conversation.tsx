@@ -10,13 +10,13 @@
  */
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Button, Icon, IconButton, StatusDot, TrayHost } from "@modbit/ui";
+import { Button, Icon, IconButton, StatusDot, TrayHost, useLayer } from "@modbit/ui";
 import type { TranscriptRowView } from "../../shared/conversation-types.ts";
 import { noticeWanted, type ScreenState as DerivedScreenState } from "../screens.ts";
 import { TaskDetails } from "./task-details.tsx";
 import { StateLine } from "../shell/state-line.tsx";
 import { localMachine } from "../location.ts";
-import type { TaskCard } from "../model.ts";
+import { withCoreFacts, type TaskCard } from "../model.ts";
 import { INITIAL_FOLLOW, identityOf, messageIds, onDismiss, onJumpToBottom, onMessages, onScroll, pillText, stallLevel, withDivider, withLiveOnly, type Follow } from "./model.ts";
 import { RowView, type RowContext } from "./rows.tsx";
 import { loadConversationPrefs, saveConversationPrefs, type ConversationPrefs } from "./prefs.ts";
@@ -99,15 +99,11 @@ export function Conversation(props: ConversationProps) {
   // REQ-PX-057 / 062: the run-mode dialog (also opened from an approval card) and the checkpoint surface.
   const [modeOpen, setModeOpen] = useState(false);
   const ckpt = useCheckpointSurface({ taskId, sessionId, connected, card, onResume, onOpenTask });
+  // PX-196: what the Core folded from the task's log stands in for what this window has not seen since it started.
+  const detailsCard = useMemo(() => (card && conv.factsTaskId === taskId ? withCoreFacts(card, conv.facts, conv.asOfOffset) : card), [card, conv.facts, conv.factsTaskId, conv.asOfOffset, taskId]);
   const [detailsOpen, setDetailsOpen] = useState(false);
-  useEffect(() => {
-    if (!detailsOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setDetailsOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [detailsOpen]);
+  // A layer: Escape closes the panel and nothing else, before any key scope (a docked card's Skip) sees it.
+  useLayer(detailsOpen, "task-details", false, () => setDetailsOpen(false));
 
   // The unread divider marks what was new when the conversation was opened; what arrives while it is open is not "unread".
   const body = useMemo(() => withDivider(withLiveOnly(conv.dividerOffset === null ? conv.rows.filter((r) => r.kind !== "UNREAD_DIVIDER") : conv.rows, conv.live), conv.dividerOffset, (n) => `${n} new`), [conv.rows, conv.live, conv.dividerOffset]);
@@ -287,7 +283,7 @@ export function Conversation(props: ConversationProps) {
               </span>
             )}
             <IconButton label="Task details" icon={<Icon name="ellipsis" />} pressed={detailsOpen} onClick={() => setDetailsOpen((o) => !o)} data-testid="task-details-toggle" />
-            {detailsOpen && <TaskDetails taskId={taskId} card={card} subtasks={subtasks ?? []} density={prefs.density} onDensity={(density) => setPrefs((p) => ({ ...p, density }))} undoAll={ckpt.head} onBrowser={() => onBrowser?.()} onCancel={() => onCancelTask?.()} onOpenTask={(id) => onOpenTask?.(id)} />}
+            {detailsOpen && <TaskDetails taskId={taskId} card={detailsCard} subtasks={subtasks ?? []} density={prefs.density} onDensity={(density) => setPrefs((p) => ({ ...p, density }))} undoAll={ckpt.head} onBrowser={() => onBrowser?.()} onCancel={() => onCancelTask?.()} onOpenTask={(id) => onOpenTask?.(id)} />}
           </>,
           topSlot,
         )}
