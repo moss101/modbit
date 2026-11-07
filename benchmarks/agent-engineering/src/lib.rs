@@ -13,11 +13,19 @@
 //! with intervals, bundle validation); the `competence-baseline` binary
 //! drives the product.
 
+pub mod axes;
 pub mod bundle;
 pub mod events;
 pub mod profile;
 pub mod suite;
+pub mod verifier;
 pub mod workspace;
+
+pub use axes::{
+    AXES, AxesProtocol, AxisReport, Comparison, Gate, MIN_TASKS_PER_AXIS, ReportRefused,
+    TrialUsage, compare, report,
+};
+pub use verifier::{Observed, Seed, ToolResultRecord, Verifier, VerifierOutcome, evaluate};
 
 pub use bundle::{
     Bundle, BundleRefused, Economics, Environment, EventLog, Metrics, Protocol, Rate, TargetRecord,

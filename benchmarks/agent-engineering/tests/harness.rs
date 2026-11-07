@@ -141,6 +141,9 @@ fn trial(task: &str, n: u32, verified: bool, repairs: u32) -> TrialOutcome {
         diff_sha256: String::new(),
         interactions: 0,
         notes: vec![],
+        axis: None,
+        verifier: None,
+        usage: None,
     }
 }
 

@@ -1,0 +1,1328 @@
+{
+  "id": "four-axis",
+  "version": "1.0.0",
+  "protocol": {
+    "trials": 3,
+    "max_turns": 24,
+    "question_answer": "Use your best judgement and proceed without further questions; keep the change minimal.",
+    "approvals": "deny",
+    "run_mode": "RUN_EVERYTHING",
+    "axes": {
+      "min_tasks_per_axis": 10,
+      "gate": {
+        "max_drop": 0.05
+      }
+    }
+  },
+  "tasks": [
+    {
+      "id": "tool_use/sum-numbers",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "tool_use",
+      "goal": "Read data/numbers.txt (one integer per line) and write their sum, followed by a newline, to out/sum.txt.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/tool_use/sum-numbers",
+        "files": [
+          {
+            "path": "out/sum.txt",
+            "equals": "108\n"
+          }
+        ],
+        "tools": [
+          {
+            "tool": "fs.read",
+            "min": 1,
+            "output_contains": "42"
+          }
+        ]
+      }
+    },
+    {
+      "id": "tool_use/find-channel",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "tool_use",
+      "goal": "Search the workspace for the RELEASE_CHANNEL setting and write its value, followed by a newline, to out/channel.txt.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/tool_use/find-channel",
+        "files": [
+          {
+            "path": "out/channel.txt",
+            "equals": "beta-7\n"
+          }
+        ],
+        "tools": [
+          {
+            "tool": "search.exact",
+            "min": 1,
+            "output_contains": "channel.cfg"
+          }
+        ]
+      }
+    },
+    {
+      "id": "tool_use/bump-retries",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "tool_use",
+      "goal": "In config/app.ini change retries from 3 to 5 and leave every other line exactly as it is.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/tool_use/bump-retries",
+        "files": [
+          {
+            "path": "config/app.ini",
+            "equals": "[service]\nname = inventory\nretries = 5\ntimeout_ms = 2500\n"
+          }
+        ],
+        "tools": [
+          {
+            "tool": "change.apply",
+            "min": 1,
+            "output_contains": "config/app.ini"
+          }
+        ]
+      }
+    },
+    {
+      "id": "tool_use/list-cfg-files",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "tool_use",
+      "goal": "Find every .cfg file under src/ and write their workspace-relative paths, sorted, one per line, to out/cfg-files.txt.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/tool_use/list-cfg-files",
+        "files": [
+          {
+            "path": "out/cfg-files.txt",
+            "equals": "src/settings/channel.cfg\nsrc/settings/limits.cfg\nsrc/settings/region.cfg\n"
+          }
+        ],
+        "tools": [
+          {
+            "tool": "fs.glob",
+            "min": 1,
+            "output_contains": "limits.cfg"
+          }
+        ]
+      }
+    },
+    {
+      "id": "tool_use/count-assets",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "tool_use",
+      "goal": "Count the files in the assets directory and write the count, followed by a newline, to out/assets.txt.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/tool_use/count-assets",
+        "files": [
+          {
+            "path": "out/assets.txt",
+            "equals": "3\n"
+          }
+        ],
+        "tools": [
+          {
+            "tool": "fs.list",
+            "min": 1,
+            "output_contains": "c.txt"
+          }
+        ]
+      }
+    },
+    {
+      "id": "tool_use/last-commit-subject",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "tool_use",
+      "goal": "Run git to find the subject line of the latest commit and write it, followed by a newline, to out/subject.txt.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/tool_use/last-commit-subject",
+        "files": [
+          {
+            "path": "out/subject.txt",
+            "equals": "fixture\n"
+          }
+        ],
+        "tools": [
+          {
+            "tool": "shell.exec",
+            "min": 1,
+            "output_contains": "fixture"
+          }
+        ]
+      }
+    },
+    {
+      "id": "tool_use/fix-typo",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "tool_use",
+      "goal": "Fix the misspelled word in src/greeting.txt so that it reads Hello, World! and change nothing else.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/tool_use/fix-typo",
+        "files": [
+          {
+            "path": "src/greeting.txt",
+            "equals": "Hello, World!\n"
+          }
+        ],
+        "tools": [
+          {
+            "tool": "fs.read",
+            "min": 1,
+            "output_contains": "Wrold"
+          }
+        ]
+      }
+    },
+    {
+      "id": "tool_use/american-spelling",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "tool_use",
+      "goal": "In docs/guide.md replace every occurrence of the word colour with color and change nothing else.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/tool_use/american-spelling",
+        "files": [
+          {
+            "path": "docs/guide.md",
+            "equals": "# Guide\n\nPick a color for the badge.\nThe color is shown on the dashboard.\n"
+          }
+        ],
+        "tools": [
+          {
+            "tool": "change.apply",
+            "min": 1,
+            "output_contains": "docs/guide.md"
+          }
+        ]
+      }
+    },
+    {
+      "id": "tool_use/sorted-names",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "tool_use",
+      "goal": "Read data/users.csv and write the user names, sorted alphabetically, one per line, to out/names.txt.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/tool_use/sorted-names",
+        "files": [
+          {
+            "path": "out/names.txt",
+            "equals": "ada\ngrace\nlinus\n"
+          }
+        ],
+        "tools": [
+          {
+            "tool": "fs.read",
+            "min": 1,
+            "output_contains": "grace"
+          }
+        ]
+      }
+    },
+    {
+      "id": "tool_use/batch-create",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "tool_use",
+      "goal": "In one atomic change create out/a.txt containing the line A and out/b.txt containing the line B.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/tool_use/batch-create",
+        "files": [
+          {
+            "path": "out/a.txt",
+            "equals": "A\n"
+          },
+          {
+            "path": "out/b.txt",
+            "equals": "B\n"
+          }
+        ],
+        "tools": [
+          {
+            "tool": "change.batch",
+            "min": 1,
+            "output_contains": "out/b.txt"
+          }
+        ]
+      }
+    },
+    {
+      "id": "memory/staging-port",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "memory",
+      "goal": "Write the staging port recorded in the team's memory, followed by a newline, to out/staging.port.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/memory/staging-port",
+        "files": [
+          {
+            "path": "out/staging.port",
+            "equals": "8431\n"
+          }
+        ],
+        "memory": {
+          "used": [
+            "staging-port"
+          ]
+        }
+      },
+      "seed": {
+        "memory": [
+          {
+            "key": "staging-port",
+            "record_type": "fact",
+            "topic": "staging port",
+            "content": "The staging service listens on port 8431."
+          }
+        ]
+      }
+    },
+    {
+      "id": "memory/release-owner",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "memory",
+      "goal": "Write the contact of the release owner recorded in memory, followed by a newline, to out/release-owner.txt.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/memory/release-owner",
+        "files": [
+          {
+            "path": "out/release-owner.txt",
+            "equals": "plat-ops\n"
+          }
+        ],
+        "memory": {
+          "used": [
+            "release-owner"
+          ]
+        }
+      },
+      "seed": {
+        "memory": [
+          {
+            "key": "release-owner",
+            "record_type": "decision",
+            "topic": "release owner",
+            "content": "Releases are approved by the platform team; their contact is plat-ops."
+          }
+        ]
+      }
+    },
+    {
+      "id": "memory/database-name",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "memory",
+      "goal": "Write config/db.ini with a [db] section whose name key is the database name recorded in memory.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/memory/database-name",
+        "files": [
+          {
+            "path": "config/db.ini",
+            "equals": "[db]\nname = inv_main_v2\n"
+          }
+        ],
+        "memory": {
+          "used": [
+            "database-name"
+          ]
+        }
+      },
+      "seed": {
+        "memory": [
+          {
+            "key": "database-name",
+            "record_type": "dependency_knowledge",
+            "topic": "database name",
+            "content": "The inventory database is called inv_main_v2."
+          }
+        ]
+      }
+    },
+    {
+      "id": "memory/changelog-prefix",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "memory",
+      "goal": "Add CHANGELOG.md with one entry for ticket 12, add retries, written in the changelog convention recorded in memory.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/memory/changelog-prefix",
+        "files": [
+          {
+            "path": "CHANGELOG.md",
+            "equals": "- INV-12 add retries\n"
+          }
+        ],
+        "memory": {
+          "used": [
+            "changelog-prefix"
+          ]
+        }
+      },
+      "seed": {
+        "memory": [
+          {
+            "key": "changelog-prefix",
+            "record_type": "convention",
+            "topic": "changelog entries",
+            "content": "Every changelog entry is a line '- INV-<ticket> <summary>'."
+          }
+        ]
+      }
+    },
+    {
+      "id": "memory/timeout-unit",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "memory",
+      "goal": "Write a request timeout of 2.5 seconds to out/timeout.txt in the format the user prefers, as recorded in memory.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/memory/timeout-unit",
+        "files": [
+          {
+            "path": "out/timeout.txt",
+            "equals": "2.5s\n"
+          }
+        ],
+        "memory": {
+          "used": [
+            "timeout-unit"
+          ]
+        }
+      },
+      "seed": {
+        "memory": [
+          {
+            "key": "timeout-unit",
+            "record_type": "user_preference",
+            "topic": "timeout format",
+            "content": "Write timeouts as a number of seconds followed by s, for example 3s."
+          }
+        ]
+      }
+    },
+    {
+      "id": "memory/flaky-upload",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "memory",
+      "goal": "Write the exact command that runs the upload test reliably, as recorded in memory, followed by a newline, to out/upload-cmd.txt.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/memory/flaky-upload",
+        "files": [
+          {
+            "path": "out/upload-cmd.txt",
+            "equals": "pytest -k test_upload -p no:xdist\n"
+          }
+        ],
+        "memory": {
+          "used": [
+            "flaky-upload"
+          ]
+        }
+      },
+      "seed": {
+        "memory": [
+          {
+            "key": "flaky-upload",
+            "record_type": "failure_pattern",
+            "topic": "upload test",
+            "content": "test_upload is flaky in parallel; run it with exactly: pytest -k test_upload -p no:xdist"
+          }
+        ]
+      }
+    },
+    {
+      "id": "memory/deploy-procedure",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "memory",
+      "goal": "Write the deploy procedure recorded in memory as a numbered list to out/deploy.md.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/memory/deploy-procedure",
+        "files": [
+          {
+            "path": "out/deploy.md",
+            "contains": [
+              "tag the build",
+              "push the tag",
+              "#ship"
+            ]
+          }
+        ],
+        "memory": {
+          "used": [
+            "deploy-procedure"
+          ]
+        }
+      },
+      "seed": {
+        "memory": [
+          {
+            "key": "deploy-procedure",
+            "record_type": "procedure",
+            "topic": "deploy procedure",
+            "content": "Deploy: 1. tag the build 2. push the tag 3. announce in #ship"
+          }
+        ]
+      }
+    },
+    {
+      "id": "memory/current-api-version",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "memory",
+      "goal": "Write the current API version recorded in memory, followed by a newline, to out/api-version.txt.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/memory/current-api-version",
+        "files": [
+          {
+            "path": "out/api-version.txt",
+            "equals": "v4\n"
+          }
+        ],
+        "memory": {
+          "used": [
+            "api-v4"
+          ],
+          "not_used": [
+            "api-v3"
+          ]
+        }
+      },
+      "seed": {
+        "memory": [
+          {
+            "key": "api-v3",
+            "record_type": "fact",
+            "topic": "api version",
+            "content": "The public API version is v3.",
+            "forget": true
+          },
+          {
+            "key": "api-v4",
+            "record_type": "fact",
+            "topic": "api version",
+            "content": "The public API version is v4."
+          }
+        ]
+      }
+    },
+    {
+      "id": "memory/propose-port-convention",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "memory",
+      "goal": "Record in memory, as a team convention with the topic port files, that a port file holds one number followed by a newline; then write the port 8080 to out/default.port following it.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/memory/propose-port-convention",
+        "files": [
+          {
+            "path": "out/default.port",
+            "equals": "8080\n"
+          }
+        ],
+        "memory": {
+          "proposed": [
+            {
+              "topic": "port files",
+              "record_type": "convention",
+              "content_contains": "one number"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "memory/propose-lint-pitfall",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "memory",
+      "goal": "Record in memory, as a known pitfall with the topic lint cache, that the lint step needs the .cache directory; then create .cache/README.md saying the directory must exist.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/memory/propose-lint-pitfall",
+        "files": [
+          {
+            "path": ".cache/README.md",
+            "contains": [
+              "must exist"
+            ]
+          }
+        ],
+        "memory": {
+          "proposed": [
+            {
+              "topic": "lint cache",
+              "content_contains": ".cache"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "skill_use/release-note",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "skill_use",
+      "goal": "Using the release-notes skill, add a release note for the parser area saying handle empty input.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/skill_use/release-note",
+        "files": [
+          {
+            "path": "NOTES.md",
+            "equals": "- [parser] handle empty input\n"
+          }
+        ],
+        "skills_used": [
+          "release-notes"
+        ]
+      },
+      "seed": {
+        "skills": [
+          {
+            "name": "release-notes",
+            "description": "how release notes are written",
+            "body": "Each release note is one line '- [area] summary' in NOTES.md, newest last."
+          }
+        ]
+      }
+    },
+    {
+      "id": "skill_use/adr",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "skill_use",
+      "goal": "Using the adr-template skill, write ADR 0007 titled Use SQLite for cache.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/skill_use/adr",
+        "files": [
+          {
+            "path": "docs/adr/0007-use-sqlite-for-cache.md",
+            "contains": [
+              "# 0007. Use SQLite for cache",
+              "Status: proposed"
+            ]
+          }
+        ],
+        "skills_used": [
+          "adr-template"
+        ]
+      },
+      "seed": {
+        "skills": [
+          {
+            "name": "adr-template",
+            "description": "how architecture decision records are written",
+            "body": "An ADR is docs/adr/NNNN-slug.md whose first line is '# NNNN. Title' followed by a blank line and the line 'Status: proposed'."
+          }
+        ]
+      }
+    },
+    {
+      "id": "skill_use/version-bump",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "skill_use",
+      "goal": "Using the version-bump skill, bump the version for a patch release.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/skill_use/version-bump",
+        "files": [
+          {
+            "path": "VERSION",
+            "equals": "1.4.3\n"
+          },
+          {
+            "path": "out/bumps.log",
+            "equals": "bump: 1.4.2 -> 1.4.3\n"
+          }
+        ],
+        "skills_used": [
+          "version-bump"
+        ]
+      },
+      "seed": {
+        "skills": [
+          {
+            "name": "version-bump",
+            "description": "how the version is bumped",
+            "body": "Bump VERSION by incrementing the patch number, and append the line 'bump: OLD -> NEW' to out/bumps.log."
+          }
+        ]
+      }
+    },
+    {
+      "id": "skill_use/license-header",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "skill_use",
+      "goal": "Using the license-header skill, create src/util.rs containing the function pub fn one() -> u32 { 1 }.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/skill_use/license-header",
+        "files": [
+          {
+            "path": "src/util.rs",
+            "contains": [
+              "// SPDX-License-Identifier: Apache-2.0\n",
+              "pub fn one() -> u32 { 1 }"
+            ]
+          }
+        ],
+        "skills_used": [
+          "license-header"
+        ]
+      },
+      "seed": {
+        "skills": [
+          {
+            "name": "license-header",
+            "description": "the header every new source file carries",
+            "body": "Every new source file begins with the line '// SPDX-License-Identifier: Apache-2.0'."
+          }
+        ]
+      }
+    },
+    {
+      "id": "skill_use/changelog-section",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "skill_use",
+      "goal": "Using the keep-a-changelog skill, start CHANGELOG.md with an entry for the new retry support.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/skill_use/changelog-section",
+        "files": [
+          {
+            "path": "CHANGELOG.md",
+            "equals": "## [Unreleased]\n### Added\n- retry support\n"
+          }
+        ],
+        "skills_used": [
+          "keep-a-changelog"
+        ]
+      },
+      "seed": {
+        "skills": [
+          {
+            "name": "keep-a-changelog",
+            "description": "how the changelog is organised",
+            "body": "Changelog entries go in CHANGELOG.md under '## [Unreleased]', then a '### Added' heading, then '- entry'."
+          }
+        ]
+      }
+    },
+    {
+      "id": "skill_use/todo-format",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "skill_use",
+      "goal": "Using the todo-format skill, add a TODO for owner ada to remove the legacy path, in out/todo.txt.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/skill_use/todo-format",
+        "files": [
+          {
+            "path": "out/todo.txt",
+            "equals": "TODO(ada): remove the legacy path\n"
+          }
+        ],
+        "skills_used": [
+          "todo-format"
+        ]
+      },
+      "seed": {
+        "skills": [
+          {
+            "name": "todo-format",
+            "description": "how TODO notes are written",
+            "body": "A TODO note is one line 'TODO(owner): text'."
+          }
+        ]
+      }
+    },
+    {
+      "id": "skill_use/metric-name",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "skill_use",
+      "goal": "Using the metrics-naming skill, write the name of the request latency metric measured in seconds, followed by a newline, to out/metrics.txt.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/skill_use/metric-name",
+        "files": [
+          {
+            "path": "out/metrics.txt",
+            "equals": "inv_request_latency_seconds\n"
+          }
+        ],
+        "skills_used": [
+          "metrics-naming"
+        ]
+      },
+      "seed": {
+        "skills": [
+          {
+            "name": "metrics-naming",
+            "description": "how metrics are named",
+            "body": "Metric names are snake_case, start with inv_ and end with their unit, for example inv_queue_depth_items."
+          }
+        ]
+      }
+    },
+    {
+      "id": "skill_use/branch-name",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "skill_use",
+      "goal": "Using the branch-naming skill, write the branch name for ticket INV-31, add export, followed by a newline, to out/branch.txt.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/skill_use/branch-name",
+        "files": [
+          {
+            "path": "out/branch.txt",
+            "equals": "feat/INV-31-add-export\n"
+          }
+        ],
+        "skills_used": [
+          "branch-naming"
+        ]
+      },
+      "seed": {
+        "skills": [
+          {
+            "name": "branch-naming",
+            "description": "how branches are named",
+            "body": "A branch is named feat/<ticket>-<slug>, the slug lower-case words joined by hyphens."
+          }
+        ]
+      }
+    },
+    {
+      "id": "skill_use/ini-order",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "skill_use",
+      "goal": "Using the ini-style skill, add the key pool = 4 to the [service] section of config/app.ini.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/skill_use/ini-order",
+        "files": [
+          {
+            "path": "config/app.ini",
+            "equals": "[service]\nname = inventory\npool = 4\nretries = 3\ntimeout_ms = 2500\n"
+          }
+        ],
+        "skills_used": [
+          "ini-style"
+        ]
+      },
+      "seed": {
+        "skills": [
+          {
+            "name": "ini-style",
+            "description": "how ini files are laid out",
+            "body": "In config/*.ini the keys of a section are kept in alphabetical order."
+          }
+        ]
+      }
+    },
+    {
+      "id": "skill_use/status-code",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "skill_use",
+      "goal": "Using the code-registry skill, register code 42 with the message quota exceeded.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/skill_use/status-code",
+        "files": [
+          {
+            "path": "docs/errors.md",
+            "contains": [
+              "| E0001 | unknown item |\n| E0042 | quota exceeded |\n"
+            ]
+          }
+        ],
+        "skills_used": [
+          "code-registry"
+        ]
+      },
+      "seed": {
+        "skills": [
+          {
+            "name": "code-registry",
+            "description": "how status codes are registered",
+            "body": "An error code is E followed by four digits and is registered as a row '| EXXXX | message |' appended to docs/errors.md."
+          }
+        ]
+      }
+    },
+    {
+      "id": "subagent/two-parts",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "subagent",
+      "goal": "Delegate part/a/a.txt (the line alpha) and part/b/b.txt (the line beta) to two child agents, integrate both, then write out/parts.txt listing a.txt and b.txt.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/subagent/two-parts",
+        "files": [
+          {
+            "path": "part/a/a.txt",
+            "equals": "alpha\n"
+          },
+          {
+            "path": "part/b/b.txt",
+            "equals": "beta\n"
+          },
+          {
+            "path": "out/parts.txt",
+            "equals": "a.txt\nb.txt\n"
+          }
+        ],
+        "subagents": {
+          "admitted": 2,
+          "results": 2,
+          "merged": 2
+        }
+      }
+    },
+    {
+      "id": "subagent/api-doc",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "subagent",
+      "goal": "Delegate writing docs/api.md (a heading API and one line GET /items) to a child agent, integrate it, then write out/docs-ready.txt containing api.md.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/subagent/api-doc",
+        "files": [
+          {
+            "path": "docs/api.md",
+            "equals": "# API\n\nGET /items\n"
+          },
+          {
+            "path": "out/docs-ready.txt",
+            "equals": "api.md\n"
+          }
+        ],
+        "subagents": {
+          "admitted": 1,
+          "results": 1,
+          "merged": 1
+        }
+      }
+    },
+    {
+      "id": "subagent/translations",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "subagent",
+      "goal": "Delegate the English and French greetings to two child agents (i18n/en.txt hello, i18n/fr.txt bonjour), integrate both, then write i18n/index.txt listing en and fr.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/subagent/translations",
+        "files": [
+          {
+            "path": "i18n/en.txt",
+            "equals": "hello\n"
+          },
+          {
+            "path": "i18n/fr.txt",
+            "equals": "bonjour\n"
+          },
+          {
+            "path": "i18n/index.txt",
+            "equals": "en\nfr\n"
+          }
+        ],
+        "subagents": {
+          "admitted": 2,
+          "results": 2,
+          "merged": 2
+        }
+      }
+    },
+    {
+      "id": "subagent/report",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "subagent",
+      "goal": "Delegate creating data/report.csv (header sku,qty and one row widget,3) to a child agent, integrate it, then write out/report-ready.txt containing report.csv.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/subagent/report",
+        "files": [
+          {
+            "path": "data/report.csv",
+            "equals": "sku,qty\nwidget,3\n"
+          },
+          {
+            "path": "out/report-ready.txt",
+            "equals": "report.csv\n"
+          }
+        ],
+        "subagents": {
+          "admitted": 1,
+          "results": 1,
+          "merged": 1
+        }
+      }
+    },
+    {
+      "id": "subagent/modules",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "subagent",
+      "goal": "Delegate src/mod_a.txt (module a) and src/mod_b.txt (module b) to two child agents, integrate both, then write src/modules.txt listing mod_a and mod_b.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/subagent/modules",
+        "files": [
+          {
+            "path": "src/mod_a.txt",
+            "equals": "module a\n"
+          },
+          {
+            "path": "src/mod_b.txt",
+            "equals": "module b\n"
+          },
+          {
+            "path": "src/modules.txt",
+            "equals": "mod_a\nmod_b\n"
+          }
+        ],
+        "subagents": {
+          "admitted": 2,
+          "results": 2,
+          "merged": 2
+        }
+      }
+    },
+    {
+      "id": "subagent/fixture-json",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "subagent",
+      "goal": "Delegate creating tests/fixture.json (an object with items set to 2) to a child agent, integrate it, then write out/fixtures.txt containing fixture.json.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/subagent/fixture-json",
+        "files": [
+          {
+            "path": "tests/fixture.json",
+            "equals": "{\"items\": 2}\n"
+          },
+          {
+            "path": "out/fixtures.txt",
+            "equals": "fixture.json\n"
+          }
+        ],
+        "subagents": {
+          "admitted": 1,
+          "results": 1,
+          "merged": 1
+        }
+      }
+    },
+    {
+      "id": "subagent/monthly-notes",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "subagent",
+      "goal": "Delegate the January and February notes to two child agents (notes/2026-01.md and notes/2026-02.md, each with its month as a heading), integrate both, then write notes/README.md listing both files.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/subagent/monthly-notes",
+        "files": [
+          {
+            "path": "notes/2026-01.md",
+            "equals": "# January\n"
+          },
+          {
+            "path": "notes/2026-02.md",
+            "equals": "# February\n"
+          },
+          {
+            "path": "notes/README.md",
+            "equals": "2026-01.md\n2026-02.md\n"
+          }
+        ],
+        "subagents": {
+          "admitted": 2,
+          "results": 2,
+          "merged": 2
+        }
+      }
+    },
+    {
+      "id": "subagent/feature-flags",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "subagent",
+      "goal": "Delegate creating config/flags.ini (a [flags] section with export = on) to a child agent, integrate it, then write out/flags-ready.txt containing flags.ini.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/subagent/feature-flags",
+        "files": [
+          {
+            "path": "config/flags.ini",
+            "equals": "[flags]\nexport = on\n"
+          },
+          {
+            "path": "out/flags-ready.txt",
+            "equals": "flags.ini\n"
+          }
+        ],
+        "subagents": {
+          "admitted": 1,
+          "results": 1,
+          "merged": 1
+        }
+      }
+    },
+    {
+      "id": "subagent/package-versions",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "subagent",
+      "goal": "Delegate pkg/x/VERSION (1.0.0) and pkg/y/VERSION (2.0.0) to two child agents, integrate both, then write pkg/VERSIONS listing x 1.0.0 and y 2.0.0.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/subagent/package-versions",
+        "files": [
+          {
+            "path": "pkg/x/VERSION",
+            "equals": "1.0.0\n"
+          },
+          {
+            "path": "pkg/y/VERSION",
+            "equals": "2.0.0\n"
+          },
+          {
+            "path": "pkg/VERSIONS",
+            "equals": "x 1.0.0\ny 2.0.0\n"
+          }
+        ],
+        "subagents": {
+          "admitted": 2,
+          "results": 2,
+          "merged": 2
+        }
+      }
+    },
+    {
+      "id": "subagent/setup-notes",
+      "fixture": "inventory",
+      "language": "text",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "subagent",
+      "goal": "Delegate writing scripts/SETUP.md (the line run make setup) to a child agent, integrate it, then write out/setup-ready.txt containing SETUP.md.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px184/subagent/setup-notes",
+        "files": [
+          {
+            "path": "scripts/SETUP.md",
+            "equals": "run make setup\n"
+          },
+          {
+            "path": "out/setup-ready.txt",
+            "equals": "SETUP.md\n"
+          }
+        ],
+        "subagents": {
+          "admitted": 1,
+          "results": 1,
+          "merged": 1
+        }
+      }
+    }
+  ]
+}

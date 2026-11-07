@@ -40108,8 +40108,41 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-184",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "test:benchmarks/agent-engineering/tests/four_axis.rs::qual_px_184_forty_tasks_through_the_real_core_a_rerun_matches_the_baseline_and_a_memory_regression_fails_only_memory",
+    "test:benchmarks/agent-engineering/tests/four_axis.rs::qual_px_184_the_report_refuses_cost_not_derived_from_recorded_usage_and_a_gate_that_cannot_fail",
+    "test:benchmarks/agent-engineering/tests/four_axis.rs::qual_px_184_the_suite_has_ten_tagged_tasks_per_axis_each_with_its_own_verifier",
+    "artifact:evidence/m10/PX-184/mutation-check.txt",
+    "artifact:evidence/m10/PX-184/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-11-07T15:50:06Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audited benchmarks/agent-engineering: IMPLEMENTED-PARTIAL (PX-020 harness, six coding tasks; no axis tag, no per-task verifier, no cost per thousand, no compare or gate)"
+    },
+    {
+     "at": "2026-11-07T15:50:06Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Axis tag, per-task verifier and seeds in the suite format; axes report, cost per thousand from recorded usage, compare and per-axis gate; 40-task four-axis suite"
+    },
+    {
+     "at": "2026-11-07T15:50:06Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "competence-baseline seeds memory and skills through the CLI, sets the suite run mode, captures Core tool results, writes axes.json and compares against the retained baseline"
+    },
+    {
+     "at": "2026-11-07T15:50:06Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Local: 40 tasks through the real CLI and Core with a scripted model; re-run matches the retained baseline; memory regression fails the memory gate only; CI not yet run"
+    }
+   ],
+   "status_changed_on": "2026-11-07T15:50:06Z"
   },
   {
    "id": "PX-186",

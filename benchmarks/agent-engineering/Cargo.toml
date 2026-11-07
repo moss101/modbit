@@ -31,4 +31,5 @@ owner = "eval-bench"
 canonical = []
 capabilities = [
   { id = "bench.competence_baseline", requirements = ["REQ-PX-020"] },
+  { id = "bench.four_axis", requirements = ["REQ-PX-184"] },
 ]
