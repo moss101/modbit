@@ -4783,8 +4783,44 @@
    "milestone": "M10",
    "order": 1,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "artifact:evidence/m10/M10.2/TASK_CARD.md",
+    "commit:92dd23a48aeef614764e4841267bc0531adf305a",
+    "artifact:evidence/m10/M10.2/unsigned/packaged-e2e.log",
+    "test:packaged.spec.ts",
+    "artifact:evidence/m10/M10.2/unsigned/modbit-desktop-0.0.0-mac-arm64-UNSIGNED.package.cdx.json",
+    "artifact:evidence/m10/M10.2/unsigned/repro.json",
+    "test:packaged-update.spec.ts"
+   ],
+   "notes": [
+    {
+     "at": "2026-11-07T19:16:09Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit of PR #60 after merging main: packaging path IMPLEMENTED-PARTIAL (packages and runs, unsigned by design); first missing link for the owner's 2026-11-07 scope recorded on the task card, increment 5"
+    },
+    {
+     "at": "2026-11-07T19:16:10Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "UNSIGNED packaging labels, packaged E2E subset, package SBOM, per-OS UNSIGNED CI artifacts (branch wip/m10-2-unsigned)"
+    },
+    {
+     "at": "2026-11-07T19:16:19Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Production routing: the UNSIGNED packaged app resolves and starts its bundled release Core and execd from process.resourcesPath with no MODBIT_CORE_BIN; packaged.spec passes on macOS arm64 at 92dd23a4"
+    },
+    {
+     "at": "2026-11-07T19:17:32Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Integration passes on the real UNSIGNED package (macOS arm64, 92dd23a4): 29 of 29 packaged E2E incl. the update suite fault cases and the render-budget leg; SBOMs and license gate pass; repro 12 of 12 identical. UNSIGNED: no code signing, notarization or update key; Linux and Windows CI not yet run; the signing part of the acceptance keeps this task below E2E_PROVEN"
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-11-07T19:17:32Z"
   },
   {
    "id": "M10.3",

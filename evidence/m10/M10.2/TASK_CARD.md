@@ -50,10 +50,48 @@
 - `supply-chain` (Linux): `pnpm audit --prod`, SBOMs, license gate, release-tooling tests, reproducible-build check; SBOMs and `repro.json` uploaded. Both jobs are in `ci-compatible`'s needs, so a failure blocks the label.
 - These jobs have not run in CI yet; nothing here claims they pass.
 
+## Increment 5 — the UNSIGNED packaged build (2026-11-07, owner decision of 2026-11-07)
+
+Scope given by the owner: an UNSIGNED packaged desktop build that the packaged-E2E and render-budget legs run against, and a draft of the SBOM Decision Record for the owner's approval. Signing, notarization and the update signing key stay the owner's. **Nothing in this increment is signed, and nothing claims to be.**
+
+### Audit (branch `wip/m10-2-unsigned`, from `wip/m10-2-updater-signing-sbom` plus `origin/main` aa483106)
+
+- PR #60's packaging path was sound, not broken: `electron-builder.yml` (identity null), `prepare-package.mjs`, the Core and execd in `extraResources`, `main.ts` resolving them from `process.resourcesPath`. Classification after the merge: IMPLEMENTED-PARTIAL (packages and runs; unsigned by design; CI never ran it).
+- Merge conflicts resolved in code: the Core runs PX-148 hardening first and the updater's offline subcommands after it; the updater is a shutdown step inside main's session-end quit flow; main removed the status row, so the update indicator moved to Settings > This build (the packaged update spec opens Settings first); PR #60's `supply-chain` job became `release-sbom` beside main's PX-167 `supply-chain`.
+- Found by the merge: main pins the preload bridge's hash (PX-049 `hardening-guard.test.ts`). PR #60's four update channels change it. Reviewed and re-pinned: the channels take no arguments; the main process fetches, verifies, decides and installs only a staged, verified update.
+- First missing link for the owner's scope: nothing labelled a package as unsigned, nothing gathered per-OS artifacts, the checkout E2E could not target a package, and no SBOM described the built package's bytes.
+
+### Change
+
+- Every artifact is named `*-UNSIGNED.*` (`artifactName` in `electron-builder.yml`), and every package carries `build-info.json` (`label: UNSIGNED`, `signed: false`, `notarized: false`, tests only, commit, pinned key count). CI sets `CSC_IDENTITY_AUTO_DISCOVERY=false`.
+- `e2e/playwright.packaged.config.ts` runs the packaged specs and a representative subset of the checkout suite (conversation, approvals, supervision, perf-budgets) against the packaged executable: `support/ui-harness.ts` reads `MODBIT_E2E_PACKAGED`, launches the package's own executable and drops `MODBIT_CORE_BIN`/`MODBIT_EXECD_BIN`, so only the bundled Core can connect. `packaged.spec.ts` asserts the UNSIGNED label and, on macOS, that no Developer ID signed the bundle (`TeamIdentifier=not set`).
+- `release.mjs package-sbom`: CycloneDX 1.5 of one built package by file digest (bundled Core and execd, `app.asar`, install helper, pinned update files, `build-info.json`, the Electron executable, the distributables), linked to the per-source SBOMs by digest, carrying the package's own label; refuses a package without `build-info.json` or missing a shipped file (`sbom-cli.test.ts`).
+- `tools/release/unsigned-bundle.mjs`: gathers distributables, the package SBOM, `build-info.json` and `SHA256SUMS-UNSIGNED`; refuses a build whose names lack UNSIGNED or whose `build-info.json` says signed.
+- CI `desktop-packaged` (macOS arm64, Linux x64, Windows x64): full targets (dmg+zip, NSIS+zip, AppImage+tar.gz), the packaged suite, then uploads `modbit-desktop-<os-arch>-UNSIGNED` (14-day retention).
+
+### Proof (local, macOS arm64, commit 92dd23a4; `unsigned/`)
+
+- Package: `Modbit-0.0.0-mac-arm64-UNSIGNED.dmg` and `.zip` (`unsigned/package.log`, `SHA256SUMS-UNSIGNED`); electron-builder "skipped macOS code signing"; `codesign` reports `Signature=adhoc`, linker-signed, `TeamIdentifier=not set` (`unsigned/codesign.txt`). The ad-hoc linker signature is what arm64 macOS requires to execute code at all and names nobody; it is not code signing.
+- The bundled `modbit-core` and `modbit-execd` are byte-identical to `target/release` (`unsigned/bundled-binaries.sha256`).
+- `pnpm e2e:packaged`: **29 passed, 0 failed, 0 skipped** in 5.4 min (`unsigned/packaged-e2e.log`): the package starts its own Core (no `MODBIT_CORE_BIN`, `ps` shows the bundled path) and says UNSIGNED; the update suite on real packages (keyless build offers nothing; hostile feeds refused; device minimum honoured; SIGKILL mid-download; failed install keeps the old app; a real update to 0.0.2 and rollback, with test keys generated outside the repo); conversation (5), approvals (6), supervision (8), perf budgets (3).
+- Render budgets on the packaged app (`unsigned/perf/`, profile `ci`, recorded not asserted): PX-046 agent list p95 51.7 ms, MET (150 ms). PX-041/047 streamed delta p95 111.2 ms over every delta, **NOT MET** (100 ms); first delta of a message p95 38.6 ms. The slow tail is the fourth delta of each message (p95 127.9 ms), and almost all of it is before the main process receives the event (p95 101 ms Core append to receipt), not in the renderer. Not investigated here; the `reference` profile was not run. PX-047 scroll: 1239 rows, 0.2 % of frames over 33.3 ms, no numeric budget in the dossier.
+- SBOM (`unsigned/sbom.log`, `unsigned/sbom/`, `unsigned/modbit-desktop-0.0.0-mac-arm64-UNSIGNED.package.cdx.json`): `modbit-core` 416 components, `modbit-execd` 120, desktop 11 (with Electron 44.3.0); license gate passes all three; the package SBOM has 10 components, 3 linked SBOMs, `modbit:signed=false`.
+- Reproducibility (`unsigned/repro.json`): REPRODUCIBLE at 92dd23a4, clean tree: two clean release builds of `modbit-core` and `modbit-execd` at one fixed remapped target path, and two desktop bundle builds, gave identical SHA-256 for all 12 artifacts. Not proven: the packaged distributables themselves (the package carries the ordinary `target/release` build, which is not path-remapped), other checkout paths, other machines.
+- Also run: `cargo build --workspace --bins`, `RUSTFLAGS="-D warnings" cargo clippy --workspace --all-targets --locked`, `cargo fmt --all -- --check`, `pnpm typecheck`, `pnpm test` (433 tests, 0 failed), `cargo test -p modbit-core --test update_cli` and `-p modbit-event-store --test update_schema`.
+
+### Known limits of this increment
+
+- UNSIGNED: no Windows code signing, no Apple Developer ID, no notarization, no update signing key pinned (every unsigned package refuses every update, fail closed). These builds are for tests only; Gatekeeper and SmartScreen will warn on them.
+- Only macOS arm64 was packaged and run locally. Linux and Windows packaging and the packaged subset on them are wired in CI and have not run yet; macOS x64 is not built.
+- The native-control helper (`modbit-actuator-macos`) and `modbit-cli` are not bundled: the helper ships only inside a signed bundle (PX-072); the CLI is not part of the desktop package.
+- The SBOM Decision Record is a draft (`DR-draft-sbom.md`, status proposed); it is not under `docs/decisions/` because that path needs an accepted record in the same commit.
+- The local run used Node 26.11.1, not the pinned 26.5.1.
+
 ## Remaining before COMPLETE
 
 - A green CI run of the jobs above on all three platforms; the Windows (NSIS) and Linux (AppImage) helper paths have no proof at all yet and join the update suite when they do.
-- SBOMs for the guest image and the packaged artifacts (`syft`, approved in the DR, not yet wired).
+- The owner's decision on `DR-draft-sbom.md` (SBOM format, coverage, license policy, reproducibility).
+- An SBOM for the guest image (`syft`, approved in DR-M10-2-2026-10-02, not yet wired). Packaged artifacts now have one (`package-sbom`).
 - SAST, secret scanning and a Rust dependency-vulnerability scan (docs/70 PR pipeline item 8): each is a new dependency and needs its own Decision Record; `pnpm audit` and the license gate exist already.
 - Fault injection (docs/54): kill during install and during migration (a kill during download is done).
 - Signing the artifacts and SBOMs for a release: the owner's `MODBIT_UPDATE_SIGNING_KEY`. The update manifest signature already covers the SBOM digests.
@@ -67,4 +105,6 @@
 
 ## Evidence
 
-- `evidence.json` in this directory, when sealed.
+- `unsigned/` (increment 5): `run-info.txt`, `package.log`, `codesign.txt`, `bundled-binaries.sha256`, `packaged-e2e.log`, `perf/`, `sbom.log`, `sbom/` (per-source SBOMs), the package SBOM, `build-info.json`, `SHA256SUMS-UNSIGNED`, `repro.json`.
+- `DR-draft-sbom.md`: the SBOM Decision Record draft, status proposed, for the owner.
+- `evidence.json` in this directory, when sealed (not before signing exists).

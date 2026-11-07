@@ -1,0 +1,265 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:36321658-d50d-56e5-8b1a-6ed6fdbfd582",
+  "version": 1,
+  "metadata": {
+    "component": {
+      "type": "application",
+      "bom-ref": "pkg:modbit-desktop",
+      "name": "modbit-desktop",
+      "version": "0.0.0",
+      "description": "Modbit desktop package (UNSIGNED)"
+    },
+    "properties": [
+      {
+        "name": "modbit:label",
+        "value": "UNSIGNED"
+      },
+      {
+        "name": "modbit:signed",
+        "value": "false"
+      },
+      {
+        "name": "modbit:notarized",
+        "value": "false"
+      },
+      {
+        "name": "modbit:purpose",
+        "value": "tests only: packaged E2E, render budgets and SBOM; not a release candidate"
+      },
+      {
+        "name": "modbit:commit",
+        "value": "92dd23a48aeef614764e4841267bc0531adf305a"
+      },
+      {
+        "name": "modbit:platform",
+        "value": "darwin-arm64"
+      }
+    ]
+  },
+  "components": [
+    {
+      "type": "application",
+      "bom-ref": "file:Resources/modbit-core",
+      "name": "Resources/modbit-core",
+      "version": "0.0.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "0a2e1689a63122dc71e6aead7c2488706919af4e506d99c0f307071703ee128c"
+        }
+      ],
+      "properties": [
+        {
+          "name": "modbit:size",
+          "value": "63871504"
+        }
+      ],
+      "description": "modbit-core, release build, bundled in the package resources"
+    },
+    {
+      "type": "application",
+      "bom-ref": "file:Resources/modbit-execd",
+      "name": "Resources/modbit-execd",
+      "version": "0.0.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "3e65e08a180aa3dbcd4260d81ffc519ef2e433249d0c3149ecc74abfc2c4e509"
+        }
+      ],
+      "properties": [
+        {
+          "name": "modbit:size",
+          "value": "2483280"
+        }
+      ],
+      "description": "modbit-execd, release build, bundled in the package resources"
+    },
+    {
+      "type": "file",
+      "bom-ref": "file:Resources/app.asar",
+      "name": "Resources/app.asar",
+      "version": "0.0.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "27a383cba9251434af433d42d7a4d14740c61eac440de004ff96929c8aee3ce3"
+        }
+      ],
+      "properties": [
+        {
+          "name": "modbit:size",
+          "value": "15170736"
+        }
+      ],
+      "description": "the desktop main, preload and renderer bundle (packages: desktop.cdx.json)"
+    },
+    {
+      "type": "file",
+      "bom-ref": "file:Resources/apply-helper.cjs",
+      "name": "Resources/apply-helper.cjs",
+      "version": "0.0.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "3a0966cd51f47090acfd570f4a01acf92c49f6ae7ad7b43c2f8f91278f32859e"
+        }
+      ],
+      "properties": [
+        {
+          "name": "modbit:size",
+          "value": "6211"
+        }
+      ],
+      "description": "the update install helper, run as plain Node beside the app"
+    },
+    {
+      "type": "file",
+      "bom-ref": "file:Resources/update-keys.json",
+      "name": "Resources/update-keys.json",
+      "version": "0.0.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "be0641748e60a8fd213921b0c343b64c1936ea372c4fdb5c4428ebfc13586d5e"
+        }
+      ],
+      "properties": [
+        {
+          "name": "modbit:size",
+          "value": "15"
+        }
+      ]
+    },
+    {
+      "type": "file",
+      "bom-ref": "file:Resources/update-config.json",
+      "name": "Resources/update-config.json",
+      "version": "0.0.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "bcb242b398e5585cbb804a861349d4b1034f067e27b502888d71184a49bb0b2e"
+        }
+      ],
+      "properties": [
+        {
+          "name": "modbit:size",
+          "value": "26"
+        }
+      ]
+    },
+    {
+      "type": "file",
+      "bom-ref": "file:Resources/build-info.json",
+      "name": "Resources/build-info.json",
+      "version": "0.0.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "a6be4ff3e642c89837cc85c4a5a3f5e6d9cb3e712c17d59f3e59700b98bc3677"
+        }
+      ],
+      "properties": [
+        {
+          "name": "modbit:size",
+          "value": "287"
+        }
+      ]
+    },
+    {
+      "type": "application",
+      "bom-ref": "file:MacOS/Modbit",
+      "name": "MacOS/Modbit",
+      "version": "0.0.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "588478afc5f2bc73b6433d6e565a214dc830144be39a3d79805723292754ccd8"
+        }
+      ],
+      "properties": [
+        {
+          "name": "modbit:size",
+          "value": "33968"
+        }
+      ],
+      "description": "the Electron 44.3.0 executable the packager copied in (Chromium and Node.js inside)"
+    },
+    {
+      "type": "file",
+      "bom-ref": "artifact:Modbit-0.0.0-mac-arm64-UNSIGNED.dmg",
+      "name": "Modbit-0.0.0-mac-arm64-UNSIGNED.dmg",
+      "version": "0.0.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "1deb8dc90eb4fcfd37fbc220413982bd8df078e30b4a09fd03a3f15f04fd72f0"
+        }
+      ],
+      "properties": [
+        {
+          "name": "modbit:size",
+          "value": "153719804"
+        }
+      ],
+      "description": "a distributable artifact of this package"
+    },
+    {
+      "type": "file",
+      "bom-ref": "artifact:Modbit-0.0.0-mac-arm64-UNSIGNED.zip",
+      "name": "Modbit-0.0.0-mac-arm64-UNSIGNED.zip",
+      "version": "0.0.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "548a7529c3007c8725110ef1f1015b778077756520cf6a744e649faa834157e7"
+        }
+      ],
+      "properties": [
+        {
+          "name": "modbit:size",
+          "value": "153849613"
+        }
+      ],
+      "description": "a distributable artifact of this package"
+    }
+  ],
+  "externalReferences": [
+    {
+      "type": "bom",
+      "url": "desktop.cdx.json",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "7d257a6bdef5c3242f27fcfafd20f0e09bf9b7efe582fee84652f14fee1eca3a"
+        }
+      ],
+      "comment": "per-source SBOM of a shipped component"
+    },
+    {
+      "type": "bom",
+      "url": "modbit-core.cdx.json",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "ebfacb664baa9aafbd028c101a44bc51a6b0aea5cbc020c7c0ad907d85b00263"
+        }
+      ],
+      "comment": "per-source SBOM of a shipped component"
+    },
+    {
+      "type": "bom",
+      "url": "modbit-execd.cdx.json",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "821af2995ac78c6df4550fc1a5e1e01926012cb6fdb8a2b249efae8152842795"
+        }
+      ],
+      "comment": "per-source SBOM of a shipped component"
+    }
+  ]
+}
