@@ -1,0 +1,21 @@
+{
+ "task": "PX-130",
+ "requirements": [
+  "REQ-PX-130",
+  "QUAL-PX-130",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-130"
+ ],
+ "scenarios": [
+  "QUAL-PX-130 / PX-E2E-130"
+ ],
+ "tests": [
+  "services/modbit-core/tests/px_130_broker.rs",
+  "services/modbit-core/tests/surface_protocol.rs (IMP-EV-0088 browser fill, broker counter)",
+  "crates/secrets/src/broker.rs::tests",
+  "tools/architecture-lint/tests/credentials.rs",
+  "apps/cloud-worker/tests/cloud_worker.rs (forge through the broker)"
+ ],
+ "proof": "Local macOS: px_130_broker 3 of 3; both QUAL leak mutations (key into the request body, key into a data-dir log) killed by the artifact search (mutation-check.txt).",
+ "limitations": "No live provider on the compatible gateway and no deployed staging cloud (owner credentials); stops at REAL_TESTING.",
+ "runs": []
+}

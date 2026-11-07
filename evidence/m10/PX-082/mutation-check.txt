@@ -1,0 +1,25 @@
+=== MUTATION approval-binds-hash: 'p.version != cur.version || p.definition_hash != cur.hash' -> 'p.version != cur.version'
+test px_082_definitions_validate_version_and_need_the_owners_exact_approval ... FAILED
+test px_082_a_client_cannot_create_an_automation_task_and_a_tool_cannot_reach_the_ledger ... ok
+test px_082_a_missing_budget_a_secret_value_and_a_client_without_the_right_fail_closed ... ok
+test px_082_three_versions_enable_the_third_and_a_killed_core_replays_them_all ... ok
+test px_082_a_repository_definition_stays_disabled_until_its_hash_is_approved_and_a_changed_byte_disables_it ... ok
+test px_082_a_model_that_calls_for_the_ledger_changes_nothing ... ok
+test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 19 filtered out; finished in 3.54s
+=== MUTATION run-gate-binds-hash: 'e.version != version.version || e.hash != version.hash' -> 'e.version != version.version'
+test px_082_a_client_cannot_create_an_automation_task_and_a_tool_cannot_reach_the_ledger ... ok
+test px_082_three_versions_enable_the_third_and_a_killed_core_replays_them_all ... ok
+test px_082_a_missing_budget_a_secret_value_and_a_client_without_the_right_fail_closed ... ok
+test px_082_definitions_validate_version_and_need_the_owners_exact_approval ... ok
+test px_082_a_repository_definition_stays_disabled_until_its_hash_is_approved_and_a_changed_byte_disables_it ... ok
+test px_082_a_model_that_calls_for_the_ledger_changes_nothing ... ok
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 19 filtered out; finished in 3.46s
+=== MUTATION live()-binds-hash: State::live() returns the version without the hash/current-version comparison (crates/automation/src/registry.rs)
+test px_082_a_client_cannot_create_an_automation_task_and_a_tool_cannot_reach_the_ledger ... ok
+test px_082_a_missing_budget_a_secret_value_and_a_client_without_the_right_fail_closed ... ok
+test px_082_three_versions_enable_the_third_and_a_killed_core_replays_them_all ... ok
+test px_082_definitions_validate_version_and_need_the_owners_exact_approval ... ok
+test px_082_a_repository_definition_stays_disabled_until_its_hash_is_approved_and_a_changed_byte_disables_it ... ok
+test px_082_a_model_that_calls_for_the_ledger_changes_nothing ... ok
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 19 filtered out; finished in 3.42s
+(survived: the approval event and the run gate refuse the same edits before live() is consulted)

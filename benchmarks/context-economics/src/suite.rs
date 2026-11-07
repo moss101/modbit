@@ -8,6 +8,8 @@
 //! measures the model and the surface, not a broken task. The tasks are
 //! deliberately plain Python so the check needs only `python3`.
 
+// PX-168 lint policy: this file spawns processes; new ones need review.
+#![allow(clippy::disallowed_methods)]
 /// One task of the suite.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TrialTask {

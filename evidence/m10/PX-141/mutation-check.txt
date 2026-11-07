@@ -1,0 +1,53 @@
+# PX-141 retained mutation check (2026-10-24)
+
+Each mutation changes one source file by exact string replacement (refused unless the target text occurs exactly once), rebuilds the
+desktop bundle, runs `apps/desktop/e2e/zdl-tokens.spec.ts` against the real Electron app and a real Core, and restores the file.
+The gate must fail on every one. The token comparison is exact (one canonicalising function reads ZCode's capture and Modbit's
+build). A first attempt applied two of these with `sed '0,/re/'`, which macOS sed silently ignores; they "passed" because they never
+applied, which is why the replacement now fails loudly.
+
+## M1 one channel of a reference-equal token (light background f8f8f8 -> f8f8f9)
+edit: packages/design-tokens/src/design-language.ts:   "background": "#f8f8f8",  ->    "background": "#f8f8f9",
+  ✘  1 e2e/zdl-tokens.spec.ts:26:1 › in the real app every ZCode colour token resolves to the retained capture's colour in lig
+  ✓  2 e2e/zdl-tokens.spec.ts:53:1 › the type scale, radius hierarchy, shadows and font stacks resolve to ZCode's measured val
+  ✓  3 e2e/zdl-tokens.spec.ts:100:1 › the high-contrast theme still defines every ZCode token and keeps Modbit's own edges
+  ✓  4 e2e/zdl-tokens.spec.ts:115:1 › the bundle carries no ZCode, Z.ai or Zai name or mark, and the third-party notices ship 
+  1 failed
+  3 passed
+
+## M2 one alpha step on a translucent token (light border 0.1 -> 0.11)
+edit: packages/design-tokens/src/design-language.ts:   "border": "rgba(13, 13, 13, 0.1)",  ->    "border": "rgba(13, 13, 13, 0.11)",
+  ✘  1 e2e/zdl-tokens.spec.ts:26:1 › in the real app every ZCode colour token resolves to the retained capture's colour in lig
+  ✓  2 e2e/zdl-tokens.spec.ts:53:1 › the type scale, radius hierarchy, shadows and font stacks resolve to ZCode's measured val
+  ✓  3 e2e/zdl-tokens.spec.ts:100:1 › the high-contrast theme still defines every ZCode token and keeps Modbit's own edges
+  ✓  4 e2e/zdl-tokens.spec.ts:115:1 › the bundle carries no ZCode, Z.ai or Zai name or mark, and the third-party notices ship 
+  1 failed
+  3 passed
+
+## M3 one radius (xl 12 -> 13)
+edit: packages/design-tokens/src/scale.ts: xl: 12, "2xl": 16  ->  xl: 13, "2xl": 16
+  ✓  1 e2e/zdl-tokens.spec.ts:26:1 › in the real app every ZCode colour token resolves to the retained capture's colour in lig
+  ✘  2 e2e/zdl-tokens.spec.ts:53:1 › the type scale, radius hierarchy, shadows and font stacks resolve to ZCode's measured val
+  ✓  3 e2e/zdl-tokens.spec.ts:100:1 › the high-contrast theme still defines every ZCode token and keeps Modbit's own edges
+  ✓  4 e2e/zdl-tokens.spec.ts:115:1 › the bundle carries no ZCode, Z.ai or Zai name or mark, and the third-party notices ship 
+  1 failed
+  3 passed
+
+## M4 one font size (ui-font-size 14 -> 15)
+edit: packages/design-tokens/src/scale.ts: export const UI_FONT_SIZE = 14;  ->  export const UI_FONT_SIZE = 15;
+  ✓  1 e2e/zdl-tokens.spec.ts:26:1 › in the real app every ZCode colour token resolves to the retained capture's colour in lig
+  ✘  2 e2e/zdl-tokens.spec.ts:53:1 › the type scale, radius hierarchy, shadows and font stacks resolve to ZCode's measured val
+  ✓  3 e2e/zdl-tokens.spec.ts:100:1 › the high-contrast theme still defines every ZCode token and keeps Modbit's own edges
+  ✓  4 e2e/zdl-tokens.spec.ts:115:1 › the bundle carries no ZCode, Z.ai or Zai name or mark, and the third-party notices ship 
+  1 failed
+  3 passed
+
+## M5 a vendor name in the stylesheet
+edit: packages/design-tokens/src/css.ts: /* generated from packages/design-tokens: do not edit */  ->  /* generated from packages/design-tokens (ZCode): do not edit */
+  ✓  1 e2e/zdl-tokens.spec.ts:26:1 › in the real app every ZCode colour token resolves to the retained capture's colour in lig
+  ✓  2 e2e/zdl-tokens.spec.ts:53:1 › the type scale, radius hierarchy, shadows and font stacks resolve to ZCode's measured val
+  ✓  3 e2e/zdl-tokens.spec.ts:100:1 › the high-contrast theme still defines every ZCode token and keeps Modbit's own edges
+  ✘  4 e2e/zdl-tokens.spec.ts:115:1 › the bundle carries no ZCode, Z.ai or Zai name or mark, and the third-party notices ship 
+  1 failed
+  3 passed
+

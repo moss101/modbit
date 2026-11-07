@@ -7,6 +7,8 @@
 //! the connection with a `ProtocolError`. Multiple clients may attach to one
 //! session and resume from an event offset (REQ-EV-0010, REQ-EV-0192).
 
+// PX-168 lint policy: this file spawns processes and baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::disallowed_methods, clippy::expect_used)]
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -49,6 +51,9 @@ pub struct Core {
     pub(crate) user_id: UserId,
     /// What startup recovery did (docs/19), served to clients.
     recovery: RecoveryOutcome,
+    /// REQ-PX-049: the tasks recovery suspended that the person asked, when
+    /// quitting, to have resumed (served in the recovery report).
+    resume_requested: Vec<TaskId>,
     started_at: Timestamp,
     /// Tool registry, kernel port, broker (M2.4).
     pub(crate) tools: crate::tools::ToolHost,
@@ -235,6 +240,9 @@ pub async fn run_as(
     if aborted > 0 {
         eprintln!("modbit-core: closed {aborted} open assistant stream(s) as aborted by recovery");
     }
+    let mut resume_requested = crate::session_end::resume_requests(&store, &suspended);
+    let crashed = crate::session_end::crash_resumes(&store, &suspended, &resume_requested);
+    resume_requested.extend(crashed);
     let start = store.last_offset()?;
     let boot_secret: Vec<u8> = (0..32).map(|_| rand::random::<u8>()).collect();
     let nonce = encode_hex(&(0..6).map(|_| rand::random::<u8>()).collect::<Vec<_>>());
@@ -256,6 +264,7 @@ pub async fn run_as(
         tenant_id,
         user_id: UserId::from_bytes([0xB1; 16]),
         recovery,
+        resume_requested,
         started_at: Timestamp::now(),
         tools: crate::tools::ToolHost::new(
             &data_dir,
@@ -347,6 +356,8 @@ pub async fn run_as(
     // REQ-PX-139: component health, persisted; and the OpenTelemetry export
     // when (and only when) the Core is configured to export.
     crate::telemetry::spawn(Arc::clone(&core));
+    // PX-189: the Skill Lab's traces, when (and only when) a lab is given.
+    crate::skills::spawn_trace_producer(Arc::clone(&core));
     // PX-111: the indexes of the workspaces unfinished tasks work in open from
     // the persisted store in the background, so the first query after a
     // restart finds them loaded (and a corrupt or stale store is found and
@@ -736,6 +747,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "GetSessionSnapshot",
                     "SubscribeEvents",
                     "GetRecoveryReport",
+                    "EndSession",
                     "AcquireSessionLease",
                     "QueueInput",
                     "ReadObjectRange",
@@ -810,6 +822,8 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "ApplyUserPatch",
                     "GetChangesState",
                     "RevertChanges",
+                    "DecideHunk",
+                    "SetHookEnabled",
                     "StageChanges",
                     "CommitAndPush",
                     "SubmitExternalDiagnostics",
@@ -837,6 +851,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "PromoteMemory",
                     "EditMemory",
                     "ForgetMemory",
+                    "ShareMemory",
                     "GetImpact",
                     "GetSymbolEdges",
                     "GetIndexStatus",
@@ -1484,7 +1499,7 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         // PX-048: the Changes app reverts and stages the person's own working
         // tree like an inline patch; Commit and push is a review decision
         // about where work leaves the tree, like opening a pull request.
-        "RevertChanges" | "StageChanges" => "task.author",
+        "RevertChanges" | "StageChanges" | "DecideHunk" => "task.author",
         "CommitAndPush" => "review.decide",
         // Counteracting an effect on the forge is the same class of decision
         // as the pull request it counteracts (REQ-EV-0066).
@@ -1536,12 +1551,18 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         "LoadExtension" | "UnloadExtension" | "InspectExtension" | "TrustExtension" => {
             "repository.trust"
         }
+        // REQ-PX-106: switching a hook off changes what runs against the
+        // workspace, so it is the same class of decision as trusting one.
+        "SetHookEnabled" => "repository.trust",
         "RunExtensionCommand" => "task.author",
         // REQ-PX-116: a task's limits are the author's; REQ-PX-105: letting
         // a skill reach the model is trusting content a person did not
         // write to steer the agent — the same class of decision as trusting
         // the repository.
         "SetTaskBudgets" => "task.author",
+        // REQ-PX-049: quitting is the person's act, held by the client that
+        // acts for one.
+        "EndSession" => "task.author",
         // PX-082..086: reading the ledger is reading the log; every change
         // to a definition, its approval, the kill switches and a manual run
         // is a person's act, held by the clients that act for one. A verified
@@ -1573,7 +1594,7 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         "ExportDiagnostics" => "events.subscribe",
         "GetEnvironment" | "RebuildEnvironment" => "task.author",
         "ListMemory" => "task.author",
-        "PromoteMemory" | "ForgetMemory" | "ProposeMemory" | "EditMemory" => "task.author",
+        "PromoteMemory" | "ForgetMemory" | "ShareMemory" | "ProposeMemory" | "EditMemory" => "task.author",
         "RebindTaskWorkspace" | "ImportObjects" => "session.mirror",
         "TrustRepository" => "repository.trust",
         "EmergencyStop" => "session.control",
@@ -1715,6 +1736,14 @@ pub(crate) fn memory_item_view(v: &serde_json::Value) -> wire::MemoryItemView {
             .get("validated")
             .and_then(serde_json::Value::as_bool)
             .unwrap_or(false),
+        uses: v
+            .get("uses")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(0),
+        last_used_at_ms: v
+            .get("last_used_at_ms")
+            .and_then(serde_json::Value::as_i64)
+            .unwrap_or(0),
     }
 }
 
@@ -6407,12 +6436,64 @@ pub(crate) async fn handle_command_as(
         "ListSkills" | "TrustSkill" | "UntrustSkill" => {
             crate::skills::handle(core, cid, &env, actor).await
         }
+        "EndSession" => {
+            let Ok(p) = wire::EndSession::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "EndSession");
+            };
+            let Some(session_id) = p
+                .session_id
+                .as_ref()
+                .and_then(id16)
+                .map(SessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "session_id required");
+            };
+            match core.store.lock().await.session(&session_id) {
+                Ok(Some(_)) => {}
+                Ok(None) => return reject(cid, "UNKNOWN_SESSION", session_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            }
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            match crate::session_end::end_session(
+                core,
+                session_id,
+                p.resume_on_reopen,
+                env.expected_generation,
+                Actor::User(core.user_id),
+            )
+            .await
+            {
+                Ok(view) => accept(cid, true, view.encode_to_vec()),
+                Err((code, detail)) => reject(cid, &code, detail),
+            }
+        }
         "ListHooks" => {
             let Ok(p) = wire::ListHooks::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "ListHooks");
             };
             let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
-                return reject(cid, "BAD_PAYLOAD", "task_id required");
+                // REQ-PX-106: with no task, the session's extensions only.
+                let Some(session_id) = p
+                    .session_id
+                    .as_ref()
+                    .and_then(id16)
+                    .map(SessionId::from_bytes)
+                else {
+                    return reject(cid, "BAD_PAYLOAD", "task_id or session_id required");
+                };
+                let store = core.store.lock().await;
+                match store.session(&session_id) {
+                    Ok(Some(_)) => {}
+                    Ok(None) => return reject(cid, "UNKNOWN_SESSION", session_id.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+                let view = wire::HookListView {
+                    extension_rows: crate::hooks::extension_rows(core, &store, session_id),
+                    ..Default::default()
+                };
+                return accept(cid, false, view.encode_to_vec());
             };
             let task = match core.store.lock().await.task(&task_id) {
                 Ok(Some(t)) => t,
@@ -6421,6 +6502,37 @@ pub(crate) async fn handle_command_as(
             };
             let view = crate::hooks::list(core, &task).await;
             accept(cid, false, view.encode_to_vec())
+        }
+        "SetHookEnabled" => {
+            let Ok(p) = wire::SetHookEnabled::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "SetHookEnabled");
+            };
+            let Some(session_id) = p
+                .session_id
+                .as_ref()
+                .and_then(id16)
+                .map(SessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "session_id required");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let task = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) if t.session_id == session_id => t,
+                Ok(Some(_)) => {
+                    return reject(cid, "UNKNOWN_TASK", "the task is not in that session");
+                }
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            match crate::hooks::set_enabled(core, &task, &p.hook_id, p.enabled, actor).await {
+                Ok(v) => accept(cid, false, v.encode_to_vec()),
+                Err((code, detail)) => reject(cid, &code, detail),
+            }
         }
         "TrustRepository" => {
             let Ok(p) = wire::TrustRepository::decode(env.payload.as_slice()) else {
@@ -6822,12 +6934,33 @@ pub(crate) async fn handle_command_as(
                 );
             };
             let mut budgets = modbit_core_runtime::Budgets::default();
+            // DR-PX-2026-10-25-017: the defaults can be set for the Core in
+            // its environment, and a request may ask for more or less; no
+            // source of a number lifts it above the ceiling.
+            let env_u32 = |name: &str| {
+                std::env::var(name)
+                    .ok()
+                    .and_then(|v| v.trim().parse::<u32>().ok())
+                    .filter(|n| *n > 0)
+            };
+            if let Some(n) = env_u32("MODBIT_DEFAULT_MAX_TURNS") {
+                budgets.max_turns = n;
+            }
+            if let Some(n) = env_u32("MODBIT_DEFAULT_MAX_TOOL_CALLS") {
+                budgets.max_tool_calls = n;
+            }
             if p.max_turns > 0 {
                 budgets.max_turns = p.max_turns;
             }
             if p.max_tool_calls > 0 {
                 budgets.max_tool_calls = p.max_tool_calls;
             }
+            budgets.max_turns = budgets
+                .max_turns
+                .min(modbit_core_runtime::harness::MAX_TURNS_CEILING);
+            budgets.max_tool_calls = budgets
+                .max_tool_calls
+                .min(modbit_core_runtime::harness::MAX_TOOL_CALLS_CEILING);
             if p.max_no_progress_turns > 0 {
                 budgets.max_consecutive_no_progress_turns = p.max_no_progress_turns;
             }
@@ -7382,6 +7515,29 @@ pub(crate) async fn handle_command_as(
                 Err((code, msg)) => reject(cid, &code, msg),
             }
         }
+        "ShareMemory" => {
+            let Ok(p) = wire::ShareMemory::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ShareMemory");
+            };
+            if p.memory_id.is_empty() || p.scope.is_empty() {
+                return reject(cid, "BAD_PAYLOAD", "memory_id and scope required");
+            }
+            let task = match memory_task(core, &cid, &env, p.task_id.as_ref(), true).await {
+                Ok(t) => t,
+                Err(ack) => return ack,
+            };
+            match crate::memory_commands::share(core, &task, &p, record("ShareMemory"), actor).await
+            {
+                Ok((v, replayed)) => {
+                    if v.outcome == "shared" {
+                        let latest = core.store.lock().await.last_offset().unwrap_or(0);
+                        core.last_offset.send_replace(latest);
+                    }
+                    accept(cid, replayed, v.encode_to_vec())
+                }
+                Err((code, msg)) => reject(cid, &code, msg),
+            }
+        }
         // PX-110 / PX-111: the code graph and the index store, read-only views
         // of the workspace as it is.
         "GetImpact" => {
@@ -7794,11 +7950,14 @@ pub(crate) async fn handle_command_as(
                 Err((code, msg)) => reject(cid, &code, msg),
             }
         }
-        "RevertChanges" | "StageChanges" | "CommitAndPush" => {
+        "RevertChanges" | "DecideHunk" | "StageChanges" | "CommitAndPush" => {
             let (task_id, bad) = match env.command_type.as_str() {
                 "RevertChanges" => wire::RevertChanges::decode(env.payload.as_slice())
                     .map(|p| p.task_id)
                     .map_err(|_| "RevertChanges"),
+                "DecideHunk" => wire::DecideHunk::decode(env.payload.as_slice())
+                    .map(|p| p.task_id)
+                    .map_err(|_| "DecideHunk"),
                 "StageChanges" => wire::StageChanges::decode(env.payload.as_slice())
                     .map(|p| p.task_id)
                     .map_err(|_| "StageChanges"),
@@ -7832,6 +7991,18 @@ pub(crate) async fn handle_command_as(
                         actor,
                     )
                     .await
+                    {
+                        Ok(v) => {
+                            let replayed = v.replayed;
+                            accept(cid, replayed, v.encode_to_vec())
+                        }
+                        Err((code, msg)) => reject(cid, &code, msg),
+                    }
+                }
+                "DecideHunk" => {
+                    let p = wire::DecideHunk::decode(env.payload.as_slice()).expect("decoded");
+                    match crate::hunks::decide(core, &p, command_id, record("DecideHunk"), actor)
+                        .await
                     {
                         Ok(v) => {
                             let replayed = v.replayed;
@@ -8063,6 +8234,11 @@ pub(crate) async fn handle_command_as(
                     tasks: r.tasks,
                     notes: r.notes.clone(),
                     recovery_ms: r.recovery_ms,
+                    resume_requested_tasks: core
+                        .resume_requested
+                        .iter()
+                        .map(|t| wire_id(t.as_bytes()))
+                        .collect(),
                 }
                 .encode_to_vec(),
             )

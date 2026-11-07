@@ -1,0 +1,18 @@
+{
+ "revision": "wip/codex-hardening-px147-squash after 74f52c33 (trajectory module committed), before DOC-GOV-008 (PX-189 wiring binds crates/core-runtime/src/trajectory.rs)",
+ "git": {
+  "remote": "https://github.com/moss101/modbit.git",
+  "baseline_commit": "74f52c332bbbefd9304a57daadb98b441e6e13e8",
+  "branch": "wip/codex-hardening-px147-squash"
+ },
+ "files": {
+  "AGENTS.md": "52facabdca45abd2fcdaf10a7b0141057895217af95560395dc0d24a8793b64f",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md": "5fd2567b4b162bb2ceacc8ed314f82c364c501783c8f03a455fdd1130d1aa1b1",
+  "docs/97_DOSSIER_MAINTENANCE_LOG.md": "6d48035807801561b8165818fb017ee2d03eca848bf13ce387aed665e8099a79",
+  "tools/build_graph.py": "a0ed29e361e000b219b6be973e0be77417831fa4b7f0f2cd2c5845f553e90a54",
+  "tools/test_dossier.py": "7e4c90c036458548737e13f3fbcb7393c071c3beebada8200bd1c39a568efb00",
+  "graph/project-graph.json": "11636782eace20030f17b7f3c50dd7a1530746a9a52ebca2ec2a1871fee6768e",
+  "MANIFEST.md": "c3e81524f27c27a7c4a56bca7554fd260e002db40cee01fb753ab77eeef97518",
+  "manifest.json": "42e99c4419582baa7cc35521655949e22c0ca2dc9245f1fc5406ced833d25cec"
+ }
+}

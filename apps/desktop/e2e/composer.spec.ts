@@ -215,12 +215,13 @@ test("PX-054: Shift+Tab walks the modes with the right chip and placeholder, the
     await openConversation(page, taskId);
     const input = page.getByTestId("composer-input");
     const corePosture = () => page.evaluate((t) => window.modbit.composerPosture(t).then((p) => p.mode), taskId);
-    await expect(page.getByTestId("mode-chip")).toHaveCount(0);
-    // AFW-A07 at 1280 x 800: the in-conversation composer is a single-line pill about 42 pt high (within 8 percent) and never wider than the 840 pt cap.
+    await expect(page.getByTestId("mode-label")).toHaveText("Agent");
+    await expect(page.getByTestId("mode-clear")).toHaveCount(0);
+    // DR-PX-2026-11-04-020 at 1280 x 800: the in-conversation composer is two rows (the text, then the bar), about 96 px high (within 8 percent), and never wider than the 640 px column.
     const geometry = await box(page, "composer");
-    expect(geometry.width).toBeLessThanOrEqual(840.5);
+    expect(geometry.width).toBeLessThanOrEqual(640.5);
     expect(geometry.width).toBeGreaterThan(560);
-    expect(Math.abs(geometry.height - 42) / 42).toBeLessThanOrEqual(0.08);
+    expect(Math.abs(geometry.height - 96) / 96).toBeLessThanOrEqual(0.08);
     const placeholders = new Set<string>([(await input.getAttribute("placeholder")) ?? ""]);
     await input.focus();
     // Plan, Debug, Multitask, Ask, then back to the default; each is acknowledged by the Core before it is drawn as active.
@@ -236,7 +237,8 @@ test("PX-054: Shift+Tab walks the modes with the right chip and placeholder, the
     expect(placeholders.size, "each mode has its own placeholder").toBe(5);
     await accessible(page, "the Ask mode chip");
     await page.keyboard.press("Shift+Tab");
-    await expect(page.getByTestId("mode-chip")).toHaveCount(0);
+    await expect(page.getByTestId("mode-label")).toHaveText("Agent");
+    await expect(page.getByTestId("mode-clear")).toHaveCount(0);
     expect(await corePosture()).toBe("AGENT");
 
     // By pointer and keyboard: the chip is a menu, and an X leaves the mode.
@@ -247,13 +249,13 @@ test("PX-054: Shift+Tab walks the modes with the right chip and placeholder, the
     await expect(page.getByTestId("mode-label")).toHaveText("Debug");
     await expect.poll(corePosture).toBe("DEBUG");
     await page.getByTestId("mode-clear").click();
-    await expect(page.getByTestId("mode-chip")).toHaveCount(0);
+    await expect(page.getByTestId("mode-label")).toHaveText("Agent");
+    await expect(page.getByTestId("mode-clear")).toHaveCount(0);
     await expect.poll(corePosture).toBe("AGENT");
-    // Suggestion chips offer Plan and Multitask while the box is empty.
-    await expect(page.getByTestId("suggest-plan")).toBeVisible();
-    await page.getByTestId("suggest-plan").click();
+    // The chip's menu chooses Plan again.
+    await page.getByTestId("mode-chip-button").click();
+    await page.getByTestId("menu-item-plan").click();
     await expect(page.getByTestId("mode-label")).toHaveText("Plan");
-    await expect(page.getByTestId("suggest-plan")).toHaveCount(0);
     await expect.poll(corePosture).toBe("PLAN");
 
     // The posture is the Core's: the run in Plan offers no write, and the one the model asks for is refused with the typed code.
@@ -585,7 +587,7 @@ test("PX-054: the @ menu lists the Core's sources and a protected path cannot be
     await input.pressSequentially("later");
     await expect(input).toHaveValue("look at @notes.txt later");
     await expect(page.getByTestId("mention-chip")).toHaveCount(1);
-    await page.getByTestId("agents-fleet").click();
+    await page.getByTestId("agents-new-task").click();
     await expect(page.getByTestId("conversation")).toHaveCount(0);
     await openConversation(page, taskId);
     await expect(input).toHaveValue("look at @notes.txt later");
@@ -683,7 +685,7 @@ test("PX-054: a message to a task waiting for review is queued for its next run 
     // The task is waiting for the person's review: the Core starts only a Queued or Waiting task, so a message here is queued for when it runs again, and says so.
     await expect(input).toHaveAttribute("placeholder", /Waiting for your review/);
     await expect(page.getByTestId("conv-start")).toHaveCount(0);
-    await accessible(page, "an idle composer with its suggestion chips");
+    await accessible(page, "an idle composer waiting for review");
     await input.fill("Also add a header");
     await page.getByTestId("composer-send").click();
     await expect(input).toHaveValue("");

@@ -1,0 +1,5 @@
+PX-188 mutation check (local, 2026-10-28)
+Change: crates/memory redact_personal made to return its input unchanged (redaction disabled).
+Result: apps/desktop e2e px-188-memory.spec.ts test 1 FAILED:
+  expect(locator).not.toContainText("jane.doe") - the organization-scope copy still held "jane.doe@example.com" and "/Users/janedoe/app".
+Reverted; the same spec passes (2 passed) against the real modbit-core and the packaged Electron app.

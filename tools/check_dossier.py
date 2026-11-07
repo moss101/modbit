@@ -18,6 +18,8 @@ Checks
   G2  every REQ/IMP/QUAL in docs is in the graph and vice versa
   G3  statuses are from the vocabulary; E2E_PROVEN/COMPLETE carry evidence; every evidence ref follows the docs/93 grammar
   G9  a COMPLETE product work item carries qualifying evidence: at least one run:/test: ref and one commit:/revision: ref (M0.4, docs/87)
+  G11 a gallery state is design review only (AFW-K02, QUAL-PX-044): a COMPLETE work item or an evidence bundle whose
+      test evidence is only model-free gallery specs fails
   G4  COMPLETE tasks have COMPLETE prerequisites; edges resolve
   G5  docs/98 milestone table matches the graph roll-up (GATED is a valid roll-up state)
   G7  release gates: attestation evidence grammar; no attestation while required tasks are incomplete; gated_by edges valid
@@ -47,6 +49,12 @@ ARTIFACTS = ["selected MicroVM", "validated multimodal mechanisms", "validated C
 PLACEHOLDERS = [r"\bTBD\b", r"\bUNREVIEWED\b", r"TBD IMPLEMENTATION"]
 
 findings = []
+
+
+def gallery_only(tests):
+    """True when there is test evidence and every item is a model-free state-gallery spec."""
+    names = [os.path.basename(t.split("::", 1)[0]) for t in tests]
+    return bool(names) and all(n.startswith("gallery") for n in names)
 
 
 def find(code, msg):
@@ -231,6 +239,8 @@ def main(argv):
                         find("G9", "%s is COMPLETE without a run:/test: evidence ref" % n["id"])
                     if not kinds & {"commit", "revision"}:
                         find("G9", "%s is COMPLETE without a commit:/revision: evidence ref" % n["id"])
+                if st == "COMPLETE" and gallery_only([r.split(":", 1)[1] for r in n.get("evidence") or [] if r.startswith("test:")]):
+                    find("G11", "%s is COMPLETE on gallery-state evidence only; a gallery renders fixtures without a model and is not proof" % n["id"])
                 for ref in n.get("evidence") or []:
                     err = graphtool.evidence_ref_error(ref)
                     if err:
@@ -242,6 +252,15 @@ def main(argv):
                     mid = ix.milestone_of(n["id"])
                     if mid and not ix.milestone_unblocked(mid):
                         find("G4", "%s is COMPLETE but upstream milestones are incomplete" % n["id"])
+        evroot = os.path.join(ROOT, "evidence")
+        for dirpath, _dirs, files in os.walk(evroot):
+            if "evidence.json" in files:
+                try:
+                    bundle = json.load(open(os.path.join(dirpath, "evidence.json")))
+                except ValueError:
+                    continue
+                if isinstance(bundle, dict) and gallery_only([t for t in bundle.get("tests") or [] if isinstance(t, str)]):
+                    find("G11", "%s counts gallery states as proof" % os.path.relpath(os.path.join(dirpath, "evidence.json"), ROOT))
         for e in g["edges"]:
             if e["from"] not in ix.nodes or e["to"] not in ix.nodes:
                 find("G4", "dangling edge %s" % e)

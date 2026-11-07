@@ -28,6 +28,8 @@
 //!   step of the dispatch is idempotent on ids derived from the firing's key,
 //!   so a Core that dies at any point finishes it once on the next start.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicI64, Ordering};
@@ -1183,6 +1185,18 @@ async fn dispatch_inner(
                     };
                     let (task_bytes, session_bytes) =
                         launch_stage(core, &actor, key, &run, &version, &stage, payload).await?;
+                    if killed_meanwhile(core, key).await {
+                        stop_stage(
+                            core,
+                            &run,
+                            Some(session_bytes),
+                            Some(task_bytes),
+                            derive16(key, "kill-launched-gate"),
+                            "automation kill switch: the run was stopped while its gate was starting",
+                        )
+                        .await;
+                        return Ok(());
+                    }
                     let mut reg = core.automation.registry.lock().await;
                     if let Some(aggregate) = parse_hex16(aid) {
                         append(
@@ -1231,6 +1245,18 @@ async fn dispatch_inner(
     };
     let (task_bytes, session_bytes) =
         launch_stage(core, &actor, key, &run, &version, &stage, payload).await?;
+    if killed_meanwhile(core, key).await {
+        stop_stage(
+            core,
+            &run,
+            Some(session_bytes),
+            Some(task_bytes),
+            derive16(key, "kill-launched"),
+            "automation kill switch: the run was stopped while its task was starting",
+        )
+        .await;
+        return Ok(());
+    }
     let mut reg = core.automation.registry.lock().await;
     if reg
         .runs
@@ -2099,6 +2125,35 @@ async fn outputs_of(core: &Arc<Core>, task: &Task, test: bool) -> serde_json::Va
             "outcome": if asked { "WOULD_HAVE_ASKED" } else { "DENIED" },
             "decision": p["decision"],
         }));
+    }
+    // A dry run is read-only, so the Kernel never offers its write tools: a
+    // call to one is refused before any decision is made (TOOL_NOT_VISIBLE)
+    // and leaves no policy decision. The refusal is still a denied effect the
+    // report must list, with the tool the agent named.
+    if test {
+        let failed = store
+            .read_session_of_types(&task.session_id, &["StepFailed"], 0)
+            .unwrap_or_default();
+        for e in &failed {
+            let Ok(p) = store.payload(&e.envelope) else {
+                continue;
+            };
+            if p["failure_code"].as_str() != Some("TOOL_NOT_VISIBLE") {
+                continue;
+            }
+            let Some(entry) = p["output_ref"]
+                .as_str()
+                .and_then(|r| store.objects().get(r).ok())
+                .and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).ok())
+            else {
+                continue;
+            };
+            denied.push(serde_json::json!({
+                "tool": entry["name"].as_str().unwrap_or_default(),
+                "outcome": "DENIED",
+                "decision": "TOOL_NOT_VISIBLE",
+            }));
+        }
     }
     let mut o = serde_json::json!({ "task_state": format!("{:?}", task.state) });
     if test {
@@ -3177,44 +3232,25 @@ async fn kill(core: &Arc<Core>, env: &wire::CommandEnvelope, command_id: [u8; 16
                     None,
                 )
                 .await;
-                let live_session = run.session_id.clone().or(run.gate_session_id.clone());
-                if let Some(sid) = live_session.as_deref().and_then(parse_hex16) {
-                    let actor = host_actor(&run.firing.automation_id, &run.firing.principal);
-                    let lease_gen = core
-                        .store
-                        .lock()
-                        .await
-                        .session(&SessionId::from_bytes(sid))
-                        .ok()
-                        .flatten()
-                        .map(|s| s.lease_generation);
-                    let _ = internal(
-                        core,
-                        &actor,
-                        "EmergencyStop",
-                        derive16(&key, "kill"),
-                        wire::EmergencyStop {
-                            session_id: Some(wire_id(&sid)),
-                            reason: format!("automation kill switch: {}", p.note),
-                        }
-                        .encode_to_vec(),
-                        lease_gen,
-                    )
-                    .await;
-                }
-                let live_task = run.task_id.clone().or(run.gate_task_id.clone());
-                if let Some(t) = live_task.as_deref().and_then(parse_hex16) {
-                    let task = core
-                        .store
-                        .lock()
-                        .await
-                        .task(&TaskId::from_bytes(t))
-                        .ok()
-                        .flatten();
-                    if let Some(task) = task {
-                        cancel_task(core, &task).await;
-                    }
-                }
+                // A run still launching its stage has no ids recorded yet; they derive from its key, so whichever stage
+                // already exists is stopped here (and a stage launched after this is stopped by its dispatch).
+                let recorded = |v: &Option<String>| v.as_deref().and_then(parse_hex16);
+                let (session, task) = match (
+                    recorded(&run.session_id).or(recorded(&run.gate_session_id)),
+                    recorded(&run.task_id).or(recorded(&run.gate_task_id)),
+                ) {
+                    (None, None) => launched_stage(core, &key).await.unzip(),
+                    ids => ids,
+                };
+                stop_stage(
+                    core,
+                    &run,
+                    session,
+                    task,
+                    derive16(&key, "kill"),
+                    &format!("automation kill switch: {}", p.note),
+                )
+                .await;
                 cancelled += 1;
             }
             _ => {}
@@ -3229,6 +3265,76 @@ async fn kill(core: &Arc<Core>, env: &wire::CommandEnvelope, command_id: [u8; 16
         }
         .encode_to_vec(),
     ))
+}
+
+/// Whether the kill switch ended the run while one of its stages was being
+/// launched: the stage it just started must not outlive the run.
+async fn killed_meanwhile(core: &Arc<Core>, key: &str) -> bool {
+    let reg = core.automation.registry.lock().await;
+    reg.runs
+        .get(key)
+        .is_some_and(|r| r.status == RunStatus::Cancelled && r.reason == "KILLED")
+}
+
+/// The session and task of a stage the run launched, found by the ids its key
+/// derives (the main task's first, then the gate's), when they exist.
+async fn launched_stage(core: &Arc<Core>, key: &str) -> Option<([u8; 16], [u8; 16])> {
+    let store = core.store.lock().await;
+    ["", "gate"].into_iter().find_map(|tag| {
+        let (session, task) = (stage_id(key, tag, "session"), stage_id(key, tag, "task"));
+        store
+            .task(&TaskId::from_bytes(task))
+            .ok()
+            .flatten()
+            .map(|_| (session, task))
+    })
+}
+
+/// Put a run's session under an emergency stop and cancel its task.
+async fn stop_stage(
+    core: &Arc<Core>,
+    run: &Run,
+    session: Option<[u8; 16]>,
+    task: Option<[u8; 16]>,
+    command_id: [u8; 16],
+    reason: &str,
+) {
+    if let Some(sid) = session {
+        let actor = host_actor(&run.firing.automation_id, &run.firing.principal);
+        let lease_gen = core
+            .store
+            .lock()
+            .await
+            .session(&SessionId::from_bytes(sid))
+            .ok()
+            .flatten()
+            .map(|s| s.lease_generation);
+        let _ = internal(
+            core,
+            &actor,
+            "EmergencyStop",
+            command_id,
+            wire::EmergencyStop {
+                session_id: Some(wire_id(&sid)),
+                reason: reason.to_owned(),
+            }
+            .encode_to_vec(),
+            lease_gen,
+        )
+        .await;
+    }
+    if let Some(t) = task {
+        let task = core
+            .store
+            .lock()
+            .await
+            .task(&TaskId::from_bytes(t))
+            .ok()
+            .flatten();
+        if let Some(task) = task {
+            cancel_task(core, &task).await;
+        }
+    }
 }
 
 fn started_of(f: &Fired, task: Option<String>, would_skip: bool) -> wire::AutomationRunStarted {

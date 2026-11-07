@@ -1,0 +1,31 @@
+{
+ "task": "PX-099",
+ "requirements": [
+  "REQ-PX-099",
+  "QUAL-PX-099",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-099"
+ ],
+ "scenarios": [
+  "QUAL-PX-099 / PX-E2E-099"
+ ],
+ "tests": [
+  "services/modbit-execd/tests/terminal_flow.rs::px_099_the_window_pauses_the_push_until_the_client_acknowledges",
+  "services/modbit-execd/tests/terminal_flow.rs::px_099_a_stalled_client_is_dropped_to_cursor_pull_and_resumes_exactly",
+  "services/modbit-execd/tests/terminal_flow.rs::px_099_a_slow_client_does_not_grow_the_brokers_memory",
+  "services/modbit-execd/tests/terminal_flow.rs::px_099_resize_changes_the_size_the_child_reads",
+  "services/modbit-execd/tests/terminal_flow.rs::px_099_the_input_lease_blocks_the_agent_and_ends_with_its_connection",
+  "services/modbit-core/tests/terminal_stream.rs::px_099_the_agent_answers_a_prompt_through_shell_input_and_attach",
+  "services/modbit-core/tests/terminal_stream.rs::px_099_the_user_input_lease_blocks_agent_input_and_is_journaled_without_content"
+ ],
+ "proof": "Real Core / real broker / real CLI as each test states. CI run 39960289486 (head f5a67b545a74017c3b632f687b09a8323cf2c8c3): conclusion success.",
+ "limitations": "Unix-only PTY suites; the Windows leg is not run; no gate attested.",
+ "runs": [
+  "39960289486"
+ ],
+ "ci": {
+  "run_id": "39960289486",
+  "head_sha": "f5a67b545a74017c3b632f687b09a8323cf2c8c3",
+  "conclusion": "success",
+  "json": "evidence/m10/PX-099/ci-run-39960289486.json"
+ }
+}

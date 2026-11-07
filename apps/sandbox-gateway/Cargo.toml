@@ -8,6 +8,7 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+modbit-secrets.workspace = true
 modbit-domain.workspace = true
 modbit-policy.workspace = true
 modbit-sandbox = { workspace = true, features = ["client"] }

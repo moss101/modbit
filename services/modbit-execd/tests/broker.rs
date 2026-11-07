@@ -425,6 +425,71 @@ async fn pty_mode_runs_a_real_terminal_session() {
     assert_eq!(exited.exit_code, Some(0));
 }
 
+/// PX-043 (found by a flaky ten-megabyte build on Linux CI): a finished
+/// terminal's output is exactly what the command printed. Closing the
+/// broker's end of the terminal used to put a blank line (`\r\n`) after the
+/// command's last line now and then, because portable-pty answers the drop
+/// of its writer with a newline and the EOF character, and the terminal
+/// echoed the newline back into the log. The race is load-dependent and
+/// rare (about one run in a hundred on a loaded Linux host), so this runs
+/// many short sessions and holds each one to its exact bytes, in the stream
+/// and in the sealed object.
+#[cfg(unix)]
+#[tokio::test]
+async fn a_finished_terminals_output_is_exactly_what_the_command_printed() {
+    const LINES: usize = 3000;
+    let dir = tempfile::tempdir().unwrap();
+    let execd = Execd::spawn(dir.path());
+    let mut c = execd.client().await;
+    let want: String = (1..=LINES).map(|i| format!("{i}\n")).collect();
+    let mut stray = Vec::new();
+    for round in 0..150 {
+        // `seq` writes in large bursts and exits at once, the shape of a
+        // build that ends with output still unread.
+        let mut r = req(&format!("exact-{round}"), "", &[]);
+        r.argv = vec!["sh".into(), "-c".into(), format!("seq -f %.0f 1 {LINES}")];
+        r.env.clear();
+        r.pty = true;
+        c.exec(r).await.unwrap();
+        let (_, out, _, exited) =
+            tokio::time::timeout(Duration::from_secs(60), run_to_exit(&mut c))
+                .await
+                .expect("the terminal reported its exit");
+        let object = dir
+            .path()
+            .join("objects")
+            .join(&exited.output_ref[..2])
+            .join(&exited.output_ref[2..]);
+        let sealed = std::fs::read(&object).unwrap();
+        // Carriage returns are the terminal's own (`\n` becomes `\r\n`; macOS
+        // under load also doubles one now and then), so the lines are compared
+        // without them: every line, in order, and no line more.
+        let lines = |b: &[u8]| -> Vec<u8> { b.iter().copied().filter(|c| *c != b'\r').collect() };
+        if lines(&out) != want.as_bytes()
+            || lines(&sealed) != want.as_bytes()
+            || exited.total_bytes != out.len() as u64
+            || sealed.len() != out.len()
+        {
+            let tail =
+                |b: &[u8]| String::from_utf8_lossy(&b[b.len().saturating_sub(16)..]).into_owned();
+            stray.push(format!(
+                "run {round}: stream ends {:?} ({} bytes), object ends {:?} ({} bytes), total {}",
+                tail(&out),
+                out.len(),
+                tail(&sealed),
+                sealed.len(),
+                exited.total_bytes
+            ));
+        }
+    }
+    assert!(
+        stray.is_empty(),
+        "{} of 150 finished terminals differ from what the command printed: {:#?}",
+        stray.len(),
+        &stray[..stray.len().min(5)]
+    );
+}
+
 #[tokio::test]
 async fn wrong_secret_is_refused() {
     let dir = tempfile::tempdir().unwrap();

@@ -233,8 +233,10 @@ fn start_cmd(argv: &[&str]) -> Value {
     json!({"calls": [{"name": "shell.start", "args": {"argv": argv}}]})
 }
 
-/// Wait for every named port file (up to ~25 s) and then a beat, so the Core
-/// has probed what came up.
+/// Wait for every named port file (up to `tries` x 0.2 s each) and then a
+/// beat, so the Core has probed what came up. The command's own timeout is the
+/// longest possible wait plus slack: the wait ends as soon as the files exist,
+/// so a generous bound costs nothing on a machine that is fast.
 fn settle(files: &[&str], tries: u32) -> Value {
     let waits = files
         .iter()
@@ -243,7 +245,7 @@ fn settle(files: &[&str], tries: u32) -> Value {
         })
         .collect::<Vec<_>>()
         .join("; ");
-    json!({"calls": [{"name": "shell.exec", "args": {"argv": ["sh", "-c", format!("{waits}; sleep 1.5")], "timeout_ms": 40000}}]})
+    json!({"calls": [{"name": "shell.exec", "args": {"argv": ["sh", "-c", format!("{waits}; sleep 1.5")], "timeout_ms": u64::from(tries) * 200 * files.len() as u64 + 20_000}}]})
 }
 
 fn read_notes() -> Value {
@@ -274,7 +276,11 @@ async fn run_to_end(c: &mut Client, task: &Id, secs: u64) {
 /// the policy changes because a server was found.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn qual_px_132_three_dev_servers_are_reported_ready_and_the_agent_is_told_without_asking() {
-    three_servers(0, 125).await;
+    // The Rust server is built by `cargo run` here, which on a hosted CI
+    // runner shared with other tests took ~28 s (a 25 s wait ended first, the
+    // wait's own result then named only the Node and Python servers). 100 s per
+    // file is far beyond any build the runner could need.
+    three_servers(0, 500).await;
 }
 
 /// The same, when the Rust server comes up after the agent's own wait for
@@ -387,7 +393,7 @@ async fn three_servers(rust_delay_ms: u64, settle_tries: u32) {
     // Every server has written its port file; then the Core must report each
     // one READY before the agent is released to read its tool result.
     trace("task started; waiting for the port files");
-    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    let deadline = std::time::Instant::now() + Duration::from_secs(150);
     let expected: Vec<(&str, u32)> = loop {
         let got: Option<Vec<(&str, u32)>> = files
             .iter()

@@ -4,6 +4,7 @@ import { navTarget, nextEnabled } from "./nav.ts";
 export interface TabDef {
   id: string;
   label: string;
+  icon?: ReactNode | undefined;
   disabled?: boolean | undefined;
   /** A short text count or word after the label. */
   badge?: string | undefined;
@@ -57,6 +58,7 @@ export function Tabs({ label, tabs, selected, onSelect, idPrefix, children, test
             data-testid={`tab-${t.id}`}
             onClick={() => onSelect(t.id)}
           >
+            {t.icon}
             {t.label}
             {t.badge !== undefined && <span className="mb-tab-badge"> {t.badge}</span>}
           </button>

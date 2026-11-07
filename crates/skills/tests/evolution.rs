@@ -60,6 +60,7 @@ fn trace(task: &str, class: &str, outcome: &str, obs: &[&str], tokens: u64) -> E
             wall_ms: 900,
         },
         redaction_status: "REDACTED".into(),
+        ..Default::default()
     }
 }
 

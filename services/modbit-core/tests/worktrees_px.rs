@@ -3200,3 +3200,85 @@ async fn px_065_a_tool_closed_worktree_is_recorded_by_the_close_not_by_a_later_s
     fx.cleanup(None, false).await.unwrap();
     assert_eq!(removals(&fx).await.len(), 1);
 }
+
+/// QUAL-PX-051: in MULTITASK the parent admits a bounded child, and the
+/// admission is a capacity ticket the child holds for its own run — through a
+/// real run on the real Core, not the kernel unit test alone.
+#[tokio::test]
+async fn px_051_in_multitask_a_bounded_child_is_admitted_with_a_ticket() {
+    let parent_script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "one bounded child", "expected_files": ["src/shared.txt"], "protected_effects": ["git.merge"]}}]}),
+        spawn_call("k-a", "alpha"),
+        wait_call("k-a"),
+        json!({"calls": [{"name": "git.merge.prepare", "args": {"child": "k-a", "id": "tx-a"}}]}),
+        json!({"calls": [{"name": "git.merge.commit", "args": {"id": "tx-a"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "child done", "self_review": {"findings": []}}}]}),
+    ];
+    let (mut fx, parent, seen) = family_fx(parent_script).await;
+    let changed: modbit_protocol::v1::TaskModeChanged = fx
+        .cmd(
+            "SetTaskMode",
+            modbit_protocol::v1::SetTaskMode {
+                task_id: Some(parent.clone()),
+                mode: modbit_protocol::v1::TaskMode::Multitask as i32,
+                reason: "px-051 multitask admission".into(),
+            },
+            true,
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        changed.mode,
+        modbit_protocol::v1::TaskMode::Multitask as i32,
+        "{changed:?}"
+    );
+    start_long(&mut fx, &parent, 0x47).await;
+    let st = drive(&mut fx, &parent, 240).await;
+    let texts = parent_tool_texts(&seen);
+    assert_eq!(
+        st.state, "ReadyForReview",
+        "{}\n{texts:#?}",
+        st.attention_reason
+    );
+
+    // What the parent was shown: an admitted child with a non-empty ticket.
+    let spawned = &texts[1];
+    assert!(spawned.contains("status: SUCCESS"), "{spawned}");
+    let ticket = spawned
+        .lines()
+        .find_map(|l| l.strip_prefix("ticket_id: "))
+        .unwrap_or_default();
+    assert!(
+        !ticket.trim().is_empty(),
+        "no ticket on the admission: {spawned}"
+    );
+    assert!(
+        spawned.contains("budget:"),
+        "the child is bounded: {spawned}"
+    );
+    let child = spawned
+        .lines()
+        .find_map(|l| l.strip_prefix("child_task_id: "))
+        .unwrap()
+        .trim()
+        .to_owned();
+
+    // The child's work was integrated through the merge tools, not left behind.
+    assert!(texts[4].contains("COMMITTED"), "{}", texts[4]);
+    assert!(!child.is_empty());
+    let posture: modbit_protocol::v1::TaskPostureView = fx
+        .cmd(
+            "GetTaskPosture",
+            modbit_protocol::v1::GetTaskPosture {
+                task_id: Some(parent.clone()),
+            },
+            false,
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        posture.mode,
+        modbit_protocol::v1::TaskMode::Multitask as i32,
+        "{posture:?}"
+    );
+}

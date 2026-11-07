@@ -23,6 +23,8 @@
 //! approved profile; this module neither sets nor changes them and never
 //! attests a gate: with no profile the release check fails by design.
 
+// PX-168 lint policy: this file spawns processes; new ones need review.
+#![allow(clippy::disallowed_methods)]
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;

@@ -1,0 +1,12 @@
+# PX-168 policy configuration, selected by tools/lint_policy.sh through
+# CLIPPY_CONF_DIR. Test code is exempt from the unwrap and expect lints here,
+# in configuration, never by weakening the lint.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+
+# A process is spawned only where a file carries an explicit, reasoned
+# `#![allow(clippy::disallowed_methods)]` (the spawn owners).
+disallowed-methods = [
+  { path = "std::process::Command::new", reason = "spawn only from an owner file (PX-168)" },
+  { path = "tokio::process::Command::new", reason = "spawn only from an owner file (PX-168)" },
+]

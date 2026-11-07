@@ -16,7 +16,7 @@ test("REQ-PX-057: a move to a mode that approves more, and the widest preset eve
 test("REQ-PX-057: a typed pattern is split into words; the modes have readable names", () => {
   assert.deepEqual(patternFromText("  cargo   test -p core "), ["cargo", "test", "-p", "core"]);
   assert.deepEqual(patternFromText("   "), []);
-  assert.equal(modeLabel("ALLOWLIST_SANDBOX"), "Allowlist with sandbox");
+  assert.equal(modeLabel("ALLOWLIST_SANDBOX"), "Supervised with sandbox");
   assert.match(modeLabel("RUN_EVERYTHING"), /this session/);
 });
 

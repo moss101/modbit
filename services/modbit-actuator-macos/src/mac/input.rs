@@ -10,7 +10,8 @@
 //! Every event is a unit of work: a Stop or a deadline (the `Ctl`) ends the
 //! sequence at the next event, and the caller is told how many were sent.
 #![allow(unsafe_code)]
-
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::time::Duration;
 
 use super::cf::Cf;

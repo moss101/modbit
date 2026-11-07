@@ -31,7 +31,8 @@ import { join } from "node:path";
 import { closeApp, launch, makeRepo, setContentSize } from "./support/ui-harness.ts";
 import { dist, pacedModel, retain, type Dist, type Part } from "./support/perf.ts";
 import { Gate } from "./support/stream-model.ts";
-import { createTask, openConversation, sessionOf, startAndOpen } from "./support/conversation-harness.ts";
+import { createTask, openConversation, sessionOf } from "./support/conversation-harness.ts";
+import { openTaskDetails, toNewTask } from "./support/new-task.ts";
 
 const PROFILE = process.env.MODBIT_PERF_PROFILE ?? "ci";
 const ENFORCE = PROFILE === "reference";
@@ -109,7 +110,7 @@ test("PERF PX-041/PX-047: a streamed delta renders within 100 ms of its event ti
         queueMicrotask(check);
       });
     });
-    // The drafts are made on the Fleet first; each is then started and its conversation opened in turn (one stream is watched at a time).
+    // The drafts are made from the home composer first; each is then started and its conversation opened in turn (one stream is watched at a time).
     const ids: string[] = [];
     for (let k = 0; k < TASKS; k++) ids.push(await createTask(page, `perf stream ${k}`, repo));
     const sid = await sessionOf(page);
@@ -204,7 +205,7 @@ test("PERF PX-046: the agent list reflects a Core event within 150 ms at p95 wit
   const { app, page } = await launch(dataDir);
   try {
     await setContentSize(app, page, 1280, 800);
-    // The first task is made on the Fleet, which opens the session; the rest of the fixture goes through the same preload command.
+    // The first task is made from the home composer, which opens the session; the rest of the fixture goes through the same preload command.
     await createTask(page, "fixture task 0", repo);
     const sid = await sessionOf(page);
     // The fixture: 200 tasks the list already holds.
@@ -308,12 +309,13 @@ test("PERF PX-047: a long transcript scrolls; the frame distribution is recorded
   const { app, page } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: model.url } });
   try {
     await setContentSize(app, page, 1280, 800);
-    // The task is made and started from the Fleet and the model is held at its first answer while the person's inputs queue behind it (the
-    // conversation stays closed meanwhile, so the app is not re-reading it on every input). A queued input is a user row. No run under the
+    // The task is made from the home composer and started, and the model is held at its first answer while the person's inputs queue behind it (the
+    // conversation is left for the home composer meanwhile, so the app is not re-reading it on every input). A queued input is a user row. No run under the
     // Core's defaults (60 turns, 300 tool calls) projects 1,000 rows on its own (about 7 a turn) and the desktop cannot raise them, so the
     // rows are mostly the person's queued inputs, with the agent's reading (assistant messages, tool cards, footers) among them. That mix
     // is what the frame distribution is of, and the result file says so.
     const taskId = await createTask(page, "perf scroll", repo);
+    await toNewTask(page);
     const sid = await sessionOf(page);
     await page.evaluate(([s, t]) => window.modbit.startTask(s!, t!), [sid, taskId]);
     const t0 = Date.now();
@@ -337,6 +339,7 @@ test("PERF PX-047: a long transcript scrolls; the frame distribution is recorded
     }
     await openConversation(page, taskId);
     // Nothing folds in the detailed density: the rows the Core projected are the rows on the page.
+    await openTaskDetails(page);
     await page.getByTestId("conv-density").selectOption("DETAILED");
     await expect(page.getByTestId("conversation")).toHaveAttribute("data-density", "DETAILED");
     const total = await page.evaluate((t) => window.modbit.transcript(t, { density: "DETAILED", limit: 1 }).then((v) => v.totalRows), taskId);

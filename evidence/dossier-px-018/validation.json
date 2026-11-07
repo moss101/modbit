@@ -1,0 +1,31 @@
+{
+ "task": "DOC-PX-018",
+ "change_record": "DR-PX-2026-11-03-019",
+ "change_record_status": "APPROVED",
+ "edition": "V3.3 EPR v1.1",
+ "scope": "Decision Record DR-PX-2026-11-03-019 (accepted by the owner's chat instruction of 2026-11-03 after a mockup and a capture of the running app): rows PX-192..194 in doc 62 (owner desktop, M10, RELEASE_ZERO, iteration tier, chained after PX-143), graph change record and dossier task, pinned parity counts (195 rows, 173 ADOPT, 22 DEFERRED), one dedicated test, the scoped supersession notes in docs 65 and 02, the QUAL-PX-045 numbers restored; dossier only, no product status or evidence claim changes here.",
+ "recorded_at_utc": "2026-11-03T18:17:21.439960+00:00",
+ "git": {
+  "baseline_commit": "3207cb21",
+  "branch": "wip/agent-workspace-language"
+ },
+ "tests": {
+  "command": [
+   "python3",
+   "tools/test_dossier.py"
+  ],
+  "exit_code": 0,
+  "output_ref": "evidence/dossier-px-018/tests.log",
+  "sha256": "c06d90c3286386225d958cd256022b150c059b03702a2548d4a281b4fb4d58cb",
+  "result_line": "Ran 88 tests in 239.557s OK"
+ },
+ "integrity": {
+  "command": [
+   "python3",
+   "tools/check_dossier.py",
+   "--manifest"
+  ],
+  "exit_code": 0,
+  "output": "OK: 97 docs; base 291 REQ-EV/265 IMP-EV/291 QUAL-EV + EPR 20 + PX 195 (173 ADOPT tasks) = 506 requirements effective; 18 ADR-R, 7 gates, 3 releases; graph and references consistent; manifest hashes verified"
+ }
+}

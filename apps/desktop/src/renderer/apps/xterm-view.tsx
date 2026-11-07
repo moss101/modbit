@@ -15,7 +15,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { useKeyScope } from "@modbit/ui";
 import type { KeyScope } from "@modbit/ui/logic";
 import type { TerminalViewJson } from "../../preload/preload.ts";
-import { TerminalController, type TerminalViewState } from "./terminal-controller.ts";
+import { replayStart, TerminalController, type TerminalViewState } from "./terminal-controller.ts";
 
 const css = (name: string, fallback: string): string => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 
@@ -31,13 +31,15 @@ export interface XtermViewProps {
   onState: (s: TerminalViewState) => void;
   /** Lines the view shows apart from the output (refused input, a dropped replay window). */
   onNotice: (text: string) => void;
+  /** The person scrolled the view past its first line: output older than the replay window is what comes next. */
+  onReachTop?: () => void;
 }
 
-export function XtermView({ sessionId, terminal, onLeave, onState, onNotice }: XtermViewProps) {
+export function XtermView({ sessionId, terminal, onLeave, onState, onNotice, onReachTop }: XtermViewProps) {
   const host = useRef<HTMLDivElement>(null);
   // The callbacks change every render; the terminal is created once per session and reads the latest.
-  const cb = useRef({ onLeave, onState, onNotice });
-  cb.current = { onLeave, onState, onNotice };
+  const cb = useRef({ onLeave, onState, onNotice, onReachTop });
+  cb.current = { onLeave, onState, onNotice, onReachTop };
   const [focused, setFocused] = useState(false);
   const [state, setState] = useState<TerminalViewState | null>(null);
   // The terminal owns the keyboard while it has focus: the shell's chords and single-letter commands stand down.
@@ -47,7 +49,7 @@ export function XtermView({ sessionId, terminal, onLeave, onState, onNotice }: X
   useEffect(() => {
     const el = host.current;
     if (!el) return;
-    const term = new Terminal({ cursorBlink: true, scrollback: 5000, fontFamily: css("--mb-font-mono", "monospace"), fontSize: 13, theme: themeFromTokens(), allowProposedApi: false, ariaLabel: "Terminal" } as ConstructorParameters<typeof Terminal>[0]);
+    const term = new Terminal({ cursorBlink: true, scrollback: 10000, fontFamily: css("--mb-font-mono", "monospace"), fontSize: 13, theme: themeFromTokens(), allowProposedApi: false, ariaLabel: "Terminal" } as ConstructorParameters<typeof Terminal>[0]);
     const fit = new FitAddon();
     term.loadAddon(fit);
     term.open(el);
@@ -81,6 +83,19 @@ export function XtermView({ sessionId, terminal, onLeave, onState, onNotice }: X
       }
       if (term.rows > 0 && term.cols > 0) void controller.resize(term.rows, term.cols);
     };
+    // Scrolling up past the first line the view holds asks for the output before it (read from the Core's sealed output).
+    const atTop = () => term.buffer.active.viewportY === 0;
+    const onWheel = (e: WheelEvent) => {
+      if (e.deltaY < 0 && atTop()) cb.current.onReachTop?.();
+    };
+    el.addEventListener("wheel", onWheel, { passive: true });
+    const onScroll = term.onScroll((y) => {
+      if (y === 0 && term.buffer.active.baseY > 0) cb.current.onReachTop?.();
+    });
+    const onKey = (e: KeyboardEvent) => {
+      if (e.shiftKey && (e.key === "PageUp" || e.key === "Home") && atTop()) cb.current.onReachTop?.();
+    };
+    el.addEventListener("keydown", onKey);
     const ro = new ResizeObserver(refit);
     ro.observe(el);
     refit();
@@ -102,11 +117,14 @@ export function XtermView({ sessionId, terminal, onLeave, onState, onNotice }: X
     };
     el.addEventListener("keydown", stop);
     // The replay window starts at the oldest byte still held: a reattach or a reload shows the same output again.
-    void controller.start(BigInt(terminal.oldestCursor));
+    void controller.start(replayStart(terminal));
     return () => {
       el.removeEventListener("focusin", onFocusIn);
       el.removeEventListener("focusout", onFocusOut);
       el.removeEventListener("keydown", stop);
+      el.removeEventListener("wheel", onWheel);
+      el.removeEventListener("keydown", onKey);
+      onScroll.dispose();
       themeObserver.disconnect();
       ro.disconnect();
       onData.dispose();

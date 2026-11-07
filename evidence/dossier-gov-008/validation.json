@@ -1,0 +1,40 @@
+{
+ "task": "DOC-GOV-008",
+ "change_record": "DR-GOV-2026-10-30-008",
+ "edition": "V3.3 EPR v1.1",
+ "scope": "PX-189 production wiring names crates/core-runtime/src/trajectory.rs; dossier only",
+ "recorded_at_utc": "2026-10-29T21:25:37.442447+00:00",
+ "environment": {
+  "python": "3.9.6 (default, Aug 17 2026, 12:07:42) \n[Clang 21.0.0 (clang-2100.3.34.1)]",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "dependencies": "Python standard library only"
+ },
+ "git": {
+  "remote": "https://github.com/moss101/modbit.git",
+  "branch": "wip/codex-hardening-px147-squash",
+  "baseline_commit": "74f52c332bbbefd9304a57daadb98b441e6e13e8",
+  "change_commit": "recorded as commit: evidence on DOC-GOV-008 after the change lands"
+ },
+ "corrected_files": {
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md": {
+   "before_sha256": "5fd2567b4b162bb2ceacc8ed314f82c364c501783c8f03a455fdd1130d1aa1b1",
+   "after_sha256": "3ab082606767bae355b4c78304eb0e7f5ca84f79cb2e791a28b73c9d27eabb0c"
+  },
+  "docs/97_DOSSIER_MAINTENANCE_LOG.md": {
+   "before_sha256": "6d48035807801561b8165818fb017ee2d03eca848bf13ce387aed665e8099a79",
+   "after_sha256": "b1e55d1e2dcd6b0f78210ed6021e5d7f067208729d813dc984613f559f5d7280"
+  },
+  "tools/build_graph.py": {
+   "before_sha256": "a0ed29e361e000b219b6be973e0be77417831fa4b7f0f2cd2c5845f553e90a54",
+   "after_sha256": "1961207ee262c23bfe88037045e21d3a712b3a3a9a0b2d3f11a5b0ddb1f7304e"
+  },
+  "tools/test_dossier.py": {
+   "before_sha256": "7e4c90c036458548737e13f3fbcb7393c071c3beebada8200bd1c39a568efb00",
+   "after_sha256": "fb8a003a26c1987adb931fd38d8278cfd1b11545784530bdba13d6757a4d3c30"
+  }
+ },
+ "checks": {
+  "check_dossier_manifest": "exit 0 (OK: 97 docs ... manifest hashes verified)",
+  "test_dossier": "87 tests OK (evidence/dossier-gov-008/tests.log)"
+ }
+}

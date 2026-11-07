@@ -12,6 +12,8 @@
 //! simulated: without `/dev/kvm`, `firecracker`, the kernel and the root
 //! image the backend refuses to provision.
 
+// PX-168 lint policy: this file spawns processes and baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::disallowed_methods, clippy::expect_used)]
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;

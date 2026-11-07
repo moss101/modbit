@@ -6,7 +6,7 @@ const NOW = 1_800_000_000_000;
 const H = "a".repeat(64);
 
 test("REQ-PX-057: a run mode is one of the four the Core knows; anything else is refused before the Core sees it", () => {
-  for (const m of ["ASK", "ALLOWLIST", "ALLOWLIST_SANDBOX", "RUN_EVERYTHING"]) assert.equal(validRunMode(m), m);
+  for (const m of ["ASK", "ALLOWLIST", "ALLOWLIST_SANDBOX", "RUN_EVERYTHING", "AUTONOMOUS"]) assert.equal(validRunMode(m), m);
   for (const m of ["ask", "AUTO_REVIEW", "", 3, null, undefined]) assert.throws(() => validRunMode(m), /BAD_ARGUMENT/);
 });
 

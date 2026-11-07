@@ -1,0 +1,17 @@
+QUAL-PX-074 mutation check (2026-10-24, base b78b0c1c + this change)
+
+MUTATION stop-does-nothing
+  file:   apps/desktop/src/main/computer-ipc.ts (the 'computer:stop' handler)
+  change: 'const s = await computerStop(c, sid, tid, reason);'
+          ->  'const s = { sessionsClosed: 0, actuatorStopped: false };'
+          (the on-screen Stop no longer reaches the Core or the actuator)
+  command: cd apps/desktop && node build.mjs && npx playwright test -c e2e/playwright.config.ts e2e/computer-surface.spec.ts -g "renderer is killed"
+  exit: 1 (the test FAILS, as the QUAL requires)
+
+Output:
+  Error: expect(locator).toHaveAttribute(expected) failed
+  Expected: "USER_ABORTED"
+  Received: "CONTROLLING"
+  1 failed
+
+The mutation was reverted; the unmutated specs pass (13 passed).

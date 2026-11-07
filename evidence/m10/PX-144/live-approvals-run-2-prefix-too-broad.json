@@ -1,0 +1,50 @@
+{
+  "model": "glm-5.3-flash",
+  "baseHost": "api.z.ai",
+  "wallMs": "1200000",
+  "goal": "Fix my broken application, then commit the fix. Then register two local backup remotes for this repository, without fetching or pushing anything: `git remote add backup ../cart-backup.git` and `git remote add mirror ../cart-mirror.git`. Use `git -c user.name=Live -c user.email=live@example.invalid commit` for the commit.",
+  "mode": "ALLOWLIST (default)",
+  "finalState": "ReadyForReview",
+  "waitReason": "",
+  "attention": "",
+  "wallSeconds": 342,
+  "cardsShown": [
+    {
+      "tool": "shell.exec",
+      "command": "git remote add backup ../cart-backup.git",
+      "effect": "protected write, not sandboxed",
+      "why": "No allowlist rule covers this command. Run it once, or allow its prefix so the same kind of command runs without asking.",
+      "answer": "always",
+      "prefix": "git"
+    },
+    {
+      "tool": "shell.exec",
+      "command": "git remote add backup ../cart-backup.git",
+      "effect": "protected write, not sandboxed",
+      "why": "No allowlist rule covers this command. Run it once, or allow its prefix so the same kind of command runs without asking.",
+      "answer": "run",
+      "prefix": ""
+    },
+    {
+      "tool": "shell.exec",
+      "command": "git remote add mirror ../cart-mirror.git",
+      "effect": "protected write, not sandboxed",
+      "why": "No allowlist rule covers this command. Run it once, or allow its prefix so the same kind of command runs without asking.",
+      "answer": "run",
+      "prefix": ""
+    }
+  ],
+  "alwaysClicked": true,
+  "rulesMade": 0,
+  "receiptDecisions": {
+    "approval:01a174b7-e5fe-7ac3-9342-1f36cf3b4a8f": 2,
+    "approval:01a174b7-f45f-70d2-adb5-a469e2d2fc4f": 2
+  },
+  "buildAndTestPassAfter": true,
+  "testFileUnchanged": true,
+  "commitsOnBranch": 2,
+  "autoVerifications": 1,
+  "repairAttempts": 0,
+  "repairConcluded": [],
+  "modelCalls": 9
+}

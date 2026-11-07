@@ -19,6 +19,8 @@
 //! and keeps it until an explicit rebuild (docs/21 "Sandbox recovery" is
 //! the sandbox's story; this is the environment's).
 
+// PX-168 lint policy: this file spawns processes; new ones need review.
+#![allow(clippy::disallowed_methods)]
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 

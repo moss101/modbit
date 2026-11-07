@@ -8,6 +8,8 @@
 //! skipped check is not a pass, a grammar is not a classification, and a
 //! record that claims more than its checks show is refused by `verify_record`.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use serde::{Deserialize, Serialize};
 
 /// A support tier (docs/76).

@@ -1,0 +1,32 @@
+{
+ "task": "PX-045",
+ "requirements": [
+  "REQ-PX-045",
+  "QUAL-PX-045",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-045"
+ ],
+ "scenarios": [
+  "QUAL-PX-045 / PX-E2E-045"
+ ],
+ "tests": [
+  "apps/desktop/e2e/shell.spec.ts::PX-045: geometry at 1280 x 800, keyboard-resizable splits inside 210..400, persisted across a restart",
+  "apps/desktop/e2e/shell.spec.ts::PX-045: below a 448 centre the shell is single-pane with the 40 px rail; the list can also be collapsed",
+  "apps/desktop/e2e/shell.spec.ts::PX-045: at 1000 x 700 and 900 x 600 the list keeps 260, the top bar 40 and the centre stays above the single-pane threshold with nothing overflowing",
+  "apps/desktop/e2e/shell.spec.ts::PX-045: opening Settings with a running task neither stops nor alters the task",
+  "apps/desktop/e2e/shell.spec.ts::PX-045: the command palette and the shortcut registry by keyboard alone; Escape closes the innermost layer; focus returns",
+  "apps/desktop/e2e/shell.spec.ts::PX-045: the apps panel appears for a task with an artifact, within the geometry; per-task state and width persist; it stacks when it cannot fit",
+  "apps/desktop/e2e/states.spec.ts (PX-023 screen states, same suite and run)",
+  "apps/desktop/src/renderer/shell/shell.test.ts (layout clamp, registry conflicts)"
+ ],
+ "proof": "Real Core / real broker / real CLI as each test states. CI run 40018683027 (head f790ed1182c0cff0be35a67969e2102c22bab466): conclusion success.",
+ "limitations": "The suite drives the built Electron app against a real Core with a scripted model, not a signed packaged installer (M10.2 owns signing). The QUAL mutation checks (double-registered shortcut, unclamped panel ratio) rely on shell.test.ts and the existing conflict test; no new mutation run was retained. No gate attested.",
+ "runs": [
+  "40018683027"
+ ],
+ "ci": {
+  "run_id": "40018683027",
+  "head_sha": "f790ed1182c0cff0be35a67969e2102c22bab466",
+  "conclusion": "success",
+  "json": "evidence/m10/PX-045/ci-run-40018683027.json"
+ }
+}

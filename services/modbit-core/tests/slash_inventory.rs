@@ -9,7 +9,6 @@
 //! Real: the `modbit-core` binary, the skill registry and trust files on
 //! disk, signed and unsigned extensions loaded through `LoadExtension`, the
 //! profile directories. No model is involved.
-#![cfg(unix)]
 
 mod px_common;
 

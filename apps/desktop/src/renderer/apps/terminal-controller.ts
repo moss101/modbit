@@ -34,6 +34,8 @@ export interface TerminalViewState {
   reason: string | null;
   /** Bytes on screen since the first attach (for tests and the status line). */
   bytes: bigint;
+  /** The cursor of the first byte this view shows: output before it is older than the replay window (read as OutputRef ranges). */
+  origin: bigint;
 }
 
 export interface TerminalTarget {
@@ -47,7 +49,7 @@ const REATTACH = new Set(["SLOW_CONSUMER", "STALE_GENERATION", "BROKER_LOST", "B
 const MAX_QUEUED_FRAMES = 4096;
 
 export class TerminalController {
-  private state: TerminalViewState = { phase: "idle", cursor: 0n, leaseHeld: false, exit: null, reason: null, bytes: 0n };
+  private state: TerminalViewState = { phase: "idle", cursor: 0n, leaseHeld: false, exit: null, reason: null, bytes: 0n, origin: 0n };
   private attachId: string | null = null;
   private queued: TerminalFrameJson[] = [];
   private off: (() => void) | null = null;
@@ -106,7 +108,7 @@ export class TerminalController {
   async start(fromCursor: bigint): Promise<void> {
     this.off ??= this.bridge.onTerminalFrame((f) => this.onFrame(f));
     this.sink.reset();
-    this.state = { ...this.state, bytes: 0n };
+    this.state = { ...this.state, bytes: 0n, origin: fromCursor };
     await this.attach(fromCursor);
   }
 
@@ -144,6 +146,7 @@ export class TerminalController {
         // The replay window moved past the cursor: show what is still replayable, and say what was dropped.
         this.sink.reset();
         this.sink.notice(`older output is no longer replayable; showing from byte ${expired[1]}`);
+        this.state = { ...this.state, origin: BigInt(expired[1]!) };
         await this.attach(BigInt(expired[1]!));
         return;
       }
@@ -196,6 +199,7 @@ export class TerminalController {
         if (f.reason === "CURSOR_EXPIRED") {
           this.sink.reset();
           this.sink.notice(`older output is no longer replayable; showing from byte ${f.oldestCursor}`);
+          this.state = { ...this.state, origin: BigInt(f.oldestCursor) };
           void this.attach(BigInt(f.oldestCursor));
           return;
         }
@@ -317,6 +321,22 @@ export class TerminalController {
     this.attachId = null;
     if (id) await this.bridge.terminalDetach(id).catch(() => undefined);
   }
+}
+
+/**
+ * How much of an ended terminal's output the live view replays: its tail. What the Core retained before the tail is read as
+ * ranges of the sealed output when the person scrolls above the view (terminal-history.ts), so a long build does not have to
+ * pass through the screen to be scrolled to, and the view's scrollback holds the whole tail.
+ */
+export const VIEW_TAIL_BYTES = 256 * 1024;
+
+/** Where a view of this terminal starts replaying. A running process replays its whole window (a screen program needs its history to draw). */
+export function replayStart(t: Pick<TerminalViewJson, "oldestCursor" | "bytesSoFar" | "hasOutputRef">): bigint {
+  const oldest = BigInt(t.oldestCursor);
+  if (!t.hasOutputRef) return oldest;
+  const head = BigInt(t.bytesSoFar);
+  const tail = head > BigInt(VIEW_TAIL_BYTES) ? head - BigInt(VIEW_TAIL_BYTES) : 0n;
+  return tail > oldest ? tail : oldest;
 }
 
 /** A terminal's label for lists and headings. */

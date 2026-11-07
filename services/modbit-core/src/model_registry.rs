@@ -184,8 +184,15 @@ fn save_history(core: &Core, h: &History) -> Result<(), String> {
         std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     }
     let tmp = path.with_extension("json.tmp");
-    std::fs::write(&tmp, serde_json::to_vec_pretty(h).unwrap_or_default())
-        .map_err(|e| e.to_string())?;
+    {
+        use std::io::Write;
+        // Whole before it is visible: written and flushed to the device, then
+        // renamed over the old history, so a kill leaves exactly one of them.
+        let mut f = std::fs::File::create(&tmp).map_err(|e| e.to_string())?;
+        f.write_all(&serde_json::to_vec_pretty(h).unwrap_or_default())
+            .map_err(|e| e.to_string())?;
+        f.sync_all().map_err(|e| e.to_string())?;
+    }
     std::fs::rename(&tmp, &path).map_err(|e| e.to_string())
 }
 
@@ -233,6 +240,23 @@ pub(crate) async fn activate(
         return refusal(code, detail);
     }
     let current = core.gateway.registry();
+    // A document issued before the active one is a downgrade; going back is
+    // `RollbackModelRegistry`'s explicit, compare-and-swap verb, never an
+    // activation (REQ-PX-134).
+    if let Some(active) = &current
+        && registry.document.issued_at_ms < active.document.issued_at_ms
+    {
+        return refusal(
+            "REGISTRY_OLDER_THAN_ACTIVE",
+            format!(
+                "`{}` was issued at {} before the active `{}` ({}); roll back explicitly instead",
+                registry.generation(),
+                registry.document.issued_at_ms,
+                active.generation(),
+                active.document.issued_at_ms
+            ),
+        );
+    }
     if let Some(promotion) = registry.document.promotion.clone() {
         if let Err((code, detail)) = crate::promotion::gate(
             core,

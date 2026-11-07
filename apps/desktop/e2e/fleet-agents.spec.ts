@@ -2,10 +2,10 @@
  * Packaged-app E2E for M6.6 (docs/10 "Home / Fleet", docs/32): the real
  * Electron app against the real modbit-core, a primary that delegates one
  * subtask to a child agent through the real admission transaction. The
- * parent's card shows the phase, the active agent count, the latest
- * evidence and, nested under it, the child; the child is never a top-level
- * card; when the child ends its result is on the parent card; the board
- * needs no log reading. Every fact rendered comes from a Core event.
+ * parent's details show the phase, the active agent count, the latest
+ * evidence and, nested under it, the child; the child is never a primary
+ * task; when the child ends its result is on the parent; the app needs no log
+ * reading. Every fact rendered comes from a Core event.
  */
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
@@ -15,6 +15,10 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { closeApp } from "./support/close-app.ts";
+import { agentRow, openTask, openTaskDetails, queueTask } from "./support/new-task.ts";
+
+/** The primary tasks of the list (a subagent's own row is marked; it is never one of these). */
+const primaryRows = (page: Page) => page.locator('[data-testid="agent-row"]:not([data-subagent="true"])');
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const coreBin = process.env.MODBIT_CORE_BIN ?? resolve(appDir, "..", "..", "target", "debug", process.platform === "win32" ? "modbit-core.exe" : "modbit-core");
@@ -73,7 +77,7 @@ async function launch(dataDir: string, extraEnv: Record<string, string>): Promis
   return { app, page };
 }
 
-test("fleet: a delegating parent shows its phase, agents and the nested child; the child is never a top-level card", async () => {
+test("M6.6: a delegating parent shows its phase, agents and the nested child; the child is never a primary task", async () => {
   const repo = mkdtempSync(join(tmpdir(), "modbit-fleet-repo-"));
   writeFileSync(join(repo, "README.md"), "# fleet\n");
   mkdirSync(join(repo, "src", "a"), { recursive: true });
@@ -91,7 +95,7 @@ test("fleet: a delegating parent shows its phase, agents and the nested child; t
     { calls: [{ name: "agent.wait", args: { idempotency_key: "child-a", timeout_ms: 60000 } }] },
     // A parent cannot complete beside a child with unintegrated changes
     // (PX-119): this fixture discards the child's work, which the person
-    // approves on the card.
+    // approves on the docked card.
     { calls: [{ name: "git.merge.abort", args: { child: "child-a", discard: true, reason: "the fixture does not integrate" } }] },
     { calls: [{ name: "task.complete", args: { summary: "delegated and collected", self_review: { findings: [] } } }] },
   ];
@@ -105,46 +109,51 @@ test("fleet: a delegating parent shows its phase, agents and the nested child; t
   const env = { MODBIT_OPENAI_BASE_URL: url, MODBIT_CAPACITY: "model=4,provider=8" };
   try {
     const { app, page } = await launch(dataDir, env);
-    await page.getByTestId("goal").fill("Delegate module a");
-    await page.getByTestId("workspace").fill(repo);
-    await page.getByTestId("run").click();
-    const card = page.getByTestId("task-card").first();
-    await expect(card.getByTestId("task-state")).toHaveText("Queued");
-    await expect(card.getByTestId("task-agents")).toHaveText("0/0");
-    await card.getByTestId("task-start").click();
+    const taskId = await queueTask(page, "Delegate module a", repo);
+    const row = agentRow(page, taskId);
+    await expect(row).toHaveAttribute("data-state", "Queued");
+    await openTaskDetails(page);
+    await expect(page.getByTestId("task-agents")).toHaveText("0/0");
+    await page.getByTestId("conv-start").click();
     // The parent delegates: phase, agents and the nested child come from
     // AgentNodeCreated / SubagentAdmitted, not from logs.
-    await expect(card.getByTestId("task-children").getByTestId("child-card")).toHaveCount(1, { timeout: 60_000 });
-    await expect(card.getByTestId("child-goal")).toHaveText("create src/a/a.txt containing alpha");
+    await expect(page.getByTestId("task-children").getByTestId("child-card")).toHaveCount(1, { timeout: 60_000 });
+    await expect(page.getByTestId("child-goal")).toHaveText("create src/a/a.txt containing alpha");
     // A fast child may already have ended by now (a hosted macOS runner saw
     // it): the evidence line is the delegation or the child's completion.
-    await expect(card.getByTestId("task-evidence")).toContainText(/delegated child-a|child completed: created src\/a\/a\.txt/);
-    // The child is never a top-level card, in any column.
-    await expect(page.getByTestId("task-card")).toHaveCount(1);
+    await expect(page.getByTestId("task-evidence")).toContainText(/delegated child-a|child completed: created src\/a\/a\.txt/);
+    // The child is never a primary task of the list.
+    await expect(primaryRows(page)).toHaveCount(1);
     // The child ends; the parent asks to discard its work, a protected
-    // effect the person approves on the card (PX-119).
-    // The finished child's review may have taken the screen: back to the board.
+    // effect the person approves on the docked card (PX-119).
+    // The finished child's review may have taken the screen: back to the conversation.
     await expect(async () => {
-      const back = page.getByRole("button", { name: "Back to fleet" });
-      if (await back.isVisible()) await back.click();
-      await expect(card.getByTestId("task-approve")).toBeVisible({ timeout: 2_000 });
+      const close = page.getByTestId("review-close");
+      if (await close.isVisible()) await close.click();
+      await expect(page.getByTestId("approval-run")).toBeVisible({ timeout: 2_000 });
     }).toPass({ timeout: 90_000 });
-    await card.getByTestId("task-approve").click();
+    await page.getByTestId("approval-run").click();
     // The child's result is the parent's latest evidence, the agent counts
     // settle, and the parent reaches Ready for Review.
-    await expect(page.getByTestId("column-readyForReview").getByTestId("task-card")).toHaveCount(1, { timeout: 90_000 });
+    await expect(row).toHaveAttribute("data-state", "ReadyForReview", { timeout: 90_000 });
+    const close = page.getByTestId("review-close");
+    await expect(close).toBeVisible();
+    await close.click();
+    await openTaskDetails(page);
     // The latest evidence: the child's completion, or the acceptance gate
-    // the run evaluated right after it (run events reach the card, PX-023).
-    await expect(card.getByTestId("task-evidence")).toContainText(/child completed: created src\/a\/a\.txt|acceptance gate (ACCEPT|INCONCLUSIVE|REJECT)/);
-    await expect(card.getByTestId("task-agents")).toHaveText("0/2");
-    await expect(card.getByTestId("child-state")).toHaveText("ReadyForReview");
-    await expect(page.getByTestId("task-card")).toHaveCount(1);
-    // Restart the app: the board is rebuilt from the Core, children included.
+    // the run evaluated right after it (run events reach the task, PX-023).
+    await expect(page.getByTestId("task-evidence")).toContainText(/child completed: created src\/a\/a\.txt|acceptance gate (ACCEPT|INCONCLUSIVE|REJECT)/);
+    await expect(page.getByTestId("task-agents")).toHaveText("0/2");
+    await expect(page.getByTestId("child-state")).toHaveText("ReadyForReview");
+    await expect(primaryRows(page)).toHaveCount(1);
+    // Restart the app: the list and the details are rebuilt from the Core, children included.
     await closeApp(app);
     const again = await launch(dataDir, env);
-    await expect(again.page.getByTestId("column-readyForReview").getByTestId("task-card")).toHaveCount(1, { timeout: 30_000 });
-    await expect(again.page.getByTestId("task-card")).toHaveCount(1);
-    await expect(again.page.getByTestId("task-card").first().getByTestId("child-card")).toHaveCount(1);
+    await expect(agentRow(again.page, taskId)).toHaveAttribute("data-state", "ReadyForReview", { timeout: 30_000 });
+    await expect(primaryRows(again.page)).toHaveCount(1);
+    await openTask(again.page, taskId);
+    await openTaskDetails(again.page);
+    await expect(again.page.getByTestId("child-card")).toHaveCount(1);
     await closeApp(again.app);
   } finally {
     server.close();

@@ -208,6 +208,94 @@ pub struct MemoryCtx {
     pub task: Option<TaskId>,
     /// The actor the events are attributed to.
     pub actor: Actor,
+    /// The one redactor over what this Core holds and every credential
+    /// shape (PX-157): a proposal passes it before it is stored.
+    pub redactor: modbit_secrets::Redactor,
+}
+
+/// The refusal code of a proposal that is wholly a secret (PX-157).
+pub const MEMORY_SECRET: &str = "MEMORY_SECRET";
+
+/// A proposal as it may be stored (PX-157): its topic and content through the
+/// redactor (values this Core holds and every credential shape). Ordinary
+/// text is untouched and keeps its id; a redacted proposal is a different
+/// item, content-addressed over what is stored. A proposal that is nothing
+/// but a secret is refused with [`MEMORY_SECRET`]; the value is never echoed.
+pub fn screen(
+    item: MemoryItem,
+    redactor: &modbit_secrets::Redactor,
+) -> Result<MemoryItem, (String, String)> {
+    let topic = redactor.error(&item.topic);
+    let content = redactor.error(&item.content);
+    if !topic.changed() && !content.changed() {
+        return Ok(item);
+    }
+    let left = content.text.replace(modbit_secrets::REDACTED, "");
+    if !left.chars().any(char::is_alphanumeric) {
+        return Err((
+            MEMORY_SECRET.to_owned(),
+            "the proposal is a credential and nothing else; memory holds no secret value (use a credential handle the broker resolves)".to_owned(),
+        ));
+    }
+    let mut out = MemoryItem::propose(
+        item.scope.clone(),
+        item.record_type,
+        topic.text,
+        content.text,
+        item.source,
+        item.author.clone(),
+        item.confidence,
+        item.created_at_ms,
+    );
+    out.expires_at_ms = item.expires_at_ms;
+    out.sensitivity = item.sensitivity;
+    out.last_validation_revision = item.last_validation_revision;
+    Ok(out)
+}
+
+/// How often and when an item was put into a prompt (PX-157): one count per
+/// turn that injected it, read from its `MemoryUsed` events, so a restart
+/// and a replay give the same numbers.
+pub fn usage(store: &EventStore, memory_id: &str) -> (u64, i64) {
+    let events = store
+        .read_aggregate_of_types(&memory_aggregate_id(memory_id), &["MemoryUsed"], 0)
+        .unwrap_or_default();
+    let mut turns = std::collections::HashSet::new();
+    let mut last = 0;
+    for e in &events {
+        let p = store.payload(&e.envelope).unwrap_or_default();
+        let key = p["turn_id"].as_str().unwrap_or_default().to_owned();
+        if turns.insert(key) {
+            last = last.max(e.envelope.occurred_at.0);
+        }
+    }
+    (turns.len() as u64, last)
+}
+
+/// The `MemoryUsed` events of one prompt: one per injected item, on the
+/// item's own aggregate, naming the turn and the pack that carried it.
+pub fn used_events(
+    injected: &[String],
+    turn_id: &str,
+    context_pack_id: &str,
+    actor: &Actor,
+) -> Vec<(AggregateType, [u8; 16], Vec<NewEvent>)> {
+    injected
+        .iter()
+        .map(|id| {
+            (
+                AggregateType::Memory,
+                memory_aggregate_id(id),
+                vec![memory_event(
+                    "MemoryUsed",
+                    id,
+                    None,
+                    json!({"turn_id": turn_id, "context_pack_id": context_pack_id}),
+                    actor,
+                )],
+            )
+        })
+        .collect()
 }
 
 /// The git HEAD of `root`, if it is a repository with a commit.
@@ -453,6 +541,14 @@ pub async fn list_scoped(
         }
         views.push(view(&item));
     }
+    {
+        let st = store.lock().await;
+        for v in &mut views {
+            let (uses, last) = usage(&st, v["id"].as_str().unwrap_or_default());
+            v["uses"] = json!(uses);
+            v["last_used_at_ms"] = json!(last);
+        }
+    }
     let now = Timestamp::now().0;
     Ok((views, keys, mem.conflicts(now)))
 }
@@ -523,20 +619,22 @@ pub struct Proposed {
 pub async fn propose(
     store: &Arc<Mutex<EventStore>>,
     ctx: &MemoryCtx,
-    mut item: MemoryItem,
+    item: MemoryItem,
     command: Option<CommandRecord>,
-) -> Result<Proposed, String> {
+) -> Result<Proposed, (String, String)> {
+    let store_err = |e: String| ("MEMORY_STORE".to_owned(), e);
     if item.topic.trim().is_empty() || item.content.trim().is_empty() {
-        return Err("topic and content required".to_owned());
+        return Err(store_err("topic and content required".to_owned()));
     }
     if item.topic.chars().count() > MAX_TOPIC_CHARS || item.content.len() > MAX_CONTENT_BYTES {
-        return Err(format!(
+        return Err(store_err(format!(
             "a memory item's topic is at most {MAX_TOPIC_CHARS} characters and its content at most {MAX_CONTENT_BYTES} bytes"
-        ));
+        )));
     }
+    let mut item = screen(item, &ctx.redactor)?;
     item.status = Status::Proposed;
     let mut st = store.lock().await;
-    if let Some(events) = replayed(&st, command.as_ref())? {
+    if let Some(events) = replayed(&st, command.as_ref()).map_err(store_err)? {
         return Ok(Proposed {
             id: item.id.clone(),
             status: Status::Proposed,
@@ -546,7 +644,7 @@ pub async fn propose(
             replayed: true,
         });
     }
-    if let Some(existing) = load(&st, &item.id)? {
+    if let Some(existing) = load(&st, &item.id).map_err(store_err)? {
         return Ok(Proposed {
             id: existing.id,
             status: existing.status,
@@ -564,7 +662,8 @@ pub async fn propose(
         json!({"scope": item.scope.key(), "source": item.source}),
         &ctx.actor,
     );
-    let (events, replayed) = commit(&mut st, command, vec![request(ctx, &item.id, vec![ev])])?;
+    let (events, replayed) =
+        commit(&mut st, command, vec![request(ctx, &item.id, vec![ev])]).map_err(store_err)?;
     Ok(Proposed {
         id: item.id.clone(),
         status: Status::Proposed,
@@ -770,6 +869,110 @@ pub async fn forget(
     Ok(Forgotten {
         changed: true,
         status: if supersede { "superseded" } else { "deleted" }.to_owned(),
+        replayed,
+    })
+}
+
+/// What [`share`] did.
+#[derive(Debug)]
+pub enum Shared {
+    /// The redacted copy is on record in the wider scope (as a proposal; a
+    /// shared item becomes curated only through [`promote`], like any other).
+    Done {
+        /// The new item's id.
+        id: String,
+        /// The scope key it lives in.
+        scope: String,
+        /// The same redacted content was already there; nothing was appended.
+        existed: bool,
+        /// A retry that replayed.
+        replayed: bool,
+    },
+    /// No such item.
+    Unknown,
+    /// Refused, with a code and a reason.
+    Refused {
+        /// Code.
+        code: String,
+        /// Detail.
+        detail: String,
+    },
+}
+
+/// Share a private item into a broader scope (PX-188). An item is private to
+/// its author: only that person may share it, never an agent, and only into a
+/// scope wider than the item's own. What lands in the wider scope is the
+/// redacted copy ([`modbit_memory::redact_personal`], then the secret
+/// redactor), a proposal that names its source in the event so the link is
+/// kept; the private original is untouched.
+pub async fn share(
+    store: &Arc<Mutex<EventStore>>,
+    ctx: &MemoryCtx,
+    id: &str,
+    target: Scope,
+    command: Option<CommandRecord>,
+) -> Result<Shared, String> {
+    let refused = |code: &str, detail: &str| {
+        Ok(Shared::Refused {
+            code: code.to_owned(),
+            detail: detail.to_owned(),
+        })
+    };
+    let Actor::User(user) = &ctx.actor else {
+        return refused("SHARE_NEEDS_PERSON", "only a person shares private memory");
+    };
+    let author = format!("user:{user}");
+    let mut st = store.lock().await;
+    if let Some(events) = replayed(&st, command.as_ref())? {
+        let new_id = events
+            .first()
+            .and_then(|e| st.payload(&e.envelope).ok())
+            .and_then(|p| p["memory_id"].as_str().map(str::to_owned))
+            .unwrap_or_default();
+        return Ok(Shared::Done {
+            id: new_id,
+            scope: target.key(),
+            existed: false,
+            replayed: true,
+        });
+    }
+    let Some(item) = load(&st, id)? else {
+        return Ok(Shared::Unknown);
+    };
+    if item.author != author {
+        return refused("SHARE_NOT_OWNER", "the item is private to its author");
+    }
+    if !matches!(item.status, Status::Proposed | Status::Curated) {
+        return refused("SHARE_NOT_SHAREABLE", "only a live item can be shared");
+    }
+    let Some(shared) = item.shared_as(target, &author, Timestamp::now().0) else {
+        return refused("SHARE_NOT_WIDER", "a share goes to a broader scope");
+    };
+    let shared = match screen(shared, &ctx.redactor) {
+        Ok(s) => s,
+        Err((code, detail)) => return refused(&code, &detail),
+    };
+    if load(&st, &shared.id)?.is_some() {
+        return Ok(Shared::Done {
+            id: shared.id.clone(),
+            scope: shared.scope.key(),
+            existed: true,
+            replayed: false,
+        });
+    }
+    let row = row_of(&shared);
+    let ev = memory_event(
+        "MemoryProposed",
+        &shared.id,
+        Some(&row),
+        json!({"scope": shared.scope.key(), "source": shared.source, "shared_from": id}),
+        &ctx.actor,
+    );
+    let (_events, replayed) = commit(&mut st, command, vec![request(ctx, &shared.id, vec![ev])])?;
+    Ok(Shared::Done {
+        id: shared.id.clone(),
+        scope: shared.scope.key(),
+        existed: false,
         replayed,
     })
 }
@@ -1316,9 +1519,7 @@ impl modbit_tools::pipeline::MemoryPort for CoreMemory {
             }
             // A proposal is a candidate on the log (status `Proposed`); it is
             // never promoted here.
-            let done = propose(&self.store, &self.ctx, item, None)
-                .await
-                .map_err(|e| ("MEMORY_STORE".to_owned(), e))?;
+            let done = propose(&self.store, &self.ctx, item, None).await?;
             Ok(json!({
                 "id": done.id,
                 "status": label(done.status),
@@ -1469,5 +1670,100 @@ mod tests {
             resolve_prefix(&both, "abcdef0123").unwrap().as_deref(),
             Some("abcdef0123")
         );
+    }
+
+    fn ctx_for(actor: Actor, session: SessionId, tenant: TenantId) -> MemoryCtx {
+        MemoryCtx {
+            tenant,
+            session,
+            task: None,
+            actor,
+            redactor: modbit_secrets::Redactor::new(Vec::<String>::new()),
+        }
+    }
+
+    #[tokio::test]
+    async fn sharing_stores_the_redacted_form_privacy_holds_and_a_delete_leaves_nothing() {
+        let dir = tempfile::tempdir().unwrap();
+        let (tenant, session) = (TenantId::new(), SessionId::new());
+        let jane = modbit_domain::UserId::new();
+        let sam = modbit_domain::UserId::new();
+        let store = Arc::new(Mutex::new(EventStore::open(dir.path()).unwrap()));
+        let jane_ctx = ctx_for(Actor::User(jane), session, tenant);
+        let private = MemoryItem::propose(
+            Scope::User {
+                id: jane.to_string(),
+            },
+            RecordType::UserPreference,
+            "release contact",
+            "Ping jane@example.com or +1 415 555 0132 for releases; checkout is /Users/jane/app",
+            Source::UserStated,
+            format!("user:{jane}"),
+            0.9,
+            1,
+        );
+        let pid = private.id.clone();
+        propose(&store, &jane_ctx, private, None).await.unwrap();
+
+        // Only the author shares; an agent and another person are refused.
+        let space = Scope::Space { id: "team".into() };
+        for who in [Actor::User(sam), Actor::Agent("a1".into())] {
+            let c = ctx_for(who, session, tenant);
+            let r = share(&store, &c, &pid, space.clone(), None).await.unwrap();
+            assert!(matches!(r, Shared::Refused { .. }), "{r:?}");
+        }
+        // A share only widens.
+        let r = share(&store, &jane_ctx, &pid, Scope::Run { id: "r".into() }, None)
+            .await
+            .unwrap();
+        assert!(matches!(r, Shared::Refused { ref code, .. } if code == "SHARE_NOT_WIDER"));
+
+        let Shared::Done {
+            id: shared_id,
+            existed,
+            ..
+        } = share(&store, &jane_ctx, &pid, space.clone(), None)
+            .await
+            .unwrap()
+        else {
+            panic!("share refused");
+        };
+        assert!(!existed);
+        {
+            let st = store.lock().await;
+            let rows = st.memory_in_scopes(&[space.key()]).unwrap();
+            assert_eq!(rows.len(), 1);
+            let it = item_of(&rows[0]).unwrap();
+            for gone in ["jane", "example.com", "555 0132"] {
+                assert!(!it.content.contains(gone), "{gone} stored: {}", it.content);
+            }
+            assert!(it.content.contains("/Users/[personal]/app"));
+            // Another person's private view never holds Jane's private item.
+            let theirs = st
+                .memory_in_scopes(&[Scope::User {
+                    id: sam.to_string(),
+                }
+                .key()])
+                .unwrap();
+            assert!(theirs.is_empty());
+        }
+        // The same share again is the same item.
+        let Shared::Done { existed, .. } = share(&store, &jane_ctx, &pid, space.clone(), None)
+            .await
+            .unwrap()
+        else {
+            panic!("share refused");
+        };
+        assert!(existed);
+
+        // Delete the private original: gone from the store, the shared copy
+        // (a separate, redacted item) stays until its own delete.
+        let f = forget(&store, &jane_ctx, &pid, false, None).await.unwrap();
+        assert_eq!(f.status, "deleted");
+        drop(store);
+        // A restart keeps all of it.
+        let st = EventStore::open(dir.path()).unwrap();
+        assert!(st.memory_get(&pid).unwrap().is_none());
+        assert!(st.memory_get(&shared_id).unwrap().is_some());
     }
 }

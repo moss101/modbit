@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { applyEvent, applyEvents, childrenOf, columns, emptyModel, fromSnapshot, type Event } from "./model.ts";
+import { applyEvent, applyEvents, childrenOf, columns, emptyModel, fromSnapshot, withCoreFacts, type Event } from "./model.ts";
 
 const ev = (offset: number, eventType: string, payload: unknown = {}): Event => ({ offset: String(offset), sequence: "1", eventType, sessionId: "s", payload, occurredAtMs: offset });
 
@@ -253,4 +253,17 @@ test("FIX-21: an event at or below the watermark is a replay; the model it came 
   assert.equal(ten.cursor, "10");
   // A batch that is wholly replay returns the model it was given.
   assert.equal(applyEvents(after, [{ event: ev(2, "TaskStarted"), taskId: "t" }]), after);
+});
+
+test("PX-196: after a restart the card takes the Core's facts, and a newer live event keeps its own", () => {
+  const m = fromSnapshot({ sessionId: "s", state: "Active", generation: 1, lastOffset: "40", tasks: [{ taskId: "t", goalText: "g", state: "Waiting", generation: 3, createdAtMs: 1 }] });
+  const card = m.tasks.get("t")!;
+  assert.equal(card.phase, "drafting", "the snapshot alone knows no phase");
+  const facts = { phase: "awaitingHuman", agents: { total: 1, running: 0, background: 0, waiting: 1, done: 0, failed: 0 }, attachments: 2, latestEvidence: "final verification PASSED", risk: "", nextAction: "Answer the agent's question" };
+  const merged = withCoreFacts(card, facts, "40");
+  assert.equal(merged.phase, "awaitingHuman");
+  assert.deepEqual([merged.agents.total, merged.attachments, merged.latestEvidence, merged.risk, merged.nextAction], [1, 2, "final verification PASSED", null, "Answer the agent's question"]);
+  assert.equal(withCoreFacts({ ...card, lastOffset: "41", phase: "verifying" }, facts, "40").phase, "verifying", "a live event newer than the page wins");
+  assert.equal(withCoreFacts(card, null, "40"), card, "an older Core sends no facts and the card is left alone");
+  assert.equal(withCoreFacts({ ...card, nextAction: "the Core's diagnostic" }, facts, "40").nextAction, "the Core's diagnostic");
 });

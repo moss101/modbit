@@ -12,6 +12,8 @@
 //! real model: without it the report says it decides nothing. At least 30
 //! tasks are needed for a verdict (the built-in suite has 30).
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use modbit_bench_context_economics::projection_trial::{RunConfig, report, run_matrix, validate};
 use modbit_bench_context_economics::suite::builtin_suite;
 

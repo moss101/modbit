@@ -161,8 +161,13 @@ impl Config {
                 region: std::env::var("MODBIT_CLOUD_S3_REGION")
                     .unwrap_or_else(|_| "us-east-1".into()),
                 access_key_id: std::env::var("MODBIT_CLOUD_S3_ACCESS_KEY_ID").unwrap_or_default(),
-                secret_access_key: std::env::var("MODBIT_CLOUD_S3_SECRET_ACCESS_KEY")
-                    .unwrap_or_default(),
+                secret_access_key: modbit_secrets::broker::env_secret(
+                    modbit_secrets::broker::Kind::Cloud,
+                    "MODBIT_CLOUD_S3_SECRET_ACCESS_KEY",
+                    "cloud.object_store",
+                )
+                .map(|s| s.expose().to_owned())
+                .unwrap_or_default(),
                 allow_http: std::env::var("MODBIT_CLOUD_S3_ALLOW_HTTP").is_ok_and(|v| v == "1"),
             }),
             _ => None,
@@ -192,8 +197,13 @@ impl Config {
                 .filter(|s| !s.is_empty())
                 .map(|provider| ProviderConfig {
                     provider,
-                    api_key: std::env::var("MODBIT_CLOUD_WORKER_PROVIDER_API_KEY")
-                        .unwrap_or_default(),
+                    api_key: modbit_secrets::broker::env_secret(
+                        modbit_secrets::broker::Kind::Provider,
+                        "MODBIT_CLOUD_WORKER_PROVIDER_API_KEY",
+                        "model.request",
+                    )
+                    .map(|s| s.expose().to_owned())
+                    .unwrap_or_default(),
                     base_url: std::env::var("MODBIT_CLOUD_WORKER_PROVIDER_BASE_URL")
                         .unwrap_or_default(),
                 }),
@@ -202,24 +212,44 @@ impl Config {
                 .filter(|s| !s.is_empty())
                 .map(|base_url| SandboxGatewayConfig {
                     base_url,
-                    worker_token: std::env::var("MODBIT_SANDBOX_WORKER_TOKEN").unwrap_or_default(),
+                    worker_token: modbit_secrets::broker::env_secret(
+                        modbit_secrets::broker::Kind::Cloud,
+                        "MODBIT_SANDBOX_WORKER_TOKEN",
+                        "sandbox.gateway",
+                    )
+                    .map(|s| s.expose().to_owned())
+                    .unwrap_or_default(),
                 }),
-            forge: std::env::var("MODBIT_CLOUD_WORKER_FORGE_TOKEN")
-                .ok()
-                .filter(|s| !s.is_empty())
-                .map(|token| ForgeConfig {
-                    api_base_url: std::env::var("MODBIT_CLOUD_WORKER_FORGE_API_BASE_URL")
-                        .unwrap_or_else(|_| "https://api.github.com".into()),
-                    token,
-                }),
+            forge: modbit_secrets::broker::env_secret(
+                modbit_secrets::broker::Kind::Forge,
+                "MODBIT_CLOUD_WORKER_FORGE_TOKEN",
+                "forge.api",
+            )
+            .map(|s| s.expose().to_owned())
+            .map(|token| ForgeConfig {
+                api_base_url: std::env::var("MODBIT_CLOUD_WORKER_FORGE_API_BASE_URL")
+                    .unwrap_or_else(|_| "https://api.github.com".into()),
+                token,
+            }),
             api: std::env::var("MODBIT_CLOUD_API_URL")
                 .ok()
                 .filter(|s| !s.is_empty())
                 .map(|base_url| ApiLinkConfig {
                     base_url,
-                    worker_token: std::env::var("MODBIT_CLOUD_WORKER_API_TOKEN")
-                        .or_else(|_| std::env::var("MODBIT_SANDBOX_WORKER_TOKEN"))
-                        .unwrap_or_default(),
+                    worker_token: modbit_secrets::broker::env_secret(
+                        modbit_secrets::broker::Kind::Cloud,
+                        "MODBIT_CLOUD_WORKER_API_TOKEN",
+                        "cloud.api_link",
+                    )
+                    .or_else(|| {
+                        modbit_secrets::broker::env_secret(
+                            modbit_secrets::broker::Kind::Cloud,
+                            "MODBIT_SANDBOX_WORKER_TOKEN",
+                            "cloud.api_link",
+                        )
+                    })
+                    .map(|s| s.expose().to_owned())
+                    .unwrap_or_default(),
                 }),
             capabilities: std::env::var("MODBIT_CLOUD_WORKER_CAPABILITIES")
                 .ok()

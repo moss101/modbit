@@ -57,6 +57,8 @@ GOAL_DOC = "77_RELEASE_ZERO_EXECUTION_GOAL.md"
 GOV6_CHANGE = "DR-GOV-2026-09-24-006"
 # DOC-GOV-007 (docs/97): the Unblocks cell of doc 77 §5 item 1 corrected (PX-020/M3 already unblocked).
 GOV7_CHANGE = "DR-GOV-2026-09-25-007"
+# DOC-GOV-008 (docs/97): the PX-189 production-wiring line binds the committed trajectory metrics module to its producer.
+GOV8_CHANGE = "DR-GOV-2026-10-30-008"
 PX_STAGES = [("DOC-PX-001", "DOC-GOV-004", "Product extension stage A: authority, PX ledger tooling, phased releases, governance tiering"),
              ("DOC-PX-002", "DOC-PX-001", "Product extension stage B: client surfaces and source-control integration"),
              ("DOC-PX-003", "DOC-PX-002", "Product extension stage C: agent competence contracts and benchmarks"),
@@ -87,6 +89,21 @@ PX_PARITY = [
     # A DEFERRED row: no task, so no PX task is gated by the dossier task; the ledger doc is the specification and the record holds the activation text.
     ("DR-PX-2026-10-19-014", "DOC-PX-014", 140, 140, "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md", "Per-task harness refinement and lesson library, PX-140 (deferred)",
      "Proposed: REQ-PX-140, DEFERRED and POST_ZERO; per-task Propose-Probe-Compose harness refinement as an extension of Skill Evolution, default off"),
+    # A presentation change over the existing owner `desktop`; the record is the specification (its section 5), doc 65 carries the scoped supersession note.
+    ("DR-PX-2026-10-24-016", "DOC-PX-015", 141, 143, "65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md", "ZCode design language for the desktop renderer, PX-141..143",
+     "Proposed: PX-141..143, the ZCode design language (Apache-2.0) for the desktop renderer with a measured fidelity gate, declared AFW-A12 exceptions and a scoped supersession of AFW-A03, A04, A05, A07 and A11"),
+    # Behaviour over existing owners (effects-security, core-runtime); the record is the specification (its section 5), doc 65 carries the scoped supersession note.
+    ("DR-PX-2026-10-25-017", "DOC-PX-016", 144, 146, "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md", "Autonomous coding engine inside the Capability Kernel's envelope, PX-144..146",
+     "Proposed: PX-144..146, Supervised default and the AUTONOMOUS run mode, Core-run verification and repair conclusion over a derived Node/TypeScript and Go plan, budget windows and crash resumption, with a scoped supersession of AFW-F06, F07 and F08"),
+    # Rows over existing owners only: 27 ADOPT rows and 18 DEFERRED rows whose activation text is the record's Appendix B; no supersession.
+    ("DR-PX-2026-10-26-018", "DOC-PX-017", 147, 191, "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md", "Upgrade program from Codex, MAI-UI and Qwen-Planner-Agent, PX-147..191",
+     "Proposed: PX-147..191, the upgrade program: 27 adopted rows (hardening, robustness, hygiene, GUI agent, planner harness) and 18 deferred rows with activation text, over existing owners only, with seven proposed tasks folded into rows the ledger already owns"),
+    # A presentation change over the existing owner `desktop` that supersedes DR-PX-2026-10-24-016 in a named scope; the record is the specification (its section 5), doc 65 carries the note.
+    ("DR-PX-2026-11-03-019", "DOC-PX-018", 192, 194, "65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md", "Agent workspace language for the desktop renderer, PX-192..194",
+     "Proposed: PX-192..194, the agent workspace language: the reference product's layout, geometry and density as doc 65 records them in Modbit's own neutral tokens, superseding the ZCode design language in a named scope, with AFW-A12, A13, A14 and the clean-room posture unchanged"),
+    # The screens rebuilt to the approved mockup: the Fleet board removed, over the existing owner `desktop`.
+    ("DR-PX-2026-11-04-020", "DOC-PX-019", 195, 197, "65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md", "Agent workspace screens, PX-195..197",
+     "Proposed: PX-195..197, the desktop's screens rebuilt to the mockup the owner approved, with the Fleet board removed and every capability it offered given a home, AFW-A12, A13, A14 and the clean-room posture unchanged"),
 ]
 
 
@@ -826,6 +843,17 @@ def build(previous=None):
         link(_dr[1], GOV_LOG_DOC, "specified_by")
         link(_dr[1], _dr[4], "specified_by")
         link(_dr[1], _dr[0], "authorized_by")
+    add({"id": GOV8_CHANGE, "type": "change_record", "title": "Approved binding of the trajectory metrics module to the PX-189 producer's production wiring",
+         "status": "APPROVED", "source": "docs/" + GOV_LOG_DOC})
+    link(GOV8_CHANGE, GOV_LOG_DOC, "specified_by")
+    add({"id": "DOC-GOV-008", "type": "dossier_task", "title": "Bind crates/core-runtime/src/trajectory.rs to the PX-189 production wiring",
+         "subsystem": "governance", "source": "docs/" + GOV_LOG_DOC,
+         "acceptance": "The PX-189 task card names crates/core-runtime/src/trajectory.rs in its production wiring and says the producer is its caller; no requirement row, disposition, owner, task, qualification, gate, release rule or product status changes; full integrity gate passes; no product proof"})
+    link("DOC-GOV-008", "DOC-GOV-007", "after")
+    link("DOC-GOV-008", "governance", "owned_by")
+    link("DOC-GOV-008", GOV_LOG_DOC, "specified_by")
+    link("DOC-GOV-008", "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md", "specified_by")
+    link("DOC-GOV-008", GOV8_CHANGE, "authorized_by")
 
     # releases: derived projections over work items (docs/75) ----------------
     ms_of, owner_of = {}, {}

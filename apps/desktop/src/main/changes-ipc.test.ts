@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { create } from "@bufbuild/protobuf";
-import { ChangedPathStateSchema, ChangeEffectViewSchema, ChangesStateSchema, CommitAndPushAckSchema } from "@modbit/surface-protocol";
-import { commitPushInfo, registerChangesHandlers, stateInfo, validChangePath, validCommitPushInput, validRevertInput, validStagePaths } from "./changes-ipc.ts";
+import { ChangedPathStateSchema, ChangeEffectViewSchema, ChangesStateSchema, CommitAndPushAckSchema, DecideHunkAckSchema } from "@modbit/surface-protocol";
+import { commitPushInfo, decideInfo, registerChangesHandlers, stateInfo, validChangePath, validCommitPushInput, validDecideHunkInput, validRevertInput, validStagePaths } from "./changes-ipc.ts";
 import type { Registrar } from "./conversation-ipc.ts";
 
 const SID = "0123456789abcdef0123456789abcdef";
@@ -41,8 +41,8 @@ function harness() {
   return { call, channels: () => [...handlers.keys()] };
 }
 
-test("PX-048: the Changes app registers four typed channels and none takes a command string or an absolute path", () => {
-  assert.deepEqual(harness().channels().sort(), ["changes:commitPush", "changes:revert", "changes:stage", "changes:state"]);
+test("PX-048/PX-104: the Changes app registers five typed channels and none takes a command string or an absolute path", () => {
+  assert.deepEqual(harness().channels().sort(), ["changes:commitPush", "changes:decideHunk", "changes:revert", "changes:stage", "changes:state"]);
 });
 
 test("PX-048: a malformed argument is refused in main before the Core client is touched", async () => {
@@ -107,4 +107,31 @@ test("PX-048: the Core's answers become plain shapes: counts as decimal strings,
   assert.equal(s.remoteUrl.includes("<redacted>"), true);
   const a = commitPushInfo(create(CommitAndPushAckSchema, { status: "APPROVAL_PENDING", approvalId: "x", intentHash: REV, paths: ["a.txt"], pushOnly: true, effectReceiptIds: ["e1"] }));
   assert.deepEqual([a.status, a.pushOnly, a.paths, a.effectReceiptIds], ["APPROVAL_PENDING", true, ["a.txt"], ["e1"]]);
+});
+
+test("PX-104: a per-hunk decision is validated in main and decided by the Core", async () => {
+  const h = harness();
+  const DIGEST = "b".repeat(64);
+  const refused = async (...args: unknown[]) => assert.match(await h.call("changes:decideHunk", ...args), /BAD_ARGUMENT/, JSON.stringify(args));
+  const ok = { path: "a.txt", hunkIndex: 1, decision: "REJECT", expectedFileRevision: REV, expectedHunkDigest: DIGEST, reason: "not asked for" };
+  await refused("nope", TID, ok);
+  await refused(SID, "nope", ok);
+  for (const decision of ["", "APPROVE", "reject", 7, undefined]) await refused(SID, TID, { ...ok, decision });
+  // A decision names the revision it was made on: none, or a made-up one, is refused before the Core is asked.
+  await refused(SID, TID, { ...ok, expectedFileRevision: "" });
+  await refused(SID, TID, { ...ok, expectedFileRevision: "latest" });
+  await refused(SID, TID, { ...ok, expectedHunkDigest: "nope" });
+  for (const hunkIndex of [-1, 1.5, "1", 200_000]) await refused(SID, TID, { ...ok, hunkIndex });
+  for (const path of ["", "/etc/passwd", "..", "a/../b", "a\u0000b"]) await refused(SID, TID, { ...ok, path });
+  await refused(SID, TID, { ...ok, reason: "x".repeat(2001) });
+  await refused(SID, TID, { ...ok, reason: "a\u0000b" });
+  await refused(SID, TID, { ...ok, commandId: "short" });
+  assert.match(await h.call("changes:decideHunk", SID, TID, ok), /CLIENT_TOUCHED/, "a valid decision reaches the client");
+  assert.deepEqual(validDecideHunkInput({ ...ok, decision: "ACCEPT", reason: undefined }), { path: "a.txt", hunkIndex: 1, decision: "ACCEPT", expectedFileRevision: REV, expectedHunkDigest: DIGEST, reason: "", commandId: undefined });
+  assert.equal(validDecideHunkInput({ ...ok, expectedHunkDigest: undefined }).expectedHunkDigest, "");
+});
+
+test("PX-104: the Core's decision ack becomes a plain shape and nothing is added by main", () => {
+  const a = decideInfo(create(DecideHunkAckSchema, { result: "REJECTED", path: "a.txt", hunkIndex: 2, hunkDigest: "d", decisionId: "x", attributedCallId: "c1", attributedTool: "shell.exec", runLive: true, agentNotice: "told", fileRevision: REV, beforeHash: "b", checkpointId: "k", workspaceRevision: 9n, offset: 77n, replayed: false }));
+  assert.deepEqual(a, { result: "REJECTED", path: "a.txt", hunkIndex: 2, hunkDigest: "d", decisionId: "x", attributedCallId: "c1", attributedTool: "shell.exec", runLive: true, agentNotice: "told", fileRevision: REV, beforeHash: "b", checkpointId: "k", workspaceRevision: "9", offset: "77", replayed: false });
 });

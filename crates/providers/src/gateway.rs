@@ -4,6 +4,8 @@
 //! timeout, cancellation, and rolling health per endpoint. Raw credentials
 //! are resolved per request and never appear in events, errors or logs.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -338,6 +340,10 @@ pub struct ProviderGateway {
     /// to the very next request.
     broker: Arc<modbit_secrets::CredentialBroker>,
 }
+
+/// The failure code of a request the provider refused for exceeding the
+/// model's context window (PX-155).
+pub const CONTEXT_OVERFLOW: &str = "CONTEXT_OVERFLOW";
 
 /// The broker's identity of an endpoint's credential.
 #[must_use]
@@ -1192,6 +1198,20 @@ impl ProviderGateway {
                     .take(300)
                     .collect::<String>()
             );
+            // PX-155: a request over the model's context window is its own
+            // typed failure, so the Core can compact and retry once.
+            let overflow = match ep.kind {
+                ProviderKind::OpenAi => crate::openai::is_context_overflow(status.as_u16(), &text),
+                ProviderKind::Anthropic => {
+                    crate::anthropic::is_context_overflow(status.as_u16(), &text)
+                }
+            };
+            if overflow {
+                return Attempt::Failed {
+                    code: CONTEXT_OVERFLOW.into(),
+                    message,
+                };
+            }
             return match status.as_u16() {
                 429 => Attempt::Retryable {
                     code: "RATE_LIMITED".into(),

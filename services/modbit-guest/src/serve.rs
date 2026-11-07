@@ -1,5 +1,7 @@
 //! The guest RPC server: hello, admission, authenticated calls, policy.
 
+// PX-168 lint policy: this file spawns processes and baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::disallowed_methods, clippy::expect_used)]
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::Arc;

@@ -15,6 +15,8 @@ import { defaultPrefix, humanTitle, isIrreversible, refusalWords, surfacedIndex 
 import { useDockApprovals } from "./use-dock-approvals.ts";
 
 const TRAY_ID = "approvals";
+/** How long an "Always" rule for a whole repository lasts (DR-PX-2026-10-25-017). */
+const ALWAYS_REPO_TTL_MS = 30 * 86_400_000;
 
 export interface ApprovalDockProps {
   sessionId: string | null;
@@ -88,8 +90,10 @@ export function ApprovalDock({ sessionId, taskId, connected, onChangeMode, title
     setBusy(true);
     setNote(null);
     try {
-      const r = await window.modbit.allowAlways(sessionId, a.approvalId, a.intentHash, { pattern: prefix, scope, expiresAtMs: 0, coversAlwaysAsk: false });
-      setNote({ kind: "ok", text: `Allowed “${prefix.join(" ")}” in ${scope === "REPO" ? "this repository" : "this task"} (rule ${r.rule.ruleId.slice(0, 8)}). It applies when the run mode is Allowlist or higher. This effect was approved once.` });
+      // A repository-wide rule outlives the task, so it expires; a task rule ends with its task.
+      const expiresAtMs = scope === "REPO" ? Date.now() + ALWAYS_REPO_TTL_MS : 0;
+      const r = await window.modbit.allowAlways(sessionId, a.approvalId, a.intentHash, { pattern: prefix, scope, expiresAtMs, coversAlwaysAsk: false });
+      setNote({ kind: "ok", text: `Allowed “${prefix.join(" ")}” in ${scope === "REPO" ? "this repository for 30 days" : "this task"} (rule ${r.rule.ruleId.slice(0, 8)}). It runs without asking from now on; revoke it in the run-mode settings. This effect was approved once.` });
     } catch (e) {
       setNote({ kind: "refused", text: refusalWords((e as Error).message) });
     } finally {

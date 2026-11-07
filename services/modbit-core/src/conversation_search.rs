@@ -27,6 +27,8 @@
 //!   ids. Nothing in them is read as an instruction, and a search appends
 //!   nothing to the log.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Mutex;
 

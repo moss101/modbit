@@ -11,6 +11,8 @@ import {
   ChangesStateSchema,
   CommitAndPushAckSchema,
   CommitAndPushSchema,
+  DecideHunkAckSchema,
+  DecideHunkSchema,
   GetChangesStateSchema,
   RevertChangesAckSchema,
   RevertChangesSchema,
@@ -18,6 +20,7 @@ import {
   StageChangesSchema,
   type ChangesState,
   type CommitAndPushAck,
+  type DecideHunkAck,
   type RevertChangesAck,
   type StageChangesAck,
 } from "@modbit/surface-protocol";
@@ -61,4 +64,26 @@ export interface CommitAndPushInput {
 export async function commitAndPush(c: CoreClient, sessionId: string, taskId: string, a: CommitAndPushInput): Promise<CommitAndPushAck> {
   const payload = toBinary(CommitAndPushSchema, create(CommitAndPushSchema, { taskId: id(taskId), message: a.message, remote: a.remote ?? "", expectedHead: a.expectedHead ?? "", expectedStagedDigest: a.expectedStagedDigest ?? "" }));
   return fromBinary(CommitAndPushAckSchema, (await c.command("CommitAndPush", payload, undefined, lease(c, sessionId), sessionId)).result);
+}
+
+export interface HunkDecision {
+  path: string;
+  hunkIndex: number;
+  /** ACCEPT | REJECT | AUTO_ACCEPT (refused for a hunk the Core cannot attribute). */
+  decision: "ACCEPT" | "REJECT" | "AUTO_ACCEPT";
+  /** The file revision the person was looking at (required): a file that moved is refused STALE_REVISION. */
+  expectedFileRevision: string;
+  /** The digest of the hunk shown: a hunk that is no longer that one is refused STALE_HUNK. */
+  expectedHunkDigest?: string;
+  /** REJECT: told to the agent at its next round boundary. */
+  reason?: string;
+}
+
+/** PX-103's per-hunk decision, allowed in every task state including a live run. The Core decides eligibility, staleness and attribution; this returns its typed answer or throws its refusal. */
+export async function decideHunk(c: CoreClient, sessionId: string, taskId: string, d: HunkDecision, commandId?: Uint8Array): Promise<DecideHunkAck> {
+  const payload = toBinary(
+    DecideHunkSchema,
+    create(DecideHunkSchema, { taskId: id(taskId), path: d.path, hunkIndex: d.hunkIndex, decision: d.decision, expectedFileRevision: d.expectedFileRevision, expectedHunkDigest: d.expectedHunkDigest ?? "", reason: d.reason ?? "" }),
+  );
+  return fromBinary(DecideHunkAckSchema, (await c.command("DecideHunk", payload, commandId, lease(c, sessionId), sessionId)).result);
 }

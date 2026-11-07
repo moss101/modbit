@@ -6,7 +6,9 @@
  * the socket, the secret, Node, or the filesystem.
  */
 import { app, BrowserWindow, dialog, ipcMain, nativeImage, Notification, safeStorage, session, shell, type IpcMainInvokeEvent } from "electron";
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { userInfo } from "node:os";
 import { join, resolve } from "node:path";
 import { CoreSupervisor, freshId, type CoreClient, type CoreStatus } from "@modbit/ide-adapter-core";
 import { serializeEvent, type WireEvent } from "./events.js";
@@ -16,12 +18,13 @@ import { platformState } from "./platform.js";
 import { observeStreamEvent, registerConversationHandlers } from "./conversation-ipc.js";
 import { registerComposerHandlers, requireSkillNames } from "./composer-ipc.js";
 import { registerChangesHandlers } from "./changes-ipc.js";
+import { registerCustomizeHandlers } from "./customize-ipc.js";
 import { registerProjectHandlers } from "./project-ipc.js";
 import { registerControlHandlers } from "./control-ipc.js";
 import { openedSettings, registerComputerHandlers } from "./computer-ipc.js";
 import { registerAutomationHandlers } from "./automation-ipc.js";
 import { optionalWindow, requireBool, requireCursor, requireDimension, requireHandle, requireKeystrokes, requireWorkspacePath } from "./apps-args.js";
-import { noWork, quitPrompt, runShutdown, WINDOW_DEFAULT, WINDOW_MIN, type ActiveWork, type ShutdownStep } from "./lifecycle.js";
+import { noWork, quitChoice, quitPrompt, runShutdown, SESSION_END_DEADLINE_MS, sessionEndFailure, WINDOW_DEFAULT, WINDOW_MIN, type ActiveWork, type SessionEndRun, type ShutdownStep } from "./lifecycle.js";
 import { TerminalHost } from "./terminal-host.js";
 
 const dataDir = process.env.MODBIT_DATA_DIR ?? join(app.getPath("userData"), "modbit");
@@ -35,6 +38,21 @@ mkdirSync(dataDir, { recursive: true });
 /** Client-local convenience only: which session this window last used. The
  *  session itself is Core truth; losing this file loses nothing durable. */
 const stateFile = join(dataDir, "desktop-state.json");
+let cachedUserName: string | null = null;
+/** The name the agent list shows for the person: the account's full name where the OS gives one, else its login name. Local display only. */
+function localUserName(): string {
+  if (cachedUserName !== null) return cachedUserName;
+  let name = "";
+  if (process.platform === "darwin") {
+    try {
+      name = execFileSync("/usr/bin/id", ["-F"], { encoding: "utf8", timeout: 1000 }).trim();
+    } catch {
+      // The login name below stands in.
+    }
+  }
+  cachedUserName = name || userInfo().username;
+  return cachedUserName;
+}
 function loadLocalState(): { sessionId?: string } {
   try {
     return existsSync(stateFile) ? (JSON.parse(readFileSync(stateFile, "utf8")) as { sessionId?: string }) : {};
@@ -48,6 +66,8 @@ function saveLocalState(s: { sessionId?: string }): void {
 
 let win: BrowserWindow | null = null;
 let subscription: { sessionId: string; cursor: bigint } | null = null;
+/** What the Core reported it recovered at this start; a window that finishes loading after the report was sent is told again (REQ-PX-049). */
+let lastRecovery: unknown = null;
 
 /**
  * REQ-PX-022, docs/39 step 2: the provider credential lives in the OS
@@ -136,16 +156,16 @@ const supervisor = new CoreSupervisor(
       // owner), re-attach the live subscription from the last cursor we delivered,
       // and tell the renderer exactly what the Core recovered (docs/39 PX-023).
       const local = loadLocalState();
-      void handProviderToCore(c);
+      const providerHanded = handProviderToCore(c);
       void handCredentialsToCore(c);
-      if (local.sessionId) void c.joinSessionLease(local.sessionId, `desktop ${app.getVersion()}`).catch(() => {});
+      const leaseJoined = local.sessionId ? c.joinSessionLease(local.sessionId, `desktop ${app.getVersion()}`).then(() => undefined, () => undefined) : Promise.resolve();
       if (subscription) c.subscribe(subscription.sessionId, subscription.cursor);
       // M7.1: the views this process still holds attach again to their sessions.
       void browserHost.reattachAll();
       void c
         .getRecoveryReport()
-        .then((r) =>
-          send("core:recovery", {
+        .then(async (r) => {
+          lastRecovery = {
             bootGeneration: r.bootGeneration.toString(),
             lastOffset: r.lastOffset.toString(),
             eventsVerified: r.eventsVerified.toString(),
@@ -155,8 +175,19 @@ const supervisor = new CoreSupervisor(
             tasks: r.tasks.toString(),
             notes: r.notes,
             recoveryMs: r.recoveryMs.toString(),
-          }),
-        )
+          };
+          send("core:recovery", lastRecovery);
+          // REQ-PX-049: tasks the person chose, when quitting, to have resumed on reopen, and (DR-PX-2026-10-25-017) the
+          // AUTONOMOUS tasks a crash cut short. The Core names them (recovery has suspended them); resuming is the ordinary
+          // StartTask, after the provider and the session lease are in place, and it judges every permission afresh.
+          const resume = r.resumeRequestedTasks.map((t) => Buffer.from(t.value).toString("hex"));
+          if (resume.length === 0 || !local.sessionId) return;
+          await providerHanded;
+          await leaseJoined;
+          for (const taskId of resume) {
+            await c.startTask(local.sessionId, taskId).catch((e: Error) => process.stderr.write(`modbit: resuming ${taskId} on reopen failed: ${e.message}\n`));
+          }
+        })
         .catch(() => {});
     },
   },
@@ -253,7 +284,7 @@ function handle(channel: string, fn: (e: IpcMainInvokeEvent, ...args: unknown[])
   });
 }
 handle("core:status", () => supervisor.status);
-handle("core:localState", () => ({ ...loadLocalState(), platform: platformState() }));
+handle("core:localState", () => ({ ...loadLocalState(), platform: platformState(), userName: localUserName() }));
 // Context Inspector (REQ-EV-0035 / 0131 / 0175): what the pack selected and
 // excluded, and what the prompt envelope injected.
 // Workspace context bridge (REQ-EV-0141 / 0160): what the reviewer has
@@ -477,7 +508,7 @@ handle("review:bundle", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
     workspaceRevision: b.workspaceRevision.toString(),
     baseCommit: b.baseCommit,
     workspaceRoot: b.workspaceRoot,
-    files: b.files.map((f) => ({ path: f.path, status: f.status, binary: f.binary, fileRevision: f.fileRevision, oldContentRef: f.oldContentRef, newContentRef: f.newContentRef, hunks: f.hunks.map((h) => ({ index: h.index, header: h.header, lines: h.lines })) })),
+    files: b.files.map((f) => ({ path: f.path, status: f.status, binary: f.binary, fileRevision: f.fileRevision, oldContentRef: f.oldContentRef, newContentRef: f.newContentRef, hunks: f.hunks.map((h) => ({ index: h.index, header: h.header, lines: h.lines, toolCallId: h.toolCallId, toolName: h.toolName, turnId: h.turnId, runId: h.runId, attributed: h.attributed, alsoCallIds: h.alsoCallIds, attributionBasis: h.attributionBasis, hunkDigest: h.hunkDigest, decision: h.decision, autoAcceptEligible: h.autoAcceptEligible })) })),
     planJson: b.planJson,
     selfReviewJson: b.selfReviewJson,
     verificationRuns: b.verificationRuns.map((v) => ({ id: v.verificationRunId, stage: v.stage, status: v.status, candidateRevision: v.candidateRevision, checks: v.checkIds.map((id, i) => ({ id, status: v.checkStatuses[i] ?? "" })) })),
@@ -488,6 +519,7 @@ handle("review:bundle", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
     evidenceLinks: b.evidenceLinks,
     ciEvidence: b.ciEvidence.map((c) => ({ name: c.name, runId: c.runId.toString(), status: c.status, conclusion: c.conclusion, url: c.url, completedAt: c.completedAt, logRef: c.logRef, logTruncated: c.logTruncated, commit: c.commit, provenance: c.provenance })),
     ciRejected: b.ciRejected.map((c) => ({ name: c.name, headSha: c.headSha, reason: c.reason })),
+    repairAttempts: b.repairAttempts.map((a) => ({ ordinal: a.ordinal, failureSignature: a.failureSignature, hypothesis: a.hypothesis, intendedFix: a.intendedFix, outcome: a.outcome, reverted: a.reverted, escalation: a.escalation })),
     reviewComments: b.reviewComments.map((t) => ({ commentId: t.commentId.toString(), kind: t.kind, author: t.author, url: t.url, path: t.path, line: t.line.toString(), body: t.body, trust: t.trust, disposition: t.disposition, reason: t.reason, inputId: t.inputId, answered: t.answered, reportedBack: t.reportedBack, createdAt: t.createdAt })),
   };
 });
@@ -785,6 +817,14 @@ registerConversationHandlers(conversationRegistrar);
 registerProjectHandlers(conversationRegistrar);
 // REQ-PX-048: the Changes app's revert, stage and Commit and push, each a typed Core command named for its session.
 registerChangesHandlers(conversationRegistrar);
+// REQ-PX-106: the Customize view over the skills, hooks and extensions the Core already holds. The two OS acts it needs are the person's.
+registerCustomizeHandlers(conversationRegistrar, {
+  pickDirectory: async () => {
+    const r = await dialog.showOpenDialog({ title: "Choose another agent's configuration to import", properties: ["openDirectory"] });
+    return r.canceled || !r.filePaths[0] ? null : r.filePaths[0];
+  },
+  reveal: (path) => shell.showItemInFolder(path),
+});
 // REQ-PX-054..056: the composer's mode, preference, queue, interrupt, slash, model and attachment commands.
 registerComposerHandlers({
   handle: (channel, fn) => handle(channel, (_e, ...args) => fn(...args)),
@@ -864,6 +904,7 @@ handle("terminal:input", (_e: IpcMainInvokeEvent, attachId: unknown, hold: unkno
 handle("terminal:resize", (_e: IpcMainInvokeEvent, attachId: unknown, rows: unknown, cols: unknown) => terminalHost.resize(requireHandle(attachId, "attach id"), requireDimension(rows, "rows"), requireDimension(cols, "cols")));
 handle("terminal:write", (_e: IpcMainInvokeEvent, attachId: unknown, data: unknown) => terminalHost.write(requireHandle(attachId, "attach id"), requireKeystrokes(data)));
 handle("terminal:kill", (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, terminalId: unknown) => terminalHost.kill(requireSessionId(sessionId), requireTaskId(taskId), requireHandle(terminalId, "terminal id")));
+handle("terminal:history", (_e: IpcMainInvokeEvent, taskId: unknown, terminalId: unknown, from: unknown, to: unknown) => terminalHost.history(requireTaskId(taskId), requireHandle(terminalId, "terminal id"), requireCursor(from, "from"), requireCursor(to, "to")));
 handle("files:list", async (_e: IpcMainInvokeEvent, taskId: unknown, path: unknown) => {
   const l = await requireClient().listWorkspaceDir(requireTaskId(taskId), requireWorkspacePath(path ?? "", true));
   return {
@@ -916,6 +957,8 @@ function createWindow(bounds?: Electron.Rectangle): void {
     // REQ-PX-049 / AFW-A02: the window never gets smaller than the shell's layout can use.
     minWidth: WINDOW_MIN.width,
     minHeight: WINDOW_MIN.height,
+    // The window controls sit in the agent list's own 40 px head on macOS.
+    ...(process.platform === "darwin" ? { titleBarStyle: "hiddenInset" as const, trafficLightPosition: { x: 14, y: 13 } } : {}),
     show: true,
     webPreferences: {
       preload: join(__dirname, "..", "preload", "preload.cjs"),
@@ -934,6 +977,11 @@ function createWindow(bounds?: Electron.Rectangle): void {
   });
   // REQ-PX-048: a window that loads again (a reload, a crash's replacement) holds none of the old terminal attachments.
   w.webContents.on("did-start-loading", () => void terminalHost.detachAll());
+  // The report is sent once, when the Core connects; a renderer that was not listening yet would never see the counts. Sending it
+  // again once the page has loaded is idempotent (the renderer takes the counts once per boot).
+  w.webContents.on("did-finish-load", () => {
+    for (const afterMs of [0, 600]) setTimeout(() => (lastRecovery !== null && !w.isDestroyed() ? w.webContents.send("core:recovery", lastRecovery) : undefined), afterMs);
+  });
   w.webContents.on("will-navigate", (e) => e.preventDefault());
   w.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   // One path for "this window's renderer is gone", whoever notices first: Chromium's own report, or the liveness watch below.
@@ -1003,6 +1051,8 @@ app.on("window-all-closed", () => {
 // that closes the app mid-run answers the question once, for every run.
 let quitConfirmed = false;
 let quitPrompting = false;
+/** The person chose "Quit and resume on reopen" (a Core input, recorded by EndSession). */
+let quitResume = false;
 let shutdownStarted = false;
 
 async function activeWork(): Promise<ActiveWork> {
@@ -1030,7 +1080,9 @@ async function requestQuit(): Promise<void> {
       const p = quitPrompt(work);
       const options = { type: "warning" as const, message: p.message, detail: p.detail, buttons: [...p.buttons], defaultId: 0, cancelId: 0, noLink: true };
       const r = win && !win.isDestroyed() ? await dialog.showMessageBox(win, options) : await dialog.showMessageBox(options);
-      if (r.response !== 1) return;
+      const choice = quitChoice(work, r.response);
+      if (choice === "stay") return;
+      quitResume = choice === "quit-resume";
     }
     quitConfirmed = true;
     app.quit();
@@ -1053,20 +1105,49 @@ app.on("before-quit", (e) => {
   e.preventDefault();
   // Quitting (window close, Cmd+Q, or a harness closing the app) must stop the
   // Core child and the socket, or the main process lingers.
+  // First the session ends, in the Core, while it is still there: its session-end hooks run to completion (AFW-J11)
+  // and the person's resume choice is recorded. Only then are the views closed and the Core stopped.
+  const hookRuns: SessionEndRun[] = [];
+  const sessionEnd: ShutdownStep = {
+    name: "session-end",
+    run: async () => {
+      const sessionId = loadLocalState().sessionId;
+      if (!sessionId) return;
+      const c = supervisor.current();
+      if (!c) throw new Error("the Core was not reachable, so the session-end hooks did not run");
+      const ended = await c.endSession(sessionId, quitResume).catch((e: Error) => {
+        throw new Error(`the Core did not end the session (${e.message}), so the session-end hooks may not have run`);
+      });
+      hookRuns.push(...ended.hooks.map((h) => ({ hook: h.hook, outcome: h.outcome, detail: h.detail })));
+      const failure = sessionEndFailure(hookRuns);
+      if (failure) throw new Error(failure);
+    },
+  };
   const steps: ShutdownStep[] = [
     { name: "browser-views", run: () => browserHost.closeAll() },
     { name: "core", run: () => supervisor.stop() },
   ];
-  void runShutdown(steps, SHUTDOWN_DEADLINE_MS).then((report) => {
-    if (report.failed.length > 0 || report.timedOut.length > 0) {
-      process.stderr.write(`modbit: shutdown did not finish cleanly: ${JSON.stringify(report)}\n`);
-      try {
-        writeFileSync(join(dataDir, "shutdown-log.json"), JSON.stringify({ atMs: Date.now(), ...report }));
-      } catch {
-        // the log is a courtesy; the quit goes on
+  void runShutdown([sessionEnd], SESSION_END_DEADLINE_MS)
+    .then(async (first) => {
+      const rest = await runShutdown(steps, SHUTDOWN_DEADLINE_MS);
+      return { completed: [...first.completed, ...rest.completed], failed: [...first.failed, ...rest.failed], timedOut: [...first.timedOut, ...rest.timedOut] };
+    })
+    .then(async (report) => {
+      if (report.failed.length > 0 || report.timedOut.length > 0) {
+        process.stderr.write(`modbit: shutdown did not finish cleanly: ${JSON.stringify(report)}\n`);
+        try {
+          writeFileSync(join(dataDir, "shutdown-log.json"), JSON.stringify({ atMs: Date.now(), ...report, hooks: hookRuns }));
+        } catch {
+          // the log is a courtesy; the quit goes on
+        }
+        // The failure is shown, not just logged: the person is told what did not finish before the app goes.
+        // (`MODBIT_QUIT_PROMPT=off` is the automation switch for every question at quit, this one included.)
+        if (process.env.MODBIT_QUIT_PROMPT !== "off") {
+          const why = [...report.failed.map((f) => (f.name === "session-end" ? f.reason : `${f.name}: ${f.reason}`)), ...report.timedOut.map((n) => `${n} was still running when Modbit gave up waiting for it`)];
+          await dialog.showMessageBox({ type: "warning", message: "Modbit did not finish closing cleanly.", detail: `${why.join("\n")}\n\nEverything the Core had accepted is saved. The details are in shutdown-log.json in your Modbit data folder.`, buttons: ["OK"], noLink: true }).catch(() => undefined);
+        }
       }
-    }
-    app.quit();
-  });
+    })
+    .finally(() => app.quit());
 });
 export type { WireEvent };

@@ -1,6 +1,8 @@
 //! Broker: sessions, process/PTY lifecycle, durable bounded output log,
 //! replay, ownership.
 
+// PX-168 lint policy: this file spawns processes and baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::disallowed_methods, clippy::expect_used)]
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -125,6 +127,9 @@ struct Session {
     lease: std::sync::Mutex<Option<InputLease>>,
     /// The broker's replay window per session, for the registry.
     replay_window_bytes: u64,
+    /// The process runs inside the review sandbox (PX-152): a non-zero exit
+    /// whose output carries the platform's refusal is a sandbox denial.
+    confined: bool,
     /// The process the session started (0 until it has one, and for a
     /// session recovered from a previous broker, whose process is not ours):
     /// the root of the tree whose listening sockets `ListServices` reports
@@ -171,6 +176,36 @@ struct ExitMeta {
     /// The cursor of the first byte `output_ref` holds (0 = all of it).
     #[serde(default)]
     retained_from: u64,
+    /// PX-152: the sandbox refused something the process attempted.
+    #[serde(default)]
+    sandbox_denied: Option<DeniedMeta>,
+}
+
+/// The persisted form of [`modbit_protocol::v1::SandboxDenied`].
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct DeniedMeta {
+    exit_code: i32,
+    operation: String,
+    excerpt: String,
+}
+
+impl DeniedMeta {
+    fn of(d: &modbit_protocol::v1::SandboxDenied) -> Self {
+        Self {
+            exit_code: d.exit_code,
+            operation: d.operation.clone(),
+            excerpt: d.excerpt.clone(),
+        }
+    }
+
+    fn wire(&self) -> modbit_protocol::v1::SandboxDenied {
+        modbit_protocol::v1::SandboxDenied {
+            code: review_sandbox::DENIED_CODE.to_owned(),
+            exit_code: self.exit_code,
+            operation: self.operation.clone(),
+            excerpt: self.excerpt.clone(),
+        }
+    }
 }
 
 /// Whether an environment variable is one that carries a credential (M7.7,
@@ -234,6 +269,7 @@ impl Session {
             cancelled: e.cancelled,
             lost: self.lost.load(Ordering::SeqCst),
             retained_from: e.retained_from,
+            sandbox_denied: e.sandbox_denied.as_ref().map(DeniedMeta::of),
         });
         let meta = SessionMeta {
             id: self.id.clone(),
@@ -472,6 +508,7 @@ fn load_sessions(data_dir: &Path, object_dir: &Path, limits: &Limits) -> Vec<Arc
                 timed_out: x.timed_out,
                 cancelled: x.cancelled,
                 retained_from: x.retained_from,
+                sandbox_denied: x.sandbox_denied.as_ref().map(DeniedMeta::wire),
             },
             None => {
                 // The process is gone with the previous broker: seal what the
@@ -495,6 +532,7 @@ fn load_sessions(data_dir: &Path, object_dir: &Path, limits: &Limits) -> Vec<Arc
                     timed_out: false,
                     cancelled: false,
                     retained_from: sealed.map_or(0, |s| s.retained_from),
+                    sandbox_denied: None,
                 }
             }
         };
@@ -517,6 +555,7 @@ fn load_sessions(data_dir: &Path, object_dir: &Path, limits: &Limits) -> Vec<Arc
             started_at_ms: meta.started_at_ms,
             generation: AtomicU64::new(meta.generation),
             lost: AtomicBool::new(lost || meta.exited.as_ref().is_some_and(|x| x.lost)),
+            confined: false,
             pty_master: std::sync::Mutex::new(None),
             pty: AtomicBool::new(meta.pty),
             rows: AtomicU32::new(meta.rows),
@@ -1224,8 +1263,8 @@ async fn serve(broker: Arc<Broker>, mut stream: BoxedStream) -> Result<()> {
                             available: kind.is_some(),
                             kind: kind.unwrap_or_default().to_owned(),
                             detail: match kind {
-                                Some("seatbelt") => "macOS sandbox-exec: no network; writes only under the worktree and the temp dirs".into(),
-                                Some("seccomp-net") => "Linux seccomp filter: no network; writes are the lease's to confine".into(),
+                                Some("seatbelt") => "macOS sandbox-exec: no network; writes only under the worktree (not its .git or .modbit) and the temp dirs; credential stores unreadable".into(),
+                                Some("seccomp-net") => "Linux seccomp filter: no network; writes are the lease's to confine; credential stores are NOT confined on this host (no filesystem mechanism)".into(),
                                 _ => "no review sandbox on this host (macOS sandbox-exec or Linux seccomp required)".into(),
                             },
                         })),
@@ -1608,7 +1647,8 @@ impl Broker {
         // network, no inherited environment, no secret-looking variable,
         // writes confined to its worktree where the host can confine them —
         // or not at all: an unsupported host admits no review process.
-        let req = if req.execution_profile == "review_isolated" {
+        let confined = req.execution_profile == "review_isolated";
+        let req = if confined {
             review_sandbox::wrap(req, &cwd)?
         } else {
             req
@@ -1642,6 +1682,7 @@ impl Broker {
             started_at_ms: now_ms(),
             generation: AtomicU64::new(0),
             lost: AtomicBool::new(false),
+            confined,
             pty_master: std::sync::Mutex::new(None),
             pty: AtomicBool::new(req.pty),
             rows: AtomicU32::new(if req.pty {
@@ -1957,12 +1998,45 @@ impl Broker {
             // its output reaches end-of-file. On Windows the pseudo-console
             // stays open while any end of it — the stdin writer included —
             // is held, and the reader would wait forever (PX-030 found it).
-            *s.stdin.lock().await = Stdin::Closed;
-            drop(s.pty_master.lock().expect("pty master").take());
+            //
+            // Dropping the writer is not silent: portable-pty answers it
+            // with a newline and the terminal's EOF character, and a
+            // terminal can echo that newline back as a `\r\n` that is not the
+            // command's output (seen on Linux under CPU load: a stray blank
+            // line after the last line, in the log and in the sealed object).
+            // So on Unix the writer is held until the reader has the
+            // end-of-file and is dropped only then; a reader that never gets
+            // there keeps the writer with it. Windows must release it first
+            // or its reader never ends.
+            let mut reader_task = reader_task;
+            #[cfg(windows)]
+            {
+                *s.stdin.lock().await = Stdin::Closed;
+                drop(s.pty_master.lock().expect("pty master").take());
+            }
+            #[cfg(not(windows))]
+            let held_writer = {
+                let w = std::mem::replace(&mut *s.stdin.lock().await, Stdin::Closed);
+                drop(s.pty_master.lock().expect("pty master").take());
+                w
+            };
             // Output written after the exit is drained if it arrives at
             // once; a reader that never sees end-of-file does not hold the
             // exit record back.
-            let _ = tokio::time::timeout(std::time::Duration::from_secs(5), reader_task).await;
+            let drained = tokio::time::timeout(std::time::Duration::from_secs(5), &mut reader_task)
+                .await
+                .is_ok();
+            #[cfg(not(windows))]
+            if drained {
+                drop(held_writer);
+            } else {
+                tokio::spawn(async move {
+                    let _ = reader_task.await;
+                    drop(held_writer);
+                });
+            }
+            #[cfg(windows)]
+            let _ = drained;
             let code = status.map(|st| st.exit_code() as i32);
             broker.finish(&s, code, None, timed_out, started).await;
         });
@@ -1981,7 +2055,23 @@ impl Broker {
         timed_out: bool,
         started: Instant,
     ) {
-        let (segments, total) = s.log.lock().expect("log").snapshot();
+        // The log is final from here: the object sealed below is exactly what the registry lists afterwards. Output that a reader
+        // delivers after this point (a reader that did not reach end-of-file in time) is not part of the record.
+        let (segments, total) = {
+            let mut log = s.log.lock().expect("log");
+            log.freeze();
+            log.snapshot()
+        };
+        // PX-152: a confined process that exited non-zero with the platform's
+        // refusal in its output was refused by the sandbox. A command that
+        // failed for its own reasons carries no such line and is never labelled.
+        let sandbox_denied = match exit_code {
+            Some(code) if s.confined && code != 0 && !timed_out => {
+                let tail = seglog::tail(&s.log_dir, &s.id, &segments, 16 * 1024);
+                review_sandbox::denial(code, &tail)
+            }
+            _ => None,
+        };
         let sealed = {
             let (dir, id, root) = (s.log_dir.clone(), s.id.clone(), self.object_dir.clone());
             tokio::task::spawn_blocking(move || seglog::seal(&dir, &id, &segments, &root))
@@ -2006,6 +2096,7 @@ impl Broker {
             timed_out,
             cancelled: s.cancelled.load(Ordering::SeqCst),
             retained_from: sealed.map_or(0, |x| x.retained_from),
+            sandbox_denied,
         };
         *s.exited.lock().await = Some(exited);
         *s.stdin.lock().await = Stdin::Closed;
@@ -2139,6 +2230,59 @@ pub(crate) mod review_sandbox {
             || k.starts_with("MODBIT_")
     }
 
+    /// The typed code a sandbox refusal carries (PX-152).
+    pub const DENIED_CODE: &str = "SANDBOX_DENIED";
+
+    /// The user's credential stores a confined process cannot read (PX-150),
+    /// relative to the home directory: keys, cloud-CLI and cluster
+    /// configuration, the keychain directory and the forge CLI's token.
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+    const CREDENTIAL_STORES: &[&str] = &[
+        ".ssh",
+        ".aws",
+        ".gnupg",
+        "Library/Keychains",
+        ".config/gcloud",
+        ".azure",
+        ".kube",
+        ".oci",
+        ".docker",
+        ".config/gh",
+        ".netrc",
+    ];
+
+    /// The `sandbox-exec` profile of the macOS review sandbox (PX-150). Every
+    /// path is a parameter (`-D NAME=value`), never text in the profile, so a
+    /// working directory with a quote, a backslash or a parenthesis in its name
+    /// cannot rewrite the policy. The worktree is writable except its `.git`
+    /// and `.modbit` (denied last, so a worktree that sits under a writable
+    /// temp directory is still protected); the temp directories are writable; `/dev` is writable
+    /// only for the nodes a build needs; the credential stores are not
+    /// readable; there is no network.
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+    pub(super) fn seatbelt_profile() -> String {
+        let reads = CREDENTIAL_STORES
+            .iter()
+            .map(|d| format!("(subpath (string-append (param \"HOME\") \"/{d}\"))"))
+            .collect::<Vec<_>>()
+            .join(" ");
+        format!(
+            "(version 1)\
+             (allow default)\
+             (deny network*)\
+             (deny file-write*)\
+             (allow file-write* (require-all (subpath (param \"WORKTREE\")) \
+                (require-not (subpath (string-append (param \"WORKTREE\") \"/.git\"))) \
+                (require-not (subpath (string-append (param \"WORKTREE\") \"/.modbit\")))))\
+             (allow file-write* (subpath \"/private/tmp\") (subpath \"/tmp\") (subpath (param \"USER_TMP\")))\
+             (allow file-write* (literal \"/dev/null\") (literal \"/dev/zero\") (literal \"/dev/tty\") \
+                (literal \"/dev/dtracehelper\") (regex #\"^/dev/tty[a-z0-9]*$\") (regex #\"^/dev/fd/[0-9]+$\"))\
+             (deny file-write* (subpath (string-append (param \"WORKTREE\") \"/.git\")) \
+                (subpath (string-append (param \"WORKTREE\") \"/.modbit\")))\
+             (deny file-read* {reads})"
+        )
+    }
+
     /// The request as the sandbox runs it, or why it cannot.
     pub fn wrap(req: ExecRequest, cwd: &Path) -> anyhow::Result<ExecRequest> {
         let Some(kind) = available() else {
@@ -2153,11 +2297,28 @@ pub(crate) mod review_sandbox {
         let argv = std::mem::take(&mut req.argv);
         req.argv = match kind {
             "seatbelt" => {
-                let cwd_s = cwd.to_string_lossy().replace('"', "");
-                let profile = format!(
-                    "(version 1)(allow default)(deny network*)(deny file-write*)(allow file-write* (subpath \"{cwd_s}\"))(allow file-write* (subpath \"/private/tmp\"))(allow file-write* (subpath \"/private/var/folders\"))(allow file-write* (subpath \"/tmp\"))(allow file-write* (subpath \"/dev\"))"
-                );
-                let mut v = vec!["/usr/bin/sandbox-exec".to_owned(), "-p".to_owned(), profile];
+                // The profile resolves symlinks before it matches, so the
+                // parameters are the real paths.
+                let real = |p: &Path| {
+                    std::fs::canonicalize(p)
+                        .unwrap_or_else(|_| p.to_path_buf())
+                        .to_string_lossy()
+                        .into_owned()
+                };
+                let home = std::env::var_os("HOME")
+                    .map(|h| real(Path::new(&h)))
+                    .unwrap_or_else(|| "/nonexistent-home".to_owned());
+                let mut v = vec![
+                    "/usr/bin/sandbox-exec".to_owned(),
+                    "-D".to_owned(),
+                    format!("WORKTREE={}", real(cwd)),
+                    "-D".to_owned(),
+                    format!("HOME={home}"),
+                    "-D".to_owned(),
+                    format!("USER_TMP={}", real(&std::env::temp_dir())),
+                    "-p".to_owned(),
+                    seatbelt_profile(),
+                ];
                 v.extend(argv);
                 v
             }
@@ -2175,5 +2336,49 @@ pub(crate) mod review_sandbox {
             }
         };
         Ok(req)
+    }
+
+    /// Whether the output of a confined process that exited non-zero carries
+    /// the platform's refusal (PX-152). Both confinements answer a refused
+    /// operation with `EPERM`, which programs print as "Operation not
+    /// permitted"; an ordinary failure (a test, a compiler, a missing file,
+    /// a plain permission problem) does not print that. The excerpt is the
+    /// refusing lines only, bounded, with nothing around them.
+    pub fn denial(exit_code: i32, tail: &[u8]) -> Option<modbit_protocol::v1::SandboxDenied> {
+        const MAX_LINES: usize = 3;
+        const MAX_LINE_BYTES: usize = 200;
+        let text = String::from_utf8_lossy(tail);
+        let refusals: Vec<&str> = text
+            .lines()
+            .map(str::trim)
+            .filter(|l| l.to_ascii_lowercase().contains("operation not permitted"))
+            .collect();
+        if refusals.is_empty() {
+            return None;
+        }
+        let excerpt = refusals
+            .iter()
+            .take(MAX_LINES)
+            .map(|l| {
+                let mut end = l.len().min(MAX_LINE_BYTES);
+                while !l.is_char_boundary(end) {
+                    end -= 1;
+                }
+                l[..end].to_owned()
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        let lower = excerpt.to_ascii_lowercase();
+        let operation = if lower.contains("socket") || lower.contains("connect") {
+            "network"
+        } else {
+            ""
+        };
+        Some(modbit_protocol::v1::SandboxDenied {
+            code: DENIED_CODE.to_owned(),
+            exit_code,
+            operation: operation.to_owned(),
+            excerpt,
+        })
     }
 }

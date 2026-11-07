@@ -1,0 +1,37 @@
+PX-123 mutation check (QUAL-PX-123: a mutation that skips destination-based risk must fail the cross-origin test)
+date: 2026-10-24T17:35Z
+base revision: 6fc98eccbd26c7a02fccdac3033ef6e574f94035 (plus the uncommitted PX-123 tests of this change)
+suite: apps/desktop/e2e/browser-semantic.spec.ts (real Electron + Chromium, real modbit-core binary)
+
+== baseline (unmutated) ==
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.21s
+  ✓  1 e2e/browser-semantic.spec.ts:67:1 › pages are classified, forms grouped, a form is filled in the order it needs with a credential handle and verified; links to another origin and destructive dialog buttons ask for the stricter approval; page text is data (11.9s)
+  ✓  2 e2e/browser-semantic.spec.ts:164:1 › page kinds are classified correctly on a labelled set of real pages, and a derived action whose result cannot be read back is reported unverified, never success (5.1s)
+  2 passed (17.3s)
+baseline exit: 0
+
+== mutation: crates/browser/src/compiler.rs classify_action 'if entity.cross_origin {' -> 'if false && entity.cross_origin {' (destination ignored) ==
+--- a/crates/browser/src/compiler.rs
++++ b/crates/browser/src/compiler.rs
+-            if entity.cross_origin {
++            if false && entity.cross_origin {
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 7.78s
+  ✘  1 e2e/browser-semantic.spec.ts:67:1 › pages are classified, forms grouped, a form is filled in the order it needs with a credential handle and verified; links to another origin and destructive dialog buttons ask for the stricter approval; page text is data (11.1s)
+  ✓  2 e2e/browser-semantic.spec.ts:164:1 › page kinds are classified correctly on a labelled set of real pages, and a derived action whose result cannot be read back is reported unverified, never success (5.1s)
+    Error: expect(received).toBe(expected) // Object.is equality
+    Expected: true
+    Received: false
+      151 |     expect(model.toolTexts[11]).toContain("status: SUCCESS");
+    > 152 |     expect(ap.causes.some((c) => c.includes("browser.act") && c.includes("ExternalSideEffect"))).toBe(true);
+      153 |     expect(ap.causes.some((c) => c.includes("browser.act") && c.includes("Destructive"))).toBe(true);
+      154 |     expect(ap.causes.filter((c) => c.includes("browser.act")).length).toBe(2);
+      155 |     expect(other.hits.length).toBeGreaterThan(0);
+  1 failed
+  1 passed (17.1s)
+mutated run done (a failing cross-origin test is expected above)
+
+== restored ==
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 7.85s
+  ✓  1 e2e/browser-semantic.spec.ts:67:1 › pages are classified, forms grouped, a form is filled in the order it needs with a credential handle and verified; links to another origin and destructive dialog buttons ask for the stricter approval; page text is data (11.8s)
+  ✓  2 e2e/browser-semantic.spec.ts:164:1 › page kinds are classified correctly on a labelled set of real pages, and a derived action whose result cannot be read back is reported unverified, never success (5.1s)
+  2 passed (17.3s)

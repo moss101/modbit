@@ -15,6 +15,7 @@ import { basename, join } from "node:path";
 import { accessible, closeApp, git, launch, makeRepo, setContentSize } from "./support/ui-harness.ts";
 import { routedModel, sha256File, type ModelPart } from "./support/conversation-harness.ts";
 import { Gate } from "./support/stream-model.ts";
+import { gearMenu, queueTask, toNewTask } from "./support/new-task.ts";
 
 const rowOf = (page: Page, taskId: string) => page.locator(`[data-testid="agent-row"][data-agent-id="${taskId}"]`);
 const wtRow = (page: Page, taskId: string) => page.locator(`[data-testid="worktree-row"][data-task-id="${taskId}"]`);
@@ -56,7 +57,7 @@ const complete: ModelPart = { call: { name: "task.complete", args: { summary: "d
 const NO_REAPER = { MODBIT_WORKTREE_CLEANUP_CATCHUP_MS: "3600000", MODBIT_WORKTREE_CLEANUP_INTERVAL_MS: "3600000" };
 
 async function openWorktrees(page: Page): Promise<void> {
-  await page.getByTestId("agents-worktrees").click();
+  await gearMenu(page, "open-worktrees");
   await expect(page.getByTestId("worktrees-page")).toHaveAttribute("data-state", "ready");
 }
 
@@ -76,12 +77,14 @@ test("PX-068: the list shows real worktrees with the Core's states; a running or
   const { app, page } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_WORKTREE_PROTECT_MS: "1", ...NO_REAPER } });
   try {
     await setContentSize(app, page, 1280, 800);
-    // ---- The Fleet form offers the isolation (PX-118): this task is created in a worktree of its own.
+    // ---- The home composer offers the isolation (PX-118): this task is created in a worktree of its own (queued, not started).
+    await toNewTask(page);
     await page.getByTestId("goal").fill("Clean worktree");
     await page.getByTestId("workspace").fill(repo);
     await page.getByTestId("isolate").check();
-    await page.getByTestId("run").click();
-    const clean = (await page.getByTestId("task-card").filter({ hasText: "Clean worktree" }).first().getAttribute("data-task-id"))!;
+    await page.getByTestId("goal").press("Alt+Enter");
+    await expect(page.getByTestId("conversation")).toHaveAttribute("data-task-id", /.+/, { timeout: 30_000 });
+    const clean = (await page.getByTestId("conversation").getAttribute("data-task-id"))!;
     const sid = await session(page);
     await page.evaluate(([s, t]) => window.modbit.cancelTask(s!, t!), [sid, clean]);
     const running = await isolatedTask(page, "Running worktree", repo);
@@ -217,11 +220,8 @@ test("PX-068: a real apply-back conflict through the modal - Cancel is the defau
   const { app, page } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_WORKTREE_PROTECT_MS: "1", ...NO_REAPER } });
   try {
     await setContentSize(app, page, 1280, 800);
-    // The first task creates the session through the Fleet form; the task under test is isolated.
-    await page.getByTestId("goal").fill("Warm up");
-    await page.getByTestId("workspace").fill(repo);
-    await page.getByTestId("run").click();
-    await expect(page.getByTestId("task-card").filter({ hasText: "Warm up" })).toBeVisible();
+    // The first task creates the session through the home composer; the task under test is isolated.
+    await queueTask(page, "Warm up", repo);
     const sid = await session(page);
     const task = await isolatedTask(page, "Apply back", repo);
     await start(page, task);
@@ -358,10 +358,7 @@ test("PX-068: the main process rejects invalid worktree arguments before the Cor
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-wtargs-"));
   const { app, page } = await launch(dataDir);
   try {
-    await page.getByTestId("goal").fill("Args");
-    await page.getByTestId("workspace").fill(repo);
-    await page.getByTestId("run").click();
-    await expect(page.getByTestId("task-card").filter({ hasText: "Args" })).toBeVisible();
+    await queueTask(page, "Args", repo);
     const sid = await session(page);
     const call = (expr: string) => page.evaluate(`(async () => { try { await (${expr}); return "accepted"; } catch (e) { return e.message; } })()`) as Promise<string>;
     const tid = "a".repeat(32);
@@ -391,10 +388,7 @@ test("PX-068: a scheduled cleanup that finds a preview holding the lease is reco
     },
   });
   try {
-    await page.getByTestId("goal").fill("Skip");
-    await page.getByTestId("workspace").fill(repo);
-    await page.getByTestId("run").click();
-    await expect(page.getByTestId("task-card").filter({ hasText: "Skip" })).toBeVisible();
+    await queueTask(page, "Skip", repo);
     await openWorktrees(page);
     const dryRun = page.getByTestId("worktrees-dry-run");
     await expect(dryRun).toBeEnabled();
@@ -407,7 +401,7 @@ test("PX-068: a scheduled cleanup that finds a preview holding the lease is reco
     expect(Date.now(), "the preview held the lease past the scheduled attempt").toBeGreaterThan(listed.nextCleanupAtMs);
     // Read again from the Core: the scheduled attempt found the lease held and was recorded as skipped.
     await page.reload();
-    await expect(page.getByTestId("agents-worktrees")).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByTestId("overflow-menu")).toBeVisible({ timeout: 60_000 });
     await openWorktrees(page);
     await expect(page.getByTestId("worktrees-report")).toHaveAttribute("data-status", "SKIPPED", { timeout: 30_000 });
     await expect(page.getByTestId("worktrees-report")).toContainText("Skipped:");

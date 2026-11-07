@@ -8,10 +8,9 @@
  *
  * What it proves together: a message with an @ file chip and an attachment
  * reaches the model; a second message queues, is edited and sent now (the
- * stream ends USER_INTERRUPT); two approvals are decided, one from the docked
- * tray by keyboard and one from the inline conversation card, each resolving
- * exactly once with the other surface following; the tray precedence is
- * approvals over the queue; the receipts show in Evidence; the context ring
+ * stream ends USER_INTERRUPT); two approvals are decided on the docked card,
+ * one by keyboard and one with its Run button, each resolving exactly once with
+ * the transcript following; the tray precedence is approvals over the queue; the receipts show in Evidence; the context ring
  * opens; and the turn's checkpoint is restored and redone (file bytes compared
  * on disk).
  */
@@ -53,7 +52,7 @@ const abortSources = (page: Page, taskId: string) =>
 
 const approvalKey = (id: string) => id.replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, "$1-$2-$3-$4-$5");
 
-test("Wave 4: compose with an @ chip and an attachment, queue-edit-send-now, decide two approvals on both surfaces, read the receipts in Evidence, open the context ring, restore and redo a checkpoint", async () => {
+test("Wave 4: compose with an @ chip and an attachment, queue-edit-send-now, decide two approvals on the docked card, read the receipts in Evidence, open the context ring, restore and redo a checkpoint", async () => {
   test.setTimeout(420_000);
   const repo = makeRepo(mkdtempSync(join(tmpdir(), "modbit-w4-repo-")));
   const original = sha256File(join(repo, "notes.txt"));
@@ -127,7 +126,9 @@ test("Wave 4: compose with an @ chip and an attachment, queue-edit-send-now, dec
     const id1 = pending1[0]!;
     const hash1 = (await trayCard.getAttribute("data-intent-hash"))!;
     expect(remotes(repo)).toEqual([]);
-    await expect(page.getByTestId("conv-approval-decision")).toHaveAttribute("data-approval-id", id1);
+    // The transcript records the request (for a screen reader) while the docked card carries the decision.
+    await expect(trayCard).toHaveAttribute("data-approval-id", id1);
+    await expect(page.locator('[data-testid="conv-approval"][data-state="REQUESTED"]')).toHaveCount(1);
     await accessible(page, "the docked approval above the composer");
 
     // Precedence: a message queued while an approval waits is only a one-line row; the approval keeps the keys.
@@ -142,11 +143,11 @@ test("Wave 4: compose with an @ chip and an attachment, queue-edit-send-now, dec
     await expect(page.getByTestId("queue-tray")).toHaveCount(0);
     await expect(trayCard).toBeVisible();
 
-    // ---- 4. Approve it from the tray by keyboard: it resolves once, and the inline card follows.
+    // ---- 4. Approve it from the tray by keyboard: it resolves once, and the transcript follows.
     await trayCard.focus();
     await page.keyboard.press("Enter");
     await expect.poll(() => remotes(repo), { timeout: 90_000 }).toContain("origin1");
-    await expect(page.locator(`[data-testid="conv-approval-decision"][data-approval-id="${id1}"]`)).toHaveCount(0, { timeout: 30_000 });
+    await expect(page.locator(`[data-testid="approval-card"][data-approval-id="${id1}"]`)).toHaveCount(0, { timeout: 30_000 });
     // A second decision for the same approval (here a Deny, from the stale surface) is the Core's idempotent report of the first: it changes nothing and no effect or receipt is added.
     // The remote appears when the effect runs; its result receipt is written after it (FIX-08), so count only once that receipt is on the log.
     await expect
@@ -159,14 +160,12 @@ test("Wave 4: compose with an @ chip and an attachment, queue-edit-send-now, dec
     expect((await page.evaluate((t) => window.modbit.effectReceipts(t), taskId)).receipts.length).toBe(receiptsBefore);
     expect(remotes(repo).filter((r) => r === "origin1").length).toBe(1);
 
-    // ---- 5. The second approval is decided from the inline conversation card; the tray follows.
-    const inline = page.getByTestId("conv-approval-decision");
-    await expect(inline).toBeVisible({ timeout: 120_000 });
-    const id2 = (await inline.getAttribute("data-approval-id"))!;
-    expect(id2).not.toBe(id1);
-    await expect(trayCard).toHaveAttribute("data-approval-id", id2);
+    // ---- 5. The second approval is decided with the card's Run button; the dock follows.
+    await expect(trayCard).toBeVisible({ timeout: 120_000 });
+    await expect(trayCard).not.toHaveAttribute("data-approval-id", id1);
+    const id2 = (await trayCard.getAttribute("data-approval-id"))!;
     await expect(page.getByTestId("approval-command")).toHaveText(`git remote add origin2 ${URL2}`);
-    await page.getByTestId("conv-approve").click();
+    await page.getByTestId("approval-run").click();
     await expect.poll(() => remotes(repo).sort(), { timeout: 90_000 }).toEqual(["origin1", "origin2"]);
     await expect(page.getByTestId("approval-card")).toHaveCount(0, { timeout: 30_000 });
 
@@ -206,8 +205,13 @@ test("Wave 4: compose with an @ chip and an attachment, queue-edit-send-now, dec
     expect(tokens.length).toBe(9);
     expect(tokens.reduce((s, t) => s + BigInt(t), 0n)).toBe(total);
     await accessible(page, "the context breakdown");
-    await ring.click();
-    await expect(ctxTray).toHaveCount(0);
+    // A click that lands while the ring re-renders can be lost (seen once on a
+    // Linux runner, PR 115); closing is retried only while the tray is still
+    // open, so a tray that never closes still fails.
+    await expect(async () => {
+      if ((await ctxTray.count()) > 0) await ring.click();
+      await expect(ctxTray).toHaveCount(0, { timeout: 2_000 });
+    }).toPass({ timeout: 20_000 });
 
     // ---- 9. Restore the turn that had a.txt and not b.txt, then redo: bytes on disk.
     const markers = await page.getByTestId("turn-checkpoint").evaluateAll((els) => els.map((e) => e.getAttribute("data-turn-ordinal")));

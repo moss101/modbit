@@ -1,0 +1,10 @@
+{
+ "task": "PX-168",
+ "requirements": ["REQ-PX-168", "QUAL-PX-168"],
+ "scenarios": ["QUAL-PX-168"],
+ "tests": ["tools/lint_policy.sh", "tools/lint-policy/clippy.toml"],
+ "proof": "CI run 40703198985 on head 1c52847f: the supply-chain job runs tools/lint_policy.sh (clippy -D unwrap_used, expect_used, await_holding_lock, await_holding_refcell_ref, disallowed_methods on lib/bin/example targets) and passes on Linux; mutation-check.txt shows a planted unwrap, a planted std::process::Command::new and a MutexGuard held across await each fail the build.",
+ "limitations": "94 files with pre-existing expect/unwrap/spawn sites are baselined with file-level allows, not cleaned; a new expect in a baselined file is not caught. Planted-failure runs were local, not CI.",
+ "runs": ["40703198985"],
+ "ci": {"run_id": "40703198985", "head_sha": "1c52847f", "conclusion": "success", "json": "evidence/m10/PX-168/ci-run-40703198985.json", "landed_as": "7d877129"}
+}

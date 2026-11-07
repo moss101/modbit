@@ -1,0 +1,38 @@
+PX-102 mutation check (QUAL-PX-102: a collector that ignores the fork reference removes a fork parent and fails the fork-survival assertions)
+date: 2026-10-25T02:23Z
+base revision: c7768d0da2ff5134850726b7293d137ddfe60000 (plus the uncommitted tests of this change)
+
+== baseline (unmutated) ==
+test px_102_sigkill_during_the_sweep_leaves_no_broken_chain_and_the_next_run_completes ... ok
+test px_102_the_byte_bound_keeps_the_newest_that_fit_and_never_the_referenced_one_it_must_keep ... ok
+test px_102_the_collector_thins_a_finished_task_and_never_removes_what_is_referenced ... ok
+test px_102_a_second_collector_and_a_restore_are_refused_while_a_collection_holds_its_lease ... ok
+test px_102_kill_mid_collection_leaves_no_broken_chain_and_the_next_run_finishes ... ok
+test px_102_forty_turns_three_named_every_survivor_restores_to_its_recorded_hashes ... ok
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 31.07s
+baseline exit: 0
+
+== mutation: services/modbit-core/src/checkpoint_gc.rs
+-    &fork_parents(store, task)
++    &std::collections::BTreeSet::new()
+test px_102_sigkill_during_the_sweep_leaves_no_broken_chain_and_the_next_run_completes ... ok
+test px_102_the_byte_bound_keeps_the_newest_that_fit_and_never_the_referenced_one_it_must_keep ... ok
+test px_102_the_collector_thins_a_finished_task_and_never_removes_what_is_referenced ... FAILED
+test px_102_a_second_collector_and_a_restore_are_refused_while_a_collection_holds_its_lease ... ok
+test px_102_kill_mid_collection_leaves_no_broken_chain_and_the_next_run_finishes ... ok
+test px_102_forty_turns_three_named_every_survivor_restores_to_its_recorded_hashes ... FAILED
+thread 'px_102_the_collector_thins_a_finished_task_and_never_removes_what_is_referenced' (46219419) panicked at services/modbit-core/tests/checkpoints_px.rs:1501:9:
+thread 'px_102_forty_turns_three_named_every_survivor_restores_to_its_recorded_hashes' (46219415) panicked at services/modbit-core/tests/checkpoints_px.rs:1821:5:
+test result: FAILED. 4 passed; 2 failed; 0 ignored; 0 measured; 11 filtered out; finished in 26.92s
+error: test failed, to rerun pass `-p modbit-core --test checkpoints_px`
+mutated exit: 101 (non-zero expected)
+
+== restored ==
+test px_102_sigkill_during_the_sweep_leaves_no_broken_chain_and_the_next_run_completes ... ok
+test px_102_the_byte_bound_keeps_the_newest_that_fit_and_never_the_referenced_one_it_must_keep ... ok
+test px_102_the_collector_thins_a_finished_task_and_never_removes_what_is_referenced ... ok
+test px_102_a_second_collector_and_a_restore_are_refused_while_a_collection_holds_its_lease ... ok
+test px_102_kill_mid_collection_leaves_no_broken_chain_and_the_next_run_finishes ... ok
+test px_102_forty_turns_three_named_every_survivor_restores_to_its_recorded_hashes ... ok
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 28.28s
+restored exit: 0

@@ -4,6 +4,9 @@
 //!
 //! usage: delta_bench <full|relaxed> <noise-threads> [deltas=230] [gap_ms=60]
 //! `BENCH_DIR` names the directory the stores are made in (default: the temp dir).
+
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use modbit_domain::event::{Actor, AggregateType};
 use modbit_domain::stream::{Retention, StreamEvent, StreamKind};
 use modbit_domain::{RunId, RunStepId, SessionId, StreamId, TaskId, TenantId, TurnId};

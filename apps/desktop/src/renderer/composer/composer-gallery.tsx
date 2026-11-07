@@ -72,7 +72,7 @@ const CATALOG: ModelCatalogView = {
 };
 
 const TERMINALS = [
-  { terminalId: "t1", taskId: "x", owner: "agent", title: "cargo watch", state: "RUNNING", exitCode: null, startedAtMs: Date.now() - 125_000, elapsedMs: "125000", bytesSoFar: "0", oldestCursor: "0", replayWindowBytes: "0", pty: true, rows: 24, cols: 80, inputLeaseHolder: "", cwd: "", timedOut: false },
+  { terminalId: "t1", taskId: "x", owner: "agent", title: "cargo watch", state: "RUNNING", exitCode: null, startedAtMs: Date.now() - 125_000, elapsedMs: "125000", bytesSoFar: "0", oldestCursor: "0", replayWindowBytes: "0", pty: true, rows: 24, cols: 80, inputLeaseHolder: "", cwd: "", timedOut: false, hasOutputRef: false },
 ];
 
 export function ComposerGallery({ note }: { note: (t: string) => void }) {

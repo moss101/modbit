@@ -1,10 +1,12 @@
-/** The renderer's one controller hook: the Core connection, the fleet model, the screens' states and the keyboard commands (moved out of the single index.tsx; behaviour unchanged). */
+/** The renderer's one controller hook: the Core connection, the task model, the screens' states and the keyboard commands (moved out of the single index.tsx; behaviour unchanged). */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { applyEvent, columns, emptyModel, fromSnapshot, type Event, type Model, type Snapshot, type TaskCard } from "../model.ts";
 import { fleetState, newTaskState, settingsState } from "../screens.ts";
 import { DEFAULT_PREFERENCES, deriveNotifications, newSince, osDeliveryDue, type Notification as AppNotification, type NotificationPreferences } from "../notifications.ts";
 import { commandFor, isActivatable, isEditable, type Command } from "../keyboard.ts";
-import type { AttentionItem, ContextInspectorSummary, CredentialHandle, TaskEconomicsSummary } from "../../preload/preload.ts";
+import type { AttentionItem, CredentialHandle } from "../../preload/preload.ts";
+import type { TaskModeId } from "../../shared/composer-types.ts";
+import { draftPatch, type DraftModel } from "../composer/model.ts";
 import { layers } from "@modbit/ui/logic";
 import { hex32, loadPreferences, PREFS_KEY, type CoreStatus, type RecoveryInfo, type ScreenState } from "./types.ts";
 
@@ -23,13 +25,11 @@ export function useApp() {
   // untrusted context. An unreadable issue is a refusal and no task.
   const [issueUrl, setIssueUrl] = useState("");
   const [languages, setLanguages] = useState<{ language: string; tier: string; label: string }[]>([]);
-  const [inspector, setInspector] = useState<ContextInspectorSummary | null>(null);
-  const [economics, setEconomics] = useState<TaskEconomicsSummary | null>(null);
   // REQ-EV-0151 / 0275: the Core's attention items — derived from canonical
   // unresolved state, re-read after every task event, never invented here.
   const [attentionItems, setAttentionItems] = useState<AttentionItem[]>([]);
-  // FIX-21: the Needs Attention column is the Core's attention view; until
-  // the Core has answered once, the cards' own next action stands in.
+  // FIX-21: the attention count is the Core's attention view; until the Core
+  // has answered once, the tasks' own next action stands in.
   const [attentionLoaded, setAttentionLoaded] = useState(false);
   const attentionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refreshAttention = useCallback((sessionId: string) => {
@@ -47,12 +47,15 @@ export function useApp() {
   const [workspaceRoot, setWorkspaceRoot] = useState("");
   // PX-118: the task works in its own worktree; the checkout is untouched until its result is applied.
   const [isolate, setIsolate] = useState(false);
+  // What the home composer asks of the new task, held until the task exists: CreateTask has no such fields, so the Core hears them before StartTask.
+  const [newMode, setNewMode] = useState<TaskModeId>("AGENT");
+  const [newModel, setNewModel] = useState<DraftModel | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [reviewing, setReviewing] = useState<string | null>(null);
   // PX-045: the task the person last focused; the apps panel follows it.
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [dashboardOpen, setDashboardOpen] = useState(false);
-  // M7.1: the browser session shown over the fleet (one task's live view).
+  // M7.1: the browser session shown in the centre (one task's live view).
   const [browsing, setBrowsing] = useState<{ taskId: string; browserSessionId: string | null; error: string | null } | null>(null);
   // Onboarding (REQ-PX-022, docs/39): three steps, each a working control.
   const [provider, setProvider] = useState<{ configured: boolean; endpoints: string[]; stored: boolean; provider: string; keychainAvailable: boolean } | null>(null);
@@ -75,13 +78,13 @@ export function useApp() {
   const [starters, setStarters] = useState<{ stacks: string[]; tasks: { id: string; title: string; goalText: string; stack: string }[] } | null>(null);
   const [autoReview, setAutoReview] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
-  // PX-024: the keyboard model's state — the type-ahead filter, the help
-  // panel, a pending confirmation before an irreversible effect, the card
-  // focus to retain across state changes, the live region's announcement.
-  const [filter, setFilter] = useState("");
+  // A request to the shell's view state: open a task, the approvals page or the palette.
+  const [navRequest, setNavRequest] = useState<{ n: number; kind: "task"; taskId: string } | { n: number; kind: "inbox" | "palette" } | null>(null);
+  const requestNav = useCallback((r: { kind: "task"; taskId: string } | { kind: "inbox" | "palette" }) => setNavRequest((c) => ({ ...r, n: (c?.n ?? 0) + 1 })), []);
+  // PX-024: the keyboard model's state — the help panel, a pending confirmation
+  // before an irreversible effect, the live region's announcement.
   const [helpOpen, setHelpOpen] = useState(false);
   const [confirm, setConfirm] = useState<{ kind: "approve" | "cancel"; taskId: string; text: string } | null>(null);
-  const focusedTask = useRef<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const seenAttention = useRef<Set<string>>(new Set());
   const [prefs, setPrefs] = useState<NotificationPreferences>(loadPreferences);
@@ -132,20 +135,6 @@ export function useApp() {
           }
           return { ...cur, tasks };
         });
-      }
-      // Context Inspector for the newest task, when it has compiled a pack.
-      const newest = [...m.tasks.values()].sort((a, b) => b.createdAtMs - a.createdAtMs)[0];
-      if (newest) {
-        try {
-          setInspector(await window.modbit.contextInspector(newest.taskId));
-        } catch {
-          setInspector(null);
-        }
-        try {
-          setEconomics(await window.modbit.taskEconomics(newest.taskId));
-        } catch {
-          setEconomics(null);
-        }
       }
       await window.modbit.subscribe(snap.sessionId, snap.lastOffset);
       refreshAttention(snap.sessionId);
@@ -204,8 +193,9 @@ export function useApp() {
     };
   }, [load]);
 
+  /** Creates the task and opens it; `start` also starts it (send does; Alt+Enter leaves it queued). No provider leaves it queued too. */
   const submit = useCallback(
-    async (ev: React.FormEvent) => {
+    async (ev: React.SyntheticEvent, start: boolean) => {
       ev.preventDefault();
       const text = goal.trim();
       const issue = issueUrl.trim();
@@ -240,6 +230,18 @@ export function useApp() {
         setGoal("");
         setIssueUrl("");
         setCreateError(null);
+        setNewMode("AGENT");
+        setNewModel(null);
+        requestNav({ kind: "task", taskId: r.taskId });
+        try {
+          if (newMode !== "AGENT") await window.modbit.composerSetMode(sessionId, r.taskId, newMode);
+          if (newModel) await window.modbit.composerSetPreference(sessionId, r.taskId, draftPatch(newModel));
+        } catch (e) {
+          // The task exists, and it does not run on anything other than what was asked for: it stays unstarted and says why.
+          setError(`The task was created and not started, because the Core refused what was chosen for it: ${(e as Error).message}`);
+          return;
+        }
+        if (start && provider?.configured) await window.modbit.startTask(sessionId, r.taskId);
       } catch (e) {
         setError((e as Error).message);
         setCreateError((e as Error).message);
@@ -247,7 +249,7 @@ export function useApp() {
         setSubmitting(false);
       }
     },
-    [goal, issueUrl, workspaceRoot, submitting, trusted, isolate],
+    [goal, issueUrl, workspaceRoot, submitting, trusted, isolate, newMode, newModel, provider?.configured, requestNav],
   );
 
   const startTask = useCallback(async (taskId: string) => {
@@ -275,19 +277,6 @@ export function useApp() {
     }
   }, []);
 
-  // PX-024 focus retention: a card that moves between columns on a Core
-  // event is re-mounted by React; the focus it held comes back to it.
-  useEffect(() => {
-    const id = focusedTask.current;
-    if (!id || reviewing) return;
-    const active = document.activeElement;
-    if (active && active !== document.body && active.closest('[data-testid="task-card"]')) return;
-    if (active && active !== document.body && active.getAttribute("data-testid") !== "task-card") return;
-    const el = document.querySelector<HTMLElement>(`[data-testid="task-card"][data-task-id="${id}"]`);
-    el?.focus({ preventScroll: true });
-    // The Core's attention items also move a card between columns (FIX-21), so
-    // they re-run the retention too, not only the event model.
-  }, [model, reviewing, attentionItems]);
   // PX-024 live region: every new attention item is announced once, in
   // words (kind, task, reason) — never by colour alone.
   useEffect(() => {
@@ -371,6 +360,7 @@ export function useApp() {
           return { ...m, tasks };
         });
         setScreen("populated");
+        requestNav({ kind: "task", taskId: r.taskId });
         await window.modbit.startTask(sessionId, r.taskId);
       } catch (e) {
         setError((e as Error).message);
@@ -378,74 +368,44 @@ export function useApp() {
         setSubmitting(false);
       }
     },
-    [submitting, trusted],
+    [submitting, trusted, requestNav],
   );
 
   const cols = useMemo(() => columns(model, attentionLoaded ? attentionItems : undefined), [model, attentionItems, attentionLoaded]);
   const attention = cols.needsAttention.length;
-  const visible = useCallback((cards: TaskCard[]) => (filter.trim() ? cards.filter((t) => t.goalText.toLowerCase().includes(filter.trim().toLowerCase())) : cards), [filter]);
-  const focusedCard = () => document.activeElement?.closest<HTMLElement>('[data-testid="task-card"]') ?? null;
-  const cardsOf = (column: Element) => [...column.querySelectorAll<HTMLElement>(':scope > [data-testid="task-card"]')];
-  const runFleetCommand = useCallback(
+  const taskOpener = (taskId: string) => document.querySelector<HTMLElement>(`[data-testid="agent-row"][data-task-id="${taskId}"] [data-testid="agent-open"]`);
+  const runKeyCommand = useCallback(
     async (cmd: Command) => {
       const sessionId = modelRef.current.sessionId;
-      // The focused task: its card, or an attention item or notification
-      // about it (approve, deny, cancel and steer act on that task).
-      const taskId = document.activeElement?.closest("[data-task-id]")?.getAttribute("data-task-id") ?? null;
-      const card = focusedCard() ?? (taskId ? document.querySelector<HTMLElement>(`[data-testid="task-card"][data-task-id="${taskId}"]`) : null);
+      // The focused task: its row or conversation, or an attention item about it (approve, deny, cancel and steer act on that task).
+      const taskId = document.activeElement?.closest("[data-task-id]")?.getAttribute("data-task-id") ?? document.querySelector('[data-testid="conversation"]')?.getAttribute("data-task-id") ?? null;
       const task = taskId ? modelRef.current.tasks.get(taskId) : undefined;
       switch (cmd) {
         case "newTask":
           document.getElementById("goal")?.focus();
           return;
         case "search":
-          document.querySelector<HTMLElement>('[data-testid="search"]')?.focus();
+          requestNav({ kind: "palette" });
           return;
         case "help":
           setHelpOpen((h) => !h);
           return;
-        case "jumpAttention": {
-          const target = document.querySelector<HTMLElement>('[data-testid="attention-item"]') ?? document.querySelector<HTMLElement>('[data-testid="attention"]') ?? document.querySelector<HTMLElement>('[data-testid="column-needsAttention"]');
-          target?.focus();
+        case "jumpAttention":
+          requestNav({ kind: "inbox" });
           return;
-        }
-        case "jumpRunning": {
-          const column = document.querySelector<HTMLElement>('[data-testid="column-running"]');
-          (column ? (cardsOf(column)[0] ?? column) : null)?.focus();
+        case "jumpRunning":
+          document.querySelector<HTMLElement>('[data-testid="agent-row"][data-class="RUNNING"] [data-testid="agent-open"]')?.focus();
           return;
-        }
         case "next":
         case "previous": {
-          const column = card?.parentElement ?? document.querySelector<HTMLElement>('[data-testid="task-card"]')?.parentElement;
-          if (!column) return;
-          const cards = cardsOf(column);
-          const i = card ? cards.indexOf(card) : -1;
-          const target = cards[i < 0 ? 0 : Math.min(cards.length - 1, Math.max(0, i + (cmd === "next" ? 1 : -1)))];
-          target?.focus();
-          return;
-        }
-        case "columnNext":
-        case "columnPrevious": {
-          const columns = [...document.querySelectorAll<HTMLElement>('[data-testid^="column-"]')];
-          const focused = focusedCard();
-          const current = focused?.parentElement ?? null;
-          const step = cmd === "columnNext" ? 1 : -1;
-          // From outside the board: the first (→) or last (←) column with cards.
-          const from = current ? columns.indexOf(current) : step > 0 ? -1 : columns.length;
-          for (let j = from + step; j >= 0 && j < columns.length; j += step) {
-            const cards = cardsOf(columns[j]!);
-            if (cards.length) {
-              const index = current && focused ? cardsOf(current).indexOf(focused) : 0;
-              cards[Math.min(cards.length - 1, Math.max(0, index))]!.focus();
-              return;
-            }
-          }
+          const rows = [...document.querySelectorAll<HTMLElement>('[data-testid="agent-open"]')];
+          if (rows.length === 0) return;
+          const i = rows.indexOf(document.activeElement as HTMLElement);
+          rows[i < 0 ? 0 : Math.min(rows.length - 1, Math.max(0, i + (cmd === "next" ? 1 : -1)))]?.focus();
           return;
         }
         case "open":
-          if (!task) return;
-          if (task.state === "ReadyForReview" || task.state === "Completed") setReviewing(task.taskId);
-          else card?.querySelector<HTMLElement>("button:not(:disabled)")?.focus();
+          if (task && (task.state === "ReadyForReview" || task.state === "Completed")) setReviewing(task.taskId);
           return;
         case "approve":
         case "deny": {
@@ -463,30 +423,26 @@ export function useApp() {
           setConfirm({ kind: "cancel", taskId: task.taskId, text: `Cancel “${task.goalText}”? The run stops at its next safe boundary; the task cannot be resumed.` });
           return;
         case "steerTask":
-          card?.querySelector<HTMLElement>('[data-testid="task-steer"]')?.focus();
+          document.querySelector<HTMLElement>('[data-testid="composer-input"]')?.focus();
           return;
         case "confirm": {
           const c = confirm;
           if (!c || !sessionId) return;
           setConfirm(null);
           const t = modelRef.current.tasks.get(c.taskId);
-          // The focus belongs to this task through the state change its
-          // effect causes (the card re-mounts in another column).
-          focusedTask.current = c.taskId;
-          document.querySelector<HTMLElement>(`[data-testid="task-card"][data-task-id="${c.taskId}"]`)?.focus();
+          taskOpener(c.taskId)?.focus();
           try {
             if (c.kind === "cancel") await window.modbit.cancelTask(sessionId, c.taskId);
             else if (t?.approval) await window.modbit.resolveApproval(sessionId, t.approval.approvalId, true, "approved from the keyboard, confirmed", t.approval.intentHash);
           } catch (e) {
             setError((e as Error).message);
           }
-          document.querySelector<HTMLElement>(`[data-testid="task-card"][data-task-id="${c.taskId}"]`)?.focus();
           return;
         }
         case "back": {
           if (confirm) {
             setConfirm(null);
-            document.querySelector<HTMLElement>(`[data-testid="task-card"][data-task-id="${confirm.taskId}"]`)?.focus();
+            taskOpener(confirm.taskId)?.focus();
             return;
           }
           if (helpOpen) {
@@ -494,13 +450,10 @@ export function useApp() {
             return;
           }
           if (reviewing) {
-            // The retention effect focuses the card once the fleet is shown again.
-            focusedTask.current = reviewing;
             setReviewing(null);
             return;
           }
           if (browsing) {
-            focusedTask.current = browsing.taskId;
             setBrowsing(null);
             return;
           }
@@ -511,10 +464,12 @@ export function useApp() {
           return;
       }
     },
-    [confirm, helpOpen, reviewing, browsing],
+    [confirm, helpOpen, reviewing, browsing, requestNav],
   );
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // A control that handled its own key keeps it (the queue tray's arrows, an open menu's).
+      if (e.defaultPrevented || (e.target as Element | null)?.closest?.('[role="menu"]')) return;
       // A modal layer (the palette, the shortcut help) owns the keyboard while it is open (PX-045).
       if (layers.hasModal()) return;
       // Enter and Space on a button or a checkbox are that control's.
@@ -526,17 +481,17 @@ export function useApp() {
       // The Review handles its own change navigation (hunk*, split, failing).
       if (["hunkNext", "hunkPrevious", "hunkToggle", "toggleSplit", "jumpFailing"].includes(cmd)) return;
       e.preventDefault();
-      void runFleetCommand(cmd);
+      void runKeyCommand(cmd);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [runFleetCommand, reviewing, confirm, browsing]);
+  }, [runKeyCommand, reviewing, confirm, browsing]);
   const tasks = useMemo(() => [...model.tasks.values()], [model]);
   // PX-023: the screen states, each derived from what the Core said.
   const fleet = useMemo(() => fleetState({ core, loaded: screen === "loading" ? "loading" : screen === "empty" ? "empty" : "populated", error, recovery: recovery ? { bootGeneration: Number(recovery.bootGeneration), eventsVerified: Number(recovery.eventsVerified), aggregatesVerified: Number(recovery.aggregatesVerified), sessions: Number(recovery.sessions), tasks: Number(recovery.tasks), projectionsRebuilt: recovery.projectionsRebuilt, notes: recovery.notes, recoveryMs: Number(recovery.recoveryMs) } : null, recoveredBanner: recovered !== null, tasks }), [core, screen, error, recovery, recovered, tasks]);
   const composer = useMemo(() => newTaskState({ core, provider: provider ? { configured: provider.configured } : null, trusted, workspaceRoot, lastError: createError }), [core, provider, trusted, workspaceRoot, createError]);
   const settings = useMemo(() => settingsState({ provider: provider ? { keychainAvailable: provider.keychainAvailable, configured: provider.configured } : null, organizationOverrides: [] }), [provider]);
-  // PX-023: the notifications the fleet warrants, coalesced per task and
+  // PX-023: the notifications the tasks warrant, coalesced per task and
   // collapsed on a burst; OS delivery only for what is new, opted in and
   // outside quiet hours. Main logs what it delivered.
   const notifications = useMemo(() => deriveNotifications(tasks, attentionItems), [tasks, attentionItems]);
@@ -566,16 +521,15 @@ export function useApp() {
       return;
     }
     setReviewing(null);
-    const target = link.screen === "task" && link.taskId ? document.querySelector<HTMLElement>(`[data-testid="task-card"][data-task-id="${link.taskId}"]`) : document.querySelector<HTMLElement>('[data-testid="attention"]');
-    target?.scrollIntoView({ block: "center" });
-    target?.focus();
-  }, []);
+    if (link.screen === "task" && link.taskId) requestNav({ kind: "task", taskId: link.taskId });
+    else requestNav({ kind: "inbox" });
+  }, [requestNav]);
   // docs/39 "Empty states": no provider keeps the welcome up with step 2
   // highlighted whatever else exists; a provider with no trusted repository
   // and no tasks keeps it up with step 3.
   const onboarding = core.state === "connected" && provider !== null && (!provider.configured || model.tasks.size === 0);
 
-  return { selectedTaskId, setSelectedTaskId, core, setCore, model, setModel, screen, setScreen, platform, setPlatform, error, setError, recovered, setRecovered, recovery, setRecovery, goal, setGoal, issueUrl, setIssueUrl, languages, setLanguages, inspector, setInspector, economics, setEconomics, attentionItems, setAttentionItems, attentionLoaded, setAttentionLoaded, attentionTimer, refreshAttention, workspaceRoot, setWorkspaceRoot, isolate, setIsolate, submitting, setSubmitting, reviewing, setReviewing, dashboardOpen, setDashboardOpen, browsing, setBrowsing, provider, setProvider, credentials, setCredentials, credentialForm, setCredentialForm, credentialError, setCredentialError, refreshCredentials, providerKind, setProviderKind, providerKey, setProviderKey, providerUrl, setProviderUrl, providerBusy, setProviderBusy, providerResult, setProviderResult, trustRoot, setTrustRoot, trusted, setTrusted, trustBusy, setTrustBusy, trustError, setTrustError, starters, setStarters, autoReview, setAutoReview, createError, setCreateError, filter, setFilter, helpOpen, setHelpOpen, confirm, setConfirm, focusedTask, announcement, setAnnouncement, seenAttention, prefs, setPrefs, delivered, setDelivered, previousNotifications, modelRef, wasRestarting, load, submit, startTask, openBrowser, setupProvider, trustRepository, runStarter, cols, attention, visible, focusedCard, cardsOf, runFleetCommand, tasks, fleet, composer, settings, notifications, savePrefs, open, onboarding };
+  return { selectedTaskId, setSelectedTaskId, core, setCore, model, setModel, screen, setScreen, platform, setPlatform, error, setError, recovered, setRecovered, recovery, setRecovery, goal, setGoal, issueUrl, setIssueUrl, languages, setLanguages, attentionItems, setAttentionItems, attentionLoaded, setAttentionLoaded, attentionTimer, refreshAttention, workspaceRoot, setWorkspaceRoot, isolate, setIsolate, newMode, setNewMode, newModel, setNewModel, submitting, setSubmitting, reviewing, setReviewing, dashboardOpen, setDashboardOpen, browsing, setBrowsing, provider, setProvider, credentials, setCredentials, credentialForm, setCredentialForm, credentialError, setCredentialError, refreshCredentials, providerKind, setProviderKind, providerKey, setProviderKey, providerUrl, setProviderUrl, providerBusy, setProviderBusy, providerResult, setProviderResult, trustRoot, setTrustRoot, trusted, setTrusted, trustBusy, setTrustBusy, trustError, setTrustError, starters, setStarters, autoReview, setAutoReview, createError, setCreateError, navRequest, requestNav, helpOpen, setHelpOpen, confirm, setConfirm, announcement, setAnnouncement, seenAttention, prefs, setPrefs, delivered, setDelivered, previousNotifications, modelRef, wasRestarting, load, submit, startTask, openBrowser, setupProvider, trustRepository, runStarter, cols, attention, runKeyCommand, tasks, fleet, composer, settings, notifications, savePrefs, open, onboarding };
 }
 
 export type AppState = ReturnType<typeof useApp>;

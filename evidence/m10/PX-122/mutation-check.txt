@@ -1,0 +1,31 @@
+PX-122 mutation check (QUAL-PX-122: an identity change across a restart fails the suite; the stable DOM attribute is the identity)
+date: 2026-10-24T17:34Z
+base revision: 6fc98eccbd26c7a02fccdac3033ef6e574f94035 (plus the uncommitted PX-122 tests of this change)
+
+== baseline (unmutated) ==
+test qual_px_122_a_change_notice_is_journaled_as_a_delta_without_a_model_call_and_the_known_state_survives_a_killed_core ... ok
+test qual_px_122_a_delta_after_a_compaction_epoch_uses_the_held_fingerprint_and_an_unheld_one_says_why ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 5.54s
+baseline exit: 0
+
+== mutation: crates/browser/src/compiler.rs 'Some(id) => reference_of_ident(&role_l, &scope, id),' -> identity ignored (position/name reference always) ==
+ crates/browser/src/compiler.rs | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+--- a/crates/browser/src/compiler.rs
++++ b/crates/browser/src/compiler.rs
+-                    Some(id) => reference_of_ident(&role_l, &scope, id),
++                    Some(_id) => reference_of(&role_l, &name, &path, ordinal),
+test qual_px_122_a_change_notice_is_journaled_as_a_delta_without_a_model_call_and_the_known_state_survives_a_killed_core ... FAILED
+test qual_px_122_a_delta_after_a_compaction_epoch_uses_the_held_fingerprint_and_an_unheld_one_says_why ... ok
+thread 'qual_px_122_a_change_notice_is_journaled_as_a_delta_without_a_model_call_and_the_known_state_survives_a_killed_core' (39938880) panicked at services/modbit-core/tests/px_browser_runtime.rs:744:5:
+assertion `left == right` failed: the renamed field is the same element, not a removal: {"added":1,"browser_session_id":"22222222222222222222222222222222","change_seq":500,"changed":0,"coalesced":9,"event_type":"BrowserPageChanged","from_fingerprint":"b140deee0c2e678f57f634efc2f7a5d3292bbee9b277f40d6b9d5bc8a9b23bf2","latency_ms":138,"page_ref":"c7e46d9a234b3d590de753c50756371c90166bb0434d90561f8491e561cef522","removed":1,"state_version":3,"text_added":0,"text_removed":0,"to_fingerprint":"eb383463f27a99ef4a2676ae40c037e2bce406cf76f06d98ffffed8f56969655","url":"https://app.test/"}
+  left: Number(1)
+ right: 0
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 2 filtered out; finished in 5.70s
+mutated exit: 101 (non-zero expected)
+
+== restored ==
+test qual_px_122_a_change_notice_is_journaled_as_a_delta_without_a_model_call_and_the_known_state_survives_a_killed_core ... ok
+test qual_px_122_a_delta_after_a_compaction_epoch_uses_the_held_fingerprint_and_an_unheld_one_says_why ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 5.51s
+restored exit: 0

@@ -21,6 +21,7 @@ import type { MemoryEventView, MemoryInjectionView } from "./context_knowledge_p
 import type { ContextAccountingView } from "./run_control_pb.js";
 import type { ProcessServiceView } from "./security_runtime_pb.js";
 import type { ReviewCommentThreadView } from "./forge_cloud_pb.js";
+import type { ExtensionRow } from "./customize_pb.js";
 import type { CaptureCost } from "./checkpoints_pb.js";
 
 /**
@@ -743,6 +744,16 @@ export declare type RecoveryReport = Message<"modbit.v1.RecoveryReport"> & {
    * @generated from field: uint64 recovery_ms = 10;
    */
   recoveryMs: bigint;
+
+  /**
+   * REQ-PX-049: tasks the person chose, when quitting, to have resumed the
+   * next time the app opens (the session's latest EndSession said so and no
+   * client has joined the session since). Recovery suspended them; resuming
+   * is the client's ordinary StartTask, so nothing runs without a provider.
+   *
+   * @generated from field: repeated modbit.v1.Id resume_requested_tasks = 11;
+   */
+  resumeRequestedTasks: Id[];
 };
 
 /**
@@ -4581,6 +4592,75 @@ export declare type HunkView = Message<"modbit.v1.HunkView"> & {
    * @generated from field: repeated string lines = 7;
    */
   lines: string[];
+
+  /**
+   * PX-103 (additive): where the hunk came from, decided by the Core from the
+   * workspace's FileChanged log, never by a client.
+   *
+   * the call that produced the hunk; "" when unattributed
+   *
+   * @generated from field: string tool_call_id = 8;
+   */
+  toolCallId: string;
+
+  /**
+   * that call's tool (e.g. change.apply, proc.exec), or user_revert / user_direct_edit
+   *
+   * @generated from field: string tool_name = 9;
+   */
+  toolName: string;
+
+  /**
+   * @generated from field: string turn_id = 10;
+   */
+  turnId: string;
+
+  /**
+   * @generated from field: string run_id = 11;
+   */
+  runId: string;
+
+  /**
+   * false: some of the hunk is not explained by any recorded call
+   *
+   * @generated from field: bool attributed = 12;
+   */
+  attributed: boolean;
+
+  /**
+   * other calls whose lines the hunk holds
+   *
+   * @generated from field: repeated string also_call_ids = 13;
+   */
+  alsoCallIds: string[];
+
+  /**
+   * CHANGE_TRANSACTION | BARRIER_DIFF | USER | UNATTRIBUTED
+   *
+   * @generated from field: string attribution_basis = 14;
+   */
+  attributionBasis: string;
+
+  /**
+   * sha256 of header + lines; a decision names it
+   *
+   * @generated from field: string hunk_digest = 15;
+   */
+  hunkDigest: string;
+
+  /**
+   * "" | ACCEPTED (a person's recorded accept of this exact hunk)
+   *
+   * @generated from field: string decision = 16;
+   */
+  decision: string;
+
+  /**
+   * false for an unattributed hunk
+   *
+   * @generated from field: bool auto_accept_eligible = 17;
+   */
+  autoAcceptEligible: boolean;
 };
 
 /**
@@ -4690,6 +4770,58 @@ export declare type VerificationRunView = Message<"modbit.v1.VerificationRunView
 export declare const VerificationRunViewSchema: GenMessage<VerificationRunView>;
 
 /**
+ * One repair attempt the Core recorded for the task (PX-018; shown from
+ * DR-PX-2026-10-25-017). `outcome` is empty while the attempt is open,
+ * RESOLVED | PARTIAL | UNCHANGED | WORSENED once concluded, and ESCALATED for
+ * the entry the loop writes when it refuses a further attempt (`escalation`
+ * then carries the reason and `ordinal` the attempts so far).
+ *
+ * @generated from message modbit.v1.RepairAttemptView
+ */
+export declare type RepairAttemptView = Message<"modbit.v1.RepairAttemptView"> & {
+  /**
+   * @generated from field: uint32 ordinal = 1;
+   */
+  ordinal: number;
+
+  /**
+   * @generated from field: string failure_signature = 2;
+   */
+  failureSignature: string;
+
+  /**
+   * @generated from field: string hypothesis = 3;
+   */
+  hypothesis: string;
+
+  /**
+   * @generated from field: string intended_fix = 4;
+   */
+  intendedFix: string;
+
+  /**
+   * @generated from field: string outcome = 5;
+   */
+  outcome: string;
+
+  /**
+   * @generated from field: bool reverted = 6;
+   */
+  reverted: boolean;
+
+  /**
+   * @generated from field: string escalation = 7;
+   */
+  escalation: string;
+};
+
+/**
+ * Describes the message modbit.v1.RepairAttemptView.
+ * Use `create(RepairAttemptViewSchema)` to create a new message.
+ */
+export declare const RepairAttemptViewSchema: GenMessage<RepairAttemptView>;
+
+/**
  * @generated from message modbit.v1.ReviewBundle
  */
 export declare type ReviewBundle = Message<"modbit.v1.ReviewBundle"> & {
@@ -4788,6 +4920,13 @@ export declare type ReviewBundle = Message<"modbit.v1.ReviewBundle"> & {
    * @generated from field: repeated modbit.v1.CiRejectedView ci_rejected = 361;
    */
   ciRejected: CiRejectedView[];
+
+  /**
+   * The repair attempts of the task, in the order they were recorded.
+   *
+   * @generated from field: repeated modbit.v1.RepairAttemptView repair_attempts = 362;
+   */
+  repairAttempts: RepairAttemptView[];
 };
 
 /**
@@ -7085,6 +7224,14 @@ export declare type ListHooks = Message<"modbit.v1.ListHooks"> & {
    * @generated from field: modbit.v1.Id task_id = 1;
    */
   taskId?: Id | undefined;
+
+  /**
+   * PX-106 (additive): with no task, the session's extensions only (the
+   * hooks in force are a task's, resolved from its pinned configuration).
+   *
+   * @generated from field: modbit.v1.Id session_id = 20;
+   */
+  sessionId?: Id | undefined;
 };
 
 /**
@@ -7148,6 +7295,60 @@ export declare type HookView = Message<"modbit.v1.HookView"> & {
    * @generated from field: repeated string command = 8;
    */
   command: string[];
+
+  /**
+   * PX-106 (additive): the Customize view's facts about the hook.
+   *
+   * DEVICE | ADMIN | PROJECT | USER | EXTENSION
+   *
+   * @generated from field: string scope = 20;
+   */
+  scope: string;
+
+  /**
+   * false: switched off with SetHookEnabled; it fires on no event
+   *
+   * @generated from field: bool enabled = 21;
+   */
+  enabled: boolean;
+
+  /**
+   * the Core would accept SetHookEnabled(false) for it
+   *
+   * @generated from field: bool can_disable = 22;
+   */
+  canDisable: boolean;
+
+  /**
+   * in force only while the session trusts the repository
+   *
+   * @generated from field: bool trusted_workspace_gate = 23;
+   */
+  trustedWorkspaceGate: boolean;
+
+  /**
+   * the latest HookInvoked outcome on the log; "" when it never ran
+   *
+   * @generated from field: string last_outcome = 24;
+   */
+  lastOutcome: string;
+
+  /**
+   * @generated from field: string last_detail = 25;
+   */
+  lastDetail: string;
+
+  /**
+   * @generated from field: uint64 last_duration_ms = 26;
+   */
+  lastDurationMs: bigint;
+
+  /**
+   * HookInvoked records for it on the session's log
+   *
+   * @generated from field: uint32 invocations = 27;
+   */
+  invocations: number;
 };
 
 /**
@@ -7178,6 +7379,13 @@ export declare type HookListView = Message<"modbit.v1.HookListView"> & {
    * @generated from field: repeated string extensions = 3;
    */
   extensions: string[];
+
+  /**
+   * PX-106: the same, structured
+   *
+   * @generated from field: repeated modbit.v1.ExtensionRow extension_rows = 20;
+   */
+  extensionRows: ExtensionRow[];
 };
 
 /**
@@ -7185,6 +7393,107 @@ export declare type HookListView = Message<"modbit.v1.HookListView"> & {
  * Use `create(HookListViewSchema)` to create a new message.
  */
 export declare const HookListViewSchema: GenMessage<HookListView>;
+
+/**
+ * REQ-PX-049: the person is quitting. The Core runs the session's session_end
+ * hooks to completion (each under its own timeout), journals every run on the
+ * task it ran for, and records the person's resume choice on the session log.
+ *
+ * @generated from message modbit.v1.EndSession
+ */
+export declare type EndSession = Message<"modbit.v1.EndSession"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+
+  /**
+   * resume the running tasks the next time the app opens
+   *
+   * @generated from field: bool resume_on_reopen = 2;
+   */
+  resumeOnReopen: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.EndSession.
+ * Use `create(EndSessionSchema)` to create a new message.
+ */
+export declare const EndSessionSchema: GenMessage<EndSession>;
+
+/**
+ * @generated from message modbit.v1.SessionEndHookRun
+ */
+export declare type SessionEndHookRun = Message<"modbit.v1.SessionEndHookRun"> & {
+  /**
+   * the task whose log carries the HookInvoked entry
+   *
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * "<source>/<name>"
+   *
+   * @generated from field: string hook = 2;
+   */
+  hook: string;
+
+  /**
+   * OK | DENIED | TIMEOUT | FAILED | MALFORMED | IGNORED | UNLOADED
+   *
+   * @generated from field: string outcome = 3;
+   */
+  outcome: string;
+
+  /**
+   * @generated from field: uint64 duration_ms = 4;
+   */
+  durationMs: bigint;
+
+  /**
+   * the hook's own reason, or why it failed
+   *
+   * @generated from field: string detail = 5;
+   */
+  detail: string;
+};
+
+/**
+ * Describes the message modbit.v1.SessionEndHookRun.
+ * Use `create(SessionEndHookRunSchema)` to create a new message.
+ */
+export declare const SessionEndHookRunSchema: GenMessage<SessionEndHookRun>;
+
+/**
+ * @generated from message modbit.v1.SessionEndedView
+ */
+export declare type SessionEndedView = Message<"modbit.v1.SessionEndedView"> & {
+  /**
+   * @generated from field: repeated modbit.v1.SessionEndHookRun hooks = 1;
+   */
+  hooks: SessionEndHookRun[];
+
+  /**
+   * the running tasks the choice applies to
+   *
+   * @generated from field: repeated modbit.v1.Id resume_tasks = 2;
+   */
+  resumeTasks: Id[];
+
+  /**
+   * of the SessionEnding record
+   *
+   * @generated from field: uint64 offset = 3;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.SessionEndedView.
+ * Use `create(SessionEndedViewSchema)` to create a new message.
+ */
+export declare const SessionEndedViewSchema: GenMessage<SessionEndedView>;
 
 /**
  * @generated from message modbit.v1.TrustRepository
@@ -12060,6 +12369,20 @@ export declare type MemoryItemView = Message<"modbit.v1.MemoryItemView"> & {
    * @generated from field: bool validated = 16;
    */
   validated: boolean;
+
+  /**
+   * turns whose prompt carried it (PX-157)
+   *
+   * @generated from field: uint64 uses = 17;
+   */
+  uses: bigint;
+
+  /**
+   * 0 = never
+   *
+   * @generated from field: int64 last_used_at_ms = 18;
+   */
+  lastUsedAtMs: bigint;
 };
 
 /**

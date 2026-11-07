@@ -1,0 +1,24 @@
+{
+ "task": "PX-052",
+ "requirements": [
+  "REQ-PX-052",
+  "QUAL-PX-052"
+ ],
+ "scenarios": [
+  "QUAL-PX-052"
+ ],
+ "tests": [
+  "services/modbit-core/tests/slash_inventory.rs"
+ ],
+ "proof": "The slash-command inventory tests, previously unix-only, run and pass on macOS, Linux and Windows in CI run 40576148614.",
+ "limitations": "Scripted/recorded provider transport; no live-provider leg. Sealed against the PR-head CI run; landed on main in merge 398fd685 (or 7d4537c3/b99a4632/149 squash).",
+ "runs": [
+  "40576148614"
+ ],
+ "ci": {
+  "run_id": "40576148614",
+  "head_sha": "7d233663",
+  "conclusion": "success",
+  "json": "evidence/m10/PX-052/ci-run-40576148614.json"
+ }
+}

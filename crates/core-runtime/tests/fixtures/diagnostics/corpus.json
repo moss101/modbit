@@ -42,5 +42,10 @@
   {"name": "restart_turn_start", "source": {"kind": "restart", "boundary": "TURN_START", "message": "runtime restarted while the task was running", "unknown_calls": []}},
   {"name": "lease_lost", "source": {"kind": "lease_lost", "held": 2, "current": 3, "owner": "cli:shell-2"}},
   {"name": "loop_capacity_lost", "source": {"kind": "loop", "code": "CAPACITY_LOST", "message": "ticket t-1: UNKNOWN_TICKET; re-acquire refused {\"code\":\"CAPACITY_EXHAUSTED\"}"}},
+  {"name": "approval_expired", "source": {"kind": "tool", "tool": "shell.exec", "status": "POLICY_DENIED", "code": "APPROVAL_EXPIRED", "message": "the approval expired before anyone answered", "result_ref": "", "timed_out": false, "cancelled": false}},
+  {"name": "hook_denied_call", "source": {"kind": "tool", "tool": "shell.exec", "status": "POLICY_DENIED", "code": "HOOK_DENIED", "message": "before_tool: a hook refused the call", "result_ref": "", "timed_out": false, "cancelled": false}},
+  {"name": "policy_denied_call", "source": {"kind": "tool", "tool": "shell.exec", "status": "POLICY_DENIED", "code": "PROFILE_NOT_ALLOWED", "message": "tool `shell.exec` does not run under `review_isolated`", "result_ref": "", "timed_out": false, "cancelled": false}},
+  {"name": "loop_denial_streak", "source": {"kind": "loop", "code": "DENIAL_STREAK", "message": "3 tool calls in a row were refused"}},
+  {"name": "shell_sandbox_denied", "source": {"kind": "tool", "tool": "shell.exec", "status": "APPLICATIONFAILURE", "code": "SANDBOX_DENIED", "message": "the sandbox refused an operation (exit_code=1): sh: ./x: Operation not permitted", "result_ref": "", "timed_out": false, "cancelled": false}},
   {"name": "subagent_protected_effect_refused", "source": {"kind": "tool", "tool": "git.worktree.close", "status": "POLICY_DENIED", "code": "PROTECTED_EFFECT_REFUSED", "message": "subagent child-a reached a protected effect: git.worktree.close is DESTRUCTIVE, above its capsule ceiling REVERSIBLE_WRITE; it was refused without an approval of its own. Decide: do it from this task after review, or cancel the child (agent.cancel)", "result_ref": "", "timed_out": false, "cancelled": false}}
 ]

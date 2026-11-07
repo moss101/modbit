@@ -125,6 +125,49 @@ pub(crate) fn run_span_ms(
     u64::try_from(hi.saturating_sub(lo)).unwrap_or(0)
 }
 
+/// Whether a `TaskWaiting` payload parks the run on a person's approval
+/// (PX-156): the run waits inline, so this time is the person's, not the
+/// task's.
+fn parks_on_approval(payload: &Value) -> bool {
+    payload["reason"].as_str() == Some("APPROVAL")
+        || payload["payload"]["reason"].as_str() == Some("APPROVAL")
+}
+
+/// Time one run spent parked on approvals, milliseconds (PX-156): each
+/// approval `TaskWaiting` of the run to the `TaskResumed` after it, from the
+/// task's own events, so a restarted Core reads the same number. An open
+/// wait (no resume yet) counts up to `now_ms`.
+pub(crate) fn run_parked_ms(
+    store: &EventStore,
+    task: &modbit_domain::TaskId,
+    run: modbit_domain::RunId,
+    now_ms: i64,
+) -> u64 {
+    let mut open: Option<i64> = None;
+    let mut total: u64 = 0;
+    for e in store
+        .read_aggregate_of_types(task.as_bytes(), &["TaskWaiting", "TaskResumed"], 0)
+        .unwrap_or_default()
+    {
+        if e.envelope.run_id != Some(run) {
+            continue;
+        }
+        let at = e.envelope.occurred_at.0;
+        if e.envelope.event_type == "TaskWaiting" {
+            let p = store.payload(&e.envelope).unwrap_or_default();
+            if parks_on_approval(&p) && open.is_none() {
+                open = Some(at);
+            }
+        } else if let Some(from) = open.take() {
+            total = total.saturating_add(u64::try_from(at - from).unwrap_or(0));
+        }
+    }
+    if let Some(from) = open {
+        total = total.saturating_add(u64::try_from(now_ms - from).unwrap_or(0));
+    }
+    total
+}
+
 /// What a task has spent, read off its events in log order (REQ-PX-116).
 /// One scanner for the task's own run loop and for the parent that totals
 /// its children, so a child's spend is counted the way the child counts it.
@@ -135,6 +178,8 @@ pub(crate) struct SpendScan<'a> {
     cost_minor: u64,
     unmetered_turns: std::collections::HashSet<modbit_domain::TurnId>,
     run_span: HashMap<modbit_domain::RunId, (i64, i64)>,
+    /// PX-156: per run, an approval wait still open and the parked total.
+    parked: HashMap<modbit_domain::RunId, (Option<i64>, u64)>,
 }
 
 /// The finished reading of a [`SpendScan`].
@@ -145,8 +190,11 @@ pub(crate) struct Spent {
     pub cost_minor: u64,
     /// Completed requests whose cost is unknown.
     pub unmetered_calls: u32,
-    /// First to last event of each run, summed.
+    /// First to last event of each run, summed, less the time parked.
     pub wall_ms: u64,
+    /// Time the runs spent parked on a person's approval (PX-156): not
+    /// charged to the wall-clock budget, reported beside it.
+    pub parked_ms: u64,
 }
 
 impl Spent {
@@ -170,6 +218,7 @@ impl<'a> SpendScan<'a> {
             cost_minor: 0,
             unmetered_turns: std::collections::HashSet::new(),
             run_span: HashMap::new(),
+            parked: HashMap::new(),
         }
     }
 
@@ -186,6 +235,21 @@ impl<'a> SpendScan<'a> {
                 .or_insert((at, at));
         }
         match env.event_type.as_str() {
+            "TaskWaiting" if parks_on_approval(payload) => {
+                if let Some(r) = env.run_id {
+                    let p = self.parked.entry(r).or_insert((None, 0));
+                    p.0 = p.0.or(Some(env.occurred_at.0));
+                }
+            }
+            "TaskResumed" => {
+                if let Some(r) = env.run_id
+                    && let Some(p) = self.parked.get_mut(&r)
+                    && let Some(from) = p.0.take()
+                {
+                    p.1 =
+                        p.1.saturating_add(u64::try_from(env.occurred_at.0 - from).unwrap_or(0));
+                }
+            }
             "TurnPrepared" => self.turns += 1,
             "StepScheduled"
                 if serde_json::from_value::<modbit_domain::step::StepType>(
@@ -221,6 +285,7 @@ impl<'a> SpendScan<'a> {
     }
 
     pub(crate) fn finish(self) -> Spent {
+        let parked_ms: u64 = self.parked.values().map(|p| p.1).sum();
         Spent {
             turns: self.turns,
             tool_calls: self.tool_calls,
@@ -230,7 +295,9 @@ impl<'a> SpendScan<'a> {
                 .run_span
                 .values()
                 .map(|(a, b)| u64::try_from(b - a).unwrap_or(0))
-                .sum(),
+                .sum::<u64>()
+                .saturating_sub(parked_ms),
+            parked_ms,
         }
     }
 }

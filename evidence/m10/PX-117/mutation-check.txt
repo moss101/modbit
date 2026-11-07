@@ -1,0 +1,54 @@
+PX-117 mutation check (QUAL-PX-117 on the cross-platform Python handlers: a hook that is not sent its request fails the lifecycle-payload suite)
+date: 2026-10-25T02:25Z
+base revision: c7768d0da2ff5134850726b7293d137ddfe60000 (plus the uncommitted tests of this change)
+
+== baseline (unmutated) ==
+test qual_px_117_hook_declarations_that_mix_kinds_or_open_a_permission_event_are_refused ... ok
+test qual_px_117_a_project_hook_at_a_new_point_does_not_run_in_an_untrusted_workspace ... ok
+test qual_px_117_a_permission_hook_refuses_before_a_person_is_asked_never_approves_and_fails_closed ... ok
+test qual_px_117_a_commit_hook_refuses_a_models_change_and_the_model_is_told ... ok
+test qual_px_117_each_new_event_fires_at_its_real_lifecycle_point_with_a_typed_versioned_payload ... ok
+test qual_px_117_a_task_complete_hook_can_refuse_a_completion_and_a_subagent_start_hook_can_refuse_a_spawn ... ok
+test qual_px_117_a_commit_hook_sees_the_plan_may_refuse_and_can_never_rewrite_or_widen ... ok
+test qual_px_117_hook_context_is_labelled_scanned_bounded_data_and_never_widens_authority ... ok
+test qual_px_117_a_prompt_hook_routes_through_the_gateway_denies_but_never_allows_and_fails_closed ... ok
+test qual_px_117_a_subagent_stop_hook_sees_a_real_childs_result_and_cannot_change_it ... ok
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.33s
+baseline exit: 0
+
+== mutation: crates/tools/src/hooks.rs
+-    let _ = s.write_all(input.as_bytes()).await;
++    let _ = s.write_all(b"").await;
+test qual_px_117_hook_declarations_that_mix_kinds_or_open_a_permission_event_are_refused ... ok
+test qual_px_117_a_project_hook_at_a_new_point_does_not_run_in_an_untrusted_workspace ... FAILED
+test qual_px_117_a_commit_hook_sees_the_plan_may_refuse_and_can_never_rewrite_or_widen ... FAILED
+test qual_px_117_a_permission_hook_refuses_before_a_person_is_asked_never_approves_and_fails_closed ... ok
+test qual_px_117_each_new_event_fires_at_its_real_lifecycle_point_with_a_typed_versioned_payload ... FAILED
+test qual_px_117_a_commit_hook_refuses_a_models_change_and_the_model_is_told ... ok
+test qual_px_117_a_task_complete_hook_can_refuse_a_completion_and_a_subagent_start_hook_can_refuse_a_spawn ... ok
+test qual_px_117_hook_context_is_labelled_scanned_bounded_data_and_never_widens_authority ... ok
+test qual_px_117_a_prompt_hook_routes_through_the_gateway_denies_but_never_allows_and_fails_closed ... ok
+test qual_px_117_a_subagent_stop_hook_sees_a_real_childs_result_and_cannot_change_it ... FAILED
+thread 'qual_px_117_a_project_hook_at_a_new_point_does_not_run_in_an_untrusted_workspace' (46296592) panicked at services/modbit-core/tests/px_117_hooks.rs:853:5:
+thread 'qual_px_117_a_commit_hook_sees_the_plan_may_refuse_and_can_never_rewrite_or_widen' (46296590) panicked at services/modbit-core/tests/px_117_hooks.rs:918:10:
+thread 'qual_px_117_each_new_event_fires_at_its_real_lifecycle_point_with_a_typed_versioned_payload' (46296596) panicked at services/modbit-core/tests/px_117_hooks.rs:308:9:
+thread 'qual_px_117_a_subagent_stop_hook_sees_a_real_childs_result_and_cannot_change_it' (46296594) panicked at services/modbit-core/tests/px_117_hooks.rs:1213:5:
+assertion `left == right` failed: []
+  left: 0
+test result: FAILED. 6 passed; 4 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.49s
+error: test failed, to rerun pass `-p modbit-core --test px_117_hooks`
+mutated exit: 101 (non-zero expected)
+
+== restored ==
+test qual_px_117_hook_declarations_that_mix_kinds_or_open_a_permission_event_are_refused ... ok
+test qual_px_117_a_project_hook_at_a_new_point_does_not_run_in_an_untrusted_workspace ... ok
+test qual_px_117_a_permission_hook_refuses_before_a_person_is_asked_never_approves_and_fails_closed ... ok
+test qual_px_117_a_commit_hook_refuses_a_models_change_and_the_model_is_told ... ok
+test qual_px_117_each_new_event_fires_at_its_real_lifecycle_point_with_a_typed_versioned_payload ... ok
+test qual_px_117_a_task_complete_hook_can_refuse_a_completion_and_a_subagent_start_hook_can_refuse_a_spawn ... ok
+test qual_px_117_a_commit_hook_sees_the_plan_may_refuse_and_can_never_rewrite_or_widen ... ok
+test qual_px_117_hook_context_is_labelled_scanned_bounded_data_and_never_widens_authority ... ok
+test qual_px_117_a_prompt_hook_routes_through_the_gateway_denies_but_never_allows_and_fails_closed ... ok
+test qual_px_117_a_subagent_stop_hook_sees_a_real_childs_result_and_cannot_change_it ... ok
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.16s
+restored exit: 0

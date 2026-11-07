@@ -30,6 +30,8 @@
 //! forbids handoff, or a secret in the workspace, is refused by the Core
 //! before anything is written.
 
+// PX-168 lint policy: this file spawns processes; new ones need review.
+#![allow(clippy::disallowed_methods)]
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 

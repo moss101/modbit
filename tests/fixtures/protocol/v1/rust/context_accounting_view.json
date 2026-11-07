@@ -9,6 +9,7 @@
       "maxCostMinor": "5000",
       "maxWallMs": "9007199254740993",
       "spentMinor": "1234",
+      "wallMsParked": "3500",
       "wallMsUsed": "42"
     },
     "categories": [
@@ -41,6 +42,7 @@
     "offset": "9007199254741001",
     "providerReportedInput": "9007199254740993",
     "roundingRule": "LARGEST_REMAINDER",
+    "skillConfigurationId": "5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f",
     "totalSource": "PROVIDER_REPORTED",
     "totalTokens": "9007199254740993",
     "turnId": "01a09072-1262-70f2-b103-63d3e8f0feda",

@@ -5,6 +5,10 @@
 //! subscriptions. Scheduler, providers and tools arrive with later tasks.
 //!
 //! Usage: `modbit-core --data-dir <dir>`
+//!
+//! The first statement of `main` hardens the process (PX-148: no core dumps,
+//! not attachable, no injected libraries); `modbit-core --hardening-report`
+//! prints the state that leaves, read from the process.
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -17,6 +21,7 @@ mod apply_back;
 mod approval_expiry;
 mod assurance;
 mod attention;
+mod auto_verify;
 mod automation;
 mod background_process;
 mod baseline;
@@ -51,8 +56,10 @@ mod gate;
 mod git_state;
 mod handoff;
 mod hooks;
+mod hunks;
 mod index_host;
 mod inspector;
+mod instruction_delta;
 mod knowledge;
 mod languages;
 mod mcp;
@@ -83,6 +90,7 @@ mod run_control;
 mod runtime;
 mod sandboxes;
 mod server;
+mod session_end;
 mod side;
 mod skills;
 mod slo;
@@ -105,10 +113,19 @@ mod worktree_cleanup;
 mod worktrees;
 
 fn usage() -> &'static str {
-    "usage: modbit-core --data-dir <dir> [--tether-stdin] [--idle-exit-secs N] [--tenant-id <uuid>]"
+    "usage: modbit-core --data-dir <dir> [--tether-stdin] [--idle-exit-secs N] [--tenant-id <uuid>] | --hardening-report"
 }
 
+/// Stack of each runtime worker thread (see `main`).
+const WORKER_STACK_BYTES: usize = 16 * 1024 * 1024;
+
 fn main() -> ExitCode {
+    // PX-148: before any thread, store or key. A protection that cannot be set
+    // is said so, not skipped.
+    let hardening = modbit_process_hardening::harden();
+    for failure in &hardening.failed {
+        eprintln!("modbit-core: hardening: {failure}");
+    }
     let mut data_dir: Option<PathBuf> = None;
     let mut tether_stdin = false;
     let mut idle_exit_secs: Option<u64> = None;
@@ -128,6 +145,10 @@ fn main() -> ExitCode {
                         return ExitCode::from(2);
                     }
                 }
+            }
+            "--hardening-report" => {
+                println!("{}", modbit_process_hardening::report_json(&hardening));
+                return ExitCode::SUCCESS;
             }
             "-h" | "--help" => {
                 println!("{}", usage());
@@ -183,7 +204,17 @@ fn main() -> ExitCode {
             });
         }
     }
+    // The command dispatcher is one very large async function and some
+    // commands re-enter it (ResumeTask re-enters StartTask), so an unoptimised
+    // build polls it with a frame that is a large share of tokio's default
+    // 2 MiB worker stack: measured with the stack shrunk, the resume path needs
+    // ~2.0 MiB on arm64 macOS and passes on a hosted Windows runner only until
+    // another match arm is added (PR #143: "thread 'tokio-rt-worker' has
+    // overflowed its stack", Core aborted, clients saw "connection closed").
+    // The workers get room instead of a margin of a few kilobytes; the memory
+    // is reserved address space that is committed only as it is touched.
     let rt = match tokio::runtime::Builder::new_multi_thread()
+        .thread_stack_size(WORKER_STACK_BYTES)
         .enable_all()
         .build()
     {

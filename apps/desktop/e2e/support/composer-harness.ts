@@ -8,6 +8,7 @@
  */
 import { expect, type Page } from "@playwright/test";
 import { createServer, type Server } from "node:http";
+import { queueTask, runTask } from "./new-task.ts";
 import { Gate, type Part } from "./stream-model.ts";
 
 export { Gate };
@@ -80,23 +81,16 @@ export function sequencedModel(script: SeqReply[]): Promise<SeqModel> {
   });
 }
 
-/** Creates a task from the Fleet form, starts it and opens its conversation from the agent list. */
+/** Creates a task from the home composer, which starts it and opens its conversation. */
 export async function startAndOpen(page: Page, goal: string, repo: string): Promise<string> {
-  const taskId = await createTask(page, goal, repo);
-  const card = page.getByTestId("task-card").filter({ hasText: goal }).first();
-  await card.getByTestId("task-start").click();
-  await openConversation(page, taskId);
+  const taskId = await runTask(page, goal, repo);
+  await expect(page.getByTestId("conversation")).toHaveAttribute("data-loaded", "true");
   return taskId;
 }
 
-/** Creates a task (not started) from the Fleet form and returns its id. */
+/** Creates a task (not started) from the home composer and returns its id. */
 export async function createTask(page: Page, goal: string, repo: string): Promise<string> {
-  await page.getByTestId("goal").fill(goal);
-  await page.getByTestId("workspace").fill(repo);
-  await page.getByTestId("run").click();
-  const card = page.getByTestId("task-card").filter({ hasText: goal }).first();
-  await expect(card).toBeVisible();
-  return (await card.getAttribute("data-task-id"))!;
+  return queueTask(page, goal, repo);
 }
 
 export async function openConversation(page: Page, taskId: string): Promise<void> {

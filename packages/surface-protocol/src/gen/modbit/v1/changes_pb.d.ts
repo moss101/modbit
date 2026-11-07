@@ -639,3 +639,164 @@ export declare type CommitAndPushAck = Message<"modbit.v1.CommitAndPushAck"> & {
  */
 export declare const CommitAndPushAckSchema: GenMessage<CommitAndPushAck>;
 
+/**
+ * Accept or reject one hunk of the candidate while the task is in any state,
+ * including running. REJECT reverts exactly that hunk through the Core's
+ * ChangeTransaction against the file revision the client saw (a moved file is
+ * STALE_REVISION; a hunk that is no longer the one shown, STALE_HUNK) and
+ * records, in the same transaction, a decision the agent is told of at its
+ * next round boundary as a typed notice carrying the reason. ACCEPT records
+ * that a person accepted this exact hunk. AUTO_ACCEPT is the automatic form:
+ * it is refused (UNATTRIBUTED_HUNK) for a hunk the Core cannot attribute.
+ *
+ * @generated from message modbit.v1.DecideHunk
+ */
+export declare type DecideHunk = Message<"modbit.v1.DecideHunk"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: string path = 2;
+   */
+  path: string;
+
+  /**
+   * @generated from field: uint32 hunk_index = 3;
+   */
+  hunkIndex: number;
+
+  /**
+   * ACCEPT | REJECT | AUTO_ACCEPT
+   *
+   * @generated from field: string decision = 4;
+   */
+  decision: string;
+
+  /**
+   * required
+   *
+   * @generated from field: string expected_file_revision = 5;
+   */
+  expectedFileRevision: string;
+
+  /**
+   * "" = not checked
+   *
+   * @generated from field: string expected_hunk_digest = 6;
+   */
+  expectedHunkDigest: string;
+
+  /**
+   * REJECT: told to the agent
+   *
+   * @generated from field: string reason = 7;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message modbit.v1.DecideHunk.
+ * Use `create(DecideHunkSchema)` to create a new message.
+ */
+export declare const DecideHunkSchema: GenMessage<DecideHunk>;
+
+/**
+ * @generated from message modbit.v1.DecideHunkAck
+ */
+export declare type DecideHunkAck = Message<"modbit.v1.DecideHunkAck"> & {
+  /**
+   * ACCEPTED | REJECTED
+   *
+   * @generated from field: string result = 1;
+   */
+  result: string;
+
+  /**
+   * @generated from field: string path = 2;
+   */
+  path: string;
+
+  /**
+   * @generated from field: uint32 hunk_index = 3;
+   */
+  hunkIndex: number;
+
+  /**
+   * @generated from field: string hunk_digest = 4;
+   */
+  hunkDigest: string;
+
+  /**
+   * @generated from field: string decision_id = 5;
+   */
+  decisionId: string;
+
+  /**
+   * "" when unattributed
+   *
+   * @generated from field: string attributed_call_id = 6;
+   */
+  attributedCallId: string;
+
+  /**
+   * @generated from field: string attributed_tool = 7;
+   */
+  attributedTool: string;
+
+  /**
+   * the task's loop was running when the decision was made
+   *
+   * @generated from field: bool run_live = 8;
+   */
+  runLive: boolean;
+
+  /**
+   * what the Core will tell the agent ("" for ACCEPT)
+   *
+   * @generated from field: string agent_notice = 9;
+   */
+  agentNotice: string;
+
+  /**
+   * after the decision
+   *
+   * @generated from field: string file_revision = 10;
+   */
+  fileRevision: string;
+
+  /**
+   * @generated from field: string before_hash = 11;
+   */
+  beforeHash: string;
+
+  /**
+   * REJECT: restore it to undo
+   *
+   * @generated from field: string checkpoint_id = 12;
+   */
+  checkpointId: string;
+
+  /**
+   * @generated from field: uint64 workspace_revision = 13;
+   */
+  workspaceRevision: bigint;
+
+  /**
+   * @generated from field: uint64 offset = 14;
+   */
+  offset: bigint;
+
+  /**
+   * @generated from field: bool replayed = 15;
+   */
+  replayed: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.DecideHunkAck.
+ * Use `create(DecideHunkAckSchema)` to create a new message.
+ */
+export declare const DecideHunkAckSchema: GenMessage<DecideHunkAck>;
+

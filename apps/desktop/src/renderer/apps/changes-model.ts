@@ -32,6 +32,8 @@ const REFUSAL_WORDS: Record<string, string> = {
   PROTECTED_PATH: "That is a protected path; it is not changed or committed from here.",
   NO_SUCH_CHANGE: "That path has no change to act on any more.",
   UNKNOWN_HUNK: "That hunk is not in the change set any more; reload the changes.",
+  STALE_HUNK: "That hunk is no longer the one you were shown. Nothing was written; refresh to see the current hunk.",
+  UNATTRIBUTED_HUNK: "The Core cannot tell which tool call wrote this hunk, so it is never accepted automatically. Look at it and accept it yourself, or reject it.",
   UNSUPPORTED_HUNK: "This file's hunks cannot be reverted one by one; revert the whole file instead.",
   CHECKPOINT_FAILED: "No checkpoint could be taken, so nothing was reverted.",
   TASK_RUNNING: "The task is still running; it owns the files until it stops.",
@@ -98,4 +100,29 @@ export function newCommandId(fill: (bytes: Uint8Array<ArrayBuffer>) => void = (b
   const bytes = new Uint8Array(16);
   fill(bytes);
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// ------------------------------------------- per-hunk decisions and the originating-call chip (PX-104)
+
+/** What a hunk's chip says: the Core's attribution in words, or that there is none. */
+export function chipText(h: { attributed: boolean; toolName: string; toolCallId: string }): string {
+  if (h.toolCallId === "") return "Not attributed to a tool call";
+  return h.attributed ? `Written by ${h.toolName}` : `Partly written by ${h.toolName}; the rest is not attributed`;
+}
+
+/** The transcript row that shows a tool call (the Core's row id scheme: `tool:<call id>`). */
+export function callRowId(toolCallId: string): string {
+  return `tool:${toolCallId}`;
+}
+
+/** The plain-language reply to a decision the Core applied. */
+export function decisionWords(a: { result: string; path: string; hunkIndex: number; runLive: boolean; agentNotice: string }): string {
+  const where = `hunk ${a.hunkIndex + 1} of ${a.path}`;
+  if (a.result === "ACCEPTED") return `Accepted ${where}.`;
+  return a.runLive ? `Rejected ${where}; the run goes on and the agent will be told at its next step.` : `Rejected ${where}; the agent will be told when it next runs.`;
+}
+
+/** Decision controls act on what the Core showed: they wait only for an action of this view that is in flight, never for the task to stop. */
+export function canDecide(busy: boolean, binary: boolean): boolean {
+  return !busy && !binary;
 }

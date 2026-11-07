@@ -156,3 +156,41 @@ message CommitAndPushAck {
   string detail = 17;
   string staged_digest = 18;
 }
+
+// ---- Per-hunk decisions that keep the run going (REQ-PX-103) ----
+
+// Accept or reject one hunk of the candidate while the task is in any state,
+// including running. REJECT reverts exactly that hunk through the Core's
+// ChangeTransaction against the file revision the client saw (a moved file is
+// STALE_REVISION; a hunk that is no longer the one shown, STALE_HUNK) and
+// records, in the same transaction, a decision the agent is told of at its
+// next round boundary as a typed notice carrying the reason. ACCEPT records
+// that a person accepted this exact hunk. AUTO_ACCEPT is the automatic form:
+// it is refused (UNATTRIBUTED_HUNK) for a hunk the Core cannot attribute.
+message DecideHunk {
+  Id task_id = 1;
+  string path = 2;
+  uint32 hunk_index = 3;
+  string decision = 4;                 // ACCEPT | REJECT | AUTO_ACCEPT
+  string expected_file_revision = 5;   // required
+  string expected_hunk_digest = 6;     // "" = not checked
+  string reason = 7;                   // REJECT: told to the agent
+}
+
+message DecideHunkAck {
+  string result = 1;                   // ACCEPTED | REJECTED
+  string path = 2;
+  uint32 hunk_index = 3;
+  string hunk_digest = 4;
+  string decision_id = 5;
+  string attributed_call_id = 6;       // "" when unattributed
+  string attributed_tool = 7;
+  bool run_live = 8;                   // the task's loop was running when the decision was made
+  string agent_notice = 9;             // what the Core will tell the agent ("" for ACCEPT)
+  string file_revision = 10;           // after the decision
+  string before_hash = 11;
+  string checkpoint_id = 12;           // REJECT: restore it to undo
+  uint64 workspace_revision = 13;
+  uint64 offset = 14;
+  bool replayed = 15;
+}

@@ -24,7 +24,7 @@ export function useKeyScope(active: boolean, scope: KeyScope | null): void {
   useEffect(() => {
     if (!active || !latest.current) return;
     const s = latest.current;
-    return keyScopes.push({ id: s.id, blocking: s.blocking, resolve: (e, mac) => latest.current?.resolve(e, mac) ?? null });
+    return keyScopes.push({ id: s.id, blocking: s.blocking, priority: s.priority ?? 0, resolve: (e, mac) => latest.current?.resolve(e, mac) ?? null });
   }, [active, latest]);
 }
 

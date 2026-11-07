@@ -30,6 +30,8 @@
 //! (`OVER_BOUNDS`) and the turn records why instead of half a checkpoint. The
 //! cost of every commit is on its `CheckpointCommitted` event.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex as StdMutex, OnceLock};
@@ -239,8 +241,20 @@ pub(crate) fn gate(core: &Core) -> Arc<Gate> {
 /// a named point, as a `SIGKILL` there would. `MODBIT_FAULT_CHECKPOINT` names
 /// the point (`MID_CAPTURE`, `AFTER_PRE_RESTORE`, `AFTER_RESTORE_JOURNAL`,
 /// `MID_RESTORE_WRITE`, `AFTER_GC_COLLECT`, `MID_GC_SWEEP`); unset in
-/// production.
+/// production. `MODBIT_FAULT_CHECKPOINT_STALL="<point>:<ms>"` stops at the
+/// point for that long instead, so a test can deliver a real `SIGKILL` from
+/// outside while the work is half done.
 pub(crate) fn fault_point(point: &str) {
+    if let Some(ms) = std::env::var("MODBIT_FAULT_CHECKPOINT_STALL")
+        .ok()
+        .and_then(|v| {
+            let (p, ms) = v.split_once(':')?;
+            (p == point).then(|| ms.parse::<u64>().ok()).flatten()
+        })
+    {
+        eprintln!("modbit-core: fault injection: stalling {ms} ms at {point}");
+        std::thread::sleep(std::time::Duration::from_millis(ms));
+    }
     if std::env::var("MODBIT_FAULT_CHECKPOINT").is_ok_and(|v| v == point) {
         eprintln!("modbit-core: fault injection: aborting at {point}");
         std::process::abort();

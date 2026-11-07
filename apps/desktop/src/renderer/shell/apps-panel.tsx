@@ -1,4 +1,4 @@
-import { Tabs, type TabDef } from "@modbit/ui";
+import { Icon, IconButton, Tabs, type IconName, type TabDef } from "@modbit/ui";
 import type { TerminalViewJson } from "../../preload/preload.ts";
 import { BrowserApp } from "../apps/browser-app.tsx";
 import { ChangesApp } from "../apps/changes-app.tsx";
@@ -24,8 +24,17 @@ export interface AppsPanelProps {
   onTerminalsChanged: () => void;
   announce: (text: string) => void;
   onOpenReview: () => void;
+  /** PX-104: open a tool call in the task's conversation (the Changes chip). */
+  onOpenCall: (toolCallId: string) => void;
   onOpenBrowser: () => void;
+  /** Tells the shell the branch the Changes app read, for the top bar. */
+  onBranch: (taskId: string, branch: string) => void;
+  onClose: () => void;
+  maximized: boolean;
+  onToggleMaximize: () => void;
 }
+
+const APP_ICON: Record<AppKind, IconName> = { changes: "file-diff", terminal: "terminal", browser: "globe", files: "file-text", evidence: "eye" };
 
 /**
  * The typed apps-panel host (AFW-A01, AFW-I01, REQ-PX-048): a tab per app kind
@@ -34,16 +43,17 @@ export interface AppsPanelProps {
  * app with nothing to show says so.
  */
 export function AppsPanel(p: AppsPanelProps) {
-  const tabs: TabDef[] = APP_KINDS.map((k) => ({ id: k, label: APP_LABEL[k], ...(k === "terminal" && p.terminals.length > 0 ? { badge: String(p.terminals.length) } : {}) }));
+  const tabs: TabDef[] = APP_KINDS.map((k) => ({ id: k, label: APP_LABEL[k], icon: <Icon name={APP_ICON[k]} size={14} />, ...(k === "terminal" && p.terminals.length > 0 ? { badge: String(p.terminals.length) } : {}) }));
   return (
     <div className="apps-panel" data-testid="apps-panel" data-task-id={p.taskId}>
-      <p className="meta apps-panel-task" title={p.taskTitle}>
-        {p.taskTitle}
-      </p>
+      <span className="apps-panel-tools">
+        <IconButton label={p.maximized ? "Restore the panel" : "Widen the panel"} icon={<Icon name="maximize-2" size={14} />} size="sm" pressed={p.maximized} onClick={p.onToggleMaximize} data-testid="apps-panel-maximize" />
+        <IconButton label="Apps panel" icon={<Icon name="panel-right" size={14} />} size="sm" pressed data-testid="toggle-apps-panel" onClick={p.onClose} />
+      </span>
       <Tabs label="Apps" tabs={tabs} selected={p.tab} onSelect={(id) => p.onTab(id as AppKind)} idPrefix="apps" testId="apps-tabs">
         {p.tab === "changes" &&
           (p.artifacts.includes("changes") ? (
-            <ChangesApp sessionId={p.sessionId} taskId={p.taskId} taskState={p.taskState} refreshKey={p.refreshKey} onOpenReview={p.onOpenReview} />
+            <ChangesApp sessionId={p.sessionId} taskId={p.taskId} taskState={p.taskState} refreshKey={p.refreshKey} onOpenReview={p.onOpenReview} onOpenCall={p.onOpenCall} onBranch={(branch) => p.onBranch(p.taskId, branch)} />
           ) : (
             <p className="meta" data-testid="app-changes-empty">
               This task has no change set to show yet.

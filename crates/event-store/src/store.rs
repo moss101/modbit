@@ -1,5 +1,7 @@
 //! The SQLite-backed store.
 
+// PX-168 lint policy: this file baselined expect/unwrap sites; new ones need review.
+#![allow(clippy::expect_used)]
 use std::path::{Path, PathBuf};
 
 use modbit_domain::event::{Actor, AggregateType, EventEnvelope, PayloadRef};

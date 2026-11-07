@@ -80,9 +80,9 @@ impl Repo {
                 blob: parts[3].to_owned(),
             });
         }
-        // An intent-to-add entry (`add -N`, which the review does for new files
-        // so they appear in its diff) is an addition in the raw diff but is not
-        // staged: only the status's index column says which paths are.
+        // An intent-to-add entry (a person's own `add -N`) is an addition in the
+        // raw diff but is not staged: only the status's index column says which
+        // paths are.
         let staged: std::collections::HashSet<String> = self
             .status()?
             .into_iter()
