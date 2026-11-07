@@ -154,8 +154,17 @@ test("PX-058: three pending approvals form a deck, oldest first, each decided on
     expect(remotes(repos[1]!)).toEqual([]);
     expect(remotes(repos[2]!)).toEqual([]);
     await expect(page.getByTestId("approval-foreign")).toBeVisible();
-    await page.getByTestId("approval-run").click();
-    await expect.poll(() => remotes(repos[2]!), { timeout: 90_000 }).toEqual(["r3"]);
+    // The decision is read back from the Core (the approval leaves the dock), so a click the hosted Windows runner swallowed (the deck
+    // re-rendered between the actionability check and the press) is told apart from an approved effect that did not run. Run is pressed
+    // again only while the Core still lists this approval; the effect itself is asserted below, once.
+    const pendingIds = () => page.evaluate((s) => window.modbit.dockApprovals(s).then((l) => l.map((a) => a.approvalId)), sid);
+    await expect(async () => {
+      if ((await pendingIds()).includes(third) && (await page.getByTestId("approval-card").getAttribute("data-approval-id")) === third) {
+        await page.getByTestId("approval-run").click({ timeout: 5_000 });
+      }
+      expect(await pendingIds(), "the Core recorded the decision on the third agent's approval").not.toContain(third);
+    }).toPass({ timeout: 60_000, intervals: [1_000, 2_000, 5_000] });
+    await expect.poll(() => remotes(repos[2]!), { timeout: 90_000, message: "the approved effect ran in the third agent's repository" }).toEqual(["r3"]);
     expect(remotes(repos[1]!)).toEqual([]);
     // Skip is a typed user decision: the approval is DENIED by the user, the call ends with the typed code APPROVAL_DENIED, and the agent went on to another turn.
     await expect
