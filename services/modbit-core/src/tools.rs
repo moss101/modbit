@@ -557,6 +557,8 @@ impl ToolHost {
             .map_err(|e| anyhow::anyhow!("{e}"))?;
         modbit_tools::computer::register_computer(&mut registry)
             .map_err(|e| anyhow::anyhow!("{e}"))?;
+        modbit_tools::handover::register_handover(&mut registry)
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
         // M9.4: the read declarations the host publishes are shared with the
         // registered `external.call`, so the effect class it presents to the
         // kernel is always the host's current judgement.
