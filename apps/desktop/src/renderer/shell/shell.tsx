@@ -348,11 +348,13 @@ export function Shell({ app }: { app: AppState }) {
     [runCommand],
   );
   useKeyScope(true, globalScope);
-  // A pending confirmation owns Enter and Escape: a docked approval card behind it must not take them as Run or Skip.
+  // A pending confirmation owns Enter and Escape: a docked approval card behind it must not take them as Run or Skip,
+  // even a card that docks after the confirmation opened.
   const confirmScope = useMemo<KeyScope>(
     () => ({
       id: "confirmation",
       blocking: false,
+      priority: 1,
       resolve: (e) => (e.key === "Enter" ? () => void runKeyCommand("confirm") : e.key === "Escape" ? () => void runKeyCommand("back") : null),
     }),
     [runKeyCommand],

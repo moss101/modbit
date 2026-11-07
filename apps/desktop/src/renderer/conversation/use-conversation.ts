@@ -9,7 +9,7 @@
  * the projection from the log, plus what main has seen of any stream still open.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Density, PendingApprovalView, TranscriptRowView } from "../../shared/conversation-types.ts";
+import type { Density, PendingApprovalView, TaskFactsView, TranscriptRowView } from "../../shared/conversation-types.ts";
 import { applyStreamEvent, dividerOffsetOf, reuseRows, seedStreams, splitTail, type LiveStreams, type StreamEventLike } from "./model.ts";
 
 const PAGE = 500;
@@ -30,6 +30,10 @@ export interface ConversationData {
   lastOffset: string;
   readOffset: string;
   totalRows: number;
+  /** The task's facts as the Core folded them at `asOfOffset` (PX-196); null until a page arrives or from an older Core. */
+  facts: TaskFactsView | null;
+  /** The task those facts are of: a page of the previous task may still be shown while the next one loads. */
+  factsTaskId: string;
   live: LiveStreams;
   /** The protected effects of the session waiting for a decision, from the Core. */
   approvals: PendingApprovalView[];
@@ -49,7 +53,7 @@ export function useConversation(taskId: string | null, sessionId: string | null,
   const [tail, setTail] = useState<TranscriptRowView | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [meta, setMeta] = useState({ taskState: "", asOfOffset: "0", lastOffset: "0", readOffset: "0", totalRows: 0 });
+  const [meta, setMeta] = useState<{ taskState: string; asOfOffset: string; lastOffset: string; readOffset: string; totalRows: number; facts: TaskFactsView | null; factsTaskId: string }>({ taskState: "", asOfOffset: "0", lastOffset: "0", readOffset: "0", totalRows: 0, facts: null, factsTaskId: "" });
   const [live, setLive] = useState<LiveStreams>(EMPTY);
   const [approvals, setApprovals] = useState<PendingApprovalView[]>([]);
   const [lastActivityMs, setLastActivityMs] = useState(0);
@@ -101,7 +105,7 @@ export function useConversation(taskId: string | null, sessionId: string | null,
       }
       setRows(reused);
       setTail(t);
-      setMeta({ taskState: last.taskState, asOfOffset: last.asOfOffset, lastOffset: last.lastOffset, readOffset: last.readOffset, totalRows: last.totalRows });
+      setMeta({ taskState: last.taskState, asOfOffset: last.asOfOffset, lastOffset: last.lastOffset, readOffset: last.readOffset, totalRows: last.totalRows, facts: last.facts ?? null, factsTaskId: last.taskId });
       setLoaded(true);
       setError(null);
       setRefreshedAt(Date.now());

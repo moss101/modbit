@@ -1,0 +1,4 @@
+details-layer: exit=1 ['    Error: expect(locator).toHaveCount(expected) failed', '  1 failed'] ['Error: expect(locator).toHaveCount(expected) failed']
+confirm-priority: exit=1 ['    Error: expect(locator).toHaveCount(expected) failed', '  1 failed'] ['Error: expect(locator).toHaveCount(expected) failed']
+fold-past-tense: exit=1 ['    Received string: "Ran 2 commands, 2 failed · 2 steps"', '      370 |     await expect(failedFold).toHaveCount(1);', '  1 failed'] ['Error: expect(locator).not.toContainText(expected) failed']
+core-facts: exit=1 ['  1 failed'] ['Error: the details after a reload equal the details live']

@@ -95,6 +95,16 @@ export interface TranscriptRowView {
   facts: RowFacts;
 }
 
+/** A task's facts the Core folded from its log at the page's offset (PX-196); "" where the log has none. */
+export interface TaskFactsView {
+  phase: string;
+  agents: { total: number; running: number; background: number; waiting: number; done: number; failed: number };
+  attachments: number;
+  latestEvidence: string;
+  risk: string;
+  nextAction: string;
+}
+
 export interface TranscriptPageView {
   taskId: string;
   density: Density;
@@ -107,6 +117,8 @@ export interface TranscriptPageView {
   taskState: string;
   readOffset: string;
   eventsRead: string;
+  /** Absent from a Core older than PX-196. */
+  facts?: TaskFactsView;
 }
 
 export interface TranscriptOptions {

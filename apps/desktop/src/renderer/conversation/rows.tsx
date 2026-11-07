@@ -11,7 +11,7 @@ import { memo, useEffect, useRef, useState, type ReactNode } from "react";
 import { Button, Icon, StatusDot, type IconName } from "@modbit/ui";
 import type { PendingApprovalView, TranscriptRowView } from "../../shared/conversation-types.ts";
 import type { TaskCard } from "../model.ts";
-import { needsEyes, presentAssistant, streamKey, toolVerb, unfinishedCalls, type LiveStreams, type MessageState, type PresentedRow } from "./model.ts";
+import { needsEyes, presentAssistant, streamKey, toolVerb, callStatus, unfinishedCalls, type LiveStreams, type MessageState, type PresentedRow } from "./model.ts";
 import { sameBlock, splitBlocks, type Block } from "./blocks.ts";
 import { EditBox, MessageActions, TurnMarker, type CheckpointContext } from "./checkpoint-controls.tsx";
 import { ComputerActionCard, type ComputerCardContext } from "../computer/action-card.tsx";
@@ -180,8 +180,9 @@ const stepText = (row: TranscriptRowView): string => {
 export function groupSummary(children: readonly TranscriptRowView[]): { icon: IconName; words: string } | null {
   const calls = children.filter((c) => c.facts.type === "tool");
   if (calls.length === 0) return null;
-  // Only what happened is told in the past tense; the rest is said as not finished or not run.
-  const tools = calls.filter((c) => !["PENDING", "RUNNING", "AWAITING_APPROVAL", "DENIED", "CANCELLED"].includes(c.hints.status));
+  const statuses = calls.map((c) => callStatus(c.hints.status, c.facts.type === "tool" ? c.facts.failureCode : ""));
+  // Only a call that succeeded is told in the past tense; the rest is said as not finished, failed, unknown or not run.
+  const tools = calls.filter((_, i) => statuses[i] === "SUCCEEDED");
   const of = (c: string) => tools.filter((t) => t.facts.type === "tool" && t.facts.toolClass === c);
   const reads = of("READ");
   const searches = of("SEARCH");
@@ -199,7 +200,7 @@ export function groupSummary(children: readonly TranscriptRowView[]): { icon: Ic
   const planning = others.filter((t) => t.facts.type === "tool" && t.facts.toolName.startsWith("plan."));
   if (planning.length > 0) parts.push("Updated the plan");
   if (others.length > planning.length) parts.push(`Used ${plural(others.length - planning.length, "tool")}`);
-  parts.push(...unfinishedCalls(calls.map((c) => c.hints.status)));
+  parts.push(...unfinishedCalls(statuses));
   const icon: IconName = tools.length > 0 && planning.length === tools.length ? "list-tree" : edits.length > 0 ? "square-pen" : shells.length > 0 ? "terminal" : browsing.length > 0 ? "globe" : reads.length + searches.length > 0 ? "search" : "ellipsis";
   return { icon, words: parts.join(", ") };
 }
@@ -207,7 +208,7 @@ const TOOL_STATUS_WORD: Record<string, string> = { PENDING: "Waiting to run", RU
 
 function ToolRow({ row, ctx }: { row: TranscriptRowView; ctx: RowContext }) {
   const f = row.facts.type === "tool" ? row.facts : null;
-  const status = row.hints.status;
+  const status = callStatus(row.hints.status, f?.failureCode ?? "");
   const bad = status === "FAILED" || status === "DENIED" || status === "UNKNOWN_OUTCOME" || status === "CANCELLED";
   const word = TOOL_STATUS_WORD[status] ?? status.toLowerCase();
   // PX-074: a native-control call is a numbered action card, not a command line.
