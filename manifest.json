@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 1986,
-    "docs_bytes": 2338661
+    "root_and_tooling": 1990,
+    "docs_bytes": 2339419
   },
   "sections": [
     {
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 56652,
-      "sha256": "ebd983e7b0cb813b8987c128135c5c34e307c8261783feb2ab0be7ccc80f6271"
+      "bytes": 57410,
+      "sha256": "583f80308ee51c27e0fa76b5738947559ed78e6de89e8464bae68d031d89a554"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -3320,8 +3320,8 @@
     },
     {
       "path": "evidence/m10/PX-196/TASK_CARD.md",
-      "bytes": 5411,
-      "sha256": "155438dace1d712a133d5fa458b0afd5ae6bdb0e998e29301e30f742e13e3047"
+      "bytes": 6420,
+      "sha256": "618887954a3bac64b6251e11e825f52eea6d7705a875e2294182162d3b826609"
     },
     {
       "path": "evidence/m10/PX-196/after/list-attention-view.png",
@@ -3359,6 +3359,16 @@
       "sha256": "c78dbff9a5208db1bbc762886439d1719d198a7a74d3808fb5fee510778dbf9c"
     },
     {
+      "path": "evidence/m10/PX-196/ci-run-42375302523.json",
+      "bytes": 1462,
+      "sha256": "83943db534d8e9cce9129f62bc648887f7e113cb0c447e01300061fa79e4f5cb"
+    },
+    {
+      "path": "evidence/m10/PX-196/desktop-e2e-full-2026-11-07.log",
+      "bytes": 93626,
+      "sha256": "cbf96484e5ef0662d9bfdef3a0e87f421468927c2dec19673338a57f647da5ab"
+    },
+    {
       "path": "evidence/m10/PX-196/desktop-e2e-full-after-section-5-9.log",
       "bytes": 461706,
       "sha256": "86ce7cae06b9f28eb02f28ef6505ce15425095a5e22b167604815102d7d6264a"
@@ -3375,8 +3385,8 @@
     },
     {
       "path": "evidence/m10/PX-197/TASK_CARD.md",
-      "bytes": 5487,
-      "sha256": "224b55913f7d646308ba4065c69470128ec3cda7499f7e41dc043d83c38c3052"
+      "bytes": 6477,
+      "sha256": "d5f24d96edab790d88aea8429315ad8a6b8b09881f754c7508fb0cdb66407422"
     },
     {
       "path": "evidence/m10/PX-197/after/conv-light.png",
@@ -3409,9 +3419,19 @@
       "sha256": "c78dbff9a5208db1bbc762886439d1719d198a7a74d3808fb5fee510778dbf9c"
     },
     {
+      "path": "evidence/m10/PX-197/ci-run-42375302523.json",
+      "bytes": 1462,
+      "sha256": "83943db534d8e9cce9129f62bc648887f7e113cb0c447e01300061fa79e4f5cb"
+    },
+    {
       "path": "evidence/m10/PX-197/evidence.json",
       "bytes": 4879,
       "sha256": "f96a11e2affd29a6de999a7b29a4306b2b15c598d33c112891bccf92fc1fefc9"
+    },
+    {
+      "path": "evidence/m10/PX-197/mutation-check-2026-11-07.txt",
+      "bytes": 625,
+      "sha256": "234964ea438c7b631145bb92245b7a8adc40fff0138845c3df5946b48173ae34"
     },
     {
       "path": "evidence/m10/graph-audit-2026-11-07/AUDIT.md",
@@ -10796,12 +10816,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 47138,
-      "sha256": "7336d179b862e8654834b93ccc73abc5d30d9510378e4dbf87bad2219d95d2a2"
+      "sha256": "461f4623d79e0fe404b36bb61db568b527dc31024515646fec67d1f8f0406d29"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2535682,
-      "sha256": "e280b058f458f4340874ef66fdab4f8fb62895967969ee0946039ea5c5424849"
+      "bytes": 2537052,
+      "sha256": "bcb6f431c2ea6a7f14f08d4d23a71414b3a7b4a9a0b665d122d0e2e542721d7c"
     },
     {
       "path": "tools/build_graph.py",

@@ -191,6 +191,29 @@ message TranscriptPage {
   string task_state = 9;
   uint64 read_offset = 10;     // the offset the person last marked as read
   uint64 events_read = 11;     // how much of the log this read loaded
+  // The task's facts folded from the same log at as_of_offset (PX-196): what a
+  // client shows for the task after a restart, when it has seen none of its events.
+  // Field numbers 440-449 are the block PX-196 uses for additions to existing messages.
+  TaskFacts facts = 440;
+}
+
+// A task's facts as its events left them, by the rules the desktop folds live
+// events with (apps/desktop/src/renderer/model.ts): never a default the log
+// does not support.
+message TaskFacts {
+  // drafting | verifying | reviewing | escalating | awaitingHuman | waitingCapacity | delegating | done
+  string phase = 1;
+  // The task's agents by status (M6.6): total, then one counter per bucket.
+  uint32 agents_total = 2;
+  uint32 agents_running = 3;
+  uint32 agents_background = 4;
+  uint32 agents_waiting = 5;
+  uint32 agents_done = 6;
+  uint32 agents_failed = 7;
+  uint32 attachments = 8;
+  string latest_evidence = 9;  // "" when none
+  string risk = 10;            // "" when none
+  string next_action = 11;     // "" when none
 }
 
 // -------------------------------------------------------------------- headers

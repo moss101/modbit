@@ -83,6 +83,18 @@ export function pageView(taskId: string, p: TranscriptPage): TranscriptPageView 
     taskState: p.taskState,
     readOffset: p.readOffset.toString(),
     eventsRead: p.eventsRead.toString(),
+    ...(p.facts
+      ? {
+          facts: {
+            phase: p.facts.phase,
+            agents: { total: p.facts.agentsTotal, running: p.facts.agentsRunning, background: p.facts.agentsBackground, waiting: p.facts.agentsWaiting, done: p.facts.agentsDone, failed: p.facts.agentsFailed },
+            attachments: p.facts.attachments,
+            latestEvidence: p.facts.latestEvidence,
+            risk: p.facts.risk,
+            nextAction: p.facts.nextAction,
+          },
+        }
+      : {}),
   };
 }
 
