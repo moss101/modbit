@@ -1,0 +1,2251 @@
+{
+  "default": {
+    "ranking": "",
+    "queries": {
+      "api-version": {
+        "ranking_version": "keyword-v1",
+        "ranking_weights": {
+          "confidence": 0.20000000298023224,
+          "diversity": 0.0,
+          "importance": 0.0,
+          "precedence": 0.20000000298023224,
+          "recency": 0.0,
+          "recency_half_life_items": 0,
+          "relevance": 0.5,
+          "validated": 0.10000000149011612
+        },
+        "token_budget": 800,
+        "token_used": 742,
+        "injected": [
+          "timeout-format",
+          "api-v4",
+          "api-v3",
+          "api-versioning",
+          "test-output",
+          "timeout-config",
+          "summary-style",
+          "port-files",
+          "staging-window"
+        ],
+        "memory_used": [
+          "api-v3",
+          "api-v4",
+          "api-versioning",
+          "port-files",
+          "staging-window",
+          "summary-style",
+          "test-output",
+          "timeout-config",
+          "timeout-format"
+        ]
+      },
+      "branch": {
+        "ranking_version": "keyword-v1",
+        "ranking_weights": {
+          "confidence": 0.20000000298023224,
+          "diversity": 0.0,
+          "importance": 0.0,
+          "precedence": 0.20000000298023224,
+          "recency": 0.0,
+          "recency_half_life_items": 0,
+          "relevance": 0.5,
+          "validated": 0.10000000149011612
+        },
+        "token_budget": 800,
+        "token_used": 755,
+        "injected": [
+          "timeout-format",
+          "branch-names",
+          "test-output",
+          "rollback",
+          "timeout-config",
+          "summary-style",
+          "db-name",
+          "port-files",
+          "staging-window"
+        ],
+        "memory_used": [
+          "branch-names",
+          "db-name",
+          "port-files",
+          "rollback",
+          "staging-window",
+          "summary-style",
+          "test-output",
+          "timeout-config",
+          "timeout-format"
+        ]
+      },
+      "changelog": {
+        "ranking_version": "keyword-v1",
+        "ranking_weights": {
+          "confidence": 0.20000000298023224,
+          "diversity": 0.0,
+          "importance": 0.0,
+          "precedence": 0.20000000298023224,
+          "recency": 0.0,
+          "recency_half_life_items": 0,
+          "relevance": 0.5,
+          "validated": 0.10000000149011612
+        },
+        "token_budget": 800,
+        "token_used": 746,
+        "injected": [
+          "timeout-format",
+          "changelog",
+          "summary-style",
+          "test-output",
+          "commit-subject",
+          "release-checklist",
+          "port-files",
+          "branch-names",
+          "release-owner"
+        ],
+        "memory_used": [
+          "branch-names",
+          "changelog",
+          "commit-subject",
+          "port-files",
+          "release-checklist",
+          "release-owner",
+          "summary-style",
+          "test-output",
+          "timeout-format"
+        ]
+      },
+      "db-config": {
+        "ranking_version": "keyword-v1",
+        "ranking_weights": {
+          "confidence": 0.20000000298023224,
+          "diversity": 0.0,
+          "importance": 0.0,
+          "precedence": 0.20000000298023224,
+          "recency": 0.0,
+          "recency_half_life_items": 0,
+          "relevance": 0.5,
+          "validated": 0.10000000149011612
+        },
+        "token_budget": 800,
+        "token_used": 756,
+        "injected": [
+          "config-sections",
+          "db-name",
+          "db-naming",
+          "timeout-format",
+          "timeout-config",
+          "branch-names",
+          "summary-style",
+          "test-output",
+          "migration-lock"
+        ],
+        "memory_used": [
+          "branch-names",
+          "config-sections",
+          "db-name",
+          "db-naming",
+          "migration-lock",
+          "summary-style",
+          "test-output",
+          "timeout-config",
+          "timeout-format"
+        ]
+      },
+      "deploy": {
+        "ranking_version": "keyword-v1",
+        "ranking_weights": {
+          "confidence": 0.20000000298023224,
+          "diversity": 0.0,
+          "importance": 0.0,
+          "precedence": 0.20000000298023224,
+          "recency": 0.0,
+          "recency_half_life_items": 0,
+          "relevance": 0.5,
+          "validated": 0.10000000149011612
+        },
+        "token_budget": 800,
+        "token_used": 768,
+        "injected": [
+          "staging-window",
+          "timeout-format",
+          "test-output",
+          "timeout-config",
+          "deploy",
+          "staging-port",
+          "staging-port-new",
+          "summary-style",
+          "rollback"
+        ],
+        "memory_used": [
+          "deploy",
+          "rollback",
+          "staging-port",
+          "staging-port-new",
+          "staging-window",
+          "summary-style",
+          "test-output",
+          "timeout-config",
+          "timeout-format"
+        ]
+      },
+      "items-limit": {
+        "ranking_version": "keyword-v1",
+        "ranking_weights": {
+          "confidence": 0.20000000298023224,
+          "diversity": 0.0,
+          "importance": 0.0,
+          "precedence": 0.20000000298023224,
+          "recency": 0.0,
+          "recency_half_life_items": 0,
+          "relevance": 0.5,
+          "validated": 0.10000000149011612
+        },
+        "token_budget": 800,
+        "token_used": 736,
+        "injected": [
+          "settings-format",
+          "items-limit",
+          "timeout-format",
+          "summary-style",
+          "test-output",
+          "port-files",
+          "newline",
+          "timeout-config",
+          "config-sections"
+        ],
+        "memory_used": [
+          "config-sections",
+          "items-limit",
+          "newline",
+          "port-files",
+          "settings-format",
+          "summary-style",
+          "test-output",
+          "timeout-config",
+          "timeout-format"
+        ]
+      },
+      "migration": {
+        "ranking_version": "keyword-v1",
+        "ranking_weights": {
+          "confidence": 0.20000000298023224,
+          "diversity": 0.0,
+          "importance": 0.0,
+          "precedence": 0.20000000298023224,
+          "recency": 0.0,
+          "recency_half_life_items": 0,
+          "relevance": 0.5,
+          "validated": 0.10000000149011612
+        },
+        "token_budget": 800,
+        "token_used": 767,
+        "injected": [
+          "timeout-format",
+          "migration-lock",
+          "test-output",
+          "db-name",
+          "db-driver",
+          "summary-style",
+          "timeout-config",
+          "db-naming",
+          "staging-port-new"
+        ],
+        "memory_used": [
+          "db-driver",
+          "db-name",
+          "db-naming",
+          "migration-lock",
+          "staging-port-new",
+          "summary-style",
+          "test-output",
+          "timeout-config",
+          "timeout-format"
+        ]
+      },
+      "release-owner": {
+        "ranking_version": "keyword-v1",
+        "ranking_weights": {
+          "confidence": 0.20000000298023224,
+          "diversity": 0.0,
+          "importance": 0.0,
+          "precedence": 0.20000000298023224,
+          "recency": 0.0,
+          "recency_half_life_items": 0,
+          "relevance": 0.5,
+          "validated": 0.10000000149011612
+        },
+        "token_budget": 800,
+        "token_used": 735,
+        "injected": [
+          "timeout-format",
+          "release-owner",
+          "test-output",
+          "release-cadence",
+          "summary-style",
+          "timeout-config",
+          "release-channel",
+          "release-checklist",
+          "port-files"
+        ],
+        "memory_used": [
+          "port-files",
+          "release-cadence",
+          "release-channel",
+          "release-checklist",
+          "release-owner",
+          "summary-style",
+          "test-output",
+          "timeout-config",
+          "timeout-format"
+        ]
+      },
+      "release-prep": {
+        "ranking_version": "keyword-v1",
+        "ranking_weights": {
+          "confidence": 0.20000000298023224,
+          "diversity": 0.0,
+          "importance": 0.0,
+          "precedence": 0.20000000298023224,
+          "recency": 0.0,
+          "recency_half_life_items": 0,
+          "relevance": 0.5,
+          "validated": 0.10000000149011612
+        },
+        "token_budget": 800,
+        "token_used": 754,
+        "injected": [
+          "timeout-format",
+          "test-output",
+          "release-checklist",
+          "changelog",
+          "commit-subject",
+          "api-versioning",
+          "release-cadence",
+          "summary-style",
+          "timeout-config"
+        ],
+        "memory_used": [
+          "api-versioning",
+          "changelog",
+          "commit-subject",
+          "release-cadence",
+          "release-checklist",
+          "summary-style",
+          "test-output",
+          "timeout-config",
+          "timeout-format"
+        ]
+      },
+      "staging-port": {
+        "ranking_version": "keyword-v1",
+        "ranking_weights": {
+          "confidence": 0.20000000298023224,
+          "diversity": 0.0,
+          "importance": 0.0,
+          "precedence": 0.20000000298023224,
+          "recency": 0.0,
+          "recency_half_life_items": 0,
+          "relevance": 0.5,
+          "validated": 0.10000000149011612
+        },
+        "token_budget": 800,
+        "token_used": 769,
+        "injected": [
+          "staging-port",
+          "timeout-format",
+          "staging-port-new",
+          "test-output",
+          "prod-port",
+          "port-files",
+          "staging-window",
+          "metrics-port",
+          "staging-port-dup"
+        ],
+        "memory_used": [
+          "metrics-port",
+          "port-files",
+          "prod-port",
+          "staging-port",
+          "staging-port-dup",
+          "staging-port-new",
+          "staging-window",
+          "test-output",
+          "timeout-format"
+        ]
+      },
+      "timeout": {
+        "ranking_version": "keyword-v1",
+        "ranking_weights": {
+          "confidence": 0.20000000298023224,
+          "diversity": 0.0,
+          "importance": 0.0,
+          "precedence": 0.20000000298023224,
+          "recency": 0.0,
+          "recency_half_life_items": 0,
+          "relevance": 0.5,
+          "validated": 0.10000000149011612
+        },
+        "token_budget": 800,
+        "token_used": 761,
+        "injected": [
+          "timeout-format",
+          "timeout-config",
+          "test-output",
+          "summary-style",
+          "migration-lock",
+          "staging-window",
+          "release-cadence",
+          "changelog",
+          "settings-format"
+        ],
+        "memory_used": [
+          "changelog",
+          "migration-lock",
+          "release-cadence",
+          "settings-format",
+          "staging-window",
+          "summary-style",
+          "test-output",
+          "timeout-config",
+          "timeout-format"
+        ]
+      },
+      "upload-cmd": {
+        "ranking_version": "keyword-v1",
+        "ranking_weights": {
+          "confidence": 0.20000000298023224,
+          "diversity": 0.0,
+          "importance": 0.0,
+          "precedence": 0.20000000298023224,
+          "recency": 0.0,
+          "recency_half_life_items": 0,
+          "relevance": 0.5,
+          "validated": 0.10000000149011612
+        },
+        "token_budget": 800,
+        "token_used": 769,
+        "injected": [
+          "test-output",
+          "timeout-format",
+          "upload-flaky",
+          "upload-location",
+          "upload-flaky-dup",
+          "summary-style",
+          "timeout-config",
+          "port-files",
+          "staging-window"
+        ],
+        "memory_used": [
+          "port-files",
+          "staging-window",
+          "summary-style",
+          "test-output",
+          "timeout-config",
+          "timeout-format",
+          "upload-flaky",
+          "upload-flaky-dup",
+          "upload-location"
+        ]
+      }
+    }
+  },
+  "current": [
+    {
+      "ranking": "keyword-v1",
+      "queries": {
+        "api-version": {
+          "ranking_version": "keyword-v1",
+          "ranking_weights": {
+            "confidence": 0.20000000298023224,
+            "diversity": 0.0,
+            "importance": 0.0,
+            "precedence": 0.20000000298023224,
+            "recency": 0.0,
+            "recency_half_life_items": 0,
+            "relevance": 0.5,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 742,
+          "injected": [
+            "timeout-format",
+            "api-v4",
+            "api-v3",
+            "api-versioning",
+            "test-output",
+            "timeout-config",
+            "summary-style",
+            "port-files",
+            "staging-window"
+          ],
+          "memory_used": [
+            "api-v3",
+            "api-v4",
+            "api-versioning",
+            "port-files",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-config",
+            "timeout-format"
+          ]
+        },
+        "branch": {
+          "ranking_version": "keyword-v1",
+          "ranking_weights": {
+            "confidence": 0.20000000298023224,
+            "diversity": 0.0,
+            "importance": 0.0,
+            "precedence": 0.20000000298023224,
+            "recency": 0.0,
+            "recency_half_life_items": 0,
+            "relevance": 0.5,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 755,
+          "injected": [
+            "timeout-format",
+            "branch-names",
+            "test-output",
+            "rollback",
+            "timeout-config",
+            "summary-style",
+            "db-name",
+            "port-files",
+            "staging-window"
+          ],
+          "memory_used": [
+            "branch-names",
+            "db-name",
+            "port-files",
+            "rollback",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-config",
+            "timeout-format"
+          ]
+        },
+        "changelog": {
+          "ranking_version": "keyword-v1",
+          "ranking_weights": {
+            "confidence": 0.20000000298023224,
+            "diversity": 0.0,
+            "importance": 0.0,
+            "precedence": 0.20000000298023224,
+            "recency": 0.0,
+            "recency_half_life_items": 0,
+            "relevance": 0.5,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 746,
+          "injected": [
+            "timeout-format",
+            "changelog",
+            "summary-style",
+            "test-output",
+            "commit-subject",
+            "release-checklist",
+            "port-files",
+            "branch-names",
+            "release-owner"
+          ],
+          "memory_used": [
+            "branch-names",
+            "changelog",
+            "commit-subject",
+            "port-files",
+            "release-checklist",
+            "release-owner",
+            "summary-style",
+            "test-output",
+            "timeout-format"
+          ]
+        },
+        "db-config": {
+          "ranking_version": "keyword-v1",
+          "ranking_weights": {
+            "confidence": 0.20000000298023224,
+            "diversity": 0.0,
+            "importance": 0.0,
+            "precedence": 0.20000000298023224,
+            "recency": 0.0,
+            "recency_half_life_items": 0,
+            "relevance": 0.5,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 756,
+          "injected": [
+            "config-sections",
+            "db-name",
+            "db-naming",
+            "timeout-format",
+            "timeout-config",
+            "branch-names",
+            "summary-style",
+            "test-output",
+            "migration-lock"
+          ],
+          "memory_used": [
+            "branch-names",
+            "config-sections",
+            "db-name",
+            "db-naming",
+            "migration-lock",
+            "summary-style",
+            "test-output",
+            "timeout-config",
+            "timeout-format"
+          ]
+        },
+        "deploy": {
+          "ranking_version": "keyword-v1",
+          "ranking_weights": {
+            "confidence": 0.20000000298023224,
+            "diversity": 0.0,
+            "importance": 0.0,
+            "precedence": 0.20000000298023224,
+            "recency": 0.0,
+            "recency_half_life_items": 0,
+            "relevance": 0.5,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 768,
+          "injected": [
+            "staging-window",
+            "timeout-format",
+            "test-output",
+            "timeout-config",
+            "deploy",
+            "staging-port",
+            "staging-port-new",
+            "summary-style",
+            "rollback"
+          ],
+          "memory_used": [
+            "deploy",
+            "rollback",
+            "staging-port",
+            "staging-port-new",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-config",
+            "timeout-format"
+          ]
+        },
+        "items-limit": {
+          "ranking_version": "keyword-v1",
+          "ranking_weights": {
+            "confidence": 0.20000000298023224,
+            "diversity": 0.0,
+            "importance": 0.0,
+            "precedence": 0.20000000298023224,
+            "recency": 0.0,
+            "recency_half_life_items": 0,
+            "relevance": 0.5,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 736,
+          "injected": [
+            "settings-format",
+            "items-limit",
+            "timeout-format",
+            "summary-style",
+            "test-output",
+            "port-files",
+            "newline",
+            "timeout-config",
+            "config-sections"
+          ],
+          "memory_used": [
+            "config-sections",
+            "items-limit",
+            "newline",
+            "port-files",
+            "settings-format",
+            "summary-style",
+            "test-output",
+            "timeout-config",
+            "timeout-format"
+          ]
+        },
+        "migration": {
+          "ranking_version": "keyword-v1",
+          "ranking_weights": {
+            "confidence": 0.20000000298023224,
+            "diversity": 0.0,
+            "importance": 0.0,
+            "precedence": 0.20000000298023224,
+            "recency": 0.0,
+            "recency_half_life_items": 0,
+            "relevance": 0.5,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 767,
+          "injected": [
+            "timeout-format",
+            "migration-lock",
+            "test-output",
+            "db-name",
+            "db-driver",
+            "summary-style",
+            "timeout-config",
+            "db-naming",
+            "staging-port-new"
+          ],
+          "memory_used": [
+            "db-driver",
+            "db-name",
+            "db-naming",
+            "migration-lock",
+            "staging-port-new",
+            "summary-style",
+            "test-output",
+            "timeout-config",
+            "timeout-format"
+          ]
+        },
+        "release-owner": {
+          "ranking_version": "keyword-v1",
+          "ranking_weights": {
+            "confidence": 0.20000000298023224,
+            "diversity": 0.0,
+            "importance": 0.0,
+            "precedence": 0.20000000298023224,
+            "recency": 0.0,
+            "recency_half_life_items": 0,
+            "relevance": 0.5,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 735,
+          "injected": [
+            "timeout-format",
+            "release-owner",
+            "test-output",
+            "release-cadence",
+            "summary-style",
+            "timeout-config",
+            "release-channel",
+            "release-checklist",
+            "port-files"
+          ],
+          "memory_used": [
+            "port-files",
+            "release-cadence",
+            "release-channel",
+            "release-checklist",
+            "release-owner",
+            "summary-style",
+            "test-output",
+            "timeout-config",
+            "timeout-format"
+          ]
+        },
+        "release-prep": {
+          "ranking_version": "keyword-v1",
+          "ranking_weights": {
+            "confidence": 0.20000000298023224,
+            "diversity": 0.0,
+            "importance": 0.0,
+            "precedence": 0.20000000298023224,
+            "recency": 0.0,
+            "recency_half_life_items": 0,
+            "relevance": 0.5,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 754,
+          "injected": [
+            "timeout-format",
+            "test-output",
+            "release-checklist",
+            "changelog",
+            "commit-subject",
+            "api-versioning",
+            "release-cadence",
+            "summary-style",
+            "timeout-config"
+          ],
+          "memory_used": [
+            "api-versioning",
+            "changelog",
+            "commit-subject",
+            "release-cadence",
+            "release-checklist",
+            "summary-style",
+            "test-output",
+            "timeout-config",
+            "timeout-format"
+          ]
+        },
+        "staging-port": {
+          "ranking_version": "keyword-v1",
+          "ranking_weights": {
+            "confidence": 0.20000000298023224,
+            "diversity": 0.0,
+            "importance": 0.0,
+            "precedence": 0.20000000298023224,
+            "recency": 0.0,
+            "recency_half_life_items": 0,
+            "relevance": 0.5,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 769,
+          "injected": [
+            "staging-port",
+            "timeout-format",
+            "staging-port-new",
+            "test-output",
+            "prod-port",
+            "port-files",
+            "staging-window",
+            "metrics-port",
+            "staging-port-dup"
+          ],
+          "memory_used": [
+            "metrics-port",
+            "port-files",
+            "prod-port",
+            "staging-port",
+            "staging-port-dup",
+            "staging-port-new",
+            "staging-window",
+            "test-output",
+            "timeout-format"
+          ]
+        },
+        "timeout": {
+          "ranking_version": "keyword-v1",
+          "ranking_weights": {
+            "confidence": 0.20000000298023224,
+            "diversity": 0.0,
+            "importance": 0.0,
+            "precedence": 0.20000000298023224,
+            "recency": 0.0,
+            "recency_half_life_items": 0,
+            "relevance": 0.5,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 761,
+          "injected": [
+            "timeout-format",
+            "timeout-config",
+            "test-output",
+            "summary-style",
+            "migration-lock",
+            "staging-window",
+            "release-cadence",
+            "changelog",
+            "settings-format"
+          ],
+          "memory_used": [
+            "changelog",
+            "migration-lock",
+            "release-cadence",
+            "settings-format",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-config",
+            "timeout-format"
+          ]
+        },
+        "upload-cmd": {
+          "ranking_version": "keyword-v1",
+          "ranking_weights": {
+            "confidence": 0.20000000298023224,
+            "diversity": 0.0,
+            "importance": 0.0,
+            "precedence": 0.20000000298023224,
+            "recency": 0.0,
+            "recency_half_life_items": 0,
+            "relevance": 0.5,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 769,
+          "injected": [
+            "test-output",
+            "timeout-format",
+            "upload-flaky",
+            "upload-location",
+            "upload-flaky-dup",
+            "summary-style",
+            "timeout-config",
+            "port-files",
+            "staging-window"
+          ],
+          "memory_used": [
+            "port-files",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-config",
+            "timeout-format",
+            "upload-flaky",
+            "upload-flaky-dup",
+            "upload-location"
+          ]
+        }
+      }
+    },
+    {
+      "ranking": "keyword-v1",
+      "queries": {
+        "api-version": {
+          "ranking_version": "keyword-v1",
+          "ranking_weights": {
+            "confidence": 0.20000000298023224,
+            "diversity": 0.0,
+            "importance": 0.0,
+            "precedence": 0.20000000298023224,
+            "recency": 0.0,
+            "recency_half_life_items": 0,
+            "relevance": 0.5,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 742,
+          "injected": [
+            "timeout-format",
+            "api-v4",
+            "api-v3",
+            "api-versioning",
+            "test-output",
+            "timeout-config",
+            "summary-style",
+            "port-files",
+            "staging-window"
+          ],
+          "memory_used": [
+            "api-v3",
+            "api-v4",
+            "api-versioning",
+            "port-files",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-config",
+            "timeout-format"
+          ]
+        },
+        "branch": {
+          "ranking_version": "keyword-v1",
+          "ranking_weights": {
+            "confidence": 0.20000000298023224,
+            "diversity": 0.0,
+            "importance": 0.0,
+            "precedence": 0.20000000298023224,
+            "recency": 0.0,
+            "recency_half_life_items": 0,
+            "relevance": 0.5,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 755,
+          "injected": [
+            "timeout-format",
+            "branch-names",
+            "test-output",
+            "rollback",
+            "timeout-config",
+            "summary-style",
+            "db-name",
+            "port-files",
+            "staging-window"
+          ],
+          "memory_used": [
+            "branch-names",
+            "db-name",
+            "port-files",
+            "rollback",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-config",
+            "timeout-format"
+          ]
+        },
+        "changelog": {
+          "ranking_version": "keyword-v1",
+          "ranking_weights": {
+            "confidence": 0.20000000298023224,
+            "diversity": 0.0,
+            "importance": 0.0,
+            "precedence": 0.20000000298023224,
+            "recency": 0.0,
+            "recency_half_life_items": 0,
+            "relevance": 0.5,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 746,
+          "injected": [
+            "timeout-format",
+            "changelog",
+            "summary-style",
+            "test-output",
+            "commit-subject",
+            "release-checklist",
+            "port-files",
+            "branch-names",
+            "release-owner"
+          ],
+          "memory_used": [
+            "branch-names",
+            "changelog",
+            "commit-subject",
+            "port-files",
+            "release-checklist",
+            "release-owner",
+            "summary-style",
+            "test-output",
+            "timeout-format"
+          ]
+        },
+        "db-config": {
+          "ranking_version": "keyword-v1",
+          "ranking_weights": {
+            "confidence": 0.20000000298023224,
+            "diversity": 0.0,
+            "importance": 0.0,
+            "precedence": 0.20000000298023224,
+            "recency": 0.0,
+            "recency_half_life_items": 0,
+            "relevance": 0.5,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 756,
+          "injected": [
+            "config-sections",
+            "db-name",
+            "db-naming",
+            "timeout-format",
+            "timeout-config",
+            "branch-names",
+            "summary-style",
+            "test-output",
+            "migration-lock"
+          ],
+          "memory_used": [
+            "branch-names",
+            "config-sections",
+            "db-name",
+            "db-naming",
+            "migration-lock",
+            "summary-style",
+            "test-output",
+            "timeout-config",
+            "timeout-format"
+          ]
+        },
+        "deploy": {
+          "ranking_version": "keyword-v1",
+          "ranking_weights": {
+            "confidence": 0.20000000298023224,
+            "diversity": 0.0,
+            "importance": 0.0,
+            "precedence": 0.20000000298023224,
+            "recency": 0.0,
+            "recency_half_life_items": 0,
+            "relevance": 0.5,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 768,
+          "injected": [
+            "staging-window",
+            "timeout-format",
+            "test-output",
+            "timeout-config",
+            "deploy",
+            "staging-port",
+            "staging-port-new",
+            "summary-style",
+            "rollback"
+          ],
+          "memory_used": [
+            "deploy",
+            "rollback",
+            "staging-port",
+            "staging-port-new",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-config",
+            "timeout-format"
+          ]
+        },
+        "items-limit": {
+          "ranking_version": "keyword-v1",
+          "ranking_weights": {
+            "confidence": 0.20000000298023224,
+            "diversity": 0.0,
+            "importance": 0.0,
+            "precedence": 0.20000000298023224,
+            "recency": 0.0,
+            "recency_half_life_items": 0,
+            "relevance": 0.5,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 736,
+          "injected": [
+            "settings-format",
+            "items-limit",
+            "timeout-format",
+            "summary-style",
+            "test-output",
+            "port-files",
+            "newline",
+            "timeout-config",
+            "config-sections"
+          ],
+          "memory_used": [
+            "config-sections",
+            "items-limit",
+            "newline",
+            "port-files",
+            "settings-format",
+            "summary-style",
+            "test-output",
+            "timeout-config",
+            "timeout-format"
+          ]
+        },
+        "migration": {
+          "ranking_version": "keyword-v1",
+          "ranking_weights": {
+            "confidence": 0.20000000298023224,
+            "diversity": 0.0,
+            "importance": 0.0,
+            "precedence": 0.20000000298023224,
+            "recency": 0.0,
+            "recency_half_life_items": 0,
+            "relevance": 0.5,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 767,
+          "injected": [
+            "timeout-format",
+            "migration-lock",
+            "test-output",
+            "db-name",
+            "db-driver",
+            "summary-style",
+            "timeout-config",
+            "db-naming",
+            "staging-port-new"
+          ],
+          "memory_used": [
+            "db-driver",
+            "db-name",
+            "db-naming",
+            "migration-lock",
+            "staging-port-new",
+            "summary-style",
+            "test-output",
+            "timeout-config",
+            "timeout-format"
+          ]
+        },
+        "release-owner": {
+          "ranking_version": "keyword-v1",
+          "ranking_weights": {
+            "confidence": 0.20000000298023224,
+            "diversity": 0.0,
+            "importance": 0.0,
+            "precedence": 0.20000000298023224,
+            "recency": 0.0,
+            "recency_half_life_items": 0,
+            "relevance": 0.5,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 735,
+          "injected": [
+            "timeout-format",
+            "release-owner",
+            "test-output",
+            "release-cadence",
+            "summary-style",
+            "timeout-config",
+            "release-channel",
+            "release-checklist",
+            "port-files"
+          ],
+          "memory_used": [
+            "port-files",
+            "release-cadence",
+            "release-channel",
+            "release-checklist",
+            "release-owner",
+            "summary-style",
+            "test-output",
+            "timeout-config",
+            "timeout-format"
+          ]
+        },
+        "release-prep": {
+          "ranking_version": "keyword-v1",
+          "ranking_weights": {
+            "confidence": 0.20000000298023224,
+            "diversity": 0.0,
+            "importance": 0.0,
+            "precedence": 0.20000000298023224,
+            "recency": 0.0,
+            "recency_half_life_items": 0,
+            "relevance": 0.5,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 754,
+          "injected": [
+            "timeout-format",
+            "test-output",
+            "release-checklist",
+            "changelog",
+            "commit-subject",
+            "api-versioning",
+            "release-cadence",
+            "summary-style",
+            "timeout-config"
+          ],
+          "memory_used": [
+            "api-versioning",
+            "changelog",
+            "commit-subject",
+            "release-cadence",
+            "release-checklist",
+            "summary-style",
+            "test-output",
+            "timeout-config",
+            "timeout-format"
+          ]
+        },
+        "staging-port": {
+          "ranking_version": "keyword-v1",
+          "ranking_weights": {
+            "confidence": 0.20000000298023224,
+            "diversity": 0.0,
+            "importance": 0.0,
+            "precedence": 0.20000000298023224,
+            "recency": 0.0,
+            "recency_half_life_items": 0,
+            "relevance": 0.5,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 769,
+          "injected": [
+            "staging-port",
+            "timeout-format",
+            "staging-port-new",
+            "test-output",
+            "prod-port",
+            "port-files",
+            "staging-window",
+            "metrics-port",
+            "staging-port-dup"
+          ],
+          "memory_used": [
+            "metrics-port",
+            "port-files",
+            "prod-port",
+            "staging-port",
+            "staging-port-dup",
+            "staging-port-new",
+            "staging-window",
+            "test-output",
+            "timeout-format"
+          ]
+        },
+        "timeout": {
+          "ranking_version": "keyword-v1",
+          "ranking_weights": {
+            "confidence": 0.20000000298023224,
+            "diversity": 0.0,
+            "importance": 0.0,
+            "precedence": 0.20000000298023224,
+            "recency": 0.0,
+            "recency_half_life_items": 0,
+            "relevance": 0.5,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 761,
+          "injected": [
+            "timeout-format",
+            "timeout-config",
+            "test-output",
+            "summary-style",
+            "migration-lock",
+            "staging-window",
+            "release-cadence",
+            "changelog",
+            "settings-format"
+          ],
+          "memory_used": [
+            "changelog",
+            "migration-lock",
+            "release-cadence",
+            "settings-format",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-config",
+            "timeout-format"
+          ]
+        },
+        "upload-cmd": {
+          "ranking_version": "keyword-v1",
+          "ranking_weights": {
+            "confidence": 0.20000000298023224,
+            "diversity": 0.0,
+            "importance": 0.0,
+            "precedence": 0.20000000298023224,
+            "recency": 0.0,
+            "recency_half_life_items": 0,
+            "relevance": 0.5,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 769,
+          "injected": [
+            "test-output",
+            "timeout-format",
+            "upload-flaky",
+            "upload-location",
+            "upload-flaky-dup",
+            "summary-style",
+            "timeout-config",
+            "port-files",
+            "staging-window"
+          ],
+          "memory_used": [
+            "port-files",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-config",
+            "timeout-format",
+            "upload-flaky",
+            "upload-flaky-dup",
+            "upload-location"
+          ]
+        }
+      }
+    }
+  ],
+  "candidate": [
+    {
+      "ranking": "recency-importance-diversity-v2",
+      "queries": {
+        "api-version": {
+          "ranking_version": "recency-importance-diversity-v2",
+          "ranking_weights": {
+            "confidence": 0.15000000596046448,
+            "diversity": 0.30000001192092896,
+            "importance": 0.10000000149011612,
+            "precedence": 0.15000000596046448,
+            "recency": 0.10000000149011612,
+            "recency_half_life_items": 8,
+            "relevance": 0.4000000059604645,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 736,
+          "injected": [
+            "timeout-format",
+            "api-versioning",
+            "staging-window",
+            "test-output",
+            "summary-style",
+            "api-v4",
+            "settings-format",
+            "api-v3",
+            "newline"
+          ],
+          "memory_used": [
+            "api-v3",
+            "api-v4",
+            "api-versioning",
+            "newline",
+            "settings-format",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-format"
+          ]
+        },
+        "branch": {
+          "ranking_version": "recency-importance-diversity-v2",
+          "ranking_weights": {
+            "confidence": 0.15000000596046448,
+            "diversity": 0.30000001192092896,
+            "importance": 0.10000000149011612,
+            "precedence": 0.15000000596046448,
+            "recency": 0.10000000149011612,
+            "recency_half_life_items": 8,
+            "relevance": 0.4000000059604645,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 752,
+          "injected": [
+            "timeout-format",
+            "branch-names",
+            "staging-window",
+            "test-output",
+            "rollback",
+            "summary-style",
+            "db-naming",
+            "settings-format",
+            "newline"
+          ],
+          "memory_used": [
+            "branch-names",
+            "db-naming",
+            "newline",
+            "rollback",
+            "settings-format",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-format"
+          ]
+        },
+        "changelog": {
+          "ranking_version": "recency-importance-diversity-v2",
+          "ranking_weights": {
+            "confidence": 0.15000000596046448,
+            "diversity": 0.30000001192092896,
+            "importance": 0.10000000149011612,
+            "precedence": 0.15000000596046448,
+            "recency": 0.10000000149011612,
+            "recency_half_life_items": 8,
+            "relevance": 0.4000000059604645,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 749,
+          "injected": [
+            "timeout-format",
+            "summary-style",
+            "changelog",
+            "test-output",
+            "settings-format",
+            "release-owner",
+            "newline",
+            "release-checklist",
+            "commit-subject"
+          ],
+          "memory_used": [
+            "changelog",
+            "commit-subject",
+            "newline",
+            "release-checklist",
+            "release-owner",
+            "settings-format",
+            "summary-style",
+            "test-output",
+            "timeout-format"
+          ]
+        },
+        "db-config": {
+          "ranking_version": "recency-importance-diversity-v2",
+          "ranking_weights": {
+            "confidence": 0.15000000596046448,
+            "diversity": 0.30000001192092896,
+            "importance": 0.10000000149011612,
+            "precedence": 0.15000000596046448,
+            "recency": 0.10000000149011612,
+            "recency_half_life_items": 8,
+            "relevance": 0.4000000059604645,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 738,
+          "injected": [
+            "db-naming",
+            "config-sections",
+            "summary-style",
+            "db-name",
+            "timeout-format",
+            "test-output",
+            "settings-format",
+            "newline",
+            "branch-names"
+          ],
+          "memory_used": [
+            "branch-names",
+            "config-sections",
+            "db-name",
+            "db-naming",
+            "newline",
+            "settings-format",
+            "summary-style",
+            "test-output",
+            "timeout-format"
+          ]
+        },
+        "deploy": {
+          "ranking_version": "recency-importance-diversity-v2",
+          "ranking_weights": {
+            "confidence": 0.15000000596046448,
+            "diversity": 0.30000001192092896,
+            "importance": 0.10000000149011612,
+            "precedence": 0.15000000596046448,
+            "recency": 0.10000000149011612,
+            "recency_half_life_items": 8,
+            "relevance": 0.4000000059604645,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 781,
+          "injected": [
+            "staging-window",
+            "timeout-format",
+            "test-output",
+            "rollback",
+            "summary-style",
+            "timeout-config",
+            "staging-port-new",
+            "migration-lock",
+            "settings-format"
+          ],
+          "memory_used": [
+            "migration-lock",
+            "rollback",
+            "settings-format",
+            "staging-port-new",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-config",
+            "timeout-format"
+          ]
+        },
+        "items-limit": {
+          "ranking_version": "recency-importance-diversity-v2",
+          "ranking_weights": {
+            "confidence": 0.15000000596046448,
+            "diversity": 0.30000001192092896,
+            "importance": 0.10000000149011612,
+            "precedence": 0.15000000596046448,
+            "recency": 0.10000000149011612,
+            "recency_half_life_items": 8,
+            "relevance": 0.4000000059604645,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 742,
+          "injected": [
+            "settings-format",
+            "items-limit",
+            "summary-style",
+            "timeout-format",
+            "newline",
+            "test-output",
+            "migration-lock",
+            "port-files",
+            "config-sections"
+          ],
+          "memory_used": [
+            "config-sections",
+            "items-limit",
+            "migration-lock",
+            "newline",
+            "port-files",
+            "settings-format",
+            "summary-style",
+            "test-output",
+            "timeout-format"
+          ]
+        },
+        "migration": {
+          "ranking_version": "recency-importance-diversity-v2",
+          "ranking_weights": {
+            "confidence": 0.15000000596046448,
+            "diversity": 0.30000001192092896,
+            "importance": 0.10000000149011612,
+            "precedence": 0.15000000596046448,
+            "recency": 0.10000000149011612,
+            "recency_half_life_items": 8,
+            "relevance": 0.4000000059604645,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 770,
+          "injected": [
+            "migration-lock",
+            "db-naming",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-format",
+            "settings-format",
+            "newline",
+            "staging-port-new"
+          ],
+          "memory_used": [
+            "db-naming",
+            "migration-lock",
+            "newline",
+            "settings-format",
+            "staging-port-new",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-format"
+          ]
+        },
+        "release-owner": {
+          "ranking_version": "recency-importance-diversity-v2",
+          "ranking_weights": {
+            "confidence": 0.15000000596046448,
+            "diversity": 0.30000001192092896,
+            "importance": 0.10000000149011612,
+            "precedence": 0.15000000596046448,
+            "recency": 0.10000000149011612,
+            "recency_half_life_items": 8,
+            "relevance": 0.4000000059604645,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 751,
+          "injected": [
+            "timeout-format",
+            "release-owner",
+            "staging-window",
+            "test-output",
+            "summary-style",
+            "settings-format",
+            "release-channel",
+            "release-cadence",
+            "migration-lock"
+          ],
+          "memory_used": [
+            "migration-lock",
+            "release-cadence",
+            "release-channel",
+            "release-owner",
+            "settings-format",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-format"
+          ]
+        },
+        "release-prep": {
+          "ranking_version": "recency-importance-diversity-v2",
+          "ranking_weights": {
+            "confidence": 0.15000000596046448,
+            "diversity": 0.30000001192092896,
+            "importance": 0.10000000149011612,
+            "precedence": 0.15000000596046448,
+            "recency": 0.10000000149011612,
+            "recency_half_life_items": 8,
+            "relevance": 0.4000000059604645,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 759,
+          "injected": [
+            "staging-window",
+            "timeout-format",
+            "test-output",
+            "summary-style",
+            "release-channel",
+            "api-versioning",
+            "settings-format",
+            "release-checklist",
+            "commit-subject"
+          ],
+          "memory_used": [
+            "api-versioning",
+            "commit-subject",
+            "release-channel",
+            "release-checklist",
+            "settings-format",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-format"
+          ]
+        },
+        "staging-port": {
+          "ranking_version": "recency-importance-diversity-v2",
+          "ranking_weights": {
+            "confidence": 0.15000000596046448,
+            "diversity": 0.30000001192092896,
+            "importance": 0.10000000149011612,
+            "precedence": 0.15000000596046448,
+            "recency": 0.10000000149011612,
+            "recency_half_life_items": 8,
+            "relevance": 0.4000000059604645,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 773,
+          "injected": [
+            "staging-window",
+            "timeout-format",
+            "test-output",
+            "staging-port-new",
+            "summary-style",
+            "settings-format",
+            "port-files",
+            "migration-lock",
+            "timeout-config"
+          ],
+          "memory_used": [
+            "migration-lock",
+            "port-files",
+            "settings-format",
+            "staging-port-new",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-config",
+            "timeout-format"
+          ]
+        },
+        "timeout": {
+          "ranking_version": "recency-importance-diversity-v2",
+          "ranking_weights": {
+            "confidence": 0.15000000596046448,
+            "diversity": 0.30000001192092896,
+            "importance": 0.10000000149011612,
+            "precedence": 0.15000000596046448,
+            "recency": 0.10000000149011612,
+            "recency_half_life_items": 8,
+            "relevance": 0.4000000059604645,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 756,
+          "injected": [
+            "timeout-format",
+            "staging-window",
+            "test-output",
+            "timeout-config",
+            "summary-style",
+            "migration-lock",
+            "settings-format",
+            "newline",
+            "release-cadence"
+          ],
+          "memory_used": [
+            "migration-lock",
+            "newline",
+            "release-cadence",
+            "settings-format",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-config",
+            "timeout-format"
+          ]
+        },
+        "upload-cmd": {
+          "ranking_version": "recency-importance-diversity-v2",
+          "ranking_weights": {
+            "confidence": 0.15000000596046448,
+            "diversity": 0.30000001192092896,
+            "importance": 0.10000000149011612,
+            "precedence": 0.15000000596046448,
+            "recency": 0.10000000149011612,
+            "recency_half_life_items": 8,
+            "relevance": 0.4000000059604645,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 771,
+          "injected": [
+            "test-output",
+            "timeout-format",
+            "staging-window",
+            "upload-flaky-dup",
+            "summary-style",
+            "settings-format",
+            "newline",
+            "migration-lock",
+            "timeout-config"
+          ],
+          "memory_used": [
+            "migration-lock",
+            "newline",
+            "settings-format",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-config",
+            "timeout-format",
+            "upload-flaky-dup"
+          ]
+        }
+      }
+    },
+    {
+      "ranking": "recency-importance-diversity-v2",
+      "queries": {
+        "api-version": {
+          "ranking_version": "recency-importance-diversity-v2",
+          "ranking_weights": {
+            "confidence": 0.15000000596046448,
+            "diversity": 0.30000001192092896,
+            "importance": 0.10000000149011612,
+            "precedence": 0.15000000596046448,
+            "recency": 0.10000000149011612,
+            "recency_half_life_items": 8,
+            "relevance": 0.4000000059604645,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 736,
+          "injected": [
+            "timeout-format",
+            "api-versioning",
+            "staging-window",
+            "test-output",
+            "summary-style",
+            "api-v4",
+            "settings-format",
+            "api-v3",
+            "newline"
+          ],
+          "memory_used": [
+            "api-v3",
+            "api-v4",
+            "api-versioning",
+            "newline",
+            "settings-format",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-format"
+          ]
+        },
+        "branch": {
+          "ranking_version": "recency-importance-diversity-v2",
+          "ranking_weights": {
+            "confidence": 0.15000000596046448,
+            "diversity": 0.30000001192092896,
+            "importance": 0.10000000149011612,
+            "precedence": 0.15000000596046448,
+            "recency": 0.10000000149011612,
+            "recency_half_life_items": 8,
+            "relevance": 0.4000000059604645,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 752,
+          "injected": [
+            "timeout-format",
+            "branch-names",
+            "staging-window",
+            "test-output",
+            "rollback",
+            "summary-style",
+            "db-naming",
+            "settings-format",
+            "newline"
+          ],
+          "memory_used": [
+            "branch-names",
+            "db-naming",
+            "newline",
+            "rollback",
+            "settings-format",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-format"
+          ]
+        },
+        "changelog": {
+          "ranking_version": "recency-importance-diversity-v2",
+          "ranking_weights": {
+            "confidence": 0.15000000596046448,
+            "diversity": 0.30000001192092896,
+            "importance": 0.10000000149011612,
+            "precedence": 0.15000000596046448,
+            "recency": 0.10000000149011612,
+            "recency_half_life_items": 8,
+            "relevance": 0.4000000059604645,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 749,
+          "injected": [
+            "timeout-format",
+            "summary-style",
+            "changelog",
+            "test-output",
+            "settings-format",
+            "release-owner",
+            "newline",
+            "release-checklist",
+            "commit-subject"
+          ],
+          "memory_used": [
+            "changelog",
+            "commit-subject",
+            "newline",
+            "release-checklist",
+            "release-owner",
+            "settings-format",
+            "summary-style",
+            "test-output",
+            "timeout-format"
+          ]
+        },
+        "db-config": {
+          "ranking_version": "recency-importance-diversity-v2",
+          "ranking_weights": {
+            "confidence": 0.15000000596046448,
+            "diversity": 0.30000001192092896,
+            "importance": 0.10000000149011612,
+            "precedence": 0.15000000596046448,
+            "recency": 0.10000000149011612,
+            "recency_half_life_items": 8,
+            "relevance": 0.4000000059604645,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 738,
+          "injected": [
+            "db-naming",
+            "config-sections",
+            "summary-style",
+            "db-name",
+            "timeout-format",
+            "test-output",
+            "settings-format",
+            "newline",
+            "branch-names"
+          ],
+          "memory_used": [
+            "branch-names",
+            "config-sections",
+            "db-name",
+            "db-naming",
+            "newline",
+            "settings-format",
+            "summary-style",
+            "test-output",
+            "timeout-format"
+          ]
+        },
+        "deploy": {
+          "ranking_version": "recency-importance-diversity-v2",
+          "ranking_weights": {
+            "confidence": 0.15000000596046448,
+            "diversity": 0.30000001192092896,
+            "importance": 0.10000000149011612,
+            "precedence": 0.15000000596046448,
+            "recency": 0.10000000149011612,
+            "recency_half_life_items": 8,
+            "relevance": 0.4000000059604645,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 781,
+          "injected": [
+            "staging-window",
+            "timeout-format",
+            "test-output",
+            "rollback",
+            "summary-style",
+            "timeout-config",
+            "staging-port-new",
+            "migration-lock",
+            "settings-format"
+          ],
+          "memory_used": [
+            "migration-lock",
+            "rollback",
+            "settings-format",
+            "staging-port-new",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-config",
+            "timeout-format"
+          ]
+        },
+        "items-limit": {
+          "ranking_version": "recency-importance-diversity-v2",
+          "ranking_weights": {
+            "confidence": 0.15000000596046448,
+            "diversity": 0.30000001192092896,
+            "importance": 0.10000000149011612,
+            "precedence": 0.15000000596046448,
+            "recency": 0.10000000149011612,
+            "recency_half_life_items": 8,
+            "relevance": 0.4000000059604645,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 742,
+          "injected": [
+            "settings-format",
+            "items-limit",
+            "summary-style",
+            "timeout-format",
+            "newline",
+            "test-output",
+            "migration-lock",
+            "port-files",
+            "config-sections"
+          ],
+          "memory_used": [
+            "config-sections",
+            "items-limit",
+            "migration-lock",
+            "newline",
+            "port-files",
+            "settings-format",
+            "summary-style",
+            "test-output",
+            "timeout-format"
+          ]
+        },
+        "migration": {
+          "ranking_version": "recency-importance-diversity-v2",
+          "ranking_weights": {
+            "confidence": 0.15000000596046448,
+            "diversity": 0.30000001192092896,
+            "importance": 0.10000000149011612,
+            "precedence": 0.15000000596046448,
+            "recency": 0.10000000149011612,
+            "recency_half_life_items": 8,
+            "relevance": 0.4000000059604645,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 770,
+          "injected": [
+            "migration-lock",
+            "db-naming",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-format",
+            "settings-format",
+            "newline",
+            "staging-port-new"
+          ],
+          "memory_used": [
+            "db-naming",
+            "migration-lock",
+            "newline",
+            "settings-format",
+            "staging-port-new",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-format"
+          ]
+        },
+        "release-owner": {
+          "ranking_version": "recency-importance-diversity-v2",
+          "ranking_weights": {
+            "confidence": 0.15000000596046448,
+            "diversity": 0.30000001192092896,
+            "importance": 0.10000000149011612,
+            "precedence": 0.15000000596046448,
+            "recency": 0.10000000149011612,
+            "recency_half_life_items": 8,
+            "relevance": 0.4000000059604645,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 751,
+          "injected": [
+            "timeout-format",
+            "release-owner",
+            "staging-window",
+            "test-output",
+            "summary-style",
+            "settings-format",
+            "release-channel",
+            "release-cadence",
+            "migration-lock"
+          ],
+          "memory_used": [
+            "migration-lock",
+            "release-cadence",
+            "release-channel",
+            "release-owner",
+            "settings-format",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-format"
+          ]
+        },
+        "release-prep": {
+          "ranking_version": "recency-importance-diversity-v2",
+          "ranking_weights": {
+            "confidence": 0.15000000596046448,
+            "diversity": 0.30000001192092896,
+            "importance": 0.10000000149011612,
+            "precedence": 0.15000000596046448,
+            "recency": 0.10000000149011612,
+            "recency_half_life_items": 8,
+            "relevance": 0.4000000059604645,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 759,
+          "injected": [
+            "staging-window",
+            "timeout-format",
+            "test-output",
+            "summary-style",
+            "release-channel",
+            "api-versioning",
+            "settings-format",
+            "release-checklist",
+            "commit-subject"
+          ],
+          "memory_used": [
+            "api-versioning",
+            "commit-subject",
+            "release-channel",
+            "release-checklist",
+            "settings-format",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-format"
+          ]
+        },
+        "staging-port": {
+          "ranking_version": "recency-importance-diversity-v2",
+          "ranking_weights": {
+            "confidence": 0.15000000596046448,
+            "diversity": 0.30000001192092896,
+            "importance": 0.10000000149011612,
+            "precedence": 0.15000000596046448,
+            "recency": 0.10000000149011612,
+            "recency_half_life_items": 8,
+            "relevance": 0.4000000059604645,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 773,
+          "injected": [
+            "staging-window",
+            "timeout-format",
+            "test-output",
+            "staging-port-new",
+            "summary-style",
+            "settings-format",
+            "port-files",
+            "migration-lock",
+            "timeout-config"
+          ],
+          "memory_used": [
+            "migration-lock",
+            "port-files",
+            "settings-format",
+            "staging-port-new",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-config",
+            "timeout-format"
+          ]
+        },
+        "timeout": {
+          "ranking_version": "recency-importance-diversity-v2",
+          "ranking_weights": {
+            "confidence": 0.15000000596046448,
+            "diversity": 0.30000001192092896,
+            "importance": 0.10000000149011612,
+            "precedence": 0.15000000596046448,
+            "recency": 0.10000000149011612,
+            "recency_half_life_items": 8,
+            "relevance": 0.4000000059604645,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 756,
+          "injected": [
+            "timeout-format",
+            "staging-window",
+            "test-output",
+            "timeout-config",
+            "summary-style",
+            "migration-lock",
+            "settings-format",
+            "newline",
+            "release-cadence"
+          ],
+          "memory_used": [
+            "migration-lock",
+            "newline",
+            "release-cadence",
+            "settings-format",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-config",
+            "timeout-format"
+          ]
+        },
+        "upload-cmd": {
+          "ranking_version": "recency-importance-diversity-v2",
+          "ranking_weights": {
+            "confidence": 0.15000000596046448,
+            "diversity": 0.30000001192092896,
+            "importance": 0.10000000149011612,
+            "precedence": 0.15000000596046448,
+            "recency": 0.10000000149011612,
+            "recency_half_life_items": 8,
+            "relevance": 0.4000000059604645,
+            "validated": 0.10000000149011612
+          },
+          "token_budget": 800,
+          "token_used": 771,
+          "injected": [
+            "test-output",
+            "timeout-format",
+            "staging-window",
+            "upload-flaky-dup",
+            "summary-style",
+            "settings-format",
+            "newline",
+            "migration-lock",
+            "timeout-config"
+          ],
+          "memory_used": [
+            "migration-lock",
+            "newline",
+            "settings-format",
+            "staging-window",
+            "summary-style",
+            "test-output",
+            "timeout-config",
+            "timeout-format",
+            "upload-flaky-dup"
+          ]
+        }
+      }
+    }
+  ]
+}

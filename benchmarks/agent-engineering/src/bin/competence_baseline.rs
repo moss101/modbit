@@ -62,7 +62,7 @@ struct Args {
 
 fn usage() -> ! {
     eprintln!(
-        "usage: competence-baseline --suite <tasks.json> --fixtures <dir> --out <dir> --endpoint <openai|anthropic> [--model <id>] [--trials N] [--max-turns N] [--task <id>]... [--trial-timeout-secs N] [--keep] [--cli <bin>] [--core <bin>] [--profile <file> | --adaptive] [--jobs N]\n       competence-baseline merge --out <dir> <bundle dir>...\n       competence-baseline compare --baseline <bundle dir> --current <bundle dir> [--out <file>]\n       competence-baseline memory-ranking --corpus <corpus.json> --fixtures <dir> --out <dir> --endpoint <p> --model <id> [--current <version>] [--candidate <version>]"
+        "usage: competence-baseline --suite <tasks.json> --fixtures <dir> --out <dir> --endpoint <openai|anthropic> [--model <id>] [--trials N] [--max-turns N] [--task <id>]... [--trial-timeout-secs N] [--keep] [--cli <bin>] [--core <bin>] [--profile <file> | --adaptive] [--jobs N]\n       competence-baseline merge --out <dir> <bundle dir>...\n       competence-baseline compare --baseline <bundle dir> --current <bundle dir> [--out <file>]\n       competence-baseline memory-ranking --corpus <corpus.json> --fixtures <dir> --out <dir> --endpoint <p> --model <id> [--current <version>] --candidate <version>"
     );
     std::process::exit(1)
 }

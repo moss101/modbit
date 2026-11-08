@@ -45,7 +45,8 @@ use tokio::sync::Mutex;
 pub const PROMPT_MEMORY_BUDGET_TOKENS: u32 = 800;
 
 /// The environment variable that names the selection ranking (PX-186) by its
-/// version label (`keyword-v1`, `recency-importance-diversity-v2`).
+/// version label ([`Ranking::version`]): how a ranking comparison runs the
+/// same Core under a candidate and the current ranking.
 pub const MEMORY_RANKING_ENV: &str = "MODBIT_MEMORY_RANKING";
 
 /// The ranking this Core selects memory with: the one
@@ -59,6 +60,7 @@ pub fn configured_ranking() -> Ranking {
         .and_then(|v| Ranking::from_version(&v))
         .unwrap_or_default()
 }
+
 /// The longest topic and content a memory item may carry.
 const MAX_TOPIC_CHARS: usize = 200;
 const MAX_CONTENT_BYTES: usize = 16 * 1024;

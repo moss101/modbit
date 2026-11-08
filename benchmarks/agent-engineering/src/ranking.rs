@@ -9,9 +9,11 @@
 //! ContextCompile step's memory record (the ranking's version and weights,
 //! the token budget and the tokens used) and the `MemoryUsed` events. Each
 //! ranking runs twice on independent profiles, so a ranking that is not
-//! deterministic is caught. [`compare_rankings`] refuses a comparison at
+//! deterministic is caught, and once more with no ranking named, so the
+//! product's default is known. [`compare_rankings`] refuses a comparison at
 //! unequal budgets, a record of another ranking, a missing task, a
-//! nondeterministic ranking and any sensitive item offered; otherwise it
+//! nondeterministic ranking, any sensitive or stale item offered, and a
+//! product default that is not the ranking the decision keeps; otherwise it
 //! gives recall and injected tokens per ranking and the keep-or-revert
 //! decision.
 

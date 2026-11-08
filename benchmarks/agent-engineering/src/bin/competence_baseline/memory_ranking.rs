@@ -4,13 +4,16 @@
 //! ```text
 //! competence-baseline memory-ranking --corpus <corpus.json> --fixtures <dir> --out <dir> \
 //!   --endpoint <openai|anthropic> --model <id> [--current keyword-v1] \
-//!   [--candidate recency-importance-diversity-v2] [--cli <bin>] [--core <bin>] [--keep]
+//!   --candidate <version> [--cli <bin>] [--core <bin>] [--keep]
 //! ```
 //!
-//! Four passes, each a fresh Core profile on a fresh copy of the fixture: the
-//! current ranking, the candidate, and each again. The ranking is the one a
-//! person would choose, `MODBIT_MEMORY_RANKING` in the Core's environment;
-//! nothing else differs. In each pass the corpus is seeded through the CLI
+//! Five passes, one after another, each a fresh Core profile on a fresh copy
+//! of the fixture at one path: the Core's default (no ranking named), the
+//! current ranking, the candidate, and each of those again. The ranking is
+//! the one a person would choose, `MODBIT_MEMORY_RANKING` in the Core's
+//! environment; nothing else differs. A candidate the Core does not have
+//! falls back to its default, the records say so, and the comparison is
+//! refused. In each pass the corpus is seeded through the CLI
 //! (`memory propose|promote`, oldest first; the items marked
 //! `before_revision_move` are seeded, then the repository commits, then the
 //! rest), and every task of the corpus is created and run for one turn. What
@@ -52,7 +55,7 @@ struct Args {
 
 fn usage() -> ! {
     eprintln!(
-        "usage: competence-baseline memory-ranking --corpus <corpus.json> --fixtures <dir> --out <dir> --endpoint <openai|anthropic> --model <id> [--current <version>] [--candidate <version>] [--cli <bin>] [--core <bin>] [--keep]"
+        "usage: competence-baseline memory-ranking --corpus <corpus.json> --fixtures <dir> --out <dir> --endpoint <openai|anthropic> --model <id> [--current <version>] --candidate <version> [--cli <bin>] [--core <bin>] [--keep]"
     );
     std::process::exit(1)
 }
@@ -73,7 +76,7 @@ fn parse() -> Args {
         endpoint: String::new(),
         model: String::new(),
         current: "keyword-v1".into(),
-        candidate: "recency-importance-diversity-v2".into(),
+        candidate: String::new(),
         cli: sibling("modbit-cli"),
         core: sibling("modbit-core"),
         keep: false,
@@ -104,6 +107,7 @@ fn parse() -> Args {
         || a.out.as_os_str().is_empty()
         || a.endpoint.is_empty()
         || a.model.is_empty()
+        || a.candidate.is_empty()
     {
         usage();
     }

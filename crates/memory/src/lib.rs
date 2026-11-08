@@ -786,10 +786,15 @@ pub struct SelectionInput<'a> {
     pub ranking: Ranking,
 }
 
-/// The score a selection orders its candidates by (PX-186). Every ranking
-/// is pure and deterministic over the store and the input; the one that ran
-/// is recorded with the selection, with its weights, so a prompt's memory
-/// can be traced to the rule that chose it.
+/// The score a selection orders its candidates by (PX-186). A ranking is
+/// pure and deterministic over the store and the input; the one that ran is
+/// recorded with the selection, with its weights, so a prompt's memory can
+/// be traced to the rule that chose it. A new ranking is added here only
+/// when the memory-ranking comparison of the memory axis
+/// (`benchmarks/agent-engineering`, `competence-baseline memory-ranking`)
+/// shows it recalls more at the same token budget; the PX-186 candidate
+/// (recency, importance by record type, a diversity penalty) recalled less
+/// and was reverted (`evidence/m10/PX-186`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Ranking {
@@ -797,14 +802,6 @@ pub enum Ranking {
     /// 0.2, validated or user-stated 0.1.
     #[default]
     KeywordV1,
-    /// PX-186: the same features at lower weight plus recency (a half-life
-    /// of [`RankingWeights::recency_half_life_items`] newer in-scope items),
-    /// importance by record type ([`importance_of`]), and a diversity
-    /// penalty: candidates are taken greedily, each one's score less
-    /// `diversity` times its largest word overlap (Jaccard) with an item
-    /// already taken (items of one conflict are not penalised against each
-    /// other, so a conflict stays whole).
-    RecencyImportanceDiversityV2,
 }
 
 /// The weights of a [`Ranking`] (recorded with each selection).
@@ -818,28 +815,17 @@ pub struct RankingWeights {
     pub confidence: f32,
     /// Validated or stated by the user.
     pub validated: f32,
-    /// Recency (0 in v1).
-    pub recency: f32,
-    /// Importance by record type (0 in v1).
-    pub importance: f32,
-    /// Diversity penalty per unit of word overlap with an item already
-    /// taken (0 in v1).
-    pub diversity: f32,
-    /// Newer in-scope items after which an item's recency halves (0 in v1:
-    /// not used).
-    pub recency_half_life_items: u32,
 }
 
 impl Ranking {
-    /// Every ranking, oldest first.
-    pub const ALL: [Ranking; 2] = [Ranking::KeywordV1, Ranking::RecencyImportanceDiversityV2];
+    /// Every ranking.
+    pub const ALL: [Ranking; 1] = [Ranking::KeywordV1];
 
     /// The stable version label recorded with a selection.
     #[must_use]
     pub fn version(self) -> &'static str {
         match self {
             Ranking::KeywordV1 => "keyword-v1",
-            Ranking::RecencyImportanceDiversityV2 => "recency-importance-diversity-v2",
         }
     }
 
@@ -860,20 +846,6 @@ impl Ranking {
                 precedence: 0.2,
                 confidence: 0.2,
                 validated: 0.1,
-                recency: 0.0,
-                importance: 0.0,
-                diversity: 0.0,
-                recency_half_life_items: 0,
-            },
-            Ranking::RecencyImportanceDiversityV2 => RankingWeights {
-                relevance: 0.4,
-                precedence: 0.15,
-                confidence: 0.15,
-                validated: 0.1,
-                recency: 0.1,
-                importance: 0.1,
-                diversity: 0.3,
-                recency_half_life_items: 8,
             },
         }
     }
@@ -884,32 +856,6 @@ impl Ranking {
     pub fn record(self) -> serde_json::Value {
         serde_json::json!({"version": self.version(), "weights": self.weights()})
     }
-}
-
-/// How much it costs to miss an item of this type (PX-186), `0.0..=1.0`: a
-/// known failure is repeated and a settled decision re-argued; standing
-/// preferences and conventions are what a person corrects first; a fact or
-/// a dependency detail can be read again from the repository.
-#[must_use]
-pub fn importance_of(record_type: RecordType) -> f32 {
-    match record_type {
-        RecordType::FailurePattern => 1.0,
-        RecordType::Decision | RecordType::UserPreference => 0.8,
-        RecordType::Convention => 0.7,
-        RecordType::Procedure => 0.6,
-        RecordType::DependencyKnowledge => 0.5,
-        RecordType::Fact => 0.4,
-    }
-}
-
-/// Word overlap of two term lists (each without repeats), `0.0..=1.0`.
-fn jaccard(a: &[String], b: &[String]) -> f32 {
-    if a.is_empty() || b.is_empty() {
-        return 0.0;
-    }
-    let inter = a.iter().filter(|t| b.contains(t)).count();
-    let union = a.len() + b.len() - inter;
-    inter as f32 / union as f32
 }
 
 /// One item chosen for a task, with why.
@@ -993,7 +939,7 @@ impl MemoryStore {
         }
         let mut excluded: Vec<Excluded> = Vec::new();
         let mut candidates: Vec<(&MemoryItem, f32, Vec<String>)> = Vec::new();
-        for &item in &in_scope {
+        for item in in_scope {
             if item.sensitivity == Sensitivity::Sensitive {
                 excluded.push(Excluded {
                     id: item.id.clone(),
@@ -1039,25 +985,10 @@ impl MemoryStore {
             } else {
                 0.0
             };
-            // Recency is counted in items, not in wall time: the in-scope
-            // items recorded after this one, so the score depends on the
-            // store and never on the clock.
-            let recency = if w.recency_half_life_items == 0 {
-                0.0
-            } else {
-                let newer = in_scope
-                    .iter()
-                    .filter(|o| o.created_at_ms > item.created_at_ms)
-                    .count();
-                0.5f32.powf(newer as f32 / w.recency_half_life_items as f32)
-            };
-            let importance = importance_of(item.record_type);
             let score = w.relevance * relevance
                 + w.precedence * precedence
                 + w.confidence * item.confidence
-                + w.validated * validated
-                + w.recency * recency
-                + w.importance * importance;
+                + w.validated * validated;
             let mut reasons = Vec::new();
             if topic_hits + content_hits > 0 {
                 reasons.push(format!(
@@ -1073,12 +1004,6 @@ impl MemoryStore {
                 reasons.push("standing".into());
             }
             reasons.push(format!("scope:{}", item.scope.kind()));
-            if w.recency > 0.0 {
-                reasons.push(format!("recency:{recency:.2}"));
-            }
-            if w.importance > 0.0 {
-                reasons.push(format!("importance:{importance:.2}"));
-            }
             candidates.push((item, score, reasons));
         }
         // Precedence: the narrowest scope holding a (record type, topic)
@@ -1124,9 +1049,6 @@ impl MemoryStore {
             })
             .collect();
         selected.sort_by(best_first);
-        if w.diversity > 0.0 {
-            selected = diversify(selected, w.diversity);
-        }
         excluded.sort_by(|a, b| a.id.cmp(&b.id));
         Selection {
             selected,
@@ -1143,47 +1065,6 @@ fn best_first(a: &Selected<'_>, b: &Selected<'_>) -> std::cmp::Ordering {
         .unwrap_or(std::cmp::Ordering::Equal)
         .then(a.item.scope.rank().cmp(&b.item.scope.rank()))
         .then(a.item.id.cmp(&b.item.id))
-}
-
-/// Greedy diversity (PX-186): take the best remaining candidate, its score
-/// less `lambda` times its largest word overlap with an item already taken;
-/// items of one conflict never penalise each other. A score so adjusted
-/// never rises from one pick to the next, so a packer that orders by score
-/// keeps this order.
-fn diversify(pool: Vec<Selected<'_>>, lambda: f32) -> Vec<Selected<'_>> {
-    let terms: Vec<Vec<String>> = pool
-        .iter()
-        .map(|s| terms_of(&format!("{} {}", s.item.topic, s.item.content)))
-        .collect();
-    let mut overlap = vec![0.0f32; pool.len()];
-    let mut taken = vec![false; pool.len()];
-    let mut out: Vec<Selected<'_>> = Vec::with_capacity(pool.len());
-    while out.len() < pool.len() {
-        let mut best: Option<(usize, Selected<'_>)> = None;
-        for (i, s) in pool.iter().enumerate() {
-            if taken[i] {
-                continue;
-            }
-            let mut c = s.clone();
-            c.score = (s.score - lambda * overlap[i]).max(0.0);
-            if best.as_ref().is_none_or(|(_, b)| best_first(&c, b).is_lt()) {
-                best = Some((i, c));
-            }
-        }
-        let Some((i, mut pick)) = best else { break };
-        taken[i] = true;
-        if overlap[i] > 0.0 {
-            pick.reasons
-                .push(format!("diversity:-{:.2}", lambda * overlap[i]));
-        }
-        for (j, o) in pool.iter().enumerate() {
-            if !taken[j] && o.item.conflict_key() != pool[i].item.conflict_key() {
-                overlap[j] = overlap[j].max(jaccard(&terms[i], &terms[j]));
-            }
-        }
-        out.push(pick);
-    }
-    out
 }
 
 #[cfg(test)]
@@ -1770,366 +1651,121 @@ mod tests {
 
     // ------------------------------------------------------------ PX-186
 
-    #[allow(clippy::too_many_arguments)]
-    fn curated_at(
-        store: &mut MemoryStore,
-        scope: Scope,
-        record_type: RecordType,
-        topic: &str,
-        content: &str,
-        source: Source,
-        confidence: f32,
-        created_at_ms: i64,
-    ) -> String {
+    #[test]
+    fn px_186_the_kept_ranking_is_the_default_and_its_record_names_the_weights_the_score_uses() {
+        assert_eq!(Ranking::default(), Ranking::KeywordV1);
+        assert_eq!(Ranking::ALL, [Ranking::KeywordV1]);
+        let w = Ranking::KeywordV1.weights();
+        assert_eq!(
+            (w.relevance, w.precedence, w.confidence, w.validated),
+            (0.5, 0.2, 0.2, 0.1)
+        );
+        let rec = Ranking::KeywordV1.record();
+        assert_eq!(rec["version"], "keyword-v1");
+        assert_eq!(rec["weights"]["relevance"].as_f64(), Some(0.5));
+        assert_eq!(
+            Ranking::from_version(" keyword-v1 "),
+            Some(Ranking::KeywordV1)
+        );
+        // The reverted candidate is no ranking (the Core falls back to the
+        // default and records which ran).
+        assert_eq!(
+            Ranking::from_version("recency-importance-diversity-v2"),
+            None
+        );
+        assert_eq!(Ranking::from_version(""), None);
+
+        // The recorded weights are the ones the score uses: a lone relevant
+        // user-stated, validated item of confidence 1 in the run scope (rank
+        // 0) whose topic holds every goal word scores exactly their sum.
+        let mut store = MemoryStore::new();
         let it = MemoryItem::propose(
-            scope,
-            record_type,
-            topic,
-            content,
-            source,
+            Scope::Session { id: "s".into() },
+            RecordType::Fact,
+            "staging port",
+            "the staging port",
+            Source::UserStated,
             "user:u1",
-            confidence,
-            created_at_ms,
+            1.0,
+            1_000,
         );
         let id = it.id.clone();
         store.upsert(it);
         store.promote(&id);
-        id
-    }
-
-    fn order(store: &MemoryStore, goal: &str, ranking: Ranking) -> Vec<String> {
-        let keys = chain();
-        store
-            .select(&SelectionInput {
-                scope_keys: &keys,
-                goal,
-                now_ms: 100_000,
-                ranking,
-                ..Default::default()
-            })
-            .selected
-            .iter()
-            .map(|s| s.item.id.clone())
-            .collect()
-    }
-
-    #[test]
-    fn px_186_the_current_ranking_is_the_default_and_each_ranking_names_its_weights() {
-        assert_eq!(Ranking::default(), Ranking::KeywordV1);
-        let v1 = Ranking::KeywordV1.weights();
-        assert_eq!(
-            (v1.relevance, v1.precedence, v1.confidence, v1.validated),
-            (0.5, 0.2, 0.2, 0.1)
-        );
-        assert_eq!(
-            (
-                v1.recency,
-                v1.importance,
-                v1.diversity,
-                v1.recency_half_life_items
-            ),
-            (0.0, 0.0, 0.0, 0)
-        );
-        let v2 = Ranking::RecencyImportanceDiversityV2.weights();
-        let sum = v2.relevance
-            + v2.precedence
-            + v2.confidence
-            + v2.validated
-            + v2.recency
-            + v2.importance;
-        assert!((sum - 1.0).abs() < 1e-6, "{sum}");
-        assert!(v2.recency > 0.0 && v2.importance > 0.0 && v2.diversity > 0.0);
-        for r in Ranking::ALL {
-            assert_eq!(Ranking::from_version(r.version()), Some(r));
-            let rec = r.record();
-            assert_eq!(rec["version"], r.version());
-            assert!(rec["weights"]["relevance"].as_f64().unwrap() > 0.0);
-        }
-        assert_eq!(Ranking::from_version("keyword"), None);
-        assert_eq!(Ranking::from_version(""), None);
-        let mut store = MemoryStore::new();
-        curated(
-            &mut store,
-            Scope::Repository { id: "/r".into() },
-            RecordType::Fact,
-            "port",
-            "the port is 1",
-        );
         let keys = chain();
         let sel = store.select(&SelectionInput {
             scope_keys: &keys,
-            goal: "port",
+            goal: "staging port",
             now_ms: 2_000,
-            ranking: Ranking::RecencyImportanceDiversityV2,
             ..Default::default()
         });
-        assert_eq!(sel.ranking, Ranking::RecencyImportanceDiversityV2);
+        assert_eq!(sel.ranking, Ranking::KeywordV1);
+        let precedence = 1.0 - 1.0 / 6.0;
+        let expect = w.relevance + w.precedence * precedence + w.confidence + w.validated;
+        assert!(
+            (sel.selected[0].score - expect).abs() < 1e-6,
+            "{}",
+            sel.selected[0].score
+        );
     }
 
-    /// A store with near-duplicates, an older and a newer item and items of
-    /// different importance, all relevant to "deploy staging port".
-    fn mixed_store() -> (MemoryStore, BTreeMap<&'static str, String>) {
+    #[test]
+    fn px_186_selection_is_deterministic_over_the_store_and_never_offers_a_sensitive_item() {
         let mut store = MemoryStore::new();
         let repo = || Scope::Repository { id: "/r".into() };
-        let mut ids = BTreeMap::new();
-        let src = Source::UserStated;
-        ids.insert(
-            "dup_a",
-            curated_at(
-                &mut store,
-                repo(),
-                RecordType::Procedure,
+        for (topic, content) in [
+            (
                 "deploy steps",
-                "deploy staging: tag the build, push the tag, announce",
-                src,
-                0.9,
-                1_000,
+                "deploy staging: tag the build, push the tag",
             ),
-        );
-        ids.insert(
-            "dup_b",
-            curated_at(
-                &mut store,
-                repo(),
-                RecordType::Procedure,
-                "deploy procedure",
-                "deploy staging: tag the build, push the tag, then announce",
-                src,
-                0.9,
-                1_001,
-            ),
-        );
-        ids.insert(
-            "dup_c",
-            curated_at(
-                &mut store,
-                repo(),
-                RecordType::Procedure,
-                "deploying",
-                "to deploy staging tag the build, push the tag and announce",
-                src,
-                0.9,
-                1_002,
-            ),
-        );
-        ids.insert(
-            "port_old",
-            curated_at(
-                &mut store,
-                repo(),
-                RecordType::Fact,
-                "staging port",
-                "staging listens on 8431",
-                src,
-                0.8,
-                1_003,
-            ),
-        );
-        ids.insert(
-            "window",
-            curated_at(
-                &mut store,
-                repo(),
-                RecordType::FailurePattern,
+            ("deploy procedure", "deploy staging: tag and push"),
+            ("staging port", "staging listens on 9443"),
+            (
                 "staging window",
-                "a staging deploy during the nightly backup times out",
-                src,
-                0.8,
-                1_004,
+                "a staging deploy during the backup times out",
             ),
-        );
-        ids.insert(
-            "port_new",
-            curated_at(
-                &mut store,
-                repo(),
-                RecordType::Fact,
-                "staging port now",
-                "staging listens on 9443",
-                src,
-                0.8,
-                1_005,
-            ),
-        );
+        ] {
+            curated(&mut store, repo(), RecordType::Procedure, topic, content);
+        }
         let mut secret = MemoryItem::propose(
             Scope::Session { id: "s".into() },
             RecordType::Fact,
-            "staging deploy port secret",
+            "staging deploy secret",
             "the staging deploy account and its port",
             Source::UserStated,
             "user:u1",
             1.0,
-            1_006,
+            1_000,
         );
         secret.sensitivity = Sensitivity::Sensitive;
         let sid = secret.id.clone();
         store.upsert(secret);
         store.promote(&sid);
-        ids.insert("secret", sid);
-        (store, ids)
-    }
-
-    #[test]
-    fn px_186_recency_importance_and_diversity_reorder_deterministically_and_never_offer_sensitive()
-    {
-        let (store, ids) = mixed_store();
-        let goal = "deploy staging port";
-        let v1 = order(&store, goal, Ranking::KeywordV1);
-        let v2 = order(&store, goal, Ranking::RecencyImportanceDiversityV2);
-        let pos = |o: &[String], k: &str| o.iter().position(|i| *i == ids[k]).unwrap();
-        let names = |o: &[String]| {
-            o.iter()
-                .map(|i| *ids.iter().find(|(_, v)| *v == i).unwrap().0)
-                .collect::<Vec<_>>()
+        let keys = chain();
+        let order = |s: &MemoryStore| {
+            s.select(&SelectionInput {
+                scope_keys: &keys,
+                goal: "deploy staging port",
+                now_ms: 2_000,
+                ..Default::default()
+            })
+            .selected
+            .iter()
+            .map(|x| (x.item.id.clone(), x.score))
+            .collect::<Vec<_>>()
         };
-        // Both rankings offer the same items: ranking orders, it never widens
-        // or narrows what may be offered, and a sensitive item is never one.
-        let mut a = v1.clone();
-        let mut b = v2.clone();
-        a.sort();
-        b.sort();
-        assert_eq!(a, b);
-        for o in [&v1, &v2] {
-            assert!(!o.contains(&ids["secret"]), "{o:?}");
-            assert_eq!(o.len(), 6);
-        }
-        // v1 keeps the three near-duplicate procedures side by side and the
-        // failure pattern last; v2 takes one duplicate into its first three,
-        // with the failure pattern, and the other duplicates follow.
-        let mut dups_v1: Vec<usize> = ["dup_a", "dup_b", "dup_c"]
-            .iter()
-            .map(|k| pos(&v1, k))
-            .collect();
-        dups_v1.sort_unstable();
-        assert_eq!(dups_v1[2] - dups_v1[0], 2, "{:?}", names(&v1));
-        assert_eq!(pos(&v1, "window"), 5, "{:?}", names(&v1));
-        let dups_in_v2_top3 = ["dup_a", "dup_b", "dup_c"]
-            .iter()
-            .filter(|k| pos(&v2, k) < 3)
-            .count();
-        assert_eq!(dups_in_v2_top3, 1, "{:?}", names(&v2));
-        assert!(
-            pos(&v2, "window") < 3,
-            "the failure pattern rises: {:?}",
-            names(&v2)
-        );
-        // Recency: the newer port outranks the older.
-        assert!(
-            pos(&v2, "port_new") < pos(&v2, "port_old"),
-            "{:?}",
-            names(&v2)
-        );
-        // Deterministic: the same store gives the same order, and so does a
-        // store filled in the opposite order.
-        assert_eq!(
-            v2,
-            order(&store, goal, Ranking::RecencyImportanceDiversityV2)
-        );
+        let first = order(&store);
+        assert_eq!(first.len(), 4);
+        assert!(first.iter().all(|(id, _)| *id != sid));
+        assert!(first.windows(2).all(|w| w[0].1 >= w[1].1));
+        assert_eq!(first, order(&store));
+        // A store filled in the opposite order selects the same.
         let mut reversed = MemoryStore::new();
         let mut all: Vec<MemoryItem> = store.all().cloned().collect();
         all.reverse();
         for it in all {
             reversed.upsert(it);
         }
-        assert_eq!(
-            v2,
-            order(&reversed, goal, Ranking::RecencyImportanceDiversityV2)
-        );
-        assert_eq!(v1, order(&reversed, goal, Ranking::KeywordV1));
-        // The order is by score, so a packer that sorts by score keeps it,
-        // and every reason the score carries is recorded.
-        let keys = chain();
-        let sel = store.select(&SelectionInput {
-            scope_keys: &keys,
-            goal,
-            now_ms: 100_000,
-            ranking: Ranking::RecencyImportanceDiversityV2,
-            ..Default::default()
-        });
-        assert!(sel.selected.windows(2).all(|w| w[0].score >= w[1].score));
-        assert!(sel.selected.iter().all(|s| (0.0..=1.0).contains(&s.score)));
-        assert!(
-            sel.selected
-                .iter()
-                .any(|s| s.reasons.iter().any(|r| r.starts_with("diversity:-")))
-        );
-        assert!(sel.selected.iter().all(|s| {
-            s.reasons.iter().any(|r| r.starts_with("recency:"))
-                && s.reasons.iter().any(|r| r.starts_with("importance:"))
-        }));
-        assert_eq!(
-            sel.excluded
-                .iter()
-                .find(|e| e.id == ids["secret"])
-                .map(|e| e.reason.as_str()),
-            Some("sensitive")
-        );
-    }
-
-    #[test]
-    fn px_186_recency_counts_newer_items_not_the_clock_and_a_conflict_is_not_split_by_diversity() {
-        let (store, _) = mixed_store();
-        let keys = chain();
-        let at = |now| {
-            store
-                .select(&SelectionInput {
-                    scope_keys: &keys,
-                    goal: "deploy staging port",
-                    now_ms: now,
-                    ranking: Ranking::RecencyImportanceDiversityV2,
-                    ..Default::default()
-                })
-                .selected
-                .iter()
-                .map(|s| (s.item.id.clone(), s.score))
-                .collect::<Vec<_>>()
-        };
-        assert_eq!(
-            at(10_000),
-            at(10_000_000_000),
-            "the clock does not move a score"
-        );
-
-        let mut store = MemoryStore::new();
-        let repo = || Scope::Repository { id: "/r".into() };
-        let a = curated_at(
-            &mut store,
-            repo(),
-            RecordType::Convention,
-            "branch naming",
-            "branches are feature/<name>",
-            Source::UserStated,
-            0.8,
-            1_000,
-        );
-        let b = curated_at(
-            &mut store,
-            repo(),
-            RecordType::Convention,
-            "branch naming",
-            "branches are <name>-wip",
-            Source::UserStated,
-            0.8,
-            1_001,
-        );
-        let sel = store.select(&SelectionInput {
-            scope_keys: &keys,
-            goal: "name the branch",
-            now_ms: 2_000,
-            ranking: Ranking::RecencyImportanceDiversityV2,
-            ..Default::default()
-        });
-        assert_eq!(sel.selected.len(), 2, "no silent pick");
-        for s in &sel.selected {
-            let other = if s.item.id == a { &b } else { &a };
-            assert_eq!(s.conflicts_with, vec![other.clone()]);
-            assert!(
-                !s.reasons.iter().any(|r| r.starts_with("diversity")),
-                "{:?}",
-                s.reasons
-            );
-        }
-        // The newer side of the conflict is first.
-        assert_eq!(sel.selected[0].item.id, b);
+        assert_eq!(first, order(&reversed));
     }
 }
