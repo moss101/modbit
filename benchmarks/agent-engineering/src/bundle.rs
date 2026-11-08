@@ -133,6 +133,15 @@ pub struct TrialOutcome {
     /// Harness-side notes (timeouts, refusals).
     #[serde(default)]
     pub notes: Vec<String>,
+    /// The task's axis (PX-184); absent for an untagged suite.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub axis: Option<String>,
+    /// The task's own verifier's verdict (PX-184); part of `acceptance_passed`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub verifier: Option<crate::verifier::VerifierOutcome>,
+    /// Usage the Core recorded for the trial's task and its children (PX-184).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub usage: Option<crate::axes::TrialUsage>,
 }
 
 /// A rate with its 95% Wilson interval.

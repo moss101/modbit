@@ -3945,6 +3945,9 @@ async fn qual_px_153_three_refusals_in_a_row_park_the_task_once_and_the_notice_s
     let out = std::path::Path::new(&root).join("out.txt");
 
     start(&mut c, &t, g, "gpt-5-mini", 10).await;
+    // Each refusal is of a call not refused yet (a denied approval can still be
+    // listed as pending for a moment).
+    let mut decided: Vec<Vec<u8>> = Vec::new();
     for n in 1..=3 {
         let deadline = Instant::now() + Duration::from_secs(60);
         let asked = loop {
@@ -3952,6 +3955,14 @@ async fn qual_px_153_three_refusals_in_a_row_park_the_task_once_and_the_notice_s
                 .await
                 .into_iter()
                 .filter(|a| a.task_id.as_ref() == Some(&t))
+                .filter(|a| {
+                    !decided.contains(
+                        &a.approval_id
+                            .as_ref()
+                            .map(|i| i.value.clone())
+                            .unwrap_or_default(),
+                    )
+                })
                 .collect();
             if !asked.is_empty() {
                 break asked;
@@ -3959,6 +3970,13 @@ async fn qual_px_153_three_refusals_in_a_row_park_the_task_once_and_the_notice_s
             assert!(Instant::now() < deadline, "refusal {n} was never asked");
             tokio::time::sleep(Duration::from_millis(50)).await;
         };
+        decided.push(
+            asked[0]
+                .approval_id
+                .as_ref()
+                .map(|i| i.value.clone())
+                .unwrap_or_default(),
+        );
         decide(&mut c, &asked[0], false, g).await;
     }
     let st = wait_task(&mut c, &t, 60).await;
@@ -4088,6 +4106,11 @@ async fn qual_px_153_the_count_survives_a_restart_because_it_is_folded_from_the_
     let t = task_for(&mut c, &session, g, &root, 0x11, "g-refused").await;
 
     start(&mut c, &t, g, "gpt-5-mini", 10).await;
+    // An approval just denied can still be listed as pending for a moment: the
+    // next call is one this test has not decided yet, never the last one again
+    // (taking it for the third call killed the Core before the second refusal
+    // was on the log, and the run never parked).
+    let mut decided: Vec<Vec<u8>> = Vec::new();
     for n in 1..=3 {
         let deadline = Instant::now() + Duration::from_secs(60);
         let asked = loop {
@@ -4095,6 +4118,14 @@ async fn qual_px_153_the_count_survives_a_restart_because_it_is_folded_from_the_
                 .await
                 .into_iter()
                 .filter(|a| a.task_id.as_ref() == Some(&t))
+                .filter(|a| {
+                    !decided.contains(
+                        &a.approval_id
+                            .as_ref()
+                            .map(|i| i.value.clone())
+                            .unwrap_or_default(),
+                    )
+                })
                 .collect();
             if !asked.is_empty() {
                 break asked;
@@ -4103,6 +4134,13 @@ async fn qual_px_153_the_count_survives_a_restart_because_it_is_folded_from_the_
             tokio::time::sleep(Duration::from_millis(50)).await;
         };
         if n < 3 {
+            decided.push(
+                asked[0]
+                    .approval_id
+                    .as_ref()
+                    .map(|i| i.value.clone())
+                    .unwrap_or_default(),
+            );
             decide(&mut c, &asked[0], false, g).await;
             continue;
         }

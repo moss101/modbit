@@ -159,7 +159,11 @@ test("the view offers no catalog, no install from the network and no update flow
   expect(names.length).toBeGreaterThan(5);
   expect(names.filter((t) => /\b(marketplace|catalog(ue)?|browse|install|download|update|upgrade|discover|store|publish)\b/i.test(t))).toEqual([]);
   expect(await page.locator('[data-testid="customize"] a[href]').count()).toBe(0);
-  const api = await page.evaluate(() => Object.keys(window.modbit).filter((k) => /catalog|marketplace|install|download|upgrade|browseExt/i.test(k)));
+  // The app's own signed updater (M10.2: verified against the pinned key,
+  // rollback on failure) is not an extension flow and is not in this view;
+  // it is exempt by name, so any other install or download bridge still fails.
+  const appUpdater = ["updateView", "updateCheck", "updateInstall", "updateRollback"];
+  const api = await page.evaluate((exempt) => Object.keys(window.modbit).filter((k) => !exempt.includes(k) && /catalog|marketplace|install|download|upgrade|browseExt/i.test(k)), appUpdater);
   expect(api).toEqual([]);
 });
 

@@ -382,8 +382,21 @@ async fn publish(
             lane.deltas = sequence;
             lane.published.push_str(&safe);
         }
-        Err(_) => lane.broken = true,
+        Err(_) => {
+            lane.broken = true;
+            return;
+        }
     }
+    // PX-041 (docs/65 AFW-K01): the append woke every subscribed connection,
+    // and tokio runs a task woken from this worker on this worker next (its
+    // LIFO slot, which no idle worker steals), only once this task yields.
+    // What follows a message's last delta (closing the stream, the tool
+    // calls, the checkpoint, the next turn's preparation) yields nowhere for
+    // tens of milliseconds, so the delta waited for all of it before a client
+    // saw it (measured: ~95 ms on a debug Core). Yield once here: the
+    // delivery runs, then this task resumes. The lane is up to date before the
+    // yield, so a run cancelled at this point leaves nothing half-recorded.
+    tokio::task::yield_now().await;
 }
 
 async fn close(

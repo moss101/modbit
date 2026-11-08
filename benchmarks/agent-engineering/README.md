@@ -82,6 +82,67 @@ trials, not the run — then merges the parts and retains
 Core and prints the processes holding the most memory, so a starved runner
 can be read from the log.
 
+## Four-axis agent benchmark (PX-184)
+
+`suites/four-axis/tasks.json` (id `four-axis`) runs on the same harness,
+bundle format and protocol, over its own fixture
+(`suites/four-axis/fixtures/inventory`). Forty tasks, ten on each axis, each
+tagged by `axis` and carrying its own `verifier`:
+
+| axis | what the task exercises through the real Core | what its verifier checks |
+|---|---|---|
+| `tool_use` | `fs.read`, `search.exact`, `fs.glob`, `fs.list`, `shell.exec`, `change.apply` (create/edit), `change.batch` | workspace files; the named tool's result as the Core stored it (`ToolCallSucceeded.result_ref` in the profile's object store, copied to `trials/*/tool-results/`) |
+| `memory` | curated memory seeded through `memory propose`/`promote` (one seed then `forget`), recalled by injection or `memory.query`; new items recorded with `memory.propose` | workspace files; `MemoryUsed` or a `memory.query` result naming the seeded item's id; a forgotten item reaching the task fails; `MemoryProposed` by an `agent:` author with the stated topic and type |
+| `skill_use` | a skill written to the profile and trusted with `skill trust name@hash`, read with `skill.load` | workspace files following the skill's rule; a `skill.load` result (or `SkillSelected`) with that name and the trusted content hash |
+| `subagent` | `agent.spawn` of one or two children with disjoint write scopes, `agent.wait`, `git.merge.prepare`/`commit` of each child | the children's files in the parent's workspace; `SubagentAdmitted`, `SubagentResultRecorded` and `MergeTransactionRecorded` (`COMMITTED`) counts on the parent |
+
+The harness puts seeds in place through the CLI before the run and resolves
+each seed key to the id or content hash the Core assigned; the suite sets
+`run_mode: RUN_EVERYTHING` on every task (`run-mode set --ack`, as a person
+would), which lets a parent integrate its children without an approval; the
+always-ask classes still ask and no task needs one. A trial's
+`acceptance_passed` includes its verifier's verdict, so `verified_success`
+needs the Core's completion gating and the task's own check.
+
+Validation refuses a task without an axis or without its own verifier (a
+unique id and checks no other task shares), a verifier that checks nothing,
+an axis with fewer than ten tasks (the suite cannot lower the floor), and a
+gate that cannot fail. For such a suite the run also writes `axes.json`:
+verified success per axis with its 95% Wilson interval, and the output-token
+cost per thousand tasks (and USD at catalog list prices when priced),
+computed only from recorded usage — per trial, `task economics` of the task
+and every child it admitted, which must equal the `ModelUsageRecorded` events
+of the trial's log; a trial without recorded usage, or whose two records
+disagree, refuses the report.
+
+```bash
+target/debug/competence-baseline \
+  --suite benchmarks/agent-engineering/suites/four-axis/tasks.json \
+  --fixtures benchmarks/agent-engineering/suites/four-axis/fixtures \
+  --out target/four-axis --endpoint openai --model <id> [--trials N] [--jobs 4]
+target/debug/competence-baseline compare \
+  --baseline benchmarks/agent-engineering/baselines/four-axis --current target/four-axis
+```
+
+`compare` checks each `axes.json` against its bundle (figures not derived from
+the bundle's recorded usage are refused), reports the per-axis and cost
+difference in `comparison.json`, and exits 3 when an axis fails its gate: its
+verified-success rate is more than `max_drop` (0.05) below the baseline's —
+with ten single-trial tasks, any one regressed task. `--jobs N` runs trials
+at once, each on its own profile and Core. `merge` does not write `axes.json`.
+
+`baselines/four-axis/` is the retained baseline: the bundle, its digest,
+`axes.json` and `summary.md` of a run with the scripted model of
+`suites/four-axis/scripted-model.json` (event logs and tool results are not
+retained; the bundle keeps each log's digest and offsets). It measures the
+harness and the Core's capability paths end to end, not a model's competence;
+a live model's run is compared the same way. `tests/four_axis.rs` runs the
+forty tasks, compares the re-run with that baseline, then injects a
+regression on the memory axis (the model stops recalling and writes stale
+values) and shows that only the memory gate fails;
+`PX184_RETAIN_BASELINE=1` refreshes the baseline from its clean run after a
+change to the suite or harness.
+
 ## What this does not do
 
 The public benchmark half of PX-020 (SWE-bench Verified under the frozen

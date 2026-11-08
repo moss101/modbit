@@ -6,6 +6,13 @@
 //!
 //! Usage: `modbit-core --data-dir <dir>`
 //!
+//! Offline subcommands for the desktop updater (M10.2, docs/70 "Desktop
+//! update"); both open `core.db` read-only and never start the Core:
+//! `modbit-core schema-info --data-dir <dir>` prints the schema this build
+//! writes and the one on disk as one JSON line; `modbit-core backup --data-dir
+//! <dir> --to <file>` writes a consistent copy of the database; `modbit-core
+//! device-policy` prints the device constraints the updater must honor.
+//!
 //! The first statement of `main` hardens the process (PX-148: no core dumps,
 //! not attachable, no injected libraries); `modbit-core --hardening-report`
 //! prints the state that leaves, read from the process.
@@ -54,6 +61,7 @@ mod external_diagnostics;
 mod forge;
 mod gate;
 mod git_state;
+mod gui_evidence;
 mod handoff;
 mod hooks;
 mod hunks;
@@ -113,7 +121,75 @@ mod worktree_cleanup;
 mod worktrees;
 
 fn usage() -> &'static str {
-    "usage: modbit-core --data-dir <dir> [--tether-stdin] [--idle-exit-secs N] [--tenant-id <uuid>] | --hardening-report"
+    "usage: modbit-core --data-dir <dir> [--tether-stdin] [--idle-exit-secs N] [--tenant-id <uuid>] | --hardening-report | schema-info --data-dir <dir> | backup --data-dir <dir> --to <file> | device-policy"
+}
+
+/// The updater's offline subcommands. `None` means the arguments are the
+/// daemon's own.
+fn offline_command() -> Option<ExitCode> {
+    let mut args = std::env::args().skip(1);
+    let command = args.next()?;
+    if command == "device-policy" {
+        let d = match config::device_constraints() {
+            Ok(d) => d.unwrap_or_default(),
+            Err(e) => {
+                eprintln!("modbit-core device-policy: {e}");
+                return Some(ExitCode::FAILURE);
+            }
+        };
+        println!(
+            "{}",
+            serde_json::json!({ "update_channel": d.update_channel, "minimum_version": d.minimum_version })
+        );
+        return Some(ExitCode::SUCCESS);
+    }
+    if command != "schema-info" && command != "backup" {
+        return None;
+    }
+    let (mut data_dir, mut to) = (None, None);
+    while let Some(a) = args.next() {
+        match a.as_str() {
+            "--data-dir" => data_dir = args.next().map(PathBuf::from),
+            "--to" if command == "backup" => to = args.next().map(PathBuf::from),
+            other => {
+                eprintln!("modbit-core {command}: unknown argument `{other}`");
+                return Some(ExitCode::from(2));
+            }
+        }
+    }
+    let Some(data_dir) = data_dir else {
+        eprintln!("modbit-core {command}: --data-dir is required");
+        return Some(ExitCode::from(2));
+    };
+    let outcome = if command == "schema-info" {
+        modbit_event_store::schema_info(&data_dir).map(|i| {
+            println!(
+                "{}",
+                serde_json::json!({
+                    "build_schema_version": i.build_schema_version,
+                    "on_disk_schema_version": i.on_disk_schema_version,
+                })
+            );
+        })
+    } else {
+        let Some(to) = to else {
+            eprintln!("modbit-core backup: --to is required");
+            return Some(ExitCode::from(2));
+        };
+        modbit_event_store::backup_database(&data_dir, &to).map(|v| {
+            println!(
+                "{}",
+                serde_json::json!({ "backup": to, "schema_version": v })
+            );
+        })
+    };
+    Some(match outcome {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("modbit-core {command}: {e}");
+            ExitCode::from(1)
+        }
+    })
 }
 
 /// Stack of each runtime worker thread (see `main`).
@@ -125,6 +201,9 @@ fn main() -> ExitCode {
     let hardening = modbit_process_hardening::harden();
     for failure in &hardening.failed {
         eprintln!("modbit-core: hardening: {failure}");
+    }
+    if let Some(code) = offline_command() {
+        return code;
     }
     let mut data_dir: Option<PathBuf> = None;
     let mut tether_stdin = false;

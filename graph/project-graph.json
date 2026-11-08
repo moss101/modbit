@@ -4783,8 +4783,44 @@
    "milestone": "M10",
    "order": 1,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "artifact:evidence/m10/M10.2/TASK_CARD.md",
+    "commit:92dd23a48aeef614764e4841267bc0531adf305a",
+    "artifact:evidence/m10/M10.2/unsigned/packaged-e2e.log",
+    "test:packaged.spec.ts",
+    "artifact:evidence/m10/M10.2/unsigned/modbit-desktop-0.0.0-mac-arm64-UNSIGNED.package.cdx.json",
+    "artifact:evidence/m10/M10.2/unsigned/repro.json",
+    "test:packaged-update.spec.ts"
+   ],
+   "notes": [
+    {
+     "at": "2026-11-07T19:16:09Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit of PR #60 after merging main: packaging path IMPLEMENTED-PARTIAL (packages and runs, unsigned by design); first missing link for the owner's 2026-11-07 scope recorded on the task card, increment 5"
+    },
+    {
+     "at": "2026-11-07T19:16:10Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "UNSIGNED packaging labels, packaged E2E subset, package SBOM, per-OS UNSIGNED CI artifacts (branch wip/m10-2-unsigned)"
+    },
+    {
+     "at": "2026-11-07T19:16:19Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Production routing: the UNSIGNED packaged app resolves and starts its bundled release Core and execd from process.resourcesPath with no MODBIT_CORE_BIN; packaged.spec passes on macOS arm64 at 92dd23a4"
+    },
+    {
+     "at": "2026-11-07T19:17:32Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Integration passes on the real UNSIGNED package (macOS arm64, 92dd23a4): 29 of 29 packaged E2E incl. the update suite fault cases and the render-budget leg; SBOMs and license gate pass; repro 12 of 12 identical. UNSIGNED: no code signing, notarization or update key; Linux and Windows CI not yet run; the signing part of the acceptance keeps this task below E2E_PROVEN"
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-11-07T19:17:32Z"
   },
   {
    "id": "M10.3",
@@ -40145,8 +40181,41 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-178",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:services/modbit-core/tests/px_computer.rs::qual_px_178_a_completed_gui_task_passes_the_declared_evidence_and_is_judged_verified",
+    "artifact:evidence/m10/PX-178/mutation-check.txt",
+    "run:42421157777",
+    "artifact:evidence/m10/PX-178/ci-run-42421157777.json",
+    "commit:1435ac81"
+   ],
+   "notes": [
+    {
+     "at": "2026-11-07T15:09:47Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit at main 9915c074: DOCUMENTED-ONLY. The completion run judges code only; a GUI run with no file changes reached ReadyForReview whatever the application showed; no failure classification separates model, environment and policy for a GUI run. First missing link: no declared completion evidence and nothing that reads it (evidence/m10/PX-178/TASK_CARD.md)."
+    },
+    {
+     "at": "2026-11-07T15:09:47Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "modbit-verification gui.rs (CompletionEvidence, eval_*, RunFacts, judge), computer tree::parse, SubtaskSpec.completion_evidence, TaskEvent GuiEvidenceEvaluated/GuiOutcomeJudged, Core gui_evidence.rs and ToolHost::verification_state_read"
+    },
+    {
+     "at": "2026-11-07T15:09:47Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Production wiring: agent.spawn completion_evidence validated at admission (COMPLETION_EVIDENCE_INVALID); handle_complete blocks COMPLETION_EVIDENCE_NOT_MET on the Core's own read; the run end appends GuiOutcomeJudged before the control session closes"
+    },
+    {
+     "at": "2026-11-07T15:09:47Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Local, macOS arm64, real Core, real fixture actuator, real approvals, scripted parent and computer-use child: the five qual_px_178 tests pass (VERIFIED, MODEL_FAILURE unfinished, MODEL_FAILURE wrong element, POLICY_STOP denial, ENVIRONMENT_FAILURE killed actuator); full px_computer 40/40; mutation-check.txt: judge ignoring environment facts and a gate that never blocks each fail a test. CI on macOS, Linux and Windows still to run."
+    }
+   ],
+   "status_changed_on": "2026-11-08T02:28:40Z"
   },
   {
    "id": "PX-179",
@@ -40246,8 +40315,44 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-184",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:benchmarks/agent-engineering/tests/four_axis.rs::qual_px_184_forty_tasks_through_the_real_core_a_rerun_matches_the_baseline_and_a_memory_regression_fails_only_memory",
+    "test:benchmarks/agent-engineering/tests/four_axis.rs::qual_px_184_the_report_refuses_cost_not_derived_from_recorded_usage_and_a_gate_that_cannot_fail",
+    "test:benchmarks/agent-engineering/tests/four_axis.rs::qual_px_184_the_suite_has_ten_tagged_tasks_per_axis_each_with_its_own_verifier",
+    "artifact:evidence/m10/PX-184/mutation-check.txt",
+    "artifact:evidence/m10/PX-184/TASK_CARD.md",
+    "run:42421002112",
+    "artifact:evidence/m10/PX-184/ci-run-42421002112.json",
+    "commit:46be7d84"
+   ],
+   "notes": [
+    {
+     "at": "2026-11-07T15:50:06Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audited benchmarks/agent-engineering: IMPLEMENTED-PARTIAL (PX-020 harness, six coding tasks; no axis tag, no per-task verifier, no cost per thousand, no compare or gate)"
+    },
+    {
+     "at": "2026-11-07T15:50:06Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Axis tag, per-task verifier and seeds in the suite format; axes report, cost per thousand from recorded usage, compare and per-axis gate; 40-task four-axis suite"
+    },
+    {
+     "at": "2026-11-07T15:50:06Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "competence-baseline seeds memory and skills through the CLI, sets the suite run mode, captures Core tool results, writes axes.json and compares against the retained baseline"
+    },
+    {
+     "at": "2026-11-07T15:50:06Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Local: 40 tasks through the real CLI and Core with a scripted model; re-run matches the retained baseline; memory regression fails the memory gate only; CI not yet run"
+    }
+   ],
+   "status_changed_on": "2026-11-08T03:25:02Z"
   },
   {
    "id": "PX-186",

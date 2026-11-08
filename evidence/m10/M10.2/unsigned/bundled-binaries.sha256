@@ -1,0 +1,4 @@
+0a2e1689a63122dc71e6aead7c2488706919af4e506d99c0f307071703ee128c  target/release/modbit-core
+3e65e08a180aa3dbcd4260d81ffc519ef2e433249d0c3149ecc74abfc2c4e509  target/release/modbit-execd
+0a2e1689a63122dc71e6aead7c2488706919af4e506d99c0f307071703ee128c  apps/desktop/release/mac-arm64/Modbit.app/Contents/Resources/modbit-core
+3e65e08a180aa3dbcd4260d81ffc519ef2e433249d0c3149ecc74abfc2c4e509  apps/desktop/release/mac-arm64/Modbit.app/Contents/Resources/modbit-execd

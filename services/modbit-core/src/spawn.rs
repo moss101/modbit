@@ -241,6 +241,23 @@ pub(crate) async fn spawn(
             ));
         }
     }
+    // PX-178: completion evidence is the parent's declaration of what the
+    // child's done looks like; one that cannot be evaluated as written is
+    // refused here, before anything is admitted.
+    if let Some(v) = &req.spec.completion_evidence {
+        let checked =
+            serde_json::from_value::<modbit_verification::gui::CompletionEvidence>(v.clone())
+                .map_err(|e| e.to_string())
+                .and_then(|e| e.validate());
+        if let Err(why) = checked {
+            let detail = format!(
+                "completion_evidence: {why}; declare {{kind: accessibility, app, role?, name, value}}, {{kind: file, path, contains}} or {{kind: recorded, event_type, field, equals}}"
+            );
+            let r = refuse("COMPLETION_EVIDENCE_INVALID", detail, "SPEC", vec![]);
+            record_and_return(core, parent, lt, &req.idempotency_key, actor, r.clone()).await;
+            return Err(r);
+        }
+    }
     let record_refusal = |core: &Core, r: &SpawnRefused| {
         let store = core.store.clone();
         let ev = typed(

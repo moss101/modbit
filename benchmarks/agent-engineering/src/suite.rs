@@ -33,7 +33,26 @@ pub struct SuiteProtocol {
     pub question_answer: String,
     /// What the harness does with a protected-effect approval (`deny`).
     pub approvals: String,
+    /// The run mode the harness sets on every task before its run, as a
+    /// person would with `run-mode set --ack` (PX-184: the sub-agent axis
+    /// integrates its children, which `ASK` would park on an approval).
+    /// Absent: the Core's default (`ASK`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub run_mode: Option<String>,
+    /// The four-axis protocol (PX-184): when present every task is tagged by
+    /// axis and carries its own verifier, and the report scores each axis.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub axes: Option<crate::axes::AxesProtocol>,
 }
+
+/// Run modes the Core accepts on `run-mode set` (docs/domain `RunMode`).
+pub const RUN_MODES: [&str; 5] = [
+    "ASK",
+    "ALLOWLIST",
+    "ALLOWLIST_SANDBOX",
+    "RUN_EVERYTHING",
+    "AUTONOMOUS",
+];
 
 /// One task.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -55,6 +74,18 @@ pub struct TaskSpec {
     pub setup: Vec<FileOp>,
     /// How the harness scores repository state after the run.
     pub acceptance: Acceptance,
+    /// The capability the task exercises (PX-184): `tool_use`, `memory`,
+    /// `skill_use` or `subagent`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub axis: Option<String>,
+    /// The task's own verifier (PX-184): observable outcomes in repository
+    /// state and the Core's own records, never the model's claim.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub verifier: Option<crate::verifier::Verifier>,
+    /// What the harness puts in place through the product before the run:
+    /// curated memory and owner-trusted skills (PX-184).
+    #[serde(default, skip_serializing_if = "crate::verifier::Seed::is_empty")]
+    pub seed: crate::verifier::Seed,
 }
 
 /// A file edit.
@@ -160,17 +191,31 @@ impl Suite {
         if self.protocol.trials == 0 {
             return Err("suite protocol must state a positive trial count".into());
         }
+        if let Some(mode) = &self.protocol.run_mode
+            && !RUN_MODES.contains(&mode.as_str())
+        {
+            return Err(format!("run mode {mode:?} is not one of {RUN_MODES:?}"));
+        }
         let mut seen = std::collections::BTreeSet::new();
         for t in &self.tasks {
             if !seen.insert(t.id.as_str()) {
                 return Err(format!("duplicate task id {}", t.id));
             }
-            if t.acceptance.commands.is_empty() {
+            // A task is scored by its acceptance commands, its own verifier,
+            // or both; a task with neither scores nothing.
+            if t.acceptance.commands.is_empty() && t.verifier.is_none() {
                 return Err(format!("{}: acceptance names no command", t.id));
             }
+            if let Some(v) = &t.verifier {
+                v.check().map_err(|e| format!("{}: {e}", t.id))?;
+            }
+            t.seed.check().map_err(|e| format!("{}: {e}", t.id))?;
             if t.goal.trim().is_empty() {
                 return Err(format!("{}: empty goal", t.id));
             }
+        }
+        if self.protocol.axes.is_some() {
+            crate::axes::check_suite(self)?;
         }
         Ok(())
     }

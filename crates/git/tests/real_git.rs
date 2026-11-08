@@ -425,3 +425,62 @@ fn status_leaves_a_stat_dirty_index_alone() {
         before
     );
 }
+
+/// The diff behind every Changes view reads a copy of the index. Git re-reads
+/// the content of an entry as new as its index file (racily clean); the copy
+/// must keep that rule, or a same-size edit made in the same second as the
+/// last index write is missing from the diff while `git status` shows it.
+#[test]
+fn px_048_a_same_size_edit_in_a_racily_clean_entry_is_in_the_diff() {
+    use std::time::{Duration, SystemTime};
+    let dir = tempfile::tempdir().unwrap();
+    let repo = Repo::init(&dir.path().join("repo"), "main").unwrap();
+    // ctime is left out of the stat check so the test controls it all by mtime.
+    let cfg = std::process::Command::new("git")
+        .current_dir(repo.dir())
+        .args(["config", "core.trustctime", "false"])
+        .status()
+        .unwrap();
+    assert!(cfg.success());
+    let env = repo.dir().join(".env");
+    let stamp = |p: &Path, t: SystemTime| {
+        std::fs::OpenOptions::new()
+            .write(true)
+            .open(p)
+            .unwrap()
+            .set_modified(t)
+            .unwrap();
+    };
+    let edited_at = SystemTime::now() - Duration::from_secs(60);
+    write(&env, "SECRET=1\n");
+    stamp(&env, edited_at);
+    repo.commit("base", &["."]).unwrap();
+    // The same size, the same inode and the same mtime as the index holds:
+    // only the content differs. The index file is no older than the entry,
+    // as when the commit and the edit fall in the same second.
+    std::fs::write(&env, "SECRET=2\n").unwrap();
+    stamp(&env, edited_at);
+    stamp(&repo.dir().join(".git/index"), edited_at);
+    let read = repo.diff_worktree_with_untracked(&[]).unwrap();
+    assert!(
+        read.unified.contains("+SECRET=2"),
+        "the diff misses the edit git status shows: {}",
+        read.unified
+    );
+    assert_eq!(
+        repo.status()
+            .unwrap()
+            .iter()
+            .map(|e| (e.path.as_str(), e.code.as_str()))
+            .collect::<Vec<_>>(),
+        [(".env", ".M")],
+        "git itself sees the edit (read last: a status may refresh the index)"
+    );
+    // The same through the path that writes the copy (an untracked file added
+    // intent-to-add), where git smudges the racily clean entry as it writes.
+    write(&repo.dir().join("new.txt"), "n\n");
+    stamp(&repo.dir().join(".git/index"), edited_at);
+    let read = repo.diff_worktree_with_untracked(&["new.txt"]).unwrap();
+    assert!(read.unified.contains("+SECRET=2"), "{}", read.unified);
+    assert!(read.unified.contains("+n"), "{}", read.unified);
+}

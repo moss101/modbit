@@ -1,0 +1,13 @@
+{
+  "commands": [
+    {
+      "id": "whitespace",
+      "argv": [
+        "git",
+        "diff",
+        "--check",
+        "HEAD"
+      ]
+    }
+  ]
+}

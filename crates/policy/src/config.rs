@@ -13,6 +13,10 @@
 //!   higher layer denied the name; higher deny always wins.
 //! - `hooks` and `rules`: ordered lists, higher authority first; a lower layer
 //!   cannot remove or disable a higher layer's entry.
+//! - `computer_frame_window` (PX-174): how many of a computer-use run's most
+//!   recent frames reach the model as images. The smallest any layer states
+//!   wins; a lower layer may lower it, an attempt to raise it is a rejected
+//!   widening. The Core clamps it to its ceiling.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -72,6 +76,10 @@ pub struct Layer {
     /// other allow-lists: a lower layer can narrow, never add.
     #[serde(default)]
     pub computer_apps_allow: Option<BTreeSet<String>>,
+    /// How many of a computer-use run's most recent frames the model is sent
+    /// as images (PX-174); older frames reach it as their text records.
+    #[serde(default)]
+    pub computer_frame_window: Option<u32>,
     /// MCP servers this layer adds.
     #[serde(default)]
     pub mcp_servers: BTreeMap<String, String>,
@@ -177,6 +185,11 @@ pub struct ResolvedConfig {
     pub models_allow: Option<Resolved<BTreeSet<String>>>,
     /// Applications computer control may drive (`None` = unrestricted).
     pub computer_apps_allow: Option<Resolved<BTreeSet<String>>>,
+    /// Frames a computer-use run is sent as images (`None` = the Core's
+    /// default). Not serialised while unset, so a configuration that does not
+    /// name it keeps the generation it had (REQ-EV-0041).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub computer_frame_window: Option<Resolved<u32>>,
     /// MCP servers by name.
     pub mcp_servers: BTreeMap<String, Resolved<String>>,
     /// Hooks in effective order.
@@ -316,6 +329,35 @@ pub fn resolve(layers: &BTreeMap<Authority, Layer>) -> ResolvedConfig {
                         existing.provenance.decided_by = level;
                     }
                 }
+            }
+        }
+        // computer frame window (PX-174): the smallest stated wins
+        if let Some(n) = layer.computer_frame_window {
+            match &mut out.computer_frame_window {
+                None => {
+                    out.computer_frame_window = Some(Resolved {
+                        value: n,
+                        provenance: Provenance {
+                            decided_by: level,
+                            overridden: vec![],
+                        },
+                    });
+                }
+                Some(existing) if n > existing.value => {
+                    out.rejected_widenings.push(format!(
+                        "{level:?} tried to raise the computer frame window from {} to {n} (decided by {:?})",
+                        existing.value, existing.provenance.decided_by
+                    ));
+                }
+                Some(existing) if n < existing.value => {
+                    existing.provenance.overridden.push((
+                        existing.provenance.decided_by,
+                        format!("lowered by {level:?} from {}", existing.value),
+                    ));
+                    existing.value = n;
+                    existing.provenance.decided_by = level;
+                }
+                Some(_) => {}
             }
         }
         // mcp servers: higher deny wins; lower may add
@@ -508,6 +550,55 @@ mod device_tests {
             },
         )]));
         assert!(r.device.is_none());
+    }
+}
+
+#[cfg(test)]
+mod frame_window_tests {
+    use super::*;
+
+    fn window(n: u32) -> Layer {
+        Layer {
+            computer_frame_window: Some(n),
+            ..Layer::default()
+        }
+    }
+
+    #[test]
+    fn a_lower_layer_may_lower_the_frame_window_and_never_raise_it() {
+        let r = resolve(&BTreeMap::from([
+            (Authority::Admin, window(2)),
+            (Authority::User, window(6)),
+        ]));
+        let w = r.computer_frame_window.unwrap();
+        assert_eq!(w.value, 2);
+        assert_eq!(w.provenance.decided_by, Authority::Admin);
+        assert!(
+            r.rejected_widenings
+                .join("\n")
+                .contains("User tried to raise the computer frame window from 2 to 6"),
+            "{:?}",
+            r.rejected_widenings
+        );
+        let r = resolve(&BTreeMap::from([
+            (Authority::Admin, window(5)),
+            (Authority::Project, window(1)),
+        ]));
+        let w = r.computer_frame_window.unwrap();
+        assert_eq!(w.value, 1);
+        assert_eq!(w.provenance.decided_by, Authority::Project);
+        assert!(r.rejected_widenings.is_empty());
+    }
+
+    #[test]
+    fn an_unset_frame_window_keeps_the_generation_it_had() {
+        let r = resolve(&BTreeMap::from([(Authority::Admin, Layer::default())]));
+        assert!(r.computer_frame_window.is_none());
+        assert!(
+            !serde_json::to_string(&r)
+                .unwrap()
+                .contains("computer_frame_window")
+        );
     }
 }
 
