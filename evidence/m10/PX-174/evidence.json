@@ -1,0 +1,9 @@
+{
+ "task": "PX-174",
+ "requirements": ["REQ-PX-174", "QUAL-PX-174"],
+ "scenarios": ["QUAL-PX-174", "PX-E2E-174"],
+ "tests": ["services/modbit-core/tests/px_computer.rs", "services/modbit-core/src/runtime.rs", "crates/computer/src/policy.rs", "crates/policy/src/config.rs"],
+ "proof": "Local runs only (no CI run yet). Real modbit-core, real fixture actuator process, real approvals, scripted model. A computer-use child ran 43 steps with 20 different screenshots. Every child request carried at most the newest 3 frames as images. Each older screenshot kept its own result text and gained a frame_not_shown record (window, call, action, target, outcome, digest). The Core's estimate of every request stayed at or below the stated 40,000-token ceiling (max 35,911). The child named its earliest frame from the text alone, and the test proved it was the frame it had been shown. All 20 frames read back by log range, as stored originals, as egress copies and in persisted transcript entries. Policy computer_frame_window 1 gives one image; 99 is clamped to 8. Full px_computer suite 34 passed / 3 ignored (macOS real-helper). clippy -D warnings and fmt clean. mutation-check.txt: keeping every frame as an image fails both tests (58,032 > 40,000; 2 images > 1).",
+ "limitations": "Fixture actuator only, no live model. The recall leg uses a scripted model that reads the records. The ceiling is stated for this run's shape and bounds the Core's estimate, not a provider count. No compaction epoch and no Core restart occurred inside the 43-step run. computer_frame_window is not in the signed policy bundle's ADMIN_KEYS. Compaction telemetry still counts the stored transcript. The graph row stays NOT_STARTED until PX-158 is COMPLETE.",
+ "runs": []
+}

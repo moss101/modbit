@@ -2417,6 +2417,117 @@ fn media_parts(call_id: &str, media: &[MediaRef]) -> Vec<ContentPart> {
         .collect()
 }
 
+/// The longest call arguments a frame record names, in characters.
+const FRAME_RECORD_TARGET_CHARS: usize = 300;
+
+/// The window in force for `task`: the policy snapshot of its round.
+fn frames_kept(core: &Core, task: &Task) -> usize {
+    crate::computer::frames_kept(&core.tools.configurations.for_task(
+        task.task_id,
+        &core.data_dir,
+        task.workspace_root.as_deref(),
+    ))
+}
+
+/// PX-174: the screenshot window. The model is sent the last `keep` frames a
+/// computer-use run took (the media of `computer.*` results) as images; in
+/// place of each older frame its tool result carries a text record of the
+/// step - the action, the target it was called with, the outcome - and the
+/// digest the frame stays readable by. Only this view changes: the stored
+/// transcript, the step outputs it is rebuilt from, the object store and the
+/// log keep every frame. Media of any other tool is untouched.
+fn frame_window(transcript: &[Message], keep: usize) -> std::borrow::Cow<'_, [Message]> {
+    use std::collections::{HashMap, HashSet};
+    let mut calls: HashMap<&str, (&str, &str)> = HashMap::new();
+    let mut frames: Vec<(usize, usize)> = Vec::new();
+    for (mi, m) in transcript.iter().enumerate() {
+        for (pi, p) in m.parts.iter().enumerate() {
+            match p {
+                ContentPart::ToolCall {
+                    call_id,
+                    name,
+                    arguments_json,
+                } => {
+                    calls.insert(call_id, (name, arguments_json));
+                }
+                ContentPart::Media {
+                    call_id: Some(c), ..
+                } if calls
+                    .get(c.as_str())
+                    .is_some_and(|(n, _)| n.starts_with("computer.")) =>
+                {
+                    frames.push((mi, pi));
+                }
+                _ => {}
+            }
+        }
+    }
+    if frames.len() <= keep {
+        return std::borrow::Cow::Borrowed(transcript);
+    }
+    let older: HashSet<(usize, usize)> = frames[..frames.len() - keep].iter().copied().collect();
+    let touched: HashSet<usize> = older.iter().map(|(mi, _)| *mi).collect();
+    let mut out = transcript.to_vec();
+    for (mi, m) in out.iter_mut().enumerate() {
+        if !touched.contains(&mi) {
+            continue;
+        }
+        // The frames this message no longer carries: (call, object, mime).
+        let mut dropped: Vec<(String, String, String)> = Vec::new();
+        let mut parts = Vec::with_capacity(m.parts.len());
+        for (pi, p) in std::mem::take(&mut m.parts).into_iter().enumerate() {
+            match p {
+                ContentPart::Media {
+                    source_ref,
+                    mime,
+                    call_id: Some(c),
+                    ..
+                } if older.contains(&(mi, pi)) => dropped.push((c, source_ref, mime)),
+                other => parts.push(other),
+            }
+        }
+        for p in &mut parts {
+            let ContentPart::ToolResult {
+                call_id, content, ..
+            } = p
+            else {
+                continue;
+            };
+            let outcome = content
+                .lines()
+                .next()
+                .and_then(|l| l.strip_prefix("status: "))
+                .unwrap_or("UNKNOWN")
+                .trim()
+                .to_owned();
+            for (_, object, mime) in dropped.iter().filter(|(c, ..)| c == call_id) {
+                let (action, args) = calls.get(call_id.as_str()).copied().unwrap_or_default();
+                let target = serde_json::from_str::<serde_json::Value>(args)
+                    .ok()
+                    .filter(|v| v.to_string().chars().count() <= FRAME_RECORD_TARGET_CHARS)
+                    .unwrap_or_else(|| {
+                        serde_json::Value::String(
+                            args.chars().take(FRAME_RECORD_TARGET_CHARS).collect(),
+                        )
+                    });
+                let record = serde_json::json!({
+                    "window": keep,
+                    "call": call_id,
+                    "action": action,
+                    "target": target,
+                    "outcome": outcome,
+                    "object": object,
+                    "mime": mime,
+                    "kept": "older than the frames shown as images; the frame stays in the run's record (object store and log) under this digest",
+                });
+                content.push_str(&format!("\nframe_not_shown: {record}\n"));
+            }
+        }
+        m.parts = parts;
+    }
+    std::borrow::Cow::Owned(out)
+}
+
 /// Fill the media parts of a transcript copy with the bytes of their egress
 /// copies, or drop them when the model cannot take that modality. The stored
 /// transcript keeps references only, so nothing here changes what was logged.
@@ -4016,6 +4127,9 @@ async fn run_loop(
                     .gateway
                     .capability(&cfg.endpoint, &cfg.model)
                     .is_some_and(|c| c.vision);
+                // PX-174: how many of a computer-use run's frames the model
+                // is shown as images; older ones reach it as text.
+                let kept = frames_kept(&core, &task);
                 // The model-facing state is bounded (audit C defect 2): the
                 // lists that grow with the run keep a top-N and a marker.
                 let mut harness_json = state.prompt_view();
@@ -4194,7 +4308,7 @@ async fn run_loop(
                         harness_state: harness_json.clone(),
                         transcript: {
                             // The bytes enter the request, never the log or the ledger.
-                            let mut t = transcript.clone();
+                            let mut t = frame_window(&transcript, kept).into_owned();
                             hydrate_media(&core, &mut t, vision, &mut bridge).await;
                             t
                         },
@@ -4242,7 +4356,7 @@ async fn run_loop(
                 );
                 overhead_tokens = calibration.apply(
                     request_estimate.saturating_sub(
-                        transcript
+                        frame_window(&transcript, kept)
                             .iter()
                             .map(|m| message_tokens(m, modbit_compaction::estimate_tokens_v2))
                             .sum(),
@@ -8011,9 +8125,13 @@ struct CompactionCtx<'a> {
 /// override and the fallback.
 fn measured_tokens(
     transcript: &[Message],
+    keep: usize,
     th: &crate::compaction_model::Thresholds,
     calibration: &modbit_compaction::Calibration,
 ) -> u32 {
+    // PX-174: the trigger counts what the model is sent, so frames outside
+    // the window are not charged as images.
+    let transcript = &*frame_window(transcript, keep);
     if th.model_aware() {
         calibration.apply(
             transcript
@@ -8109,6 +8227,7 @@ async fn compaction_step(
 ) {
     let th = crate::compaction_model::thresholds(core, ctx.endpoint, ctx.model, ctx.overhead);
     let budget = th.hard;
+    let kept = frames_kept(core, task);
     // 1. harvest
     if worker.as_ref().is_some_and(|w| w.handle.is_finished()) {
         let w = worker.take().expect("checked");
@@ -8132,8 +8251,12 @@ async fn compaction_step(
                             "ASYNC", summarizer,
                         )
                         .await;
-                        *ctx.rearm_floor =
-                            th.rearm_floor(measured_tokens(transcript, &th, &ctx.calibration));
+                        *ctx.rearm_floor = th.rearm_floor(measured_tokens(
+                            transcript,
+                            kept,
+                            &th,
+                            &ctx.calibration,
+                        ));
                     }
                     Err(rejected) => {
                         reject_compaction(
@@ -8167,7 +8290,7 @@ async fn compaction_step(
             }
         }
     }
-    let tokens = measured_tokens(transcript, &th, &ctx.calibration);
+    let tokens = measured_tokens(transcript, kept, &th, &ctx.calibration);
     let Some(cut) = compaction_cut(transcript) else {
         return;
     };
@@ -8296,7 +8419,7 @@ async fn compaction_step(
                 )
                 .await;
                 *ctx.rearm_floor =
-                    th.rearm_floor(measured_tokens(transcript, &th, &ctx.calibration));
+                    th.rearm_floor(measured_tokens(transcript, kept, &th, &ctx.calibration));
                 // The prefix a worker in flight is summarising has just been
                 // replaced under it. Nothing changes for it here — its result
                 // is judged by `accept_async` at the next boundary either way
@@ -11211,6 +11334,107 @@ mod tests {
     use super::{
         ContentPart, b64, image_tokens, media_parts, media_refs, message_text, transcript_tokens,
     };
+
+    /// A turn that called `name` and the tool message answering it with one image.
+    fn imaged_call(id: &str, name: &str, args: &str) -> Vec<Message> {
+        vec![
+            Message {
+                role: modbit_providers::Role::Assistant,
+                parts: vec![ContentPart::ToolCall {
+                    call_id: id.into(),
+                    name: name.into(),
+                    arguments_json: args.into(),
+                }],
+            },
+            Message {
+                role: modbit_providers::Role::Tool,
+                parts: vec![
+                    ContentPart::ToolResult {
+                        call_id: id.into(),
+                        content: format!("status: SUCCESS\n{{\"frame\": \"tok-{id}\"}}"),
+                        is_error: false,
+                    },
+                    ContentPart::Media {
+                        source_ref: format!("{id:0>64}"),
+                        mime: "image/png".into(),
+                        alt: "image/png read from computer:app, 1280x800; untrusted data".into(),
+                        call_id: Some(id.into()),
+                        data_base64: modbit_providers::MediaPayload(String::new()),
+                    },
+                ],
+            },
+        ]
+    }
+
+    fn images(t: &[Message]) -> Vec<String> {
+        t.iter()
+            .flat_map(|m| &m.parts)
+            .filter_map(|p| match p {
+                ContentPart::Media {
+                    call_id: Some(c), ..
+                } => Some(c.clone()),
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// PX-174: only the last `keep` computer frames stay images; each older
+    /// one becomes a text record of its step on its own tool result, media of
+    /// other tools is untouched, and the stored transcript is not changed.
+    #[test]
+    fn the_frame_window_keeps_the_last_frames_and_records_the_older_steps_as_text() {
+        let mut t = Vec::new();
+        t.extend(imaged_call("r1", "fs.read", r#"{"path":"a.png"}"#));
+        for i in 1..=5 {
+            t.extend(imaged_call(
+                &format!("s{i}"),
+                "computer.screenshot",
+                &format!(r#"{{"window":"w{i}"}}"#),
+            ));
+        }
+        let before = format!("{t:?}");
+        let shown = super::frame_window(&t, 2);
+        assert_eq!(
+            format!("{t:?}"),
+            before,
+            "the stored transcript is unchanged"
+        );
+        assert_eq!(images(&shown), ["r1", "s4", "s5"]);
+        for i in 1..=5 {
+            let content = shown
+                .iter()
+                .flat_map(|m| &m.parts)
+                .find_map(|p| match p {
+                    ContentPart::ToolResult {
+                        call_id, content, ..
+                    } if *call_id == format!("s{i}") => Some(content.clone()),
+                    _ => None,
+                })
+                .unwrap();
+            assert!(content.starts_with("status: SUCCESS\n"), "{content}");
+            let record = content
+                .lines()
+                .find_map(|l| l.strip_prefix("frame_not_shown: "))
+                .map(|r| serde_json::from_str::<serde_json::Value>(r).unwrap());
+            if i <= 3 {
+                let r = record.unwrap_or_else(|| panic!("no record for s{i}: {content}"));
+                assert_eq!(r["window"], 2);
+                assert_eq!(r["call"], format!("s{i}"));
+                assert_eq!(r["action"], "computer.screenshot");
+                assert_eq!(r["target"]["window"], format!("w{i}"));
+                assert_eq!(r["outcome"], "SUCCESS");
+                assert_eq!(r["object"], format!("{:0>64}", format!("s{i}")));
+            } else {
+                assert!(record.is_none(), "{content}");
+            }
+        }
+        // Within the window nothing changes, and N=1 keeps the newest only.
+        assert!(matches!(
+            super::frame_window(&t, 5),
+            std::borrow::Cow::Borrowed(_)
+        ));
+        assert_eq!(images(&super::frame_window(&t, 1)), ["r1", "s5"]);
+    }
 
     #[test]
     fn base64_matches_the_standard_alphabet_and_padding() {
