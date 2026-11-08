@@ -364,6 +364,13 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/M10.1/evidence.json` | retained evidence | 2550 | `a05dbedc4cf213fcc4c2b4a6ef285fabb409a5f9dbe9e787c750e229341cd04d` |
 | `evidence/m10/PX-030/TASK_CARD.md` | retained evidence | 4037 | `4512d5c2b3260bd3cfbb4fead22e5b8b912a4a7529a7c309ad176f0947235ca2` |
 | `evidence/m10/PX-030/ci-run-36235004309.json` | retained evidence | 43308 | `7b519219b5bd3f7b64a1a6aa1ee94d36b4bf59e784f44131822b23876f16ad70` |
+| `evidence/m10/PX-041/stream-render-latency-2026-11-07.md` | retained evidence | 8439 | `04259b3d96a554a0ca98c4ac6dd9e7e68d42c8a336020eb83af6ba52e27f294d` |
+| `evidence/m10/PX-041/stream-render-latency-2026-11-07/after-1.json` | retained evidence | 3752 | `80708f14310aed3a744faa4b4e317d6459cd565fa5144c39643d00b5bec19f76` |
+| `evidence/m10/PX-041/stream-render-latency-2026-11-07/after-2.json` | retained evidence | 3748 | `b87e2e15ab700fca3cdef6d057c0a3db87b21c2e249eee27fc945b4bf1e5c770` |
+| `evidence/m10/PX-041/stream-render-latency-2026-11-07/after-3.json` | retained evidence | 3759 | `136f865b10814f274a5fa7dfd297c302e70c1dd3c6c62a8f1e67856b61519066` |
+| `evidence/m10/PX-041/stream-render-latency-2026-11-07/baseline-1.json` | retained evidence | 3776 | `dd5e86af59d07f5d7bbb475793b801eba02737487d6071e9da301a4c7f9f4b8c` |
+| `evidence/m10/PX-041/stream-render-latency-2026-11-07/baseline-2.json` | retained evidence | 3783 | `3e7b584758089823587944ea4b11148a11b1cb681c59d1a8146745d6986428f2` |
+| `evidence/m10/PX-041/stream-render-latency-2026-11-07/baseline-3.json` | retained evidence | 3777 | `f036265918fe85bbeaa8925969b13cca9674de69778bc2a0aee33ed24de574f0` |
 | `evidence/m10/PX-043/TASK_CARD.md` | retained evidence | 2934 | `285b403fc76c7337dcd0a90319a124986e8785e2fdf8716706001d5bf5f16033` |
 | `evidence/m10/PX-043/ci-run-39873543897.json` | retained evidence | 46185 | `05d7134690fba0f89a3019d7a65313bb37b7d49c52b4bd5235c8c1d98760fc77` |
 | `evidence/m10/PX-043/evidence.json` | retained evidence | 3138 | `595f451878696e1fd7e97193184f8542395ec72abbef78ea9a1c3e450f37f144` |

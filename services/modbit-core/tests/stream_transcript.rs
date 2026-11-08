@@ -850,6 +850,165 @@ async fn qual_px_041_a_streamed_answer_arrives_as_bounded_deltas_before_its_comp
     );
 }
 
+/// PX-041 / PX-046: a connection that subscribed and keeps asking the read-only
+/// queries the desktop asks on every event (transcript, agent headers,
+/// economics, context accounting) while a stream is being appended gets its
+/// events while those queries run, not after. Whatever the interleaving of
+/// events and acks on that one connection, the events arrive in offset order
+/// with no gap and no duplicate, every query is answered, and the deltas make
+/// up the completed message.
+#[tokio::test]
+async fn qual_px_041_events_keep_their_order_while_read_only_queries_run_on_the_same_connection() {
+    use modbit_protocol::client::connect_raw;
+    use modbit_protocol::framing::{read_frame, write_frame};
+    use modbit_protocol::v1::surface_frame::Body;
+    use modbit_protocol::v1::{
+        Auth, ClientHello, CommandStatus, GetAgentHeaders, GetContextAccounting, GetTaskEconomics,
+        GetTranscript, Hello, SubscribeEvents, SurfaceFrame,
+    };
+    let (full, chunks) = four_hundred_words();
+    let base = streaming_model(vec![Step::text(chunks, 15)]).await;
+    let (_repo, root) = repo();
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(dir.path(), &env_for(&base, ""));
+    let mut c = core.client().await;
+    let (session, lease) = create_session(&mut c).await;
+    let task = create_task(&mut c, &session, lease, "answer at length", &root).await;
+
+    // One raw connection carries both the subscription and the queries, as the desktop's does.
+    let mut q = connect_raw(&core.ready.endpoint).await.unwrap();
+    let hello = SurfaceFrame {
+        body: Some(Body::ClientHello(ClientHello {
+            hello: Some(Hello {
+                protocol_version: Some(modbit_protocol::PROTOCOL_VERSION),
+                client_kind: ClientKind::Cli as i32,
+                client_build: "queries".into(),
+                supported_command_types: vec![],
+            }),
+            auth: Some(Auth {
+                boot_secret: decode_hex(&core.ready.boot_secret_hex).unwrap(),
+            }),
+        })),
+    };
+    write_frame(&mut q, &hello).await.unwrap();
+    assert!(matches!(
+        read_frame(&mut q).await.unwrap().unwrap().body,
+        Some(Body::HelloAck(_))
+    ));
+    let subscribe = SurfaceFrame {
+        body: Some(Body::Subscribe(SubscribeEvents {
+            session_id: Some(session.clone()),
+            after_offset: 0,
+        })),
+    };
+    write_frame(&mut q, &subscribe).await.unwrap();
+    let _ = start_task(&mut c, &task, lease).await;
+
+    let queries = |n: usize| -> CommandEnvelope {
+        let t = Some(task.clone());
+        match n % 4 {
+            0 => envelope(
+                fresh_id(),
+                "GetTranscript",
+                GetTranscript {
+                    task_id: t,
+                    ..Default::default()
+                }
+                .encode_to_vec(),
+            ),
+            1 => envelope(
+                fresh_id(),
+                "GetAgentHeaders",
+                GetAgentHeaders {
+                    session_id: Some(session.clone()),
+                    include_archived: false,
+                }
+                .encode_to_vec(),
+            ),
+            2 => envelope(
+                fresh_id(),
+                "GetTaskEconomics",
+                GetTaskEconomics { task_id: t }.encode_to_vec(),
+            ),
+            _ => envelope(
+                fresh_id(),
+                "GetContextAccounting",
+                GetContextAccounting { task_id: t }.encode_to_vec(),
+            ),
+        }
+    };
+    let mut live: Vec<Ev> = Vec::new();
+    let mut answered = 0usize;
+    let mut between = 0usize;
+    let deadline = Instant::now() + Duration::from_secs(120);
+    let completed = |live: &[Ev]| !of_kind(live, "AssistantMessageCompleted").is_empty();
+    // Ask the queries back to back until the message is complete, reading every frame in between.
+    while !completed(&live) {
+        assert!(Instant::now() < deadline, "the message never completed");
+        let cmd = queries(answered);
+        let id = cmd.command_id.clone();
+        write_frame(
+            &mut q,
+            &SurfaceFrame {
+                body: Some(Body::Command(cmd)),
+            },
+        )
+        .await
+        .unwrap();
+        loop {
+            match read_frame(&mut q).await.unwrap().unwrap().body {
+                Some(Body::Event(e)) => {
+                    live.push(ev_of(e));
+                    between += 1;
+                }
+                Some(Body::CommandAck(ack)) => {
+                    assert_eq!(ack.command_id, id, "the ack answers the query asked");
+                    assert_eq!(
+                        ack.status,
+                        CommandStatus::Accepted as i32,
+                        "{}: {}",
+                        ack.error_code,
+                        ack.error_message
+                    );
+                    answered += 1;
+                    break;
+                }
+                other => panic!("unexpected frame {other:?}"),
+            }
+        }
+    }
+    // What the subscription still holds once the task is idle.
+    let st = wait_idle(&mut c, &task, 60).await;
+    assert!(!st.loop_alive, "{st:?}");
+    while let Ok(Ok(Some(f))) = tokio::time::timeout(SETTLE, read_frame(&mut q)).await {
+        if let Some(Body::Event(e)) = f.body {
+            live.push(ev_of(e));
+        }
+    }
+    assert!(answered >= 4, "{answered} queries answered");
+    assert!(between > 0, "events arrived among the queries");
+    // In order, no gap, no duplicate: exactly the log, as a cursor replay reads it.
+    let replayed: Vec<u64> = replay(&core, &session, 0)
+        .await
+        .iter()
+        .map(|e| e.offset)
+        .collect();
+    let seen: Vec<u64> = live.iter().map(|e| e.offset).collect();
+    assert_eq!(
+        seen,
+        replayed[..seen.len()],
+        "live events equal the log's prefix"
+    );
+    assert!(
+        seen.len() + 2 >= replayed.len(),
+        "{} of {} events",
+        seen.len(),
+        replayed.len()
+    );
+    assert_eq!(stream_text(&of_kind(&live, "AssistantTextDelta")), full);
+    assert_eq!(of_kind(&live, "AssistantMessageCompleted").len(), 1);
+}
+
 /// A provider connection dropped mid-stream ends the stream as aborted with a
 /// provider source: no completion record, and nothing presents the partial
 /// text as a message.
