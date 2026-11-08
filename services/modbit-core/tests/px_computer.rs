@@ -3947,6 +3947,331 @@ async fn qual_px_176_every_step_of_a_computer_use_child_is_one_structured_observ
     assert!(objects_containing(&rig, "observation: {") >= obs.len());
 }
 
+// ---- PX-178: GUI completion evidence and the failure judge ----
+
+/// The order form's Status label reads "submitted": the evidence a parent
+/// declares for "submit the order form".
+fn submitted() -> Value {
+    json!({"kind": "accessibility", "app": FORM, "role": "label", "name": "Status", "value": "submitted"})
+}
+
+fn spawn_gui_judged(evidence: Value) -> Step {
+    fx(call(
+        "agent.spawn",
+        json!({
+            "idempotency_key": "gui-1",
+            "objective": "submit the order form for Ada",
+            "write_scope": [],
+            "mode": "FOREGROUND",
+            "profile": "computer-use",
+            "environment_healthy": "the fixture order form is running and idle (computer.apps lists it)",
+            "completion_evidence": evidence,
+        }),
+    ))
+}
+
+/// The child claims success in its summary whatever happened: the claim is
+/// never read as evidence.
+fn claim_done() -> Step {
+    fx(
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "The order is submitted; Status reads submitted.", "self_review": {"findings": []}}}]}),
+    )
+}
+
+fn child_plan() -> Step {
+    fx(call(
+        "plan.update",
+        json!({"outcome": "submit the form", "expected_files": [], "protected_effects": ["computer"]}),
+    ))
+}
+
+/// The judged run's records: (evaluations, verdicts), payloads only.
+async fn gui_records(rig: &Rig) -> (Vec<Value>, Vec<Value>) {
+    let evs = rig.events().await;
+    let p = |t: &str| {
+        of(&evs, t)
+            .into_iter()
+            .map(|e| e["payload"]["payload"].clone())
+            .collect::<Vec<_>>()
+    };
+    (p("GuiEvidenceEvaluated"), p("GuiOutcomeJudged"))
+}
+
+/// The tool results the child was shown, in order.
+fn child_texts(rig: &Rig) -> Vec<String> {
+    let bodies = rig.seen.lock().unwrap().clone();
+    bodies
+        .iter()
+        .rev()
+        .find(|b| b["messages"].to_string().contains(CHILD_MARKER))
+        .map(|b| st_of(b).texts)
+        .unwrap_or_default()
+}
+
+async fn judged_run(child: Vec<Step>, decide: Decider, evidence: Value) -> Rig {
+    let parent = vec![
+        parent_plan(),
+        spawn_gui_judged(evidence),
+        fx(call("agent.result", json!({"idempotency_key": "gui-1"}))),
+    ];
+    let (base, seen) = routed(parent, child).await;
+    let mut rig = setup_model(Opts::default(), base, seen, decide).await;
+    rig.begin().await;
+    rig
+}
+
+/// QUAL-PX-178: a completed fixture task passes the evidence its parent
+/// declared, read by the Core from the application itself; the run is judged
+/// VERIFIED with that read as its basis. A declaration that cannot be
+/// evaluated is refused before anything is admitted.
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_178_a_completed_gui_task_passes_the_declared_evidence_and_is_judged_verified() {
+    let child = vec![
+        child_plan(),
+        start(FORM),
+        fx(call("computer.state", json!({}))),
+        st(|s| {
+            call(
+                "computer.set_value",
+                json!({"element": s.el("Name"), "value": "Ada"}),
+            )
+        }),
+        st(|s| call("computer.press", json!({"element": s.el("Submit")}))),
+        fx(call("computer.state", json!({}))),
+        claim_done(),
+    ];
+    let parent = vec![
+        parent_plan(),
+        // A predicate that escapes the workspace is refused at admission.
+        fx(call(
+            "agent.spawn",
+            json!({
+                "idempotency_key": "gui-bad",
+                "objective": "submit the order form for Ada",
+                "write_scope": [],
+                "mode": "FOREGROUND",
+                "profile": "computer-use",
+                "environment_healthy": "the fixture order form is running and idle (computer.apps lists it)",
+                "completion_evidence": {"kind": "file", "path": "../outside.txt", "contains": "x"},
+            }),
+        )),
+        spawn_gui_judged(submitted()),
+        fx(call("agent.result", json!({"idempotency_key": "gui-1"}))),
+    ];
+    let (base, seen) = routed(parent, child).await;
+    let mut rig = setup_model(Opts::default(), base, seen, approve_all()).await;
+    rig.begin().await;
+    rig.finish().await;
+    let parent_texts = st_of(
+        rig.seen
+            .lock()
+            .unwrap()
+            .iter()
+            .rev()
+            .find(|b| !b["messages"].to_string().contains(CHILD_MARKER))
+            .unwrap(),
+    )
+    .texts;
+    assert!(
+        parent_texts
+            .iter()
+            .any(|t| t.contains("COMPLETION_EVIDENCE_INVALID") && t.contains("workspace-relative")),
+        "{parent_texts:#?}"
+    );
+    let (evals, verdicts) = gui_records(&rig).await;
+    let at_completion: Vec<&Value> = evals.iter().filter(|e| e["at"] == "COMPLETION").collect();
+    assert_eq!(at_completion.len(), 1, "{evals:#?}");
+    assert_eq!(at_completion[0]["status"], "PASS", "{evals:#?}");
+    assert!(
+        at_completion[0]["read"]
+            .as_str()
+            .unwrap()
+            .starts_with(&format!("state read of {FORM}")),
+        "the Core read the declared application itself: {evals:#?}"
+    );
+    assert_eq!(verdicts.len(), 1, "{verdicts:#?}");
+    assert_eq!(verdicts[0]["verdict"], "VERIFIED", "{verdicts:#?}");
+    assert_eq!(verdicts[0]["run_end"], "READY_FOR_REVIEW");
+    let env = child_envelope(&rig).await;
+    assert_eq!(env["status"], "COMPLETED", "{env}");
+}
+
+/// QUAL-PX-178: an unfinished task fails its evidence. The child's summary
+/// claims success; completion is blocked anyway, the model is told what the
+/// Core read, and the run is judged MODEL_FAILURE: nothing outside the model
+/// stood in its way.
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_178_an_unfinished_task_fails_its_evidence_whatever_the_model_claims() {
+    let child = vec![
+        child_plan(),
+        start(FORM),
+        fx(call("computer.state", json!({}))),
+        st(|s| {
+            call(
+                "computer.set_value",
+                json!({"element": s.el("Name"), "value": "Ada"}),
+            )
+        }),
+        // Submit is never pressed.
+        claim_done(),
+    ];
+    let mut rig = judged_run(child, approve_all(), submitted()).await;
+    rig.finish().await;
+    let texts = child_texts(&rig);
+    let refused = texts
+        .iter()
+        .find(|t| t.contains("COMPLETION_EVIDENCE_NOT_MET"))
+        .unwrap_or_else(|| panic!("completion was not blocked: {texts:#?}"));
+    assert!(
+        refused.contains(r#"reads \"idle\", not \"submitted\""#),
+        "{refused}"
+    );
+    assert!(
+        refused.contains("Your summary is not evidence"),
+        "{refused}"
+    );
+    let (evals, verdicts) = gui_records(&rig).await;
+    assert!(
+        evals.iter().all(|e| e["status"] != "PASS"),
+        "the claim never passed the evidence: {evals:#?}"
+    );
+    assert_eq!(verdicts.len(), 1, "{verdicts:#?}");
+    assert_eq!(verdicts[0]["verdict"], "MODEL_FAILURE", "{verdicts:#?}");
+    assert_eq!(verdicts[0]["evidence_status"], "FAIL");
+    let env = child_envelope(&rig).await;
+    assert_ne!(env["status"], "COMPLETED", "{env}");
+}
+
+/// QUAL-PX-178: a run that presses the wrong element (it moves the window
+/// instead of submitting) has every input succeed and still fails its
+/// evidence: a model failure, never an environment one.
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_178_a_run_that_clicks_the_wrong_element_is_a_model_failure() {
+    let child = vec![
+        child_plan(),
+        start(FORM),
+        fx(call("computer.state", json!({}))),
+        st(|s| {
+            call(
+                "computer.press",
+                json!({"element": s.el("Move the window")}),
+            )
+        }),
+        fx(call("computer.state", json!({}))),
+        claim_done(),
+    ];
+    let mut rig = judged_run(child, approve_all(), submitted()).await;
+    rig.finish().await;
+    let evs = rig.events().await;
+    let acted = of(&evs, "ComputerActionPerformed");
+    assert!(
+        acted
+            .iter()
+            .any(|a| a["payload"]["payload"]["outcome"] == "SUCCEEDED"),
+        "the wrong press was delivered: {acted:#?}"
+    );
+    let (_, verdicts) = gui_records(&rig).await;
+    assert_eq!(verdicts.len(), 1, "{verdicts:#?}");
+    assert_eq!(verdicts[0]["verdict"], "MODEL_FAILURE", "{verdicts:#?}");
+    assert!(
+        verdicts[0]["basis"].as_array().unwrap().iter().any(|b| b
+            .as_str()
+            .unwrap()
+            .contains("no environment failure and no refusal")),
+        "{verdicts:#?}"
+    );
+}
+
+/// QUAL-PX-178: a run stopped by the person's denial of the input it needed
+/// is a POLICY_STOP, with the denied approval as its basis; the verifier's
+/// result approves nothing (the denied press stays denied and never runs).
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_178_a_run_stopped_by_an_approval_denial_is_a_policy_stop() {
+    let deny_press: Decider = Arc::new(|a, _| {
+        if a.tool_name == "computer.press" {
+            Decision::Deny
+        } else {
+            Decision::Approve
+        }
+    });
+    let child = vec![
+        child_plan(),
+        start(FORM),
+        fx(call("computer.state", json!({}))),
+        st(|s| call("computer.press", json!({"element": s.el("Submit")}))),
+        claim_done(),
+    ];
+    let mut rig = judged_run(child, deny_press, submitted()).await;
+    rig.finish().await;
+    let (_, verdicts) = gui_records(&rig).await;
+    assert_eq!(verdicts.len(), 1, "{verdicts:#?}");
+    assert_eq!(verdicts[0]["verdict"], "POLICY_STOP", "{verdicts:#?}");
+    assert!(
+        verdicts[0]["basis"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|b| b.as_str().unwrap().contains("computer.press DENIED")),
+        "{verdicts:#?}"
+    );
+    let presses = rig.approvals_of("computer.press");
+    assert_eq!(presses.len(), 1, "{presses:?}");
+    let evs = rig.events().await;
+    assert!(
+        of(&evs, "ComputerActionPerformed")
+            .iter()
+            .all(|a| a["payload"]["payload"]["kind"] != "press"),
+        "the denied press never ran"
+    );
+    let approvals_resolved = of(&evs, "ApprovalResolved");
+    assert!(
+        approvals_resolved
+            .iter()
+            .all(|a| a["payload"]["payload"]["resolver"]
+                .as_str()
+                .is_some_and(|r| !r.contains("computer-runtime") && !r.contains("verification"))),
+        "only the person resolves approvals: {approvals_resolved:#?}"
+    );
+}
+
+/// QUAL-PX-178: a run whose actuator is killed mid-input is an
+/// ENVIRONMENT_FAILURE, with the latch as its basis - not the model's
+/// failure, though its evidence does not hold either.
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_178_a_run_whose_actuator_is_killed_is_an_environment_failure() {
+    let child = vec![
+        child_plan(),
+        start(FORM),
+        fx(call("computer.state", json!({}))),
+        st(|s| {
+            call(
+                "computer.press",
+                json!({"element": s.el("Hang after delivery")}),
+            )
+        }),
+        claim_done(),
+    ];
+    let mut rig = judged_run(child, approve_all(), submitted()).await;
+    rig.wait_delivered().await;
+    let pid = rig.wait_actuator_pid().await;
+    kill_pid(pid);
+    rig.finish().await;
+    let (evals, verdicts) = gui_records(&rig).await;
+    assert!(evals.iter().all(|e| e["status"] != "PASS"), "{evals:#?}");
+    assert_eq!(verdicts.len(), 1, "{verdicts:#?}");
+    assert_eq!(
+        verdicts[0]["verdict"], "ENVIRONMENT_FAILURE",
+        "{verdicts:#?}"
+    );
+    assert!(
+        verdicts[0]["basis"].as_array().unwrap().iter().any(|b| {
+            let b = b.as_str().unwrap();
+            b.contains("ComputerLatched") || b.contains("ACTUATOR_LOST") || b.contains("LATCHED")
+        }),
+        "{verdicts:#?}"
+    );
+}
+
 fn handover(kind: &str, instruction: &str) -> Step {
     fx(call(
         "handover.request",

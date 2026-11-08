@@ -1928,6 +1928,7 @@ pub(crate) async fn rebuild(
                         "depth": c.depth,
                         "objective": c.spec.objective,
                         "write_scope": c.spec.write_scope,
+                        "completion_evidence": c.spec.completion_evidence,
                         "read_scope": c.spec.read_scope,
                         "private_context_refs": c.private_context_refs,
                         "budget": {
@@ -6682,6 +6683,33 @@ async fn run_loop(
     // A program still running when the loop ends is ended with it: it stops
     // at its next interrupt poll or binding call.
     programs.cancel_all();
+    // PX-178: a GUI task's run is judged from the evidence its setter declared
+    // and from its log - before its control session closes, so the evidence
+    // is read as the run left it.
+    if let Some(evidence) = crate::gui_evidence::declared(state.capsule.as_ref()) {
+        let run_end = match &end {
+            LoopEnd::Fenced { .. } => "FENCED".to_owned(),
+            LoopEnd::ReadyForReview => "READY_FOR_REVIEW".to_owned(),
+            LoopEnd::NeedsInput(_) => "NEEDS_INPUT".to_owned(),
+            LoopEnd::NeedsAttention { code, .. } => format!("NEEDS_ATTENTION:{code}"),
+            LoopEnd::Cancelled => "CANCELLED".to_owned(),
+            LoopEnd::BudgetExhausted(_) => "BUDGET_EXHAUSTED".to_owned(),
+            LoopEnd::ProviderFailed(code, _) => format!("PROVIDER_FAILED:{code}"),
+            LoopEnd::NoProgress(_) => "NO_PROGRESS".to_owned(),
+            LoopEnd::CapacityLost(_) => "CAPACITY_LOST".to_owned(),
+            LoopEnd::Parked => "PARKED".to_owned(),
+        };
+        crate::gui_evidence::judge_run_end(
+            &core,
+            &task,
+            lt,
+            &actor,
+            &run_id.to_string(),
+            &evidence,
+            &run_end,
+        )
+        .await;
+    }
     // PX-069: a control session and its observation grant end with the turn
     // (CUC-C02); the machine is given back whatever way the run ended.
     core.tools
@@ -9232,6 +9260,25 @@ async fn handle_complete(
     if precheck.is_ok() && !unverified.is_empty() {
         precheck = Err(HarnessRefusal::CompletionBlocked {
             reasons: unverified,
+        });
+    }
+    // PX-178: a GUI task is done when the evidence its setter declared holds,
+    // as the Core reads it now - never on the model's word. Missing or
+    // failing evidence blocks completion; a pass only lets the other gates run.
+    if precheck.is_ok()
+        && let Some(evidence) = crate::gui_evidence::declared(state.capsule.as_ref())
+        && let Some(reason) = crate::gui_evidence::completion_blocker(
+            core,
+            task,
+            lt,
+            actor,
+            &lt.run.map(|r| r.to_string()).unwrap_or_default(),
+            &evidence,
+        )
+        .await
+    {
+        precheck = Err(HarnessRefusal::CompletionBlocked {
+            reasons: vec![reason],
         });
     }
     // FIX-16: a parent is not done while a child it spawned is not over —

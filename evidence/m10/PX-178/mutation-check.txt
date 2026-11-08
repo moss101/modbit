@@ -1,0 +1,6 @@
+M1 (crates/verification/src/gui.rs judge): environment facts ignored ('if false && !facts.environment.is_empty()')
+test qual_px_178_a_run_whose_actuator_is_killed_is_an_environment_failure ... FAILED
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 39 filtered out; finished in 16.87s
+M2 (services/modbit-core/src/gui_evidence.rs completion_blocker): failing evidence never blocks ('false && result.status != PredicateStatus::Pass')
+test qual_px_178_an_unfinished_task_fails_its_evidence_whatever_the_model_claims ... FAILED
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 39 filtered out; finished in 15.50s

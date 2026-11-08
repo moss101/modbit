@@ -40132,8 +40132,38 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-178",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "test:services/modbit-core/tests/px_computer.rs::qual_px_178_a_completed_gui_task_passes_the_declared_evidence_and_is_judged_verified",
+    "artifact:evidence/m10/PX-178/mutation-check.txt"
+   ],
+   "notes": [
+    {
+     "at": "2026-11-07T15:09:47Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit at main 9915c074: DOCUMENTED-ONLY. The completion run judges code only; a GUI run with no file changes reached ReadyForReview whatever the application showed; no failure classification separates model, environment and policy for a GUI run. First missing link: no declared completion evidence and nothing that reads it (evidence/m10/PX-178/TASK_CARD.md)."
+    },
+    {
+     "at": "2026-11-07T15:09:47Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "modbit-verification gui.rs (CompletionEvidence, eval_*, RunFacts, judge), computer tree::parse, SubtaskSpec.completion_evidence, TaskEvent GuiEvidenceEvaluated/GuiOutcomeJudged, Core gui_evidence.rs and ToolHost::verification_state_read"
+    },
+    {
+     "at": "2026-11-07T15:09:47Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Production wiring: agent.spawn completion_evidence validated at admission (COMPLETION_EVIDENCE_INVALID); handle_complete blocks COMPLETION_EVIDENCE_NOT_MET on the Core's own read; the run end appends GuiOutcomeJudged before the control session closes"
+    },
+    {
+     "at": "2026-11-07T15:09:47Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Local, macOS arm64, real Core, real fixture actuator, real approvals, scripted parent and computer-use child: the five qual_px_178 tests pass (VERIFIED, MODEL_FAILURE unfinished, MODEL_FAILURE wrong element, POLICY_STOP denial, ENVIRONMENT_FAILURE killed actuator); full px_computer 40/40; mutation-check.txt: judge ignoring environment facts and a gate that never blocks each fail a test. CI on macOS, Linux and Windows still to run."
+    }
+   ],
+   "status_changed_on": "2026-11-07T15:09:47Z"
   },
   {
    "id": "PX-179",

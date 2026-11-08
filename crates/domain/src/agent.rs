@@ -168,6 +168,12 @@ pub struct SubtaskSpec {
     /// Tools it needs by name; its projection is narrowed to them when set.
     #[serde(default)]
     pub required_tools: Vec<String>,
+    /// What the child's completion must show, read by the Core (PX-178): an
+    /// accessibility, file or recorded-outcome predicate in the shape of
+    /// `modbit_verification::gui::CompletionEvidence`, validated at
+    /// admission. The parent declares it; the child never does.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub completion_evidence: Option<serde_json::Value>,
     /// Execution profile; `None` = the parent's.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub execution_profile: Option<String>,

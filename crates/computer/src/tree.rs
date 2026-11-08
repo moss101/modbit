@@ -235,6 +235,55 @@ pub fn render(nodes: &[Node], snapshot: &str, redact: &dyn Fn(&str) -> String) -
     }
 }
 
+/// One element as a rendered state read lists it: its handle, role, name and
+/// value (`None` when withheld as secure). Read back by the Core when it
+/// checks a GUI task's completion evidence (PX-178) against a state read it
+/// made itself.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Listed {
+    /// `<snapshot>/<id>`.
+    pub handle: String,
+    /// Role, as clipped.
+    pub role: String,
+    /// Name, as rendered (double quotes became single quotes).
+    pub name: String,
+    /// Value, as rendered; `None` when withheld.
+    pub value: Option<String>,
+}
+
+/// Parse the lines [`render`] produced. A rendered name or value holds no
+/// double quote, so the quoted fields are found exactly; a line that does not
+/// have the shape is skipped, never guessed at.
+#[must_use]
+pub fn parse(text: &str) -> Vec<Listed> {
+    text.lines()
+        .filter_map(|line| {
+            let line = line.trim_start();
+            let (handle, rest) = line.split_once(" | ")?;
+            // The role is clipped text that may hold anything but a control
+            // character; the name is the first quoted field after it.
+            let name_at = rest.find(" | \"")?;
+            let role = &rest[..name_at];
+            let after = &rest[name_at + 4..];
+            let name_end = after.find('"')?;
+            let name = &after[..name_end];
+            let tail = after[name_end + 1..].strip_prefix(" | value=")?;
+            let value = if tail.starts_with("(withheld)") {
+                None
+            } else {
+                let v = tail.strip_prefix('"')?;
+                Some(v[..v.find('"')?].to_owned())
+            };
+            handle.contains('/').then(|| Listed {
+                handle: handle.to_owned(),
+                role: role.to_owned(),
+                name: name.to_owned(),
+                value,
+            })
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -251,6 +300,31 @@ mod tests {
             bounds: Rect::default(),
             ..Node::default()
         }
+    }
+
+    #[test]
+    fn parse_reads_back_what_render_wrote() {
+        let mut secret = node("n4", "n1", "SecureTextField", "Password", "hunter2");
+        secret.secure = true;
+        let nodes = vec![
+            node("n1", "", "window", "Order | form", ""),
+            node("n2", "n1", "label", "Status", "submitted"),
+            node("n3", "n1", "button", "Say \"hi\"", ""),
+            secret,
+        ];
+        let r = render(&nodes, "s9", &|s| s.to_owned());
+        let listed = parse(&r.text);
+        assert_eq!(listed.len(), 4, "{}", r.text);
+        assert_eq!(listed[0].name, "Order | form");
+        assert_eq!(listed[1].handle, "s9/n2");
+        assert_eq!(listed[1].role, "label");
+        assert_eq!(listed[1].value.as_deref(), Some("submitted"));
+        assert_eq!(listed[2].name, "Say 'hi'");
+        assert_eq!(
+            listed[3].value, None,
+            "a withheld value is never read as text"
+        );
+        assert!(parse("not a tree line\n| | |").is_empty());
     }
 
     #[test]
