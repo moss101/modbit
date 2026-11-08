@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2061,
+    "root_and_tooling": 2064,
     "docs_bytes": 2339419
   },
   "sections": [
@@ -2970,8 +2970,23 @@
     },
     {
       "path": "evidence/m10/PX-146/TASK_CARD.md",
-      "bytes": 799,
-      "sha256": "9ec357e608432e28137e426489c95d03bb2f83633865549c2f3a18bfb2fd7ae0"
+      "bytes": 3825,
+      "sha256": "6c84ddad8b9107e177aa3e2fe802833ac28bd52d79eaf16171cf7442ca9b69a9"
+    },
+    {
+      "path": "evidence/m10/PX-146/clippy-2026-11-08.txt",
+      "bytes": 14830,
+      "sha256": "436b8b787b6f70f92ed65064d2853b741370dca7825d014e905fb202f84c8800"
+    },
+    {
+      "path": "evidence/m10/PX-146/mutation-check.txt",
+      "bytes": 5479,
+      "sha256": "a6e757cff19c3569d551dd307baddacae9ac1c5bde2c2a28a5cf96a9b532630d"
+    },
+    {
+      "path": "evidence/m10/PX-146/rust-tests-2026-11-08.txt",
+      "bytes": 452,
+      "sha256": "630f5437b9db65adb1ccb88dc869faaeb0974dbc758d2bda8717fd288152d284"
     },
     {
       "path": "evidence/m10/PX-147/TASK_CARD.md",
@@ -11175,8 +11190,8 @@
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2550034,
-      "sha256": "511a7e0d0de6ed16ad22a9e25492e180c3573636f5189373248402e27a7d2659"
+      "bytes": 2550417,
+      "sha256": "911e8b93b353530ec520bd2f67a3e1e00113bd472b77769f88236293f5ff1f82"
     },
     {
       "path": "tools/build_graph.py",
