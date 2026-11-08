@@ -1,0 +1,185 @@
+    Checking serde_core v1.0.229
+    Checking tokio v1.54.1
+    Checking slab v0.4.12
+    Checking futures-channel v0.3.34
+    Checking futures-io v0.3.34
+    Checking zerofrom v0.1.8
+    Checking tracing v0.1.44
+    Checking core-foundation-sys v0.8.7
+    Checking httpdate v1.0.3
+    Checking ring v0.17.14
+   Compiling prost-derive v0.14.4
+   Compiling logos-codegen v0.15.1
+   Compiling logos-codegen v0.16.1
+   Compiling miette v7.6.0
+    Checking bit-vec v0.8.0
+    Checking objc2-core-foundation v0.3.2
+    Checking fallible-iterator v0.2.0
+    Checking siphasher v1.0.3
+    Checking yoke v0.8.3
+    Checking same-file v1.0.6
+    Checking md-5 v0.10.6
+    Checking humantime v2.4.0
+    Checking phf_shared v0.13.1
+    Checking security-framework-sys v2.17.0
+    Checking futures-util v0.3.34
+    Checking core-foundation v0.10.1
+    Checking bit-set v0.8.0
+    Checking postgres-protocol v0.6.12
+    Checking iana-time-zone v0.1.65
+    Checking objc2-system-configuration v0.3.2
+    Checking walkdir v2.5.0
+    Checking strum v0.28.0
+    Checking wait-timeout v0.2.1
+    Checking phf v0.13.1
+    Checking fancy-regex v0.19.1
+    Checking quick-error v1.2.3
+    Checking security-framework v3.7.0
+    Checking whoami v2.1.3
+    Checking zerovec v0.11.8
+    Checking zerotrie v0.2.5
+    Checking rand_xorshift v0.4.0
+    Checking unarray v0.1.4
+    Checking rusty-fork v0.3.1
+    Checking mime v0.3.17
+    Checking matchit v0.8.4
+    Checking thiserror v1.0.69
+    Checking winnow v1.0.4
+    Checking nix v0.28.0
+    Checking serial2 v0.2.38
+    Checking rustls-webpki v0.103.16
+    Checking proptest v1.11.0
+    Checking axum-core v0.5.6
+    Checking toml_writer v1.1.2+spec-1.1.0
+    Checking downcast-rs v1.2.1
+    Checking filedescriptor v0.8.3
+    Checking shell-words v1.1.1
+    Checking toml_parser v1.1.3+spec-1.1.0
+    Checking utf-8 v0.7.6
+    Checking modbit-process-hardening v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/process-hardening)
+   Compiling logos-derive v0.15.1
+   Compiling prost v0.14.4
+   Compiling logos-derive v0.16.1
+    Checking tinystr v0.8.4
+    Checking potential_utf v0.1.6
+    Checking serde v1.0.229
+    Checking serde_json v1.0.151
+    Checking uuid v1.26.0
+    Checking rustls-native-certs v0.8.4
+    Checking rustls v0.23.46
+    Checking deranged v0.5.8
+    Checking serde_path_to_error v0.1.20
+   Compiling logos v0.15.1
+    Checking icu_collections v2.3.0
+    Checking icu_locale_core v2.3.0
+    Checking semver v1.0.28
+   Compiling logos v0.16.1
+    Checking camino v1.2.5
+    Checking toml_datetime v1.1.1+spec-1.1.0
+    Checking serde_urlencoded v0.7.1
+    Checking chrono v0.4.45
+    Checking quick-xml v0.38.4
+    Checking rust-stemmers v1.2.0
+    Checking sketches-ddsketch v0.3.1
+    Checking tantivy-tokenizer-api v0.6.0
+    Checking hyperloglogplus v0.4.1
+    Checking ahash v0.8.12
+    Checking modbit-domain v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/domain)
+    Checking postgres-types v0.2.14
+    Checking futures-executor v0.3.34
+    Checking prost-types v0.14.4
+    Checking tantivy-query-grammar v0.25.0
+    Checking fluent-uri v0.4.1
+    Checking icu_provider v2.3.1
+    Checking time v0.3.55
+    Checking jsonschema-value v0.55.1
+    Checking futures v0.3.34
+    Checking email_address v0.2.9
+    Checking cargo-platform v0.3.3
+    Checking serde_spanned v1.1.1
+    Checking portable-pty v0.9.0
+    Checking tungstenite v0.26.2
+    Checking icu_normalizer v2.3.0
+    Checking icu_properties v2.3.0
+    Checking cargo_metadata v0.23.1
+    Checking toml v1.1.5+spec-1.1.0
+    Checking modbit-mcp-testserver v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/tools/mcp-testserver)
+    Checking referencing v0.55.1
+   Compiling protox-parse v0.9.0
+   Compiling prost-reflect v0.16.5
+   Compiling prost-build v0.14.4
+    Checking tokio-util v0.7.19
+    Checking tower v0.5.3
+    Checking deadpool-runtime v0.3.1
+    Checking tokio-tungstenite v0.29.0
+    Checking tokio-tungstenite v0.26.2
+    Checking architecture-lint v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/tools/architecture-lint)
+    Checking jsonschema v0.55.1
+    Checking idna_adapter v1.2.2
+    Checking deadpool v0.13.1
+    Checking idna v1.1.0
+    Checking tokio-rustls v0.26.5
+    Checking h2 v0.4.19
+    Checking tokio-postgres v0.7.18
+    Checking url v2.5.8
+    Checking tantivy-common v0.10.0
+    Checking tower-http v0.6.11
+    Checking tantivy-sstable v0.6.0
+    Checking tantivy-stacker v0.6.0
+    Checking tantivy-columnar v0.6.0
+   Compiling protox v0.9.1
+    Checking deadpool-postgres v0.14.2
+    Checking tantivy v0.25.0
+   Compiling modbit-protocol v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/protocol)
+    Checking hyper v1.11.1
+    Checking hyper-util v0.1.20
+    Checking hyper-rustls v0.27.9
+    Checking axum v0.8.9
+    Checking reqwest v0.12.28
+    Checking object_store v0.12.5
+    Checking modbit-secrets v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/secrets)
+    Checking modbit-git v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/git)
+    Checking modbit-protocol-state v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/protocol-state)
+    Checking modbit-compaction v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/compaction)
+    Checking modbit-policy v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/policy)
+    Checking modbit-observability v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/observability)
+    Checking modbit-skills v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/skills)
+    Checking modbit-browser v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/browser)
+    Checking modbit-mcp v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/mcp)
+    Checking modbit-diagnostics v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/diagnostics)
+    Checking modbit-context v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/context)
+    Checking modbit-procedural-runtime v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/procedural-runtime)
+    Checking modbit-memory v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/memory)
+    Checking modbit-checkpoint v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/checkpoint)
+    Checking modbit-effects v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/effects)
+    Checking modbit-providers v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/providers)
+    Checking modbit-automation v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/automation)
+    Checking modbit-event-store v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/event-store)
+    Checking modbit-bench-outcome-statistics v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/benchmarks/outcome-statistics)
+    Checking modbit-retrieval v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/retrieval)
+    Checking modbit-verification v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/verification)
+    Checking modbit-workspace v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/workspace)
+    Checking modbit-bench-policy-lab v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/benchmarks/policy-lab)
+    Checking modbit-bench-agent-engineering v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/benchmarks/agent-engineering)
+    Checking modbit-prompt-compiler v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/prompt-compiler)
+    Checking modbit-sandbox v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/sandbox)
+    Checking modbit-bench-context-economics v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/benchmarks/context-economics)
+    Checking modbit-terminal v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/terminal)
+    Checking modbit-computer v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/computer)
+    Checking modbit-core-runtime v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/core-runtime)
+    Checking protocol-fixtures v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/tools/protocol-fixtures)
+    Checking modbit-actuator-fixture v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/services/modbit-actuator-fixture)
+    Checking modbit-cli v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/apps/cli)
+    Checking modbit-actuator-macos v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/services/modbit-actuator-macos)
+    Checking modbit-execd v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/services/modbit-execd)
+    Checking modbit-tools v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/crates/tools)
+    Checking modbit-cloud-api v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/apps/cloud-api)
+    Checking modbit-sandbox-gateway v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/apps/sandbox-gateway)
+    Checking modbit-cloud-worker v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/apps/cloud-worker)
+    Checking modbit-guest v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/services/modbit-guest)
+    Checking guest-image-tool v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/tools/guest-image)
+    Checking modbit-bench-gate-calibration v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/benchmarks/gate-calibration)
+    Checking modbit-bench-retrieval v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/benchmarks/retrieval)
+    Checking modbit-bench-skill-evolution v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/benchmarks/skill-evolution)
+    Checking modbit-core v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/agent-a11a4dacd18fa32c7/services/modbit-core)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 46.68s

@@ -1,0 +1,22 @@
+test px_111_benchmark_cold_vs_warm_start ... ignored, benchmark: run on demand in a release build
+test qual_px_157_a_secret_in_a_proposal_is_redacted_or_refused_and_ordinary_text_is_kept ... ok
+test px_113_commands_replay_by_id_and_need_the_session_lease ... ok
+test px_113_a_legacy_memory_row_is_put_on_the_log_at_start ... ok
+test px_113_mutations_are_events_that_replay_to_the_same_store_and_a_direct_write_does_not_survive ... ok
+test px_110_impact_callers_and_implementors_are_served_by_the_core_and_follow_an_edit ... ok
+test px_111_indexed_search_returns_what_the_scan_returns_through_the_core ... ok
+test qual_px_162_a_forgotten_memory_rebuilds_the_prefix_and_an_untrusted_file_adds_no_note ... ok
+test qual_px_157_each_prompt_that_injects_an_item_counts_once_and_a_restart_rebuilds_it ... ok
+test qual_px_162_a_resume_rebuilds_the_same_note_from_the_log ... ok
+test qual_px_162_a_changed_rule_file_and_memory_arrive_as_one_note_and_the_prefix_stays ... ok
+test px_113_fifty_memories_stay_inside_the_segment_budget ... ok
+test qual_px_188_a_shared_memory_is_redacted_reaches_the_prompt_and_survives_a_restart ... ok
+test px_111_a_restarted_core_does_not_rebuild_and_damage_or_staleness_is_rebuilt_with_a_reason ... ok
+test px_113_a_promoted_memory_reaches_a_later_sessions_prompt_and_forgetting_removes_it_after_a_restart ... ok
+test px_110_impact_reaches_verification_as_advice_and_never_narrows_the_checks ... ok
+test px_113_ttl_scope_precedence_and_sensitivity_decide_what_is_injected ... ok
+test px_113_a_summary_never_auto_promotes_and_hostile_memory_text_changes_no_projection ... ok
+test wave1_a_paused_task_keeps_its_memory_and_indexes_across_a_killed_core ... ok
+test px_111_a_core_killed_inside_an_index_write_recovers_to_a_whole_snapshot ... ok
+test px_111_sigkill_during_repeated_refreshes_never_leaves_an_unusable_index ... ok
+test result: ok. 20 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 12.69s

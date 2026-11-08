@@ -1,0 +1,490 @@
+{
+  "corpus": "memory-ranking@1.0.0",
+  "corpus_sha256": "6329a8439de359d86752969664e1ede8cc7a8bf277770fa39a6bbc04102c8cce",
+  "current": {
+    "version": "keyword-v1",
+    "weights": {
+      "confidence": 0.20000000298023224,
+      "diversity": 0.0,
+      "importance": 0.0,
+      "precedence": 0.20000000298023224,
+      "recency": 0.0,
+      "recency_half_life_items": 0,
+      "relevance": 0.5,
+      "validated": 0.10000000149011612
+    },
+    "recalled": 16,
+    "groups": 16,
+    "recall": 1.0,
+    "injected_tokens": 9058,
+    "budget_tokens": 9600,
+    "recall_per_1k_tokens": 1.7663943475380879
+  },
+  "candidate": {
+    "version": "recency-importance-diversity-v2",
+    "weights": {
+      "confidence": 0.15000000596046448,
+      "diversity": 0.30000001192092896,
+      "importance": 0.10000000149011612,
+      "precedence": 0.15000000596046448,
+      "recency": 0.10000000149011612,
+      "recency_half_life_items": 8,
+      "relevance": 0.4000000059604645,
+      "validated": 0.10000000149011612
+    },
+    "recalled": 14,
+    "groups": 16,
+    "recall": 0.875,
+    "injected_tokens": 9078,
+    "budget_tokens": 9600,
+    "recall_per_1k_tokens": 1.542189909671734
+  },
+  "queries": [
+    {
+      "id": "staging-port",
+      "gold": [
+        [
+          "staging-port-new"
+        ]
+      ],
+      "current_recalled": 1,
+      "candidate_recalled": 1,
+      "token_budget": 800,
+      "current_tokens": 769,
+      "candidate_tokens": 773,
+      "current_injected": [
+        "staging-port",
+        "timeout-format",
+        "staging-port-new",
+        "test-output",
+        "prod-port",
+        "port-files",
+        "staging-window",
+        "metrics-port",
+        "staging-port-dup"
+      ],
+      "candidate_injected": [
+        "staging-window",
+        "timeout-format",
+        "test-output",
+        "staging-port-new",
+        "summary-style",
+        "settings-format",
+        "port-files",
+        "migration-lock",
+        "timeout-config"
+      ]
+    },
+    {
+      "id": "release-owner",
+      "gold": [
+        [
+          "release-owner"
+        ]
+      ],
+      "current_recalled": 1,
+      "candidate_recalled": 1,
+      "token_budget": 800,
+      "current_tokens": 735,
+      "candidate_tokens": 751,
+      "current_injected": [
+        "timeout-format",
+        "release-owner",
+        "test-output",
+        "release-cadence",
+        "summary-style",
+        "timeout-config",
+        "release-channel",
+        "release-checklist",
+        "port-files"
+      ],
+      "candidate_injected": [
+        "timeout-format",
+        "release-owner",
+        "staging-window",
+        "test-output",
+        "summary-style",
+        "settings-format",
+        "release-channel",
+        "release-cadence",
+        "migration-lock"
+      ]
+    },
+    {
+      "id": "db-config",
+      "gold": [
+        [
+          "db-name"
+        ],
+        [
+          "config-sections"
+        ]
+      ],
+      "current_recalled": 2,
+      "candidate_recalled": 2,
+      "token_budget": 800,
+      "current_tokens": 756,
+      "candidate_tokens": 738,
+      "current_injected": [
+        "config-sections",
+        "db-name",
+        "db-naming",
+        "timeout-format",
+        "timeout-config",
+        "branch-names",
+        "summary-style",
+        "test-output",
+        "migration-lock"
+      ],
+      "candidate_injected": [
+        "db-naming",
+        "config-sections",
+        "summary-style",
+        "db-name",
+        "timeout-format",
+        "test-output",
+        "settings-format",
+        "newline",
+        "branch-names"
+      ]
+    },
+    {
+      "id": "changelog",
+      "gold": [
+        [
+          "changelog"
+        ]
+      ],
+      "current_recalled": 1,
+      "candidate_recalled": 1,
+      "token_budget": 800,
+      "current_tokens": 746,
+      "candidate_tokens": 749,
+      "current_injected": [
+        "timeout-format",
+        "changelog",
+        "summary-style",
+        "test-output",
+        "commit-subject",
+        "release-checklist",
+        "port-files",
+        "branch-names",
+        "release-owner"
+      ],
+      "candidate_injected": [
+        "timeout-format",
+        "summary-style",
+        "changelog",
+        "test-output",
+        "settings-format",
+        "release-owner",
+        "newline",
+        "release-checklist",
+        "commit-subject"
+      ]
+    },
+    {
+      "id": "timeout",
+      "gold": [
+        [
+          "timeout-format"
+        ]
+      ],
+      "current_recalled": 1,
+      "candidate_recalled": 1,
+      "token_budget": 800,
+      "current_tokens": 761,
+      "candidate_tokens": 756,
+      "current_injected": [
+        "timeout-format",
+        "timeout-config",
+        "test-output",
+        "summary-style",
+        "migration-lock",
+        "staging-window",
+        "release-cadence",
+        "changelog",
+        "settings-format"
+      ],
+      "candidate_injected": [
+        "timeout-format",
+        "staging-window",
+        "test-output",
+        "timeout-config",
+        "summary-style",
+        "migration-lock",
+        "settings-format",
+        "newline",
+        "release-cadence"
+      ]
+    },
+    {
+      "id": "upload-cmd",
+      "gold": [
+        [
+          "upload-flaky",
+          "upload-flaky-dup"
+        ]
+      ],
+      "current_recalled": 1,
+      "candidate_recalled": 1,
+      "token_budget": 800,
+      "current_tokens": 769,
+      "candidate_tokens": 771,
+      "current_injected": [
+        "test-output",
+        "timeout-format",
+        "upload-flaky",
+        "upload-location",
+        "upload-flaky-dup",
+        "summary-style",
+        "timeout-config",
+        "port-files",
+        "staging-window"
+      ],
+      "candidate_injected": [
+        "test-output",
+        "timeout-format",
+        "staging-window",
+        "upload-flaky-dup",
+        "summary-style",
+        "settings-format",
+        "newline",
+        "migration-lock",
+        "timeout-config"
+      ]
+    },
+    {
+      "id": "deploy",
+      "gold": [
+        [
+          "deploy",
+          "deploy-dup-1",
+          "deploy-dup-2"
+        ],
+        [
+          "staging-window"
+        ]
+      ],
+      "current_recalled": 2,
+      "candidate_recalled": 1,
+      "token_budget": 800,
+      "current_tokens": 768,
+      "candidate_tokens": 781,
+      "current_injected": [
+        "staging-window",
+        "timeout-format",
+        "test-output",
+        "timeout-config",
+        "deploy",
+        "staging-port",
+        "staging-port-new",
+        "summary-style",
+        "rollback"
+      ],
+      "candidate_injected": [
+        "staging-window",
+        "timeout-format",
+        "test-output",
+        "rollback",
+        "summary-style",
+        "timeout-config",
+        "staging-port-new",
+        "migration-lock",
+        "settings-format"
+      ]
+    },
+    {
+      "id": "api-version",
+      "gold": [
+        [
+          "api-v4"
+        ]
+      ],
+      "current_recalled": 1,
+      "candidate_recalled": 1,
+      "token_budget": 800,
+      "current_tokens": 742,
+      "candidate_tokens": 736,
+      "current_injected": [
+        "timeout-format",
+        "api-v4",
+        "api-v3",
+        "api-versioning",
+        "test-output",
+        "timeout-config",
+        "summary-style",
+        "port-files",
+        "staging-window"
+      ],
+      "candidate_injected": [
+        "timeout-format",
+        "api-versioning",
+        "staging-window",
+        "test-output",
+        "summary-style",
+        "api-v4",
+        "settings-format",
+        "api-v3",
+        "newline"
+      ]
+    },
+    {
+      "id": "migration",
+      "gold": [
+        [
+          "migration-lock"
+        ]
+      ],
+      "current_recalled": 1,
+      "candidate_recalled": 1,
+      "token_budget": 800,
+      "current_tokens": 767,
+      "candidate_tokens": 770,
+      "current_injected": [
+        "timeout-format",
+        "migration-lock",
+        "test-output",
+        "db-name",
+        "db-driver",
+        "summary-style",
+        "timeout-config",
+        "db-naming",
+        "staging-port-new"
+      ],
+      "candidate_injected": [
+        "migration-lock",
+        "db-naming",
+        "staging-window",
+        "summary-style",
+        "test-output",
+        "timeout-format",
+        "settings-format",
+        "newline",
+        "staging-port-new"
+      ]
+    },
+    {
+      "id": "release-prep",
+      "gold": [
+        [
+          "release-checklist"
+        ],
+        [
+          "changelog"
+        ],
+        [
+          "commit-subject"
+        ]
+      ],
+      "current_recalled": 3,
+      "candidate_recalled": 2,
+      "token_budget": 800,
+      "current_tokens": 754,
+      "candidate_tokens": 759,
+      "current_injected": [
+        "timeout-format",
+        "test-output",
+        "release-checklist",
+        "changelog",
+        "commit-subject",
+        "api-versioning",
+        "release-cadence",
+        "summary-style",
+        "timeout-config"
+      ],
+      "candidate_injected": [
+        "staging-window",
+        "timeout-format",
+        "test-output",
+        "summary-style",
+        "release-channel",
+        "api-versioning",
+        "settings-format",
+        "release-checklist",
+        "commit-subject"
+      ]
+    },
+    {
+      "id": "branch",
+      "gold": [
+        [
+          "branch-names"
+        ]
+      ],
+      "current_recalled": 1,
+      "candidate_recalled": 1,
+      "token_budget": 800,
+      "current_tokens": 755,
+      "candidate_tokens": 752,
+      "current_injected": [
+        "timeout-format",
+        "branch-names",
+        "test-output",
+        "rollback",
+        "timeout-config",
+        "summary-style",
+        "db-name",
+        "port-files",
+        "staging-window"
+      ],
+      "candidate_injected": [
+        "timeout-format",
+        "branch-names",
+        "staging-window",
+        "test-output",
+        "rollback",
+        "summary-style",
+        "db-naming",
+        "settings-format",
+        "newline"
+      ]
+    },
+    {
+      "id": "items-limit",
+      "gold": [
+        [
+          "settings-format"
+        ]
+      ],
+      "current_recalled": 1,
+      "candidate_recalled": 1,
+      "token_budget": 800,
+      "current_tokens": 736,
+      "candidate_tokens": 742,
+      "current_injected": [
+        "settings-format",
+        "items-limit",
+        "timeout-format",
+        "summary-style",
+        "test-output",
+        "port-files",
+        "newline",
+        "timeout-config",
+        "config-sections"
+      ],
+      "candidate_injected": [
+        "settings-format",
+        "items-limit",
+        "summary-style",
+        "timeout-format",
+        "newline",
+        "test-output",
+        "migration-lock",
+        "port-files",
+        "config-sections"
+      ]
+    }
+  ],
+  "deterministic": true,
+  "never_offered_seen": [],
+  "decision": "revert",
+  "rule": "keep the candidate only when, on the same tasks at the same memory token budget, it recalls more gold groups than the current ranking and its recall per thousand injected tokens is not lower; otherwise revert",
+  "product_default": "keyword-v1",
+  "environment": {
+    "build_digest": "361ec61e0dce8a2a9fba08eb0cc6b1b857a5f6525074a8db6cbe17bcca734cc3",
+    "modbit_revision": "fc2294a2c42b68fec014757d25e343f6cd2326bf",
+    "os": "macos-aarch64",
+    "workspace_path_bytes": 120
+  }
+}
