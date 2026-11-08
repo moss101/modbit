@@ -4197,6 +4197,15 @@ fn confined_model() -> Script {
                 "shell.exec",
                 json!({"argv": ["python3", "-c", "import socket; socket.create_connection(('127.0.0.1', 9), timeout=2)"]}),
             ),
+            // A write outside the worktree that the shell classifier cannot
+            // see (a redirect to /etc is a protected write the policy refuses
+            // before anything runs), so it reaches the file confinement of
+            // the macOS review sandbox (Linux's seccomp sandbox confines the
+            // network only, PX-150).
+            "g-confined-write" => Step::call(
+                "shell.exec",
+                json!({"argv": ["python3", "-c", "import os; open(os.path.join('/', 'etc', 'modbit-px152-probe'), 'w')"]}),
+            ),
             // A command that fails for its own reasons.
             "g-confined-failing" => Step::call(
                 "shell.exec",
@@ -4270,6 +4279,46 @@ async fn qual_px_152_a_refusal_by_the_sandbox_reaches_the_model_typed_and_a_fail
     );
     assert!(!result.contains("NON_ZERO_EXIT"), "{result}");
     assert!(result.contains("\"sandbox_denied\""), "{result}");
+
+    // ---- a write outside the worktree (PX-E2E-152), where the sandbox
+    // confines files
+    if cfg!(target_os = "macos") {
+        let tw = create_task(
+            &mut c,
+            &session,
+            g,
+            &root,
+            0x13,
+            "review_isolated",
+            "g-confined-write",
+        )
+        .await;
+        set_mode(&mut c, &tw, g, "ALLOWLIST_SANDBOX", true)
+            .await
+            .unwrap();
+        start(&mut c, &tw, g, "gpt-5-mini", 10).await;
+        wait_task(&mut c, &tw, 60).await;
+        let events = replay(&core, &session).await;
+        assert_eq!(
+            failed_codes(&events, &tw),
+            vec!["SANDBOX_DENIED".to_owned()],
+            "the refused write is logged once, typed"
+        );
+        let shown = shown_tool_results(&seen);
+        let result = shown
+            .iter()
+            .find(|r| r.contains("SANDBOX_DENIED") && r.contains("modbit-px152-probe"))
+            .unwrap_or_else(|| panic!("the model never saw the refused write: {shown:#?}"));
+        assert!(
+            result.contains("do not retry the same command unchanged"),
+            "{result}"
+        );
+        assert!(!result.contains("NON_ZERO_EXIT"), "{result}");
+        assert!(
+            !std::path::Path::new("/etc/modbit-px152-probe").exists(),
+            "nothing was written"
+        );
+    }
 
     // ---- the ordinary failure
     let t2 = create_task(
