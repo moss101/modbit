@@ -1,0 +1,5637 @@
+{
+  "schema": "modbit-competence-baseline/1",
+  "suite_id": "four-axis",
+  "suite_version": "1.0.0",
+  "task_list_digest": "d129a6a0cb84d4a5e32456fd0ba4fcafcbc506037484d017e9bc9878e1da6a3f",
+  "tasks": [
+    "tool_use/sum-numbers",
+    "tool_use/find-channel",
+    "tool_use/bump-retries",
+    "tool_use/list-cfg-files",
+    "tool_use/count-assets",
+    "tool_use/last-commit-subject",
+    "tool_use/fix-typo",
+    "tool_use/american-spelling",
+    "tool_use/sorted-names",
+    "tool_use/batch-create",
+    "memory/staging-port",
+    "memory/release-owner",
+    "memory/database-name",
+    "memory/changelog-prefix",
+    "memory/timeout-unit",
+    "memory/flaky-upload",
+    "memory/deploy-procedure",
+    "memory/current-api-version",
+    "memory/propose-port-convention",
+    "memory/propose-lint-pitfall",
+    "skill_use/release-note",
+    "skill_use/adr",
+    "skill_use/version-bump",
+    "skill_use/license-header",
+    "skill_use/changelog-section",
+    "skill_use/todo-format",
+    "skill_use/metric-name",
+    "skill_use/branch-name",
+    "skill_use/ini-order",
+    "skill_use/status-code",
+    "subagent/two-parts",
+    "subagent/api-doc",
+    "subagent/translations",
+    "subagent/report",
+    "subagent/modules",
+    "subagent/fixture-json",
+    "subagent/monthly-notes",
+    "subagent/feature-flags",
+    "subagent/package-versions",
+    "subagent/setup-notes"
+  ],
+  "protocol": {
+    "trials_per_task": 1,
+    "max_turns": 24,
+    "configuration": "direct",
+    "endpoint": "openai",
+    "model": "gpt-5-mini",
+    "base_url_host": "127.0.0.1:54067",
+    "catalog_prices_usd_per_mtok": null,
+    "gold_patch_access": false,
+    "images": [],
+    "question_answer": "Use your best judgement and proceed without further questions; keep the change minimal.",
+    "approvals": "deny"
+  },
+  "environment": {
+    "modbit_revision": "9915c0749ec5085811f54247c2af92ae09cec06e",
+    "build_digest": "a86a34ba904e31e50268df228b9c82b40e8d6575be59312f5f7e6fa504c491ec",
+    "harness_version": "competence-baseline/1",
+    "toolchains": {
+      "cargo": "cargo 1.97.1 (c980f4866 2026-06-30)",
+      "git": "git version 2.54.0 (Apple Git-157)",
+      "node": "v26.11.1",
+      "python3": "Python 3.9.6",
+      "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)"
+    },
+    "os": "macos-aarch64"
+  },
+  "trials": [
+    {
+      "task": "tool_use/sum-numbers",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "out/sum.txt"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "out/sum.txt"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          140
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 7664,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002172,
+        "wall_ms": 2782,
+        "model_ms": 82,
+        "tool_ms": 369,
+        "tool_calls": 2
+      },
+      "event_log": {
+        "file": "trials/tool_use__sum-numbers-1/events.jsonl",
+        "sha256": "58401cbd262df28e68898366f09f49d45e631074a8f847e86e939a7e2be9d546",
+        "offsets": [
+          1,
+          140
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "tool_use",
+      "verifier": {
+        "id": "px184/tool_use/sum-numbers",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file out/sum.txt",
+            "passed": true,
+            "detail": "4 bytes"
+          },
+          {
+            "check": "tool fs.read succeeded >= 1 with output containing \"42\"",
+            "passed": true,
+            "detail": "1 succeeded, 1 matching"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "231b79d17d5606b261f4c6e0fb9e2991"
+        ],
+        "model_calls": 4,
+        "input_tokens": 7664,
+        "output_tokens": 128,
+        "cost_usd": 0.002172,
+        "recorded_model_calls": 4,
+        "recorded_output_tokens": 128
+      }
+    },
+    {
+      "task": "tool_use/find-channel",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "out/channel.txt"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "out/channel.txt"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          139
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 7882,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002227,
+        "wall_ms": 2748,
+        "model_ms": 75,
+        "tool_ms": 316,
+        "tool_calls": 2
+      },
+      "event_log": {
+        "file": "trials/tool_use__find-channel-1/events.jsonl",
+        "sha256": "a2e19fd2d17efba543278b2bb76dcc22fe8e0326b9ade5e1cf350a8ef2c456f1",
+        "offsets": [
+          1,
+          139
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "tool_use",
+      "verifier": {
+        "id": "px184/tool_use/find-channel",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file out/channel.txt",
+            "passed": true,
+            "detail": "7 bytes"
+          },
+          {
+            "check": "tool search.exact succeeded >= 1 with output containing \"channel.cfg\"",
+            "passed": true,
+            "detail": "1 succeeded, 1 matching"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "26c742aa69c45543e4ea86a455e72128"
+        ],
+        "model_calls": 4,
+        "input_tokens": 7882,
+        "output_tokens": 128,
+        "cost_usd": 0.002227,
+        "recorded_model_calls": 4,
+        "recorded_output_tokens": 128
+      }
+    },
+    {
+      "task": "tool_use/bump-retries",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "config/app.ini"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "config/app.ini"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          140
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 10431,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002864,
+        "wall_ms": 2797,
+        "model_ms": 88,
+        "tool_ms": 389,
+        "tool_calls": 2
+      },
+      "event_log": {
+        "file": "trials/tool_use__bump-retries-1/events.jsonl",
+        "sha256": "bc168b233099fcf5c7de3ba494d60674daaab2e3d83090794c87bf6c5bfda4f1",
+        "offsets": [
+          1,
+          140
+        ]
+      },
+      "diff_sha256": "36d6f7a6b84907d12458744ddc7ae5a558cb5682df265d47ce474b13b002ef86",
+      "interactions": 0,
+      "notes": [],
+      "axis": "tool_use",
+      "verifier": {
+        "id": "px184/tool_use/bump-retries",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file config/app.ini",
+            "passed": true,
+            "detail": "57 bytes"
+          },
+          {
+            "check": "tool change.apply succeeded >= 1 with output containing \"config/app.ini\"",
+            "passed": true,
+            "detail": "1 succeeded, 1 matching"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "98e0b2dc4430fa0eeed73e5a7cdbc273"
+        ],
+        "model_calls": 4,
+        "input_tokens": 10431,
+        "output_tokens": 128,
+        "cost_usd": 0.002864,
+        "recorded_model_calls": 4,
+        "recorded_output_tokens": 128
+      }
+    },
+    {
+      "task": "tool_use/list-cfg-files",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "out/cfg-files.txt"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "out/cfg-files.txt"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          139
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 7364,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002097,
+        "wall_ms": 2766,
+        "model_ms": 69,
+        "tool_ms": 367,
+        "tool_calls": 2
+      },
+      "event_log": {
+        "file": "trials/tool_use__list-cfg-files-1/events.jsonl",
+        "sha256": "5a0742ad516a80a6869766a6bcc29b563593119f8f28f53828bcc33578d7ae28",
+        "offsets": [
+          1,
+          139
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "tool_use",
+      "verifier": {
+        "id": "px184/tool_use/list-cfg-files",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file out/cfg-files.txt",
+            "passed": true,
+            "detail": "73 bytes"
+          },
+          {
+            "check": "tool fs.glob succeeded >= 1 with output containing \"limits.cfg\"",
+            "passed": true,
+            "detail": "1 succeeded, 1 matching"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "d387e6bf74b6516c8a62e28c2d9ce540"
+        ],
+        "model_calls": 4,
+        "input_tokens": 7364,
+        "output_tokens": 128,
+        "cost_usd": 0.002097,
+        "recorded_model_calls": 4,
+        "recorded_output_tokens": 128
+      }
+    },
+    {
+      "task": "tool_use/count-assets",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "out/assets.txt"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "out/assets.txt"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          139
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 7574,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002149,
+        "wall_ms": 2850,
+        "model_ms": 82,
+        "tool_ms": 394,
+        "tool_calls": 2
+      },
+      "event_log": {
+        "file": "trials/tool_use__count-assets-1/events.jsonl",
+        "sha256": "c61a95b6a75f440c37a30557296f30569a274b8dd553a693b6b4f243dc284975",
+        "offsets": [
+          1,
+          139
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "tool_use",
+      "verifier": {
+        "id": "px184/tool_use/count-assets",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file out/assets.txt",
+            "passed": true,
+            "detail": "2 bytes"
+          },
+          {
+            "check": "tool fs.list succeeded >= 1 with output containing \"c.txt\"",
+            "passed": true,
+            "detail": "1 succeeded, 1 matching"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "63da90c49c815be871c55afd54b1dc73"
+        ],
+        "model_calls": 4,
+        "input_tokens": 7574,
+        "output_tokens": 128,
+        "cost_usd": 0.002149,
+        "recorded_model_calls": 4,
+        "recorded_output_tokens": 128
+      }
+    },
+    {
+      "task": "tool_use/last-commit-subject",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "out/subject.txt"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "out/subject.txt"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          139
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 7566,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002148,
+        "wall_ms": 2775,
+        "model_ms": 59,
+        "tool_ms": 399,
+        "tool_calls": 2
+      },
+      "event_log": {
+        "file": "trials/tool_use__last-commit-subject-1/events.jsonl",
+        "sha256": "ec8b6e34bbdd78f8b6ed26f4fe735760ff771424d079b59628c0b74f7d2af15b",
+        "offsets": [
+          1,
+          139
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "tool_use",
+      "verifier": {
+        "id": "px184/tool_use/last-commit-subject",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file out/subject.txt",
+            "passed": true,
+            "detail": "8 bytes"
+          },
+          {
+            "check": "tool shell.exec succeeded >= 1 with output containing \"fixture\"",
+            "passed": true,
+            "detail": "1 succeeded, 1 matching"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "c73fee2c081fa60ba253fff5afbe8476"
+        ],
+        "model_calls": 4,
+        "input_tokens": 7566,
+        "output_tokens": 128,
+        "cost_usd": 0.002148,
+        "recorded_model_calls": 4,
+        "recorded_output_tokens": 128
+      }
+    },
+    {
+      "task": "tool_use/fix-typo",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "src/greeting.txt"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "src/greeting.txt"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          140
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 10418,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002861,
+        "wall_ms": 2837,
+        "model_ms": 67,
+        "tool_ms": 424,
+        "tool_calls": 2
+      },
+      "event_log": {
+        "file": "trials/tool_use__fix-typo-1/events.jsonl",
+        "sha256": "f9f645b6eb3c1d8e2f820bd0c24935e1b078fa43593bc9860cbc43e0a41c81ba",
+        "offsets": [
+          1,
+          140
+        ]
+      },
+      "diff_sha256": "844c5a90c00a3f23d9385bcbdaa564e7708ec93fa630a232b14b469af4c1360e",
+      "interactions": 0,
+      "notes": [],
+      "axis": "tool_use",
+      "verifier": {
+        "id": "px184/tool_use/fix-typo",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file src/greeting.txt",
+            "passed": true,
+            "detail": "14 bytes"
+          },
+          {
+            "check": "tool fs.read succeeded >= 1 with output containing \"Wrold\"",
+            "passed": true,
+            "detail": "1 succeeded, 1 matching"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "3c39d5669a7d67427b50e0010de64df1"
+        ],
+        "model_calls": 4,
+        "input_tokens": 10418,
+        "output_tokens": 128,
+        "cost_usd": 0.002861,
+        "recorded_model_calls": 4,
+        "recorded_output_tokens": 128
+      }
+    },
+    {
+      "task": "tool_use/american-spelling",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "docs/guide.md"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "docs/guide.md"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          140
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 10468,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002873,
+        "wall_ms": 2851,
+        "model_ms": 71,
+        "tool_ms": 369,
+        "tool_calls": 2
+      },
+      "event_log": {
+        "file": "trials/tool_use__american-spelling-1/events.jsonl",
+        "sha256": "e3b179407d10ba092a511f7f5ab54301fb824b7f9b4e9b99e24fba6992d2e7e5",
+        "offsets": [
+          1,
+          140
+        ]
+      },
+      "diff_sha256": "35c1937ec3c37af2106ca703180640c631b67b4be8b0d9a4fa34ebfbc39c39f9",
+      "interactions": 0,
+      "notes": [],
+      "axis": "tool_use",
+      "verifier": {
+        "id": "px184/tool_use/american-spelling",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file docs/guide.md",
+            "passed": true,
+            "detail": "74 bytes"
+          },
+          {
+            "check": "tool change.apply succeeded >= 1 with output containing \"docs/guide.md\"",
+            "passed": true,
+            "detail": "1 succeeded, 1 matching"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "0410c67fdfddfe9f720331eca47f8ef1"
+        ],
+        "model_calls": 4,
+        "input_tokens": 10468,
+        "output_tokens": 128,
+        "cost_usd": 0.002873,
+        "recorded_model_calls": 4,
+        "recorded_output_tokens": 128
+      }
+    },
+    {
+      "task": "tool_use/sorted-names",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "out/names.txt"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "out/names.txt"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          140
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 7682,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002177,
+        "wall_ms": 2482,
+        "model_ms": 52,
+        "tool_ms": 363,
+        "tool_calls": 2
+      },
+      "event_log": {
+        "file": "trials/tool_use__sorted-names-1/events.jsonl",
+        "sha256": "2ac3584b5925164df34838264c5b0b6558f2421dba2df88292eb70891687f6ce",
+        "offsets": [
+          1,
+          140
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "tool_use",
+      "verifier": {
+        "id": "px184/tool_use/sorted-names",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file out/names.txt",
+            "passed": true,
+            "detail": "16 bytes"
+          },
+          {
+            "check": "tool fs.read succeeded >= 1 with output containing \"grace\"",
+            "passed": true,
+            "detail": "1 succeeded, 1 matching"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "a21932f931a3c8859c575a077f2853b4"
+        ],
+        "model_calls": 4,
+        "input_tokens": 7682,
+        "output_tokens": 128,
+        "cost_usd": 0.002177,
+        "recorded_model_calls": 4,
+        "recorded_output_tokens": 128
+      }
+    },
+    {
+      "task": "tool_use/batch-create",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "out/a.txt",
+          "out/b.txt"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "out/a.txt",
+          "out/b.txt"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 3,
+        "offsets": [
+          1,
+          110
+        ]
+      },
+      "economics": {
+        "model_calls": 3,
+        "input_tokens": 7584,
+        "cached_input_tokens": 0,
+        "output_tokens": 96,
+        "cost_usd": 0.002088,
+        "wall_ms": 2286,
+        "model_ms": 40,
+        "tool_ms": 374,
+        "tool_calls": 1
+      },
+      "event_log": {
+        "file": "trials/tool_use__batch-create-1/events.jsonl",
+        "sha256": "88fae874ce8330d20ed9e535d1d0ad0ddbbac0fcbbbec7b11849a574c5197290",
+        "offsets": [
+          1,
+          110
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "tool_use",
+      "verifier": {
+        "id": "px184/tool_use/batch-create",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file out/a.txt",
+            "passed": true,
+            "detail": "2 bytes"
+          },
+          {
+            "check": "file out/b.txt",
+            "passed": true,
+            "detail": "2 bytes"
+          },
+          {
+            "check": "tool change.batch succeeded >= 1 with output containing \"out/b.txt\"",
+            "passed": true,
+            "detail": "1 succeeded, 1 matching"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "a1acf36eacc4f5dd748fc846ad25e2d9"
+        ],
+        "model_calls": 3,
+        "input_tokens": 7584,
+        "output_tokens": 96,
+        "cost_usd": 0.002088,
+        "recorded_model_calls": 3,
+        "recorded_output_tokens": 96
+      }
+    },
+    {
+      "task": "memory/staging-port",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "out/staging.port"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "out/staging.port"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          146
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 8773,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002449,
+        "wall_ms": 2934,
+        "model_ms": 58,
+        "tool_ms": 281,
+        "tool_calls": 2
+      },
+      "event_log": {
+        "file": "trials/memory__staging-port-1/events.jsonl",
+        "sha256": "4e3d2293f9400c040aae42897f00093edd542b652254a523b5ee9b45c6ec0516",
+        "offsets": [
+          1,
+          146
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "memory",
+      "verifier": {
+        "id": "px184/memory/staging-port",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file out/staging.port",
+            "passed": true,
+            "detail": "5 bytes"
+          },
+          {
+            "check": "memory staging-port reached the task",
+            "passed": true,
+            "detail": "memory daa1fd6f00f5"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "38cab0a731f584deedec12e56435fd5a"
+        ],
+        "model_calls": 4,
+        "input_tokens": 8773,
+        "output_tokens": 128,
+        "cost_usd": 0.002449,
+        "recorded_model_calls": 4,
+        "recorded_output_tokens": 128
+      }
+    },
+    {
+      "task": "memory/release-owner",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "out/release-owner.txt"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "out/release-owner.txt"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          146
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 11839,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.003216,
+        "wall_ms": 2910,
+        "model_ms": 55,
+        "tool_ms": 280,
+        "tool_calls": 2
+      },
+      "event_log": {
+        "file": "trials/memory__release-owner-1/events.jsonl",
+        "sha256": "b95a94955d79ea559fcbdbc11b4416f0f5ea34c3a77376d017317e232e93458c",
+        "offsets": [
+          1,
+          146
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "memory",
+      "verifier": {
+        "id": "px184/memory/release-owner",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file out/release-owner.txt",
+            "passed": true,
+            "detail": "9 bytes"
+          },
+          {
+            "check": "memory release-owner reached the task",
+            "passed": true,
+            "detail": "memory 805f59d898c8"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "173779e1feaed5af59400a4809e02f94"
+        ],
+        "model_calls": 4,
+        "input_tokens": 11839,
+        "output_tokens": 128,
+        "cost_usd": 0.003216,
+        "recorded_model_calls": 4,
+        "recorded_output_tokens": 128
+      }
+    },
+    {
+      "task": "memory/database-name",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "config/db.ini"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "config/db.ini"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          146
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 8809,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002458,
+        "wall_ms": 2675,
+        "model_ms": 57,
+        "tool_ms": 215,
+        "tool_calls": 2
+      },
+      "event_log": {
+        "file": "trials/memory__database-name-1/events.jsonl",
+        "sha256": "7a8d81eccbbc4f4c1611f9c7b685d51edbf91ee810bdf028b322173d9016fdfc",
+        "offsets": [
+          1,
+          146
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "memory",
+      "verifier": {
+        "id": "px184/memory/database-name",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file config/db.ini",
+            "passed": true,
+            "detail": "24 bytes"
+          },
+          {
+            "check": "memory database-name reached the task",
+            "passed": true,
+            "detail": "memory 645031194fc1"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "ebc47662e74209530f01e2d24aa53ad3"
+        ],
+        "model_calls": 4,
+        "input_tokens": 8809,
+        "output_tokens": 128,
+        "cost_usd": 0.002458,
+        "recorded_model_calls": 4,
+        "recorded_output_tokens": 128
+      }
+    },
+    {
+      "task": "memory/changelog-prefix",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "CHANGELOG.md"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "CHANGELOG.md"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          146
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 8853,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002469,
+        "wall_ms": 2774,
+        "model_ms": 42,
+        "tool_ms": 326,
+        "tool_calls": 2
+      },
+      "event_log": {
+        "file": "trials/memory__changelog-prefix-1/events.jsonl",
+        "sha256": "78455e73c2cf0a38bfc3fdfbee50502f74cfe4f995afadba806db413776c573a",
+        "offsets": [
+          1,
+          146
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "memory",
+      "verifier": {
+        "id": "px184/memory/changelog-prefix",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file CHANGELOG.md",
+            "passed": true,
+            "detail": "21 bytes"
+          },
+          {
+            "check": "memory changelog-prefix reached the task",
+            "passed": true,
+            "detail": "memory d725cfc771de"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "967001557fbabf5bc19838c29aacaa82"
+        ],
+        "model_calls": 4,
+        "input_tokens": 8853,
+        "output_tokens": 128,
+        "cost_usd": 0.002469,
+        "recorded_model_calls": 4,
+        "recorded_output_tokens": 128
+      }
+    },
+    {
+      "task": "memory/timeout-unit",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "out/timeout.txt"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "out/timeout.txt"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          146
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 8856,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.00247,
+        "wall_ms": 2744,
+        "model_ms": 58,
+        "tool_ms": 215,
+        "tool_calls": 2
+      },
+      "event_log": {
+        "file": "trials/memory__timeout-unit-1/events.jsonl",
+        "sha256": "e081aeb3ccc032cd81d434f221a4baac0318713a5636284d4566dff354eb7dd7",
+        "offsets": [
+          1,
+          146
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "memory",
+      "verifier": {
+        "id": "px184/memory/timeout-unit",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file out/timeout.txt",
+            "passed": true,
+            "detail": "5 bytes"
+          },
+          {
+            "check": "memory timeout-unit reached the task",
+            "passed": true,
+            "detail": "memory b2b08fae70a4"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "b0242e993cc97ff24d37c300530ab0f0"
+        ],
+        "model_calls": 4,
+        "input_tokens": 8856,
+        "output_tokens": 128,
+        "cost_usd": 0.00247,
+        "recorded_model_calls": 4,
+        "recorded_output_tokens": 128
+      }
+    },
+    {
+      "task": "memory/flaky-upload",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "out/upload-cmd.txt"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "out/upload-cmd.txt"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          146
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 11894,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.003229,
+        "wall_ms": 2807,
+        "model_ms": 64,
+        "tool_ms": 231,
+        "tool_calls": 2
+      },
+      "event_log": {
+        "file": "trials/memory__flaky-upload-1/events.jsonl",
+        "sha256": "8829e7db3217e19d3ec59920884be5b1990ad501ac5358b3993ef21ce6121fc9",
+        "offsets": [
+          1,
+          146
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "memory",
+      "verifier": {
+        "id": "px184/memory/flaky-upload",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file out/upload-cmd.txt",
+            "passed": true,
+            "detail": "34 bytes"
+          },
+          {
+            "check": "memory flaky-upload reached the task",
+            "passed": true,
+            "detail": "memory a3b8eea37147"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "21d99cb1674436860569eee036433c5d"
+        ],
+        "model_calls": 4,
+        "input_tokens": 11894,
+        "output_tokens": 128,
+        "cost_usd": 0.003229,
+        "recorded_model_calls": 4,
+        "recorded_output_tokens": 128
+      }
+    },
+    {
+      "task": "memory/deploy-procedure",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "out/deploy.md"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "out/deploy.md"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          146
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 8831,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002464,
+        "wall_ms": 2833,
+        "model_ms": 45,
+        "tool_ms": 256,
+        "tool_calls": 2
+      },
+      "event_log": {
+        "file": "trials/memory__deploy-procedure-1/events.jsonl",
+        "sha256": "e91b700fbc0ebb380a133d272d836c742a8f689e9f35180b202dafbeb5b76408",
+        "offsets": [
+          1,
+          146
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "memory",
+      "verifier": {
+        "id": "px184/memory/deploy-procedure",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file out/deploy.md",
+            "passed": true,
+            "detail": "54 bytes"
+          },
+          {
+            "check": "memory deploy-procedure reached the task",
+            "passed": true,
+            "detail": "memory dc2439974208"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "a9e19d360f29436d9c285ebd2864c6f9"
+        ],
+        "model_calls": 4,
+        "input_tokens": 8831,
+        "output_tokens": 128,
+        "cost_usd": 0.002464,
+        "recorded_model_calls": 4,
+        "recorded_output_tokens": 128
+      }
+    },
+    {
+      "task": "memory/current-api-version",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "out/api-version.txt"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "out/api-version.txt"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          149
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 8780,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002451,
+        "wall_ms": 3479,
+        "model_ms": 47,
+        "tool_ms": 228,
+        "tool_calls": 2
+      },
+      "event_log": {
+        "file": "trials/memory__current-api-version-1/events.jsonl",
+        "sha256": "43956b8e404da81838857393f04ba46502375e3b305bff135d9dccfa65fd6f4e",
+        "offsets": [
+          1,
+          149
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "memory",
+      "verifier": {
+        "id": "px184/memory/current-api-version",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file out/api-version.txt",
+            "passed": true,
+            "detail": "3 bytes"
+          },
+          {
+            "check": "memory api-v4 reached the task",
+            "passed": true,
+            "detail": "memory 48ae4d4b32fe"
+          },
+          {
+            "check": "memory api-v3 kept out of the task",
+            "passed": true,
+            "detail": "memory de7e76b3329f"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "850674d8cfcdd6e9085571c4eec38669"
+        ],
+        "model_calls": 4,
+        "input_tokens": 8780,
+        "output_tokens": 128,
+        "cost_usd": 0.002451,
+        "recorded_model_calls": 4,
+        "recorded_output_tokens": 128
+      }
+    },
+    {
+      "task": "memory/propose-port-convention",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "out/default.port"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "out/default.port"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          141
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 7502,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002131,
+        "wall_ms": 2527,
+        "model_ms": 62,
+        "tool_ms": 232,
+        "tool_calls": 2
+      },
+      "event_log": {
+        "file": "trials/memory__propose-port-convention-1/events.jsonl",
+        "sha256": "2b240eab0478a28d16355ab582e1ce2121cc2e22aefcf8dfb9227458398fdcdd",
+        "offsets": [
+          1,
+          141
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "memory",
+      "verifier": {
+        "id": "px184/memory/propose-port-convention",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file out/default.port",
+            "passed": true,
+            "detail": "5 bytes"
+          },
+          {
+            "check": "agent proposed memory \"port files\"",
+            "passed": true,
+            "detail": ""
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "98b4d1a49bf80615c355a9eb9a6cfd05"
+        ],
+        "model_calls": 4,
+        "input_tokens": 7502,
+        "output_tokens": 128,
+        "cost_usd": 0.002131,
+        "recorded_model_calls": 4,
+        "recorded_output_tokens": 128
+      }
+    },
+    {
+      "task": "memory/propose-lint-pitfall",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          ".cache/README.md"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          ".cache/README.md"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          141
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 7546,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002143,
+        "wall_ms": 2491,
+        "model_ms": 76,
+        "tool_ms": 166,
+        "tool_calls": 2
+      },
+      "event_log": {
+        "file": "trials/memory__propose-lint-pitfall-1/events.jsonl",
+        "sha256": "c72d25adf2c9fdf668b2816e74da98d8abcf88afce40087e22e2430fe83a2fe6",
+        "offsets": [
+          1,
+          141
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "memory",
+      "verifier": {
+        "id": "px184/memory/propose-lint-pitfall",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file .cache/README.md",
+            "passed": true,
+            "detail": "51 bytes"
+          },
+          {
+            "check": "agent proposed memory \"lint cache\"",
+            "passed": true,
+            "detail": ""
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "7289b9b0aa99a5e660f647477ba1daa0"
+        ],
+        "model_calls": 4,
+        "input_tokens": 7546,
+        "output_tokens": 128,
+        "cost_usd": 0.002143,
+        "recorded_model_calls": 4,
+        "recorded_output_tokens": 128
+      }
+    },
+    {
+      "task": "skill_use/release-note",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "NOTES.md"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "NOTES.md"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          140
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 8029,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002263,
+        "wall_ms": 2622,
+        "model_ms": 63,
+        "tool_ms": 170,
+        "tool_calls": 2
+      },
+      "event_log": {
+        "file": "trials/skill_use__release-note-1/events.jsonl",
+        "sha256": "39d79446aef960e3fac8dda20cf6789230a400d26043b4e51122f0d1216d3d66",
+        "offsets": [
+          1,
+          140
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "skill_use",
+      "verifier": {
+        "id": "px184/skill_use/release-note",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file NOTES.md",
+            "passed": true,
+            "detail": "30 bytes"
+          },
+          {
+            "check": "skill release-notes reached the task",
+            "passed": true,
+            "detail": "loaded=true selected=false"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "057582033490f9ea8baf3cef8d5d124b"
+        ],
+        "model_calls": 4,
+        "input_tokens": 8029,
+        "output_tokens": 128,
+        "cost_usd": 0.002263,
+        "recorded_model_calls": 4,
+        "recorded_output_tokens": 128
+      }
+    },
+    {
+      "task": "skill_use/adr",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "docs/adr/0007-use-sqlite-for-cache.md"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "docs/adr/0007-use-sqlite-for-cache.md"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          140
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 8134,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.00229,
+        "wall_ms": 2855,
+        "model_ms": 62,
+        "tool_ms": 271,
+        "tool_calls": 2
+      },
+      "event_log": {
+        "file": "trials/skill_use__adr-1/events.jsonl",
+        "sha256": "15bbb5ad5900a8e555797d3027b41be53345361fe1299e1c9b67eb27867b74f4",
+        "offsets": [
+          1,
+          140
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "skill_use",
+      "verifier": {
+        "id": "px184/skill_use/adr",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file docs/adr/0007-use-sqlite-for-cache.md",
+            "passed": true,
+            "detail": "47 bytes"
+          },
+          {
+            "check": "skill adr-template reached the task",
+            "passed": true,
+            "detail": "loaded=true selected=false"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "9bfca616ada9af4b250202b3de6bc569"
+        ],
+        "model_calls": 4,
+        "input_tokens": 8134,
+        "output_tokens": 128,
+        "cost_usd": 0.00229,
+        "recorded_model_calls": 4,
+        "recorded_output_tokens": 128
+      }
+    },
+    {
+      "task": "skill_use/version-bump",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "VERSION",
+          "out/bumps.log"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "VERSION",
+          "out/bumps.log"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 6,
+        "offsets": [
+          1,
+          195
+        ]
+      },
+      "economics": {
+        "model_calls": 6,
+        "input_tokens": 13056,
+        "cached_input_tokens": 0,
+        "output_tokens": 192,
+        "cost_usd": 0.003648,
+        "wall_ms": 3323,
+        "model_ms": 117,
+        "tool_ms": 445,
+        "tool_calls": 4
+      },
+      "event_log": {
+        "file": "trials/skill_use__version-bump-1/events.jsonl",
+        "sha256": "d8653e4dfceec16927a9c42a0f59017ef7fea74180b393676c5535f0267e6cd7",
+        "offsets": [
+          1,
+          195
+        ]
+      },
+      "diff_sha256": "3bd0081f969cc920d9807d29ebf2422ad7f7f7ac0d30946243340434c7fda32c",
+      "interactions": 0,
+      "notes": [],
+      "axis": "skill_use",
+      "verifier": {
+        "id": "px184/skill_use/version-bump",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file VERSION",
+            "passed": true,
+            "detail": "6 bytes"
+          },
+          {
+            "check": "file out/bumps.log",
+            "passed": true,
+            "detail": "21 bytes"
+          },
+          {
+            "check": "skill version-bump reached the task",
+            "passed": true,
+            "detail": "loaded=true selected=false"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "72b5eacd31d81e37f037feddcefb2723"
+        ],
+        "model_calls": 6,
+        "input_tokens": 13056,
+        "output_tokens": 192,
+        "cost_usd": 0.003648,
+        "recorded_model_calls": 6,
+        "recorded_output_tokens": 192
+      }
+    },
+    {
+      "task": "skill_use/license-header",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "src/util.rs"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "src/util.rs"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          140
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 8099,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002281,
+        "wall_ms": 2819,
+        "model_ms": 65,
+        "tool_ms": 243,
+        "tool_calls": 2
+      },
+      "event_log": {
+        "file": "trials/skill_use__license-header-1/events.jsonl",
+        "sha256": "0d0bce508d9193c59d5d64b72a574f709815c3f4759ea7b5bebe42eb3a68e728",
+        "offsets": [
+          1,
+          140
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "skill_use",
+      "verifier": {
+        "id": "px184/skill_use/license-header",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file src/util.rs",
+            "passed": true,
+            "detail": "66 bytes"
+          },
+          {
+            "check": "skill license-header reached the task",
+            "passed": true,
+            "detail": "loaded=true selected=false"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "2c4ee4882b7268b7d758c7b4c47e7313"
+        ],
+        "model_calls": 4,
+        "input_tokens": 8099,
+        "output_tokens": 128,
+        "cost_usd": 0.002281,
+        "recorded_model_calls": 4,
+        "recorded_output_tokens": 128
+      }
+    },
+    {
+      "task": "skill_use/changelog-section",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "CHANGELOG.md"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "CHANGELOG.md"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          140
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 8093,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002279,
+        "wall_ms": 2417,
+        "model_ms": 40,
+        "tool_ms": 161,
+        "tool_calls": 2
+      },
+      "event_log": {
+        "file": "trials/skill_use__changelog-section-1/events.jsonl",
+        "sha256": "848c0adeae29d77a6486157eb61fc5b58787bf61bcc1964aa20451cedef03202",
+        "offsets": [
+          1,
+          140
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "skill_use",
+      "verifier": {
+        "id": "px184/skill_use/changelog-section",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file CHANGELOG.md",
+            "passed": true,
+            "detail": "42 bytes"
+          },
+          {
+            "check": "skill keep-a-changelog reached the task",
+            "passed": true,
+            "detail": "loaded=true selected=false"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "243a908e643bdadde462ad7c59ef23c1"
+        ],
+        "model_calls": 4,
+        "input_tokens": 8093,
+        "output_tokens": 128,
+        "cost_usd": 0.002279,
+        "recorded_model_calls": 4,
+        "recorded_output_tokens": 128
+      }
+    },
+    {
+      "task": "skill_use/todo-format",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "out/todo.txt"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "out/todo.txt"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          140
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 10984,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.003002,
+        "wall_ms": 2759,
+        "model_ms": 61,
+        "tool_ms": 254,
+        "tool_calls": 2
+      },
+      "event_log": {
+        "file": "trials/skill_use__todo-format-1/events.jsonl",
+        "sha256": "82c65d5e595a5580b8a856657b992a73de24ba97d233dcfa3c72e3d496364249",
+        "offsets": [
+          1,
+          140
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "skill_use",
+      "verifier": {
+        "id": "px184/skill_use/todo-format",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file out/todo.txt",
+            "passed": true,
+            "detail": "34 bytes"
+          },
+          {
+            "check": "skill todo-format reached the task",
+            "passed": true,
+            "detail": "loaded=true selected=false"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "a1551fafb8632a78b4cda49283f0c7b0"
+        ],
+        "model_calls": 4,
+        "input_tokens": 10984,
+        "output_tokens": 128,
+        "cost_usd": 0.003002,
+        "recorded_model_calls": 4,
+        "recorded_output_tokens": 128
+      }
+    },
+    {
+      "task": "skill_use/metric-name",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "out/metrics.txt"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "out/metrics.txt"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          140
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 8104,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002282,
+        "wall_ms": 2708,
+        "model_ms": 48,
+        "tool_ms": 260,
+        "tool_calls": 2
+      },
+      "event_log": {
+        "file": "trials/skill_use__metric-name-1/events.jsonl",
+        "sha256": "36b7db571e93e5883ae16482622f7e6ea6ca70e33b6baddf25598068328c85c1",
+        "offsets": [
+          1,
+          140
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "skill_use",
+      "verifier": {
+        "id": "px184/skill_use/metric-name",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file out/metrics.txt",
+            "passed": true,
+            "detail": "28 bytes"
+          },
+          {
+            "check": "skill metrics-naming reached the task",
+            "passed": true,
+            "detail": "loaded=true selected=false"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "324689310738862e15380726f105b080"
+        ],
+        "model_calls": 4,
+        "input_tokens": 8104,
+        "output_tokens": 128,
+        "cost_usd": 0.002282,
+        "recorded_model_calls": 4,
+        "recorded_output_tokens": 128
+      }
+    },
+    {
+      "task": "skill_use/branch-name",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "out/branch.txt"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "out/branch.txt"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          140
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 8069,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002273,
+        "wall_ms": 2551,
+        "model_ms": 58,
+        "tool_ms": 187,
+        "tool_calls": 2
+      },
+      "event_log": {
+        "file": "trials/skill_use__branch-name-1/events.jsonl",
+        "sha256": "040a97dff047379cb0866d947710ff6fab97a2a980b82d7a3e3601ac868bf573",
+        "offsets": [
+          1,
+          140
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "skill_use",
+      "verifier": {
+        "id": "px184/skill_use/branch-name",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file out/branch.txt",
+            "passed": true,
+            "detail": "23 bytes"
+          },
+          {
+            "check": "skill branch-naming reached the task",
+            "passed": true,
+            "detail": "loaded=true selected=false"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "c2ff4ce23417d9dbe80cbb5c615bc254"
+        ],
+        "model_calls": 4,
+        "input_tokens": 8069,
+        "output_tokens": 128,
+        "cost_usd": 0.002273,
+        "recorded_model_calls": 4,
+        "recorded_output_tokens": 128
+      }
+    },
+    {
+      "task": "skill_use/ini-order",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "config/app.ini"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "config/app.ini"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 5,
+        "offsets": [
+          1,
+          167
+        ]
+      },
+      "economics": {
+        "model_calls": 5,
+        "input_tokens": 10791,
+        "cached_input_tokens": 0,
+        "output_tokens": 160,
+        "cost_usd": 0.003018,
+        "wall_ms": 2461,
+        "model_ms": 55,
+        "tool_ms": 189,
+        "tool_calls": 3
+      },
+      "event_log": {
+        "file": "trials/skill_use__ini-order-1/events.jsonl",
+        "sha256": "dbb430a8e09f33050aeb3c910b06f9e5e7cae6ca95fd8b42f110c34cddc68127",
+        "offsets": [
+          1,
+          167
+        ]
+      },
+      "diff_sha256": "c8ce5d0a911b31ba9a6806aa9558b839a7058bc109d19d03e341a4d5f780ffaf",
+      "interactions": 0,
+      "notes": [],
+      "axis": "skill_use",
+      "verifier": {
+        "id": "px184/skill_use/ini-order",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file config/app.ini",
+            "passed": true,
+            "detail": "66 bytes"
+          },
+          {
+            "check": "skill ini-style reached the task",
+            "passed": true,
+            "detail": "loaded=true selected=false"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "911e3a9c0cc2c6cc70df8cf5b1917962"
+        ],
+        "model_calls": 5,
+        "input_tokens": 10791,
+        "output_tokens": 160,
+        "cost_usd": 0.003018,
+        "recorded_model_calls": 5,
+        "recorded_output_tokens": 160
+      }
+    },
+    {
+      "task": "skill_use/status-code",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "docs/errors.md"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "docs/errors.md"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 5,
+        "offsets": [
+          1,
+          167
+        ]
+      },
+      "economics": {
+        "model_calls": 5,
+        "input_tokens": 10876,
+        "cached_input_tokens": 0,
+        "output_tokens": 160,
+        "cost_usd": 0.003039,
+        "wall_ms": 2798,
+        "model_ms": 56,
+        "tool_ms": 226,
+        "tool_calls": 3
+      },
+      "event_log": {
+        "file": "trials/skill_use__status-code-1/events.jsonl",
+        "sha256": "7b987ceef0bd6d0716b2c1eb46306606ada29a9d695588d1ceadd4619c7a558e",
+        "offsets": [
+          1,
+          167
+        ]
+      },
+      "diff_sha256": "2ef2e681764ac053809ad4f6ca4cf480b25dddf4783538e32d783d33f0c7aa55",
+      "interactions": 0,
+      "notes": [],
+      "axis": "skill_use",
+      "verifier": {
+        "id": "px184/skill_use/status-code",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file docs/errors.md",
+            "passed": true,
+            "detail": "81 bytes"
+          },
+          {
+            "check": "skill code-registry reached the task",
+            "passed": true,
+            "detail": "loaded=true selected=false"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "343347683288f84827de752b05f893d3"
+        ],
+        "model_calls": 5,
+        "input_tokens": 10876,
+        "output_tokens": 160,
+        "cost_usd": 0.003039,
+        "recorded_model_calls": 5,
+        "recorded_output_tokens": 160
+      }
+    },
+    {
+      "task": "subagent/two-parts",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "part/a/a.txt",
+          "part/b/b.txt",
+          "out/parts.txt"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "out/parts.txt"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 13,
+        "offsets": [
+          1,
+          606
+        ]
+      },
+      "economics": {
+        "model_calls": 13,
+        "input_tokens": 36488,
+        "cached_input_tokens": 0,
+        "output_tokens": 416,
+        "cost_usd": 0.009954,
+        "wall_ms": 7358,
+        "model_ms": 218,
+        "tool_ms": 1558,
+        "tool_calls": 7
+      },
+      "event_log": {
+        "file": "trials/subagent__two-parts-1/events.jsonl",
+        "sha256": "cdf27c83a85044091e4f446179736da7575b0dfce4479aabe04654303b7b0a84",
+        "offsets": [
+          1,
+          606
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "subagent",
+      "verifier": {
+        "id": "px184/subagent/two-parts",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file part/a/a.txt",
+            "passed": true,
+            "detail": "6 bytes"
+          },
+          {
+            "check": "file part/b/b.txt",
+            "passed": true,
+            "detail": "5 bytes"
+          },
+          {
+            "check": "file out/parts.txt",
+            "passed": true,
+            "detail": "12 bytes"
+          },
+          {
+            "check": "children admitted >= 2, results >= 2, merged >= 2",
+            "passed": true,
+            "detail": "admitted=2 results=2 merged=2"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "0ea4e99407292fbbe74be60ab9b65a61",
+          "01a1b6ab694c77229f569eafa4ceca46",
+          "01a1b6ab6b7c7d919f4cc6e6fa11ce7e"
+        ],
+        "model_calls": 19,
+        "input_tokens": 45755,
+        "output_tokens": 608,
+        "cost_usd": 0.012654,
+        "recorded_model_calls": 19,
+        "recorded_output_tokens": 608
+      }
+    },
+    {
+      "task": "subagent/api-doc",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "docs/api.md",
+          "out/docs-ready.txt"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "out/docs-ready.txt"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 8,
+        "offsets": [
+          1,
+          358
+        ]
+      },
+      "economics": {
+        "model_calls": 8,
+        "input_tokens": 17771,
+        "cached_input_tokens": 0,
+        "output_tokens": 256,
+        "cost_usd": 0.004955,
+        "wall_ms": 4967,
+        "model_ms": 98,
+        "tool_ms": 763,
+        "tool_calls": 4
+      },
+      "event_log": {
+        "file": "trials/subagent__api-doc-1/events.jsonl",
+        "sha256": "50d750dbf74aedbe667706b290b5a5cb4db6f6ec52f889f3d35c383fcc666fd5",
+        "offsets": [
+          1,
+          358
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "subagent",
+      "verifier": {
+        "id": "px184/subagent/api-doc",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file docs/api.md",
+            "passed": true,
+            "detail": "18 bytes"
+          },
+          {
+            "check": "file out/docs-ready.txt",
+            "passed": true,
+            "detail": "7 bytes"
+          },
+          {
+            "check": "children admitted >= 1, results >= 1, merged >= 1",
+            "passed": true,
+            "detail": "admitted=1 results=1 merged=1"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "4e509534060ed2d9a24c0b116afaa09b",
+          "01a1b6ab6aab78d082c875018e34f3cf"
+        ],
+        "model_calls": 11,
+        "input_tokens": 22440,
+        "output_tokens": 352,
+        "cost_usd": 0.006314,
+        "recorded_model_calls": 11,
+        "recorded_output_tokens": 352
+      }
+    },
+    {
+      "task": "subagent/translations",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "i18n/en.txt",
+          "i18n/fr.txt",
+          "i18n/index.txt"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "i18n/index.txt"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 13,
+        "offsets": [
+          1,
+          606
+        ]
+      },
+      "economics": {
+        "model_calls": 13,
+        "input_tokens": 36570,
+        "cached_input_tokens": 0,
+        "output_tokens": 416,
+        "cost_usd": 0.009974,
+        "wall_ms": 6867,
+        "model_ms": 183,
+        "tool_ms": 1349,
+        "tool_calls": 7
+      },
+      "event_log": {
+        "file": "trials/subagent__translations-1/events.jsonl",
+        "sha256": "ce78ee6e61e345579e25728fc6a46e0e11770d06451c55701ea5e2164e089f8f",
+        "offsets": [
+          1,
+          606
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "subagent",
+      "verifier": {
+        "id": "px184/subagent/translations",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file i18n/en.txt",
+            "passed": true,
+            "detail": "6 bytes"
+          },
+          {
+            "check": "file i18n/fr.txt",
+            "passed": true,
+            "detail": "8 bytes"
+          },
+          {
+            "check": "file i18n/index.txt",
+            "passed": true,
+            "detail": "6 bytes"
+          },
+          {
+            "check": "children admitted >= 2, results >= 2, merged >= 2",
+            "passed": true,
+            "detail": "admitted=2 results=2 merged=2"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "1f4c3c950becf17c71030bb4fc6f4702",
+          "01a1b6ab75317793a01ab9d2720beaf1",
+          "01a1b6ab76547d40a09458006f4cdb4f"
+        ],
+        "model_calls": 19,
+        "input_tokens": 45856,
+        "output_tokens": 608,
+        "cost_usd": 0.012679,
+        "recorded_model_calls": 19,
+        "recorded_output_tokens": 608
+      }
+    },
+    {
+      "task": "subagent/report",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "data/report.csv",
+          "out/report-ready.txt"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "out/report-ready.txt"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 8,
+        "offsets": [
+          1,
+          358
+        ]
+      },
+      "economics": {
+        "model_calls": 8,
+        "input_tokens": 17860,
+        "cached_input_tokens": 0,
+        "output_tokens": 256,
+        "cost_usd": 0.004977,
+        "wall_ms": 5111,
+        "model_ms": 105,
+        "tool_ms": 719,
+        "tool_calls": 4
+      },
+      "event_log": {
+        "file": "trials/subagent__report-1/events.jsonl",
+        "sha256": "9eaa5e3750a1dde835dd201d433d5f68ab766ff353e04a0f09550626f71556cd",
+        "offsets": [
+          1,
+          358
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "subagent",
+      "verifier": {
+        "id": "px184/subagent/report",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file data/report.csv",
+            "passed": true,
+            "detail": "17 bytes"
+          },
+          {
+            "check": "file out/report-ready.txt",
+            "passed": true,
+            "detail": "11 bytes"
+          },
+          {
+            "check": "children admitted >= 1, results >= 1, merged >= 1",
+            "passed": true,
+            "detail": "admitted=1 results=1 merged=1"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "80d504b37bc3066fcab48f52e9c076c0",
+          "01a1b6ab7afa70219ca3ddea0ab7875f"
+        ],
+        "model_calls": 11,
+        "input_tokens": 22546,
+        "output_tokens": 352,
+        "cost_usd": 0.006340999999999999,
+        "recorded_model_calls": 11,
+        "recorded_output_tokens": 352
+      }
+    },
+    {
+      "task": "subagent/modules",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "src/mod_a.txt",
+          "src/mod_b.txt",
+          "src/modules.txt"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "src/modules.txt"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 13,
+        "offsets": [
+          1,
+          606
+        ]
+      },
+      "economics": {
+        "model_calls": 13,
+        "input_tokens": 36572,
+        "cached_input_tokens": 0,
+        "output_tokens": 416,
+        "cost_usd": 0.009975,
+        "wall_ms": 7533,
+        "model_ms": 204,
+        "tool_ms": 1675,
+        "tool_calls": 7
+      },
+      "event_log": {
+        "file": "trials/subagent__modules-1/events.jsonl",
+        "sha256": "1cbd0c3ede745af67a21a1b3658860515ba10f28d399682126c94d288309eef3",
+        "offsets": [
+          1,
+          606
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "subagent",
+      "verifier": {
+        "id": "px184/subagent/modules",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file src/mod_a.txt",
+            "passed": true,
+            "detail": "9 bytes"
+          },
+          {
+            "check": "file src/mod_b.txt",
+            "passed": true,
+            "detail": "9 bytes"
+          },
+          {
+            "check": "file src/modules.txt",
+            "passed": true,
+            "detail": "12 bytes"
+          },
+          {
+            "check": "children admitted >= 2, results >= 2, merged >= 2",
+            "passed": true,
+            "detail": "admitted=2 results=2 merged=2"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "2c28609d3cc77f32a18c2e3cac58f314",
+          "01a1b6ab85db71a2962ec03770042b93",
+          "01a1b6ab87ed760094eeebe556416f11"
+        ],
+        "model_calls": 19,
+        "input_tokens": 45872,
+        "output_tokens": 608,
+        "cost_usd": 0.012685,
+        "recorded_model_calls": 19,
+        "recorded_output_tokens": 608
+      }
+    },
+    {
+      "task": "subagent/fixture-json",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "tests/fixture.json",
+          "out/fixtures.txt"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "out/fixtures.txt"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 8,
+        "offsets": [
+          1,
+          358
+        ]
+      },
+      "economics": {
+        "model_calls": 8,
+        "input_tokens": 17864,
+        "cached_input_tokens": 0,
+        "output_tokens": 256,
+        "cost_usd": 0.004978,
+        "wall_ms": 5548,
+        "model_ms": 132,
+        "tool_ms": 966,
+        "tool_calls": 4
+      },
+      "event_log": {
+        "file": "trials/subagent__fixture-json-1/events.jsonl",
+        "sha256": "86cc8c0a24754595d1313fefdb7b3e0d2fc52646dec93e1b43a725bd2f4b2c15",
+        "offsets": [
+          1,
+          358
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "subagent",
+      "verifier": {
+        "id": "px184/subagent/fixture-json",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file tests/fixture.json",
+            "passed": true,
+            "detail": "13 bytes"
+          },
+          {
+            "check": "file out/fixtures.txt",
+            "passed": true,
+            "detail": "13 bytes"
+          },
+          {
+            "check": "children admitted >= 1, results >= 1, merged >= 1",
+            "passed": true,
+            "detail": "admitted=1 results=1 merged=1"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "996b6f09e0ede0e7c9d795a5e57679bb",
+          "01a1b6ab8fa17e908eb2b2c4d8b2b21f"
+        ],
+        "model_calls": 11,
+        "input_tokens": 22574,
+        "output_tokens": 352,
+        "cost_usd": 0.0063479999999999995,
+        "recorded_model_calls": 11,
+        "recorded_output_tokens": 352
+      }
+    },
+    {
+      "task": "subagent/monthly-notes",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "notes/2026-01.md",
+          "notes/2026-02.md",
+          "notes/README.md"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "notes/README.md"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 13,
+        "offsets": [
+          1,
+          606
+        ]
+      },
+      "economics": {
+        "model_calls": 13,
+        "input_tokens": 36939,
+        "cached_input_tokens": 0,
+        "output_tokens": 416,
+        "cost_usd": 0.010067,
+        "wall_ms": 7482,
+        "model_ms": 185,
+        "tool_ms": 1270,
+        "tool_calls": 7
+      },
+      "event_log": {
+        "file": "trials/subagent__monthly-notes-1/events.jsonl",
+        "sha256": "fcef10c53416e8bae4a7a69b1d4702295e2e3a97b5416eff2884210f64724baf",
+        "offsets": [
+          1,
+          606
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "subagent",
+      "verifier": {
+        "id": "px184/subagent/monthly-notes",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file notes/2026-01.md",
+            "passed": true,
+            "detail": "10 bytes"
+          },
+          {
+            "check": "file notes/2026-02.md",
+            "passed": true,
+            "detail": "11 bytes"
+          },
+          {
+            "check": "file notes/README.md",
+            "passed": true,
+            "detail": "22 bytes"
+          },
+          {
+            "check": "children admitted >= 2, results >= 2, merged >= 2",
+            "passed": true,
+            "detail": "admitted=2 results=2 merged=2"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "7a34b281cd22bbb2548dd6d9fc9b0503",
+          "01a1b6ab960e77c2bfc0ab2ce2707eff",
+          "01a1b6ab98767da1b32dce8a1479b57f"
+        ],
+        "model_calls": 19,
+        "input_tokens": 46287,
+        "output_tokens": 608,
+        "cost_usd": 0.012787999999999999,
+        "recorded_model_calls": 19,
+        "recorded_output_tokens": 608
+      }
+    },
+    {
+      "task": "subagent/feature-flags",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "config/flags.ini",
+          "out/flags-ready.txt"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "out/flags-ready.txt"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 8,
+        "offsets": [
+          1,
+          358
+        ]
+      },
+      "economics": {
+        "model_calls": 8,
+        "input_tokens": 17892,
+        "cached_input_tokens": 0,
+        "output_tokens": 256,
+        "cost_usd": 0.004985,
+        "wall_ms": 5276,
+        "model_ms": 96,
+        "tool_ms": 745,
+        "tool_calls": 4
+      },
+      "event_log": {
+        "file": "trials/subagent__feature-flags-1/events.jsonl",
+        "sha256": "04bcbb1324a9712dd70669ae45a7b84ef73cb9accab213dcab794c1d68953a40",
+        "offsets": [
+          1,
+          358
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "subagent",
+      "verifier": {
+        "id": "px184/subagent/feature-flags",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file config/flags.ini",
+            "passed": true,
+            "detail": "20 bytes"
+          },
+          {
+            "check": "file out/flags-ready.txt",
+            "passed": true,
+            "detail": "10 bytes"
+          },
+          {
+            "check": "children admitted >= 1, results >= 1, merged >= 1",
+            "passed": true,
+            "detail": "admitted=1 results=1 merged=1"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "04cf6eaa52ac09731524e56d1687f4f1",
+          "01a1b6ab98ab76639d2de9655baabda2"
+        ],
+        "model_calls": 11,
+        "input_tokens": 22597,
+        "output_tokens": 352,
+        "cost_usd": 0.006353,
+        "recorded_model_calls": 11,
+        "recorded_output_tokens": 352
+      }
+    },
+    {
+      "task": "subagent/package-versions",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "pkg/x/VERSION",
+          "pkg/y/VERSION",
+          "pkg/VERSIONS"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "pkg/VERSIONS"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 13,
+        "offsets": [
+          1,
+          606
+        ]
+      },
+      "economics": {
+        "model_calls": 13,
+        "input_tokens": 36583,
+        "cached_input_tokens": 0,
+        "output_tokens": 416,
+        "cost_usd": 0.009978,
+        "wall_ms": 6586,
+        "model_ms": 178,
+        "tool_ms": 1247,
+        "tool_calls": 7
+      },
+      "event_log": {
+        "file": "trials/subagent__package-versions-1/events.jsonl",
+        "sha256": "f70c197098046f44549d4ecf9843418a4f048e710af38ddebe9842ad47d65788",
+        "offsets": [
+          1,
+          606
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "subagent",
+      "verifier": {
+        "id": "px184/subagent/package-versions",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file pkg/x/VERSION",
+            "passed": true,
+            "detail": "6 bytes"
+          },
+          {
+            "check": "file pkg/y/VERSION",
+            "passed": true,
+            "detail": "6 bytes"
+          },
+          {
+            "check": "file pkg/VERSIONS",
+            "passed": true,
+            "detail": "16 bytes"
+          },
+          {
+            "check": "children admitted >= 2, results >= 2, merged >= 2",
+            "passed": true,
+            "detail": "admitted=2 results=2 merged=2"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "9e12a9843e59398bc605232b4925eaa7",
+          "01a1b6ababb97af28ffac85007900a6f",
+          "01a1b6abadcd7d51b95a7cf2fb5297bd"
+        ],
+        "model_calls": 19,
+        "input_tokens": 45879,
+        "output_tokens": 608,
+        "cost_usd": 0.012686,
+        "recorded_model_calls": 19,
+        "recorded_output_tokens": 608
+      }
+    },
+    {
+      "task": "subagent/setup-notes",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "scripts/SETUP.md",
+          "out/setup-ready.txt"
+        ],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [
+          "out/setup-ready.txt"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 8,
+        "offsets": [
+          1,
+          358
+        ]
+      },
+      "economics": {
+        "model_calls": 8,
+        "input_tokens": 17835,
+        "cached_input_tokens": 0,
+        "output_tokens": 256,
+        "cost_usd": 0.004971,
+        "wall_ms": 4827,
+        "model_ms": 93,
+        "tool_ms": 773,
+        "tool_calls": 4
+      },
+      "event_log": {
+        "file": "trials/subagent__setup-notes-1/events.jsonl",
+        "sha256": "5c2cb2fc13558bfd48563db483eecb42cdd93e262c24ef7f092389770204b0f0",
+        "offsets": [
+          1,
+          358
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 0,
+      "notes": [],
+      "axis": "subagent",
+      "verifier": {
+        "id": "px184/subagent/setup-notes",
+        "passed": true,
+        "checks": [
+          {
+            "check": "file scripts/SETUP.md",
+            "passed": true,
+            "detail": "15 bytes"
+          },
+          {
+            "check": "file out/setup-ready.txt",
+            "passed": true,
+            "detail": "9 bytes"
+          },
+          {
+            "check": "children admitted >= 1, results >= 1, merged >= 1",
+            "passed": true,
+            "detail": "admitted=1 results=1 merged=1"
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "950d3b3328c0c23eef92e6b44d694900",
+          "01a1b6abac0c78419a9f53052993b3db"
+        ],
+        "model_calls": 11,
+        "input_tokens": 22517,
+        "output_tokens": 352,
+        "cost_usd": 0.006333,
+        "recorded_model_calls": 11,
+        "recorded_output_tokens": 352
+      }
+    }
+  ],
+  "metrics": {
+    "verified_success": {
+      "successes": 40,
+      "n": 40,
+      "rate": 1.0,
+      "ci95": [
+        0.9123783988027134,
+        1.0
+      ]
+    },
+    "first_pass_success": {
+      "successes": 40,
+      "n": 40,
+      "rate": 1.0,
+      "ci95": [
+        0.9123783988027134,
+        1.0
+      ]
+    },
+    "first_candidate_success": {
+      "successes": 40,
+      "n": 40,
+      "rate": 1.0,
+      "ci95": [
+        0.9123783988027134,
+        1.0
+      ]
+    },
+    "repair_loops": {
+      "0": 40
+    },
+    "equivalent_hypothesis_escalations": [
+      0,
+      0.0
+    ],
+    "no_progress_escalations": [
+      0,
+      0.0
+    ],
+    "wrong_effect_attempts_blocked": [
+      0,
+      0.0
+    ],
+    "evidence_coverage": {
+      "successes": 40,
+      "n": 40,
+      "rate": 1.0,
+      "ci95": [
+        0.9123783988027134,
+        1.0
+      ]
+    },
+    "cost_and_time": {
+      "total_cost_usd": 0.150325,
+      "unpriced_trials": 0,
+      "cost_per_verified_success_usd": 0.0037581249999999997,
+      "wall_ms_per_verified_success": 3605.4,
+      "tool_ms_total": 19665,
+      "wall_ms_total": 144216
+    },
+    "retrieval_discipline_edits_without_record": 0,
+    "scope_discipline": {
+      "files_outside_original_plan_per_trial": 0.0,
+      "scope_expansions_per_trial": 0.0,
+      "scope_questions_per_trial": 0.0
+    },
+    "regression_attribution": 0,
+    "flaky_check_rate": [
+      0,
+      0.0
+    ],
+    "test_integrity_violations": 0,
+    "test_selection_quality": "not measured: the fixture suites are below the size at which TARGETED selection differs from the full suite (PX-035 reports it)",
+    "per_task": {
+      "memory/changelog-prefix": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "memory/current-api-version": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "memory/database-name": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "memory/deploy-procedure": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "memory/flaky-upload": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "memory/propose-lint-pitfall": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "memory/propose-port-convention": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "memory/release-owner": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "memory/staging-port": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "memory/timeout-unit": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "skill_use/adr": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "skill_use/branch-name": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "skill_use/changelog-section": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "skill_use/ini-order": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "skill_use/license-header": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "skill_use/metric-name": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "skill_use/release-note": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "skill_use/status-code": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "skill_use/todo-format": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "skill_use/version-bump": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "subagent/api-doc": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "subagent/feature-flags": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "subagent/fixture-json": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "subagent/modules": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "subagent/monthly-notes": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "subagent/package-versions": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "subagent/report": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "subagent/setup-notes": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "subagent/translations": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "subagent/two-parts": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "tool_use/american-spelling": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "tool_use/batch-create": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "tool_use/bump-retries": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "tool_use/count-assets": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "tool_use/find-channel": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "tool_use/fix-typo": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "tool_use/last-commit-subject": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "tool_use/list-cfg-files": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "tool_use/sorted-names": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "tool_use/sum-numbers": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      }
+    }
+  },
+  "generated_at": "2026-11-07T15:41:13Z"
+}

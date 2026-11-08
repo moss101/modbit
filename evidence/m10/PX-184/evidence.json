@@ -1,0 +1,11 @@
+{
+ "task": "PX-184",
+ "requirements": ["REQ-PX-184", "QUAL-PX-184"],
+ "scenarios": ["QUAL-PX-184", "PX-E2E-184"],
+ "evidence_tier": "iteration",
+ "tests": ["benchmarks/agent-engineering/tests/four_axis.rs"],
+ "baseline": {"path": "benchmarks/agent-engineering/baselines/four-axis/baseline.json", "sha256": "e4e380fac17dc75ee444cc5f02fa7ea7c6aa14b9d1c46afcfdd68a70700b5e3b", "modbit_revision": "9915c0749ec5085811f54247c2af92ae09cec06e", "model": "scripted (suites/four-axis/scripted-model.json)", "output_tokens_per_thousand_tasks": 218400},
+ "proof": "Local run (macOS arm64). The real competence-baseline binary drives the real CLI and Core over 40 tasks, 10 per axis (tool use, memory, skill use, sub-agent coordination), each tagged by axis and scored by its own verifier from workspace files, the Core's stored tool results and its event log, with a scripted OpenAI-compatible model: every axis 10/10; each trial's economics (task and children) equal its log's ModelUsageRecorded events and the cost per thousand tasks is computed from them; a re-run compared with the retained baseline shows no difference and passes every gate; an injected regression on the memory axis gives memory 0/10, the other axes 10/10, and compare exits 3 failing the memory gate only. Validation refuses an untagged task, a task without its own verifier, an axis with fewer than ten tasks, a cost not derived from recorded usage and a gate that cannot fail. The crate's 18 tests, clippy -D warnings, fmt and the architecture lints pass. mutation-check.txt shows disabling the gate or forcing the verifier verdict fails the tests.",
+ "limitations": "The retained baseline comes from a scripted model: it measures the harness and the Core's capability paths, not a model's competence; no live model has run the suite. The injected regression is model-side. Baseline event logs and tool results are not retained (the bundle keeps their digests). Goals avoid the Core's failure-report words. The sub-agent axis runs under RUN_EVERYTHING; under ASK a merge approval parks the run where task run --wait does not return. merge does not write axes.json. CI has not run; Windows and Linux untested locally.",
+ "runs": []
+}
