@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2055,
+    "root_and_tooling": 2056,
     "docs_bytes": 2339419
   },
   "sections": [
@@ -3120,8 +3120,8 @@
     },
     {
       "path": "evidence/m10/PX-156/TASK_CARD.md",
-      "bytes": 2987,
-      "sha256": "92f931bb81fd76d36d454f438e6ff4cdc6511b7bd73b7e3c27fe4f765cc70ec3"
+      "bytes": 3837,
+      "sha256": "c333547a362ae80a2feddd1baad14cb092b56ee2c2217019b334b7b07b4c53ec"
     },
     {
       "path": "evidence/m10/PX-156/ci-run-40636209456.json",
@@ -3132,6 +3132,11 @@
       "path": "evidence/m10/PX-156/evidence.json",
       "bytes": 795,
       "sha256": "84ebc9215540a4f01b7f62169f8e14c073cedbbaa915acaf384a89df0471b75c"
+    },
+    {
+      "path": "evidence/m10/PX-156/margin-2026-11-08.txt",
+      "bytes": 826,
+      "sha256": "613024181ef50fab2aaf5c8b5a5ca3e11ec86658d0ba5f688c93e0232c3495c6"
     },
     {
       "path": "evidence/m10/PX-156/mutation-check.txt",
