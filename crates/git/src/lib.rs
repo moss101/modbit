@@ -761,8 +761,8 @@ impl Repo {
         let tmp_index = Self::temp_index_path(&git_dir, "diff");
         let envs = [("GIT_INDEX_FILE", tmp_index.as_str())];
         let diff = (|| -> Result<Diff> {
-            match std::fs::copy(git_dir.join("index"), &tmp_index) {
-                Ok(_) => {}
+            match Self::copy_index(&git_dir.join("index"), Path::new(&tmp_index)) {
+                Ok(()) => {}
                 // No index yet is an empty one, to git and to its copy.
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
                 Err(e) => return Err(Error::Spawn(e)),
@@ -812,6 +812,23 @@ impl Repo {
         } else {
             self.dir.join(git_dir)
         })
+    }
+
+    /// Copy an index for a throwaway one, keeping the original's mtime. Git
+    /// trusts a cached entry's stat only when the entry is older than the
+    /// index file itself (an entry as new as its index is "racily clean" and
+    /// its content is read again). A copy stamped now would trust an entry the
+    /// real index re-reads: a same-size edit in the same second as the last
+    /// index write would vanish from the diff while `git status` shows it.
+    /// The mtime is read before the copy, so an index rewritten meanwhile
+    /// leaves the copy older (more entries re-read), never newer.
+    fn copy_index(src: &Path, dst: &Path) -> std::io::Result<()> {
+        let mtime = std::fs::metadata(src)?.modified()?;
+        std::fs::copy(src, dst)?;
+        std::fs::OpenOptions::new()
+            .write(true)
+            .open(dst)?
+            .set_modified(mtime)
     }
 
     /// A path no other call is using for a throwaway index, in `git_dir`: on
