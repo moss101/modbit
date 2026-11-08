@@ -518,7 +518,7 @@ flowchart LR
 | Task | Status | Title | Acceptance / note |
 |---|---|---|---|
 | `M10.1` | COMPLETE | telemetry/cost/SLO dashboards |  |
-| `M10.2` | NOT_STARTED | updater/signing/SBOM |  |
+| `M10.2` | REAL_TESTING | updater/signing/SBOM |  |
 | `M10.3` | NOT_STARTED | full RC E2E catalog |  |
 | `M10.4` | NOT_STARTED | performance regression gates |  |
 | `M10.5` | NOT_STARTED | docs/runbooks/support diagnostics |  |

@@ -129,6 +129,19 @@ pub fn device_policy_path() -> std::path::PathBuf {
     }
 }
 
+/// The machine's device constraints, read the way a task reads them (same
+/// file, same parse, same fail-closed rule for a file that does not parse).
+/// The desktop updater asks for these offline (`modbit-core device-policy`)
+/// so the `update_channel` and `minimum_version` it enforces are the ones the
+/// Core's own `GetEffectivePolicy` shows (docs/23, M10.2).
+///
+/// # Errors
+/// A device policy file that exists but does not parse.
+pub fn device_constraints() -> Result<Option<modbit_policy::config::DeviceConstraints>, ConfigError>
+{
+    Ok(read_layer(&device_policy_path(), Authority::Device)?.and_then(|l| l.device))
+}
+
 /// Where the admin layer lives.
 fn admin_path(data_dir: &Path) -> std::path::PathBuf {
     std::env::var("MODBIT_ADMIN_CONFIG")

@@ -8,6 +8,7 @@ import { Button, Icon, type IconName } from "@modbit/ui";
 import { THEME_LABEL, THEME_PREFERENCES, type ThemePreference } from "@modbit/design-tokens";
 import type { NotificationKind } from "../notifications.ts";
 import { StateLine } from "../shell/state-line.tsx";
+import { UpdateIndicator } from "../shell/update-indicator.tsx";
 import type { AppState } from "../state/use-app.ts";
 import { ProviderForm } from "./provider-form.tsx";
 import { localMachine } from "../location.ts";
@@ -32,7 +33,7 @@ export const SETTINGS_ENTRIES: readonly SettingsEntry[] = [
   { id: "appearance", group: "App", label: "Appearance", icon: "eye", keywords: "theme dark light high contrast system zoom size" },
   { id: "notifications", group: "App", label: "Notifications", icon: "clock", keywords: "alerts attention completion failure quiet hours" },
   { id: "tools", group: "App", label: "Automations and worktrees", icon: "git-branch", keywords: "automations worktrees dashboard cost" },
-  { id: "about", group: "About", label: "This build", icon: "file-text", keywords: "version platform languages support shortcuts keyboard" },
+  { id: "about", group: "About", label: "This build", icon: "file-text", keywords: "version platform languages support shortcuts keyboard update updates" },
 ];
 
 export const settingsMatches = (e: SettingsEntry, query: string): boolean => {
@@ -320,6 +321,7 @@ export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, onCusto
                 }
               />
             )}
+            <Row title="Updates" detail={<UpdateIndicator />} />
             <Row title="Keyboard shortcuts">
               <Button size="sm" variant="outline" onClick={onShortcuts} data-testid="settings-shortcuts">
                 Show

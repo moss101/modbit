@@ -7,6 +7,7 @@ process.env.MODBIT_EXECD_ORPHAN_GRACE_SECS ??= "5";
 
 export default defineConfig({
   testDir: ".",
+  testIgnore: /packaged.*\.spec\.ts/,
   timeout: 120_000,
   // An assertion without its own timeout waited Playwright's 5 s default, which the Windows and macOS CI runners
   // regularly overran (a task card appearing, a mode acknowledgement): the Core had answered, the wait had not allowed it.

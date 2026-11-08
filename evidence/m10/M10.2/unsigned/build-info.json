@@ -1,0 +1,10 @@
+{
+  "label": "UNSIGNED",
+  "signed": false,
+  "notarized": false,
+  "purpose": "tests only: packaged E2E, render budgets and SBOM; not a release candidate",
+  "version": "0.0.0",
+  "electron": "44.3.0",
+  "commit": "92dd23a48aeef614764e4841267bc0531adf305a",
+  "update_keys_pinned": 0
+}

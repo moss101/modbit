@@ -1,0 +1,10 @@
+target/sbom/modbit-core.cdx.json: CycloneDX 1.5, 416 components, sha256 ebfacb664baa9aafbd028c101a44bc51a6b0aea5cbc020c7c0ad907d85b00263
+target/sbom/modbit-execd.cdx.json: CycloneDX 1.5, 120 components, sha256 821af2995ac78c6df4550fc1a5e1e01926012cb6fdb8a2b249efae8152842795
+target/sbom/desktop.cdx.json: CycloneDX 1.5, 11 components, sha256 7d257a6bdef5c3242f27fcfafd20f0e09bf9b7efe582fee84652f14fee1eca3a
+sbom exit 0
+licenses: 3 SBOM(s) pass the policy
+licenses exit 0
+target/unsigned/modbit-desktop-0.0.0-mac-arm64-UNSIGNED.package.cdx.json: CycloneDX 1.5 package SBOM (UNSIGNED, signed=false), 10 components, 3 linked SBOMs, sha256 5b30df2fc7584a2c190d765a799b9954918cbdac75b0fb30e886ae600608290f
+4 checksums written to target/unsigned/SHA256SUMS-UNSIGNED
+unsigned-bundle: 2 UNSIGNED artifact(s), the package SBOM and SHA256SUMS-UNSIGNED in target/unsigned
+unsigned-bundle exit 0
