@@ -33,3 +33,28 @@ result: qual_px_158_frames_reach_the_compaction_threshold_where_reported_usage_d
   (trigger before request 11, hard 12834, tokens_before 11271): a text-only transcript is estimated as before.
 
 Both mutations reverted; `git diff services/modbit-core/src/runtime.rs` is empty.
+
+## The trigger judged on reported usage (2026-11-08, branch wip/px-158-legs after merging main at ca5b50b4)
+
+The trigger check now compares the provider-reported input (the whole request,
+which is what a provider reports and what the Core's single calibration factor
+corrects) against the soft threshold plus the Core's estimate of the rest of
+the request (`PROMPT_ROOM - budget_tokens`). Margin unchanged (480).
+
+Unmutated: 2 passed.
+  PX-158 text-only: trigger before request 11; reported input crossed 16922 (transcript 10355 + overhead 6567) at request 11; reported input 16861 -> 18010; hard 12575; tokens_before 11271
+  PX-158 1280x800: trigger before request 9; reported input crossed 17041 (transcript 9800 + overhead 7241) at request 9; reported input 17005 -> 18483; hard 11901; tokens_before 11686
+  PX-158 1920x1080: trigger before request 9; reported input crossed 17041 (transcript 9802 + overhead 7239) at request 9; reported input 17005 -> 18483; hard 11903; tokens_before 11694
+
+Mutation A (trigger site counts frames as captions): frames test FAILED (killed):
+  "no compaction started; provider transcript counts: [0, 58, 1535, ..., 20741]"; text-only ok, figures unchanged.
+Mutation B (message_tokens: Media => 0): frames test FAILED (killed):
+  "1280x800: request 2: the Core estimated 8800 (7012 calibrated), the provider reported 8143; the margin is 480"; text-only ok, figures unchanged.
+Mutation C+ (compaction_model::from_window: soft + 1500, the trigger late): both FAILED (killed):
+  frames: "1280x800: request 10: the Core estimated 11783 (10433 calibrated), the provider reported 9931; the margin is 480"
+  text-only: the first compaction is SYNC_FALLBACK, not the soft trigger (tokens_before 12407, budget 12578).
+Mutation C- (soft - 1500, the trigger early): text-only FAILED (killed):
+  "text-only: the Core compacted at a reported input of 15728, under the threshold 16924 by more than the margin 480"
+  frames: ok. A frame is ~1480 tokens per request, so 1500 early moves the frames trigger one request (reported 17005 vs 17028, 23 under); the text-only run's finer steps catch it.
+
+Every mutation reverted with `git checkout --`; `git diff services/modbit-core/src` is empty.

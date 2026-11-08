@@ -44,6 +44,12 @@ const MARGIN: u64 = WINDOW / 50;
 /// Share of the hard budget at which a worker starts (`SOFT_PERCENT` /
 /// `HARD_PERCENT` in `compaction_model`).
 const SOFT_OF_HARD: (u64, u64) = (70, 85);
+/// The room the Core gives the whole prompt at this window: 85 percent of
+/// the window less the answer's budget (`budget=1000` in `MODELS`) and the
+/// estimator margin (`compaction_model::from_window`). The hard budget a
+/// boundary reports is this less the Core's calibrated estimate of the
+/// non-transcript part of the request.
+const PROMPT_ROOM: u64 = (WINDOW - 1_000 - MARGIN) * SOFT_OF_HARD.1 / 100;
 
 /// Frames read in a run: enough to cross the trigger, open an epoch and
 /// keep reading under it.
@@ -446,6 +452,9 @@ struct Trigger {
     /// threshold the worker starts at.
     hard: u64,
     soft: u64,
+    /// The Core's calibrated estimate of the rest of the request (system
+    /// prompt, tool schemas) at that boundary: `PROMPT_ROOM - hard`.
+    overhead: u64,
     /// The provider's count of the transcript of each request.
     transcript: Vec<Count>,
 }
@@ -472,10 +481,15 @@ fn first_trigger(r: &Run) -> Trigger {
         .filter(|e| e["offset"].as_u64().unwrap() < offset)
         .count();
     let hard = p["budget_tokens"].as_u64().unwrap();
+    assert!(
+        hard < PROMPT_ROOM && hard > 2_000,
+        "the hard budget is the prompt room less the overhead, above the floor: {p}"
+    );
     Trigger {
         at,
         hard,
         soft: hard * SOFT_OF_HARD.0 / SOFT_OF_HARD.1,
+        overhead: PROMPT_ROOM - hard,
         transcript: r
             .bodies
             .iter()
@@ -487,10 +501,19 @@ fn first_trigger(r: &Run) -> Trigger {
 /// QUAL-PX-158 "within the calibrated margin", both ways: every request the
 /// Core estimated after the provider first reported is within the margin of
 /// what the provider then reported (the estimate as the Core's calibration
-/// corrects it, by the Core's own `Calibration`), and the trigger fired at a
-/// request whose provider-counted transcript is over the soft threshold, or
+/// corrects it, by the Core's own `Calibration`), and the trigger fired where
+/// the provider-reported usage reached the threshold: at a request whose
+/// reported input is over the soft threshold plus the Core's overhead, or
 /// short of it by no more than the margin, and not one request later than
-/// the provider's count crossed it beyond the margin.
+/// the reported input crossed it beyond the margin.
+///
+/// The comparison is on the whole request because that is what a provider
+/// reports and what the Core's calibration corrects: one factor for the
+/// whole request. How a request splits between transcript and the rest is
+/// not reported, so it cannot be calibrated, and judging the trigger on the
+/// mock's own transcript count would test the estimator's split rather than
+/// the agreement with reported usage (a larger tool schema once moved that
+/// split by more than the margin without the Core's trigger moving).
 async fn assert_within_margin(r: &mut Run, label: &str) -> Trigger {
     let estimates = request_estimates(r).await;
     let reported = reported(&r.events);
@@ -525,24 +548,28 @@ async fn assert_within_margin(r: &mut Run, label: &str) -> Trigger {
         !has_epoch(&r.bodies[at]),
         "{label}: the request after a soft trigger still carries the measured transcript"
     );
-    let before = t.transcript[at - 1].total();
-    let measured = t.transcript[at].total();
-    let crossed = t.transcript.iter().position(|c| c.total() > t.soft);
+    // The soft threshold in the provider's terms: the transcript threshold
+    // plus the rest of the request, as the Core estimated it.
+    let threshold = t.soft + t.overhead;
+    let before = reported[at - 1];
+    let measured = reported[at];
+    let crossed = reported.iter().position(|u| *u > threshold);
     eprintln!(
-        "PX-158 {label}: trigger before request {at}; provider's transcript count crossed the soft threshold {} at request {crossed:?} (None: the epoch installed first); provider transcript {before} -> {measured}; hard {}; margin {MARGIN}; CompactionStarted.tokens_before {}",
+        "PX-158 {label}: trigger before request {at}; reported input crossed the soft threshold {threshold} (transcript {} + overhead {}) at request {crossed:?} (None: the epoch installed first); reported input {before} -> {measured}; provider transcript {} -> {}; hard {}; margin {MARGIN}; CompactionStarted.tokens_before {}",
         t.soft,
+        t.overhead,
+        t.transcript[at - 1].total(),
+        t.transcript[at].total(),
         t.hard,
         payload(of_type(&r.events, "CompactionStarted")[0])["tokens_before"]
     );
     assert!(
-        measured + MARGIN > t.soft,
-        "{label}: the Core compacted at a provider-counted transcript of {measured}, under the threshold {} by more than the margin {MARGIN}",
-        t.soft
+        measured + MARGIN > threshold,
+        "{label}: the Core compacted at a reported input of {measured}, under the threshold {threshold} by more than the margin {MARGIN}"
     );
     assert!(
-        before <= t.soft + MARGIN,
-        "{label}: the provider's count crossed the threshold {} by more than the margin a request earlier ({before}) and the Core did not compact",
-        t.soft
+        before <= threshold + MARGIN,
+        "{label}: the reported input crossed the threshold {threshold} by more than the margin a request earlier ({before}) and the Core did not compact"
     );
     t
 }
