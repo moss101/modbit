@@ -2,7 +2,7 @@
   "schema": "modbit-competence-baseline/1",
   "suite_id": "gui-regression",
   "suite_version": "1.0.0",
-  "task_list_digest": "c5273e1464db676ed13c51f7048d743bf27652f5e476137fea6800a6aa9b2b4f",
+  "task_list_digest": "02bdb743e6da71c8df599409f0f4a09dda7f27743955deee5039f4ab743d9d0b",
   "tasks": [
     "gui_element/orders-submit-for-ada",
     "gui_element/orders-quantity-four",
@@ -35,7 +35,7 @@
     "configuration": "direct",
     "endpoint": "openai",
     "model": "gpt-5-mini",
-    "base_url_host": "127.0.0.1:57120",
+    "base_url_host": "127.0.0.1:64406",
     "catalog_prices_usd_per_mtok": null,
     "gold_patch_access": false,
     "images": [],
@@ -43,8 +43,8 @@
     "approvals": "approve-computer-inputs"
   },
   "environment": {
-    "modbit_revision": "029b8ac039ea1c93cea4624720f264e2db4469a6",
-    "build_digest": "8c3a03b6bfca9c9450ba41850e5b047d0ae9b4b6fa4ee14d32a18f5592173185",
+    "modbit_revision": "fc367f897f46ac5e3eab9c5a0fff703b86464bea",
+    "build_digest": "2d5b5f19f1973e08c1deb96c71467c7922b6714c1491fdf99fa79f4506cd9cd2",
     "harness_version": "competence-baseline/1",
     "toolchains": {
       "cargo": "cargo 1.97.1 (c980f4866 2026-06-30)",
@@ -106,14 +106,14 @@
         "cached_input_tokens": 0,
         "output_tokens": 128,
         "cost_usd": 0.002566,
-        "wall_ms": 5776,
-        "model_ms": 65,
+        "wall_ms": 5899,
+        "model_ms": 74,
         "tool_ms": 0,
         "tool_calls": 0
       },
       "event_log": {
         "file": "trials/gui_element__orders-submit-for-ada-1/events.jsonl",
-        "sha256": "32ab427b45e7ec15359a2177fe32ad9882a3faf7dbd140d971f69ca24df4390a",
+        "sha256": "e8175282d87cacc1f35c3c88f5f7994cae93add3cbd9e4ab8c2369aa7b1127da",
         "offsets": [
           1,
           396
@@ -132,7 +132,7 @@
           {
             "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.orders\",\"kind\":\"accessibility\",\"name\":\"Status\",\"role\":\"label\",\"value\":\"submitted\"} and it passed",
             "passed": true,
-            "detail": "PASS: state read of org.modbit.bench.orders (snapshot s6f36f29e7453)"
+            "detail": "PASS: state read of org.modbit.bench.orders (snapshot sf32921b01deb)"
           },
           {
             "check": "the Core judged the GUI run VERIFIED",
@@ -153,13 +153,13 @@
       },
       "usage": {
         "tasks": [
-          "b281beacd3505b2f70380e9c344c6aa4",
-          "01a1ba578b9272139de1c6821a54b521"
+          "199bd1ac1288a30f25187716d9f36451",
+          "01a1bb4dbfc27f0198573e2c635ab480"
         ],
         "model_calls": 12,
-        "input_tokens": 34301,
+        "input_tokens": 34357,
         "output_tokens": 384,
-        "cost_usd": 0.009343,
+        "cost_usd": 0.009358,
         "recorded_model_calls": 12,
         "recorded_output_tokens": 384
       }
@@ -214,14 +214,14 @@
         "cached_input_tokens": 0,
         "output_tokens": 128,
         "cost_usd": 0.002558,
-        "wall_ms": 6013,
-        "model_ms": 67,
+        "wall_ms": 5981,
+        "model_ms": 84,
         "tool_ms": 0,
         "tool_calls": 0
       },
       "event_log": {
         "file": "trials/gui_element__orders-quantity-four-1/events.jsonl",
-        "sha256": "c26acb886d8491343636ba3db0c301c20a40848528eebf6b895270e4a8dd04a2",
+        "sha256": "f318faddc0c3522373e7056c255f473c1f23cdceaba64c926b300a0b44d2c790",
         "offsets": [
           1,
           396
@@ -240,7 +240,7 @@
           {
             "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.orders\",\"kind\":\"accessibility\",\"name\":\"Status\",\"role\":\"label\",\"value\":\"submitted\"} and it passed",
             "passed": true,
-            "detail": "PASS: state read of org.modbit.bench.orders (snapshot s659288eb1326)"
+            "detail": "PASS: state read of org.modbit.bench.orders (snapshot s9004a3f7be51)"
           },
           {
             "check": "the Core judged the GUI run VERIFIED",
@@ -261,13 +261,13 @@
       },
       "usage": {
         "tasks": [
-          "77ab2195955fe01d64e6298387042760",
-          "01a1ba578b927a01a239dd08ad00e572"
+          "35ff11c84fc98cfdf6a8e08ff4b717df",
+          "01a1bb4dbfc274e0b9cf158fd3daf15e"
         ],
         "model_calls": 12,
-        "input_tokens": 34109,
+        "input_tokens": 34165,
         "output_tokens": 384,
-        "cost_usd": 0.009296,
+        "cost_usd": 0.00931,
         "recorded_model_calls": 12,
         "recorded_output_tokens": 384
       }
@@ -322,14 +322,14 @@
         "cached_input_tokens": 0,
         "output_tokens": 128,
         "cost_usd": 0.002545,
-        "wall_ms": 5165,
-        "model_ms": 79,
+        "wall_ms": 5159,
+        "model_ms": 70,
         "tool_ms": 0,
         "tool_calls": 0
       },
       "event_log": {
         "file": "trials/gui_element__orders-express-1/events.jsonl",
-        "sha256": "8488eb10071bfcafcaa5d0befe5c24790642f44180ac52dfa512f3622a770470",
+        "sha256": "c4711afda502031dad0f9a95f256b4a47c3c9c0d78a31534157903e0295ea9f0",
         "offsets": [
           1,
           334
@@ -348,7 +348,7 @@
           {
             "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.orders\",\"kind\":\"accessibility\",\"name\":\"Express delivery\",\"role\":\"checkbox\",\"value\":\"on\"} and it passed",
             "passed": true,
-            "detail": "PASS: state read of org.modbit.bench.orders (snapshot s25fa92fce9e4)"
+            "detail": "PASS: state read of org.modbit.bench.orders (snapshot sf678880e3279)"
           },
           {
             "check": "the Core judged the GUI run VERIFIED",
@@ -369,13 +369,13 @@
       },
       "usage": {
         "tasks": [
-          "a41eda32dd927c6cefaaa28c9de68c00",
-          "01a1ba578b9271018428368d71c88c74"
+          "69a524b1e498c290ec160b593fc58ab5",
+          "01a1bb4dbfc27142b563c8894fc7d845"
         ],
         "model_calls": 10,
-        "input_tokens": 24747,
+        "input_tokens": 24769,
         "output_tokens": 320,
-        "cost_usd": 0.006827,
+        "cost_usd": 0.0068319999999999995,
         "recorded_model_calls": 10,
         "recorded_output_tokens": 320
       }
@@ -430,14 +430,14 @@
         "cached_input_tokens": 0,
         "output_tokens": 128,
         "cost_usd": 0.002555,
-        "wall_ms": 6012,
-        "model_ms": 68,
+        "wall_ms": 6013,
+        "model_ms": 49,
         "tool_ms": 0,
         "tool_calls": 0
       },
       "event_log": {
         "file": "trials/gui_element__orders-clear-1/events.jsonl",
-        "sha256": "3ea0562afcc7bcd6f116485904eb5bd213118f08e9129751c8c6faddee7b3d24",
+        "sha256": "bd87c37cc842df618e5726ea062f999294f435232f3ecf974a788657474ca839",
         "offsets": [
           1,
           396
@@ -456,7 +456,7 @@
           {
             "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.orders\",\"kind\":\"accessibility\",\"name\":\"Status\",\"role\":\"label\",\"value\":\"cleared\"} and it passed",
             "passed": true,
-            "detail": "PASS: state read of org.modbit.bench.orders (snapshot s1ec6cf882a2d)"
+            "detail": "PASS: state read of org.modbit.bench.orders (snapshot s5edaf3ef7701)"
           },
           {
             "check": "the Core judged the GUI run VERIFIED",
@@ -477,13 +477,13 @@
       },
       "usage": {
         "tasks": [
-          "ec622fd35252e9f0e6a56f2c1b502612",
-          "01a1ba578b927931bf63d72f86062f8c"
+          "1d0cfd0193cba246af7d13516a955f0e",
+          "01a1bb4dbfc27241a82b742984937b72"
         ],
         "model_calls": 12,
-        "input_tokens": 34253,
+        "input_tokens": 34309,
         "output_tokens": 384,
-        "cost_usd": 0.009330999999999999,
+        "cost_usd": 0.009345,
         "recorded_model_calls": 12,
         "recorded_output_tokens": 384
       }
@@ -538,14 +538,14 @@
         "cached_input_tokens": 0,
         "output_tokens": 128,
         "cost_usd": 0.002556,
-        "wall_ms": 3857,
-        "model_ms": 49,
+        "wall_ms": 3610,
+        "model_ms": 48,
         "tool_ms": 0,
         "tool_calls": 0
       },
       "event_log": {
         "file": "trials/gui_element__notes-bold-1/events.jsonl",
-        "sha256": "409640290970f60a662303957cae01ab6d7428eab56b3389d42e4a03b8684201",
+        "sha256": "eecfd8d4317e63295fdd0fd6baad07dc9cd297e0c544c2d9b03337269d4864c9",
         "offsets": [
           1,
           334
@@ -564,7 +564,7 @@
           {
             "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.notes\",\"kind\":\"accessibility\",\"name\":\"Style\",\"role\":\"label\",\"value\":\"bold\"} and it passed",
             "passed": true,
-            "detail": "PASS: state read of org.modbit.bench.notes (snapshot scd4c2cea45ad)"
+            "detail": "PASS: state read of org.modbit.bench.notes (snapshot sac125fdb1090)"
           },
           {
             "check": "the Core judged the GUI run VERIFIED",
@@ -580,13 +580,13 @@
       },
       "usage": {
         "tasks": [
-          "181cb8fc6e1cc0957e61feb4f1f6c974",
-          "01a1ba57a6357091a5f1cc1252e01cdb"
+          "99d154ff486d3d233975d8895444ad7e",
+          "01a1bb4dd9097601947cfa75c56ec991"
         ],
         "model_calls": 10,
-        "input_tokens": 24322,
+        "input_tokens": 24345,
         "output_tokens": 320,
-        "cost_usd": 0.00672,
+        "cost_usd": 0.006726,
         "recorded_model_calls": 10,
         "recorded_output_tokens": 320
       }
@@ -641,14 +641,14 @@
         "cached_input_tokens": 0,
         "output_tokens": 128,
         "cost_usd": 0.002557,
-        "wall_ms": 4082,
-        "model_ms": 46,
+        "wall_ms": 3790,
+        "model_ms": 41,
         "tool_ms": 0,
         "tool_calls": 0
       },
       "event_log": {
         "file": "trials/gui_element__notes-set-text-1/events.jsonl",
-        "sha256": "a497fa61fd6d10cfdab65d061904ad1a6115bcad26cf7b7fc534cb907e111b0b",
+        "sha256": "1ed2c8befed7392f4e64172752be996bcd30f87bc7cc4cb3bfbb26ad25887178",
         "offsets": [
           1,
           334
@@ -667,7 +667,7 @@
           {
             "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.notes\",\"kind\":\"accessibility\",\"name\":\"Document\",\"role\":\"textarea\",\"value\":\"Meeting at noon\"} and it passed",
             "passed": true,
-            "detail": "PASS: state read of org.modbit.bench.notes (snapshot s5bf67b15a590)"
+            "detail": "PASS: state read of org.modbit.bench.notes (snapshot s0032f44ac6b2)"
           },
           {
             "check": "the Core judged the GUI run VERIFIED",
@@ -688,13 +688,13 @@
       },
       "usage": {
         "tasks": [
-          "f4bbd19f2713e7fd8d8c1cbb6da0e2bc",
-          "01a1ba57a88673c1ab1672bec6f5b4a8"
+          "bcc9618ac7b6346afe4af7cee762fb2e",
+          "01a1bb4ddd2a7432844da4871e0bb44f"
         ],
         "model_calls": 10,
-        "input_tokens": 24369,
+        "input_tokens": 24391,
         "output_tokens": 320,
-        "cost_usd": 0.006732,
+        "cost_usd": 0.006737999999999999,
         "recorded_model_calls": 10,
         "recorded_output_tokens": 320
       }
@@ -749,14 +749,14 @@
         "cached_input_tokens": 0,
         "output_tokens": 128,
         "cost_usd": 0.002543,
-        "wall_ms": 4337,
-        "model_ms": 53,
+        "wall_ms": 3774,
+        "model_ms": 43,
         "tool_ms": 0,
         "tool_calls": 0
       },
       "event_log": {
         "file": "trials/gui_element__settings-dark-mode-1/events.jsonl",
-        "sha256": "2b03c350cb9e967ebe95c4be6720a570d903dfdac85a12c6e3e69a9096e8a2f6",
+        "sha256": "64cb098ddcb00e4f6651676eab962f5f83cf6fb42254e52c956c370ac35b1928",
         "offsets": [
           1,
           334
@@ -775,7 +775,7 @@
           {
             "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.settings\",\"kind\":\"accessibility\",\"name\":\"Theme\",\"role\":\"label\",\"value\":\"dark\"} and it passed",
             "passed": true,
-            "detail": "PASS: state read of org.modbit.bench.settings (snapshot s2e6028c1eb55)"
+            "detail": "PASS: state read of org.modbit.bench.settings (snapshot s10cff9935a14)"
           },
           {
             "check": "the Core judged the GUI run VERIFIED",
@@ -796,8 +796,8 @@
       },
       "usage": {
         "tasks": [
-          "3b5d70a769907660c361bda0dbb72e87",
-          "01a1ba57aa707b11a2cb216d5f510e34"
+          "04054c874ba782c60964bb260d131a07",
+          "01a1bb4dde49773080602dd1129ecb68"
         ],
         "model_calls": 10,
         "input_tokens": 24637,
@@ -857,14 +857,14 @@
         "cached_input_tokens": 0,
         "output_tokens": 128,
         "cost_usd": 0.002561,
-        "wall_ms": 4533,
-        "model_ms": 43,
+        "wall_ms": 4206,
+        "model_ms": 50,
         "tool_ms": 0,
         "tool_calls": 0
       },
       "event_log": {
         "file": "trials/gui_element__settings-font-apply-1/events.jsonl",
-        "sha256": "f5f9c96ee70ffa3b1c0eca30a53fa21636f155bf257f00d3df1d78fd5cfab735",
+        "sha256": "91c1e01a5e5beda6d5a48ac756ac80cb6f8c709fdccc25a8420a50e45628b602",
         "offsets": [
           1,
           396
@@ -883,7 +883,7 @@
           {
             "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.settings\",\"kind\":\"accessibility\",\"name\":\"Settings state\",\"role\":\"label\",\"value\":\"applied\"} and it passed",
             "passed": true,
-            "detail": "PASS: state read of org.modbit.bench.settings (snapshot s2f72ab880d3d)"
+            "detail": "PASS: state read of org.modbit.bench.settings (snapshot sc0407b1a281c)"
           },
           {
             "check": "the Core judged the GUI run VERIFIED",
@@ -904,8 +904,8 @@
       },
       "usage": {
         "tasks": [
-          "f43ced360240e1973bd3b59e4c4f1981",
-          "01a1ba57aa707b82a36f451db5417d50"
+          "2959830f29c256db1ca7f9f813d24fce",
+          "01a1bb4ddf0679b09d24269e93eb65af"
         ],
         "model_calls": 12,
         "input_tokens": 33805,
@@ -965,14 +965,14 @@
         "cached_input_tokens": 0,
         "output_tokens": 128,
         "cost_usd": 0.002551,
-        "wall_ms": 4181,
-        "model_ms": 41,
+        "wall_ms": 3566,
+        "model_ms": 54,
         "tool_ms": 0,
         "tool_calls": 0
       },
       "event_log": {
         "file": "trials/gui_element__settings-notifications-off-1/events.jsonl",
-        "sha256": "29c024843c8edc45bbb5950db8a7144b69a0235e8055e9b1ed6f36124aaad133",
+        "sha256": "64c7ecd47de8291ac65291687ed515401bc63a1eb2b87ce120f3c74b13234c55",
         "offsets": [
           1,
           334
@@ -991,7 +991,7 @@
           {
             "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.settings\",\"kind\":\"accessibility\",\"name\":\"Notifications\",\"role\":\"switch\",\"value\":\"off\"} and it passed",
             "passed": true,
-            "detail": "PASS: state read of org.modbit.bench.settings (snapshot sde32a8b7f236)"
+            "detail": "PASS: state read of org.modbit.bench.settings (snapshot sbd50df75723f)"
           },
           {
             "check": "the Core judged the GUI run VERIFIED",
@@ -1012,8 +1012,8 @@
       },
       "usage": {
         "tasks": [
-          "6352cad9d7309aa64e446b59df2173a7",
-          "01a1ba57be1076f3a79b8cc23ed29df6"
+          "457fef190873148ea04445ab4bb0fb6a",
+          "01a1bb4defcf7e30bb9262d7fc099604"
         ],
         "model_calls": 10,
         "input_tokens": 24654,
@@ -1073,14 +1073,14 @@
         "cached_input_tokens": 0,
         "output_tokens": 128,
         "cost_usd": 0.002565,
-        "wall_ms": 4966,
-        "model_ms": 43,
+        "wall_ms": 5171,
+        "model_ms": 62,
         "tool_ms": 0,
         "tool_calls": 0
       },
       "event_log": {
         "file": "trials/gui_element__files-archive-confirm-1/events.jsonl",
-        "sha256": "d9903c1a71f2203ff8afd58f6ea06bbf4cc1a7fff8de1d44a673ca46bf2a9c75",
+        "sha256": "e6cf32571a094afaa7e801b9f6df9183d0a90b898a09beda1944e2c8685aff1d",
         "offsets": [
           1,
           395
@@ -1099,7 +1099,7 @@
           {
             "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.files\",\"kind\":\"accessibility\",\"name\":\"File state\",\"role\":\"label\",\"value\":\"archived\"} and it passed",
             "passed": true,
-            "detail": "PASS: state read of org.modbit.bench.files (snapshot s4616885be7d7)"
+            "detail": "PASS: state read of org.modbit.bench.files (snapshot s8ed95aa65570)"
           },
           {
             "check": "the Core judged the GUI run VERIFIED",
@@ -1115,8 +1115,8 @@
       },
       "usage": {
         "tasks": [
-          "7ceedee035777560f350243000ea5f2b",
-          "01a1ba57bf907f21b555735079f36c67"
+          "46c197f185408673bec1a797c427f8f6",
+          "01a1bb4df38c7bb0bc3f0ab3dad54921"
         ],
         "model_calls": 12,
         "input_tokens": 32216,
@@ -1176,14 +1176,14 @@
         "cached_input_tokens": 0,
         "output_tokens": 128,
         "cost_usd": 0.002573,
-        "wall_ms": 5015,
-        "model_ms": 66,
+        "wall_ms": 5121,
+        "model_ms": 60,
         "tool_ms": 0,
         "tool_calls": 0
       },
       "event_log": {
         "file": "trials/gui_element__files-archive-cancel-1/events.jsonl",
-        "sha256": "b09e7bb6104bdd7e934aa833beed2023d62fd226ae48cc48f60da707cf8c2587",
+        "sha256": "342039174060f083039192bf38b09ca5af68db8ff1c10f5c5f110eb758161042",
         "offsets": [
           1,
           395
@@ -1202,7 +1202,7 @@
           {
             "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.files\",\"kind\":\"accessibility\",\"name\":\"File state\",\"role\":\"label\",\"value\":\"kept\"} and it passed",
             "passed": true,
-            "detail": "PASS: state read of org.modbit.bench.files (snapshot s6814a70fcc12)"
+            "detail": "PASS: state read of org.modbit.bench.files (snapshot s35912977f42a)"
           },
           {
             "check": "the Core judged the GUI run VERIFIED",
@@ -1218,11 +1218,11 @@
       },
       "usage": {
         "tasks": [
-          "15ee4b580b07197094ab0bf1c6ac368d",
-          "01a1ba57c20b7af0be5c85e58716e11e"
+          "877acca65af5814a7f734e23407a46cc",
+          "01a1bb4df4407ee39af35770bee1b850"
         ],
         "model_calls": 12,
-        "input_tokens": 32341,
+        "input_tokens": 32342,
         "output_tokens": 384,
         "cost_usd": 0.008854,
         "recorded_model_calls": 12,
@@ -1279,14 +1279,14 @@
         "cached_input_tokens": 0,
         "output_tokens": 128,
         "cost_usd": 0.002597,
-        "wall_ms": 5755,
-        "model_ms": 38,
+        "wall_ms": 6086,
+        "model_ms": 57,
         "tool_ms": 0,
         "tool_calls": 0
       },
       "event_log": {
         "file": "trials/gui_element__ledger-copy-invoice-total-1/events.jsonl",
-        "sha256": "c87a92050831c6c6c98992209f9c3a9fddd2772935d0beb85b6ceabfa037a4ee",
+        "sha256": "487e1273c7fc3ad894f5e1e7528cafe4e4c52ffce78e2224d870458fbbfbfa22",
         "offsets": [
           1,
           546
@@ -1305,7 +1305,7 @@
           {
             "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.ledger\",\"kind\":\"accessibility\",\"name\":\"Entry state\",\"role\":\"label\",\"value\":\"recorded\"} and it passed",
             "passed": true,
-            "detail": "PASS: state read of org.modbit.bench.ledger (snapshot sac18f5f44f27)"
+            "detail": "PASS: state read of org.modbit.bench.ledger (snapshot s39e40d158cc4)"
           },
           {
             "check": "the Core judged the GUI run VERIFIED",
@@ -1331,13 +1331,13 @@
       },
       "usage": {
         "tasks": [
-          "9eb8d59d9e1646946aa776fdce8e4f9c",
-          "01a1ba57c3107571a13c3b92f8dcf81b"
+          "fe8116ee7eb61d308b9e35f494c1861e",
+          "01a1bb4df73079d19e3dec272e5fca23"
         ],
         "model_calls": 17,
-        "input_tokens": 59404,
+        "input_tokens": 59506,
         "output_tokens": 544,
-        "cost_usd": 0.015939,
+        "cost_usd": 0.015964,
         "recorded_model_calls": 17,
         "recorded_output_tokens": 544
       }
@@ -1392,14 +1392,14 @@
         "cached_input_tokens": 0,
         "output_tokens": 128,
         "cost_usd": 0.00255,
-        "wall_ms": 4387,
-        "model_ms": 66,
+        "wall_ms": 3331,
+        "model_ms": 40,
         "tool_ms": 0,
         "tool_calls": 0
       },
       "event_log": {
         "file": "trials/gui_input__notes-type-text-1/events.jsonl",
-        "sha256": "eeeec54c726d3a0f9d646a1de10e92d7cee51009a3af00a997fae9fb77eb019d",
+        "sha256": "ff68951256b8991514e1949ac442f59b8d2e569e4197806e6140bcf4545b56c7",
         "offsets": [
           1,
           334
@@ -1418,7 +1418,7 @@
           {
             "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.notes\",\"kind\":\"accessibility\",\"name\":\"Document\",\"role\":\"textarea\",\"value\":\"hello world\"} and it passed",
             "passed": true,
-            "detail": "PASS: state read of org.modbit.bench.notes (snapshot s28de1b02253a)"
+            "detail": "PASS: state read of org.modbit.bench.notes (snapshot se2f66f2defb2)"
           },
           {
             "check": "the Core judged the GUI run VERIFIED",
@@ -1434,13 +1434,13 @@
       },
       "usage": {
         "tasks": [
-          "a9392c2aec3b9ede6caeb7df85f7eac8",
-          "01a1ba57d6dd79a182ce757c82ad11ee"
+          "f3a23a4d2398d7a81f6d90f2d32db15f",
+          "01a1bb4e06f57b129be37182cb08c0bd"
         ],
         "model_calls": 10,
-        "input_tokens": 24242,
+        "input_tokens": 24265,
         "output_tokens": 320,
-        "cost_usd": 0.006701,
+        "cost_usd": 0.006707,
         "recorded_model_calls": 10,
         "recorded_output_tokens": 320
       }
@@ -1495,14 +1495,14 @@
         "cached_input_tokens": 0,
         "output_tokens": 128,
         "cost_usd": 0.002555,
-        "wall_ms": 3899,
-        "model_ms": 41,
+        "wall_ms": 3668,
+        "model_ms": 56,
         "tool_ms": 0,
         "tool_calls": 0
       },
       "event_log": {
         "file": "trials/gui_input__notes-save-shortcut-1/events.jsonl",
-        "sha256": "84d08154510a77829c6e94ac86b7e4336a5fd6f7d38fe9ae5083e0d585b46786",
+        "sha256": "a4a7e984b4c2e7489e776efc36b364686675ca9eacec1d49f7b3ae8845fbc8b9",
         "offsets": [
           1,
           334
@@ -1521,7 +1521,7 @@
           {
             "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.notes\",\"kind\":\"accessibility\",\"name\":\"Saved state\",\"role\":\"label\",\"value\":\"saved\"} and it passed",
             "passed": true,
-            "detail": "PASS: state read of org.modbit.bench.notes (snapshot sb78c805f00df)"
+            "detail": "PASS: state read of org.modbit.bench.notes (snapshot sf487cf53e21b)"
           },
           {
             "check": "the Core judged the GUI run VERIFIED",
@@ -1542,13 +1542,13 @@
       },
       "usage": {
         "tasks": [
-          "71215d7b08cda077b1ffc8260fa61e2d",
-          "01a1ba57daff7ee1b9c4c43fb8cd6945"
+          "e27296d52d9a2c3163b38237aba1af4d",
+          "01a1bb4e0ecc7a819e48e83360559165"
         ],
         "model_calls": 10,
-        "input_tokens": 24289,
+        "input_tokens": 24311,
         "output_tokens": 320,
-        "cost_usd": 0.006713,
+        "cost_usd": 0.006718,
         "recorded_model_calls": 10,
         "recorded_output_tokens": 320
       }
@@ -1603,14 +1603,14 @@
         "cached_input_tokens": 0,
         "output_tokens": 128,
         "cost_usd": 0.002572,
-        "wall_ms": 4293,
-        "model_ms": 42,
+        "wall_ms": 4193,
+        "model_ms": 56,
         "tool_ms": 0,
         "tool_calls": 0
       },
       "event_log": {
         "file": "trials/gui_input__notes-type-and-save-1/events.jsonl",
-        "sha256": "d997b663aabf3053b42f024e3edce14c3a3507c05f73879d3e79b21b58e50689",
+        "sha256": "1fe168bb74aec6cfd6f60894fc65867116c9187515abe74fe55a2ad88cacd2ba",
         "offsets": [
           1,
           396
@@ -1629,7 +1629,7 @@
           {
             "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.notes\",\"kind\":\"accessibility\",\"name\":\"Saved state\",\"role\":\"label\",\"value\":\"saved\"} and it passed",
             "passed": true,
-            "detail": "PASS: state read of org.modbit.bench.notes (snapshot s50e85fac7015)"
+            "detail": "PASS: state read of org.modbit.bench.notes (snapshot s98676825aaea)"
           },
           {
             "check": "the Core judged the GUI run VERIFIED",
@@ -1650,13 +1650,13 @@
       },
       "usage": {
         "tasks": [
-          "369cb080adf91e8a1c21326ed5f7c78d",
-          "01a1ba57ddbf7620b0b354ce573614ab"
+          "900a5c0b6d92ea4e4c44680ce4ce9f65",
+          "01a1bb4e0efa7e33bf088c98b74c3164"
         ],
         "model_calls": 12,
-        "input_tokens": 32942,
+        "input_tokens": 32998,
         "output_tokens": 384,
-        "cost_usd": 0.009004,
+        "cost_usd": 0.009018,
         "recorded_model_calls": 12,
         "recorded_output_tokens": 384
       }
@@ -1711,14 +1711,14 @@
         "cached_input_tokens": 0,
         "output_tokens": 128,
         "cost_usd": 0.002563,
-        "wall_ms": 4234,
-        "model_ms": 42,
+        "wall_ms": 4720,
+        "model_ms": 37,
         "tool_ms": 0,
         "tool_calls": 0
       },
       "event_log": {
         "file": "trials/gui_input__search-type-enter-1/events.jsonl",
-        "sha256": "53208462895b4684e135f15a2e6e5c78e2250159f9b6a1f7d62840e92a9287e4",
+        "sha256": "38de28252b88c866d63a4bee575cfdfef0f5297424442a7bdf6d64e0723694bc",
         "offsets": [
           1,
           396
@@ -1737,7 +1737,7 @@
           {
             "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.search\",\"kind\":\"accessibility\",\"name\":\"Results\",\"role\":\"label\",\"value\":\"results ready\"} and it passed",
             "passed": true,
-            "detail": "PASS: state read of org.modbit.bench.search (snapshot s1bc043379e32)"
+            "detail": "PASS: state read of org.modbit.bench.search (snapshot s832a480e7655)"
           },
           {
             "check": "the Core judged the GUI run VERIFIED",
@@ -1758,13 +1758,13 @@
       },
       "usage": {
         "tasks": [
-          "0999f4f2957a733586240f018866b46e",
-          "01a1ba57e1ac74b19ebe73b1889c953a"
+          "b5351f2242214047e896f496d6cec0c4",
+          "01a1bb4e15487c43ba39b42e5f60fb06"
         ],
         "model_calls": 12,
-        "input_tokens": 31946,
+        "input_tokens": 32000,
         "output_tokens": 384,
-        "cost_usd": 0.008754000000000001,
+        "cost_usd": 0.008768,
         "recorded_model_calls": 12,
         "recorded_output_tokens": 384
       }
@@ -1819,14 +1819,14 @@
         "cached_input_tokens": 0,
         "output_tokens": 128,
         "cost_usd": 0.002569,
-        "wall_ms": 4833,
-        "model_ms": 40,
+        "wall_ms": 4392,
+        "model_ms": 63,
         "tool_ms": 0,
         "tool_calls": 0
       },
       "event_log": {
         "file": "trials/gui_input__orders-customer-by-typing-1/events.jsonl",
-        "sha256": "531401929db6bebcbe98bfd407a6f0797839b8862ef378d70e43f7f73c37ee9c",
+        "sha256": "21aa1ee30447ded3eb299a931d0092af4c18b7bb6e1edd11795ec485b47d3d7e",
         "offsets": [
           1,
           396
@@ -1845,7 +1845,7 @@
           {
             "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.orders\",\"kind\":\"accessibility\",\"name\":\"Status\",\"role\":\"label\",\"value\":\"customer entered\"} and it passed",
             "passed": true,
-            "detail": "PASS: state read of org.modbit.bench.orders (snapshot s22bd406048e5)"
+            "detail": "PASS: state read of org.modbit.bench.orders (snapshot s702c4f19fb80)"
           },
           {
             "check": "the Core judged the GUI run VERIFIED",
@@ -1866,13 +1866,13 @@
       },
       "usage": {
         "tasks": [
-          "5bb842d59d39aa486cb5da3e376757c3",
-          "01a1ba57ee857462b25af332b2490592"
+          "90a613272f781ad308ecd24db2357f2f",
+          "01a1bb4e1b587e01b7e4d156ccbfb678"
         ],
         "model_calls": 12,
-        "input_tokens": 34425,
+        "input_tokens": 34480,
         "output_tokens": 384,
-        "cost_usd": 0.009374,
+        "cost_usd": 0.009388,
         "recorded_model_calls": 12,
         "recorded_output_tokens": 384
       }
@@ -1927,14 +1927,14 @@
         "cached_input_tokens": 0,
         "output_tokens": 128,
         "cost_usd": 0.002585,
-        "wall_ms": 4854,
-        "model_ms": 46,
+        "wall_ms": 4623,
+        "model_ms": 54,
         "tool_ms": 0,
         "tool_calls": 0
       },
       "event_log": {
         "file": "trials/gui_input__orders-stamp-by-click-1/events.jsonl",
-        "sha256": "f4f7fde84eafb8c65af04ed0fb521615c926835898eb33e94d24d5f73f2b7576",
+        "sha256": "d06993f1f021b3ad7d874528b716e64074a70159efa0739fde62e8561dc8d8f8",
         "offsets": [
           1,
           362
@@ -1953,7 +1953,7 @@
           {
             "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.orders\",\"kind\":\"accessibility\",\"name\":\"Status\",\"role\":\"label\",\"value\":\"stamped\"} and it passed",
             "passed": true,
-            "detail": "PASS: state read of org.modbit.bench.orders (snapshot s250c7bdad89d)"
+            "detail": "PASS: state read of org.modbit.bench.orders (snapshot s0729f373fa54)"
           },
           {
             "check": "the Core judged the GUI run VERIFIED",
@@ -1969,13 +1969,13 @@
       },
       "usage": {
         "tasks": [
-          "ff200fca527c264040eef3d5b0519711",
-          "01a1ba57f33476419cacd9be9b52a745"
+          "dbd4b2d3bd321edaf55b508da7a9ae0e",
+          "01a1bb4e254f7e339b750c184c998ddd"
         ],
         "model_calls": 11,
-        "input_tokens": 66531,
+        "input_tokens": 66558,
         "output_tokens": 352,
-        "cost_usd": 0.017336,
+        "cost_usd": 0.017343,
         "recorded_model_calls": 11,
         "recorded_output_tokens": 352
       }
@@ -2030,14 +2030,14 @@
         "cached_input_tokens": 0,
         "output_tokens": 128,
         "cost_usd": 0.002583,
-        "wall_ms": 4841,
-        "model_ms": 50,
+        "wall_ms": 4542,
+        "model_ms": 39,
         "tool_ms": 0,
         "tool_calls": 0
       },
       "event_log": {
         "file": "trials/gui_input__orders-submit-by-click-1/events.jsonl",
-        "sha256": "86dc6114bec85d6e8473da289d08ac568d73e64fe0bf381f787246f84082b497",
+        "sha256": "d9b014f763f93f9d414af9d37a44503e098fe187bafb65ae95d7786d8ee79fe9",
         "offsets": [
           1,
           362
@@ -2056,7 +2056,7 @@
           {
             "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.orders\",\"kind\":\"accessibility\",\"name\":\"Status\",\"role\":\"label\",\"value\":\"submitted\"} and it passed",
             "passed": true,
-            "detail": "PASS: state read of org.modbit.bench.orders (snapshot s4fb652cea125)"
+            "detail": "PASS: state read of org.modbit.bench.orders (snapshot s7fe87d3743bd)"
           },
           {
             "check": "the Core judged the GUI run VERIFIED",
@@ -2077,13 +2077,13 @@
       },
       "usage": {
         "tasks": [
-          "c408979dca6f4146d35685b9cf7b9cde",
-          "01a1ba57f5fb761394f04e70c7ff45cf"
+          "8db81c2fe27d20355e694cbc4afbb07c",
+          "01a1bb4e26737732bfab83f284d5eee8"
         ],
         "model_calls": 11,
-        "input_tokens": 66501,
+        "input_tokens": 66528,
         "output_tokens": 352,
-        "cost_usd": 0.017329,
+        "cost_usd": 0.017336,
         "recorded_model_calls": 11,
         "recorded_output_tokens": 352
       }
@@ -2138,14 +2138,14 @@
         "cached_input_tokens": 0,
         "output_tokens": 128,
         "cost_usd": 0.00257,
-        "wall_ms": 5328,
-        "model_ms": 65,
+        "wall_ms": 4471,
+        "model_ms": 39,
         "tool_ms": 0,
         "tool_calls": 0
       },
       "event_log": {
         "file": "trials/gui_input__calculator-two-plus-three-1/events.jsonl",
-        "sha256": "32b0a719ef631ab4683d4ce418d375fb5e986f34690b092fc7cc2888d0f8280b",
+        "sha256": "9a22e712d6c4359240f3856c31153e052f947cda5ddeefc89889003c5bbcf418",
         "offsets": [
           1,
           456
@@ -2164,7 +2164,7 @@
           {
             "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.calculator\",\"kind\":\"accessibility\",\"name\":\"Result state\",\"role\":\"label\",\"value\":\"computed\"} and it passed",
             "passed": true,
-            "detail": "PASS: state read of org.modbit.bench.calculator (snapshot s59a0d6ecfa22)"
+            "detail": "PASS: state read of org.modbit.bench.calculator (snapshot s4ec4adcb9897)"
           },
           {
             "check": "the Core judged the GUI run VERIFIED",
@@ -2185,8 +2185,8 @@
       },
       "usage": {
         "tasks": [
-          "0c948b7c733b9335bb2e43df84d4a7ad",
-          "01a1ba57fb1072608a81e2428b145b5a"
+          "369d57d29a6695e4bc0958d7a84ed08a",
+          "01a1bb4e2e3677b3b2eeb006865a482d"
         ],
         "model_calls": 14,
         "input_tokens": 42122,
@@ -2246,14 +2246,14 @@
         "cached_input_tokens": 0,
         "output_tokens": 128,
         "cost_usd": 0.002556,
-        "wall_ms": 5261,
-        "model_ms": 45,
+        "wall_ms": 4302,
+        "model_ms": 61,
         "tool_ms": 0,
         "tool_calls": 0
       },
       "event_log": {
         "file": "trials/gui_input__calculator-clear-then-seven-1/events.jsonl",
-        "sha256": "fc336ce57f761917eebe88f9b9e61456ee86d2e2c09954500c616af4a36c99be",
+        "sha256": "3b17f05bad8e150132fafaeeb00ffadbc3f6ee60ce40001260c26f0a9859182e",
         "offsets": [
           1,
           395
@@ -2272,7 +2272,7 @@
           {
             "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.calculator\",\"kind\":\"accessibility\",\"name\":\"Display\",\"role\":\"textfield\",\"value\":\"7\"} and it passed",
             "passed": true,
-            "detail": "PASS: state read of org.modbit.bench.calculator (snapshot se576b418f7ab)"
+            "detail": "PASS: state read of org.modbit.bench.calculator (snapshot s2bbb5ba6cf14)"
           },
           {
             "check": "the Core judged the GUI run VERIFIED",
@@ -2293,11 +2293,11 @@
       },
       "usage": {
         "tasks": [
-          "51dd2d82ee70875ec29f8ff0b5045ae7",
-          "01a1ba5809df794397a4f9c0970b3f74"
+          "5a175ef983b91b9a44168fe0c908d0ec",
+          "01a1bb4e34a37861b8a060c4326989db"
         ],
         "model_calls": 12,
-        "input_tokens": 31948,
+        "input_tokens": 31947,
         "output_tokens": 384,
         "cost_usd": 0.008754999999999999,
         "recorded_model_calls": 12,
@@ -2354,14 +2354,14 @@
         "cached_input_tokens": 0,
         "output_tokens": 128,
         "cost_usd": 0.002582,
-        "wall_ms": 5485,
-        "model_ms": 43,
+        "wall_ms": 4985,
+        "model_ms": 38,
         "tool_ms": 0,
         "tool_calls": 0
       },
       "event_log": {
         "file": "trials/gui_input__search-click-then-type-1/events.jsonl",
-        "sha256": "db25e3e266b42942c2002b8debd4f236d364e39e165d328d0968a343838af435",
+        "sha256": "30419831d961aa121f71b634ebf0ed7f4e9e6e8796d7d3e2a4e80dd7f074b87c",
         "offsets": [
           1,
           424
@@ -2380,7 +2380,7 @@
           {
             "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.search\",\"kind\":\"accessibility\",\"name\":\"Results\",\"role\":\"label\",\"value\":\"results ready\"} and it passed",
             "passed": true,
-            "detail": "PASS: state read of org.modbit.bench.search (snapshot sf6e44cdc4b4e)"
+            "detail": "PASS: state read of org.modbit.bench.search (snapshot s4777d09ed998)"
           },
           {
             "check": "the Core judged the GUI run VERIFIED",
@@ -2401,13 +2401,13 @@
       },
       "usage": {
         "tasks": [
-          "d6ee56c43d39ee1a1e6cf10dd9db42d1",
-          "01a1ba580d9c7e92a09f1e5cf70f7bb6"
+          "7bbb96ff3dc43b4f24ab471b2c2393e9",
+          "01a1bb4e3fe576d0a3405bca09af6fac"
         ],
         "model_calls": 13,
-        "input_tokens": 87867,
+        "input_tokens": 87927,
         "output_tokens": 416,
-        "cost_usd": 0.022798000000000002,
+        "cost_usd": 0.022813,
         "recorded_model_calls": 13,
         "recorded_output_tokens": 416
       }
@@ -2462,14 +2462,14 @@
         "cached_input_tokens": 0,
         "output_tokens": 128,
         "cost_usd": 0.002577,
-        "wall_ms": 5139,
-        "model_ms": 47,
+        "wall_ms": 4646,
+        "model_ms": 39,
         "tool_ms": 0,
         "tool_calls": 0
       },
       "event_log": {
         "file": "trials/gui_input__ledger-tab-to-reference-1/events.jsonl",
-        "sha256": "432ed0fe8a44c7d6045c4f10592af9c6141c0c3cc5dfddb6e430f402288ab6b9",
+        "sha256": "08d0a6ca89156ca7f78b82a702936997fbd979bc2d5a1c704fa55b805f3a2ca0",
         "offsets": [
           1,
           396
@@ -2488,7 +2488,7 @@
           {
             "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.ledger\",\"kind\":\"accessibility\",\"name\":\"Reference\",\"role\":\"textfield\",\"value\":\"INV-9\"} and it passed",
             "passed": true,
-            "detail": "PASS: state read of org.modbit.bench.ledger (snapshot sa79f6b8e6b4d)"
+            "detail": "PASS: state read of org.modbit.bench.ledger (snapshot sa9eaed470fe9)"
           },
           {
             "check": "the Core judged the GUI run VERIFIED",
@@ -2509,13 +2509,13 @@
       },
       "usage": {
         "tasks": [
-          "55e18c8f56331512abb602ea2b3db3f2",
-          "01a1ba5811007f71a221e690b5a3b0c0"
+          "cdae37a7d3cc7542a8c9be0c3790de42",
+          "01a1bb4e40fb7b62b6f693ac003b7ee9"
         ],
         "model_calls": 12,
-        "input_tokens": 33151,
+        "input_tokens": 33206,
         "output_tokens": 384,
-        "cost_usd": 0.009055,
+        "cost_usd": 0.009069,
         "recorded_model_calls": 12,
         "recorded_output_tokens": 384
       }
@@ -2570,14 +2570,14 @@
         "cached_input_tokens": 0,
         "output_tokens": 128,
         "cost_usd": 0.002574,
-        "wall_ms": 4334,
-        "model_ms": 48,
+        "wall_ms": 3845,
+        "model_ms": 49,
         "tool_ms": 0,
         "tool_calls": 0
       },
       "event_log": {
         "file": "trials/gui_input__ledger-type-amount-shortcut-1/events.jsonl",
-        "sha256": "b0e36374f481f5ed5de0bfa6a3ef6f93bded4fea8648e019dfee0eb82465b3d4",
+        "sha256": "e7737bd5bb2c274465402fba8d9ba6e2014fecc928d4d51b6c4c1b801e863cdc",
         "offsets": [
           1,
           396
@@ -2596,7 +2596,7 @@
           {
             "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.ledger\",\"kind\":\"accessibility\",\"name\":\"Entry state\",\"role\":\"label\",\"value\":\"recorded\"} and it passed",
             "passed": true,
-            "detail": "PASS: state read of org.modbit.bench.ledger (snapshot seeaa88bb7403)"
+            "detail": "PASS: state read of org.modbit.bench.ledger (snapshot s394652695333)"
           },
           {
             "check": "the Core judged the GUI run VERIFIED",
@@ -2617,13 +2617,13 @@
       },
       "usage": {
         "tasks": [
-          "762652b8d1360db71d6d0abb001b1f73",
-          "01a1ba58181b7e9297d3ba4d4b7280d3"
+          "4c87dfccdecec3fa033ce067396e24a3",
+          "01a1bb4e46fa781187c40cba58d3f53a"
         ],
         "model_calls": 12,
-        "input_tokens": 33093,
+        "input_tokens": 33147,
         "output_tokens": 384,
-        "cost_usd": 0.009042,
+        "cost_usd": 0.009055,
         "recorded_model_calls": 12,
         "recorded_output_tokens": 384
       }
@@ -2685,9 +2685,9 @@
       "total_cost_usd": 0.061563000000000014,
       "unpriced_trials": 0,
       "cost_per_verified_success_usd": 0.0025651250000000006,
-      "wall_ms_per_verified_success": 4857.5,
+      "wall_ms_per_verified_success": 4587.25,
       "tool_ms_total": 0,
-      "wall_ms_total": 116580
+      "wall_ms_total": 110094
     },
     "retrieval_discipline_edits_without_record": 0,
     "scope_discipline": {
@@ -3545,5 +3545,5 @@
       }
     }
   },
-  "generated_at": "2026-11-08T08:48:23Z"
+  "generated_at": "2026-11-08T13:17:16Z"
 }

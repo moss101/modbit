@@ -615,8 +615,9 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-178/TASK_CARD.md` | retained evidence | 5795 | `e646eb331a9f333f5c3e8d194bf21fcdd842b5e4daa11e749d426b024fafe55c` |
 | `evidence/m10/PX-178/ci-run-42421157777.json` | retained evidence | 1460 | `704ed5d8e097b2a04959b75c26a11d0119f946d5725801466921ec024ad35da8` |
 | `evidence/m10/PX-178/mutation-check.txt` | retained evidence | 640 | `669163be9027a1679cc79c7f5ad980cf9d9d378081bc902accfded1effa1ec39` |
-| `evidence/m10/PX-179/TASK_CARD.md` | retained evidence | 13449 | `02af08dfc8aad87f8f447a3389768a80280e3e0d0d21a773cad98cf74fd04201` |
+| `evidence/m10/PX-179/TASK_CARD.md` | retained evidence | 14651 | `d63dd1c1818af0b138fcd0e9943b9da8f38baa8720770520f0c974500e9d3841` |
 | `evidence/m10/PX-179/evidence.json` | retained evidence | 1976 | `11f8270e10edb9bbd84cc4a165cfaae30e58ba40e00f71ff52a12bd6fc61d75a` |
+| `evidence/m10/PX-179/gui-suite-2026-11-08.txt` | retained evidence | 998 | `01c46f5e4586ad73abe46146f2c73d014d54f17e07f058dee154918b7bdab576` |
 | `evidence/m10/PX-179/mutation-check.txt` | retained evidence | 2758 | `864d66ba1edd0e87763ddaecc32aa4dc7646b7693a8b79c87a9dd4dfe468a3de` |
 | `evidence/m10/PX-179/test-gui_suite.txt` | retained evidence | 1148 | `ab7382e36343642316aba48912db9665f48227f13dc32627b595e0f771f6aecf` |
 | `evidence/m10/PX-182/TASK_CARD.md` | retained evidence | 3133 | `70e1fe40b25c4d5b86e2d085ee6e078d6418b22c9f8dfcb549734743f5f93131` |

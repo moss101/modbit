@@ -1,9 +1,9 @@
 # Competence baseline — gui-regression v1.0.0
 
-- task list digest: `c5273e1464db676ed13c51f7048d743bf27652f5e476137fea6800a6aa9b2b4f`
-- bundle digest: `3593c32e0c1203c62fbf7ca3b1be0208a17ef55dc5f730cf9585504416946029`
-- protocol: 1 trials/task, max_turns 24, openai `gpt-5-mini` at 127.0.0.1:57120 (direct)
-- Modbit revision: `029b8ac039ea1c93cea4624720f264e2db4469a6`; build digest `8c3a03b6bfca`; harness competence-baseline/1
+- task list digest: `02bdb743e6da71c8df599409f0f4a09dda7f27743955deee5039f4ab743d9d0b`
+- bundle digest: `f7a8c9196a01d19701b1ff8f5632cd019ed605d501a497634b12ddcb6d408cca`
+- protocol: 1 trials/task, max_turns 24, openai `gpt-5-mini` at 127.0.0.1:64406 (direct)
+- Modbit revision: `fc367f897f46ac5e3eab9c5a0fff703b86464bea`; build digest `2d5b5f19f197`; harness competence-baseline/1
 
 | metric | value | 95% interval |
 |---|---|---|
@@ -51,9 +51,9 @@
 
 ## Axes of suite gui-regression (PX-179)
 
-- bundle digest: `3593c32e0c1203c62fbf7ca3b1be0208a17ef55dc5f730cf9585504416946029`
+- bundle digest: `f7a8c9196a01d19701b1ff8f5632cd019ed605d501a497634b12ddcb6d408cca`
 - gate: an axis fails when its verified-success rate is more than 0.05 below the baseline's
-- output tokens per thousand tasks: 373333 (8960 output tokens over 24 trials, 280 model calls); 10.0405 USD per thousand tasks at catalog list prices
+- output tokens per thousand tasks: 373333 (8960 output tokens over 24 trials, 280 model calls); 10.0486 USD per thousand tasks at catalog list prices
 - source: per trial: GetTaskEconomics of the task and every child it admitted, equal to the ModelUsageRecorded events of the trial's log
 - per-task gate: a task that verified in the baseline and does not now fails the gate, named
 

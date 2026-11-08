@@ -2,8 +2,8 @@
   "schema": "modbit-four-axis-report/1",
   "suite_id": "gui-regression",
   "suite_version": "1.0.0",
-  "task_list_digest": "c5273e1464db676ed13c51f7048d743bf27652f5e476137fea6800a6aa9b2b4f",
-  "bundle_digest": "3593c32e0c1203c62fbf7ca3b1be0208a17ef55dc5f730cf9585504416946029",
+  "task_list_digest": "02bdb743e6da71c8df599409f0f4a09dda7f27743955deee5039f4ab743d9d0b",
+  "bundle_digest": "f7a8c9196a01d19701b1ff8f5632cd019ed605d501a497634b12ddcb6d408cca",
   "endpoint": "openai",
   "model": "gpt-5-mini",
   "configuration": "direct",
@@ -34,7 +34,7 @@
       },
       "output_tokens": 4448,
       "output_tokens_per_thousand_tasks": 370666.6666666667,
-      "cost_usd_per_thousand_tasks": 8.72375,
+      "cost_usd_per_thousand_tasks": 8.730833333333333,
       "failures": [],
       "task_results": {
         "gui_element/files-archive-cancel": [
@@ -113,7 +113,7 @@
       },
       "output_tokens": 4512,
       "output_tokens_per_thousand_tasks": 376000.0,
-      "cost_usd_per_thousand_tasks": 11.357249999999999,
+      "cost_usd_per_thousand_tasks": 11.366333333333335,
       "failures": [],
       "task_results": {
         "gui_input/calculator-clear-then-seven": [
@@ -172,7 +172,7 @@
     "model_calls": 280,
     "output_tokens": 8960,
     "output_tokens_per_thousand_tasks": 373333.3333333333,
-    "cost_usd_per_thousand_tasks": 10.0405,
+    "cost_usd_per_thousand_tasks": 10.048583333333335,
     "source": "per trial: GetTaskEconomics of the task and every child it admitted, equal to the ModelUsageRecorded events of the trial's log"
   },
   "gate": {
