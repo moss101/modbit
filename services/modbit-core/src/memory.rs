@@ -33,7 +33,7 @@ use modbit_event_store::{
     memory_aggregate_id,
 };
 use modbit_memory::{
-    EditRefusal, MemoryEdit, MemoryItem, MemoryStore, PromotionContext, PromotionRefusal,
+    EditRefusal, MemoryEdit, MemoryItem, MemoryStore, PromotionContext, PromotionRefusal, Ranking,
     RecordType, Scope, Selection, SelectionInput, Sensitivity, Source, Status, promotion_check,
 };
 use modbit_prompt_compiler::MemoryFragment;
@@ -43,6 +43,22 @@ use tokio::sync::Mutex;
 
 /// The token budget of the memory segment of one prompt.
 pub const PROMPT_MEMORY_BUDGET_TOKENS: u32 = 800;
+
+/// The environment variable that names the selection ranking (PX-186) by its
+/// version label (`keyword-v1`, `recency-importance-diversity-v2`).
+pub const MEMORY_RANKING_ENV: &str = "MODBIT_MEMORY_RANKING";
+
+/// The ranking this Core selects memory with: the one
+/// [`MEMORY_RANKING_ENV`] names, or [`Ranking::default`] when it is unset or
+/// names no ranking. Every selection records the version and weights that
+/// ran, so a prompt's memory is always traceable to its rule.
+#[must_use]
+pub fn configured_ranking() -> Ranking {
+    std::env::var(MEMORY_RANKING_ENV)
+        .ok()
+        .and_then(|v| Ranking::from_version(&v))
+        .unwrap_or_default()
+}
 /// The longest topic and content a memory item may carry.
 const MAX_TOPIC_CHARS: usize = 200;
 const MAX_CONTENT_BYTES: usize = 16 * 1024;
@@ -1197,6 +1213,8 @@ pub struct PromptMemory {
     pub pack: Option<MemoryPack>,
     /// In scope, but left out, with the reason.
     pub excluded: Vec<(String, String)>,
+    /// The ranking that ordered the selection (PX-186).
+    pub ranking: Ranking,
 }
 
 impl PromptMemory {
@@ -1208,6 +1226,7 @@ impl PromptMemory {
             return json!({
                 "pack_id": "",
                 "entries": [],
+                "ranking": self.ranking.record(),
                 "excluded": self.excluded.iter().map(|(id, why)| json!({"memory_id": id, "reason": why})).collect::<Vec<_>>(),
             });
         };
@@ -1217,6 +1236,7 @@ impl PromptMemory {
             "token_used": pack.token_used,
             "omitted_count": pack.omitted_count,
             "compiler_version": pack.compiler_version,
+            "ranking": self.ranking.record(),
             "entries": pack.entries.iter().map(|e| json!({
                 "memory_id": e.memory_id,
                 "scope": e.provenance.scope,
@@ -1244,12 +1264,14 @@ impl PromptMemory {
 /// ([`MemoryStore::select`]), scanned like any other untrusted text (an item
 /// shaped like an instruction to the agent is left out and says why, never
 /// injected), and packed under the segment's token budget by the Context Pack
-/// compiler. Nothing here is authority: the result is prompt text.
+/// compiler. Nothing here is authority: the result is prompt text. The
+/// candidates are ordered by `ranking` (PX-186), which the record names.
 pub async fn select_for_prompt(
     store: &Arc<Mutex<EventStore>>,
     chain: &ScopeChain,
     goal: &str,
     workspace_root: Option<&str>,
+    ranking: Ranking,
 ) -> PromptMemory {
     let keys = chain.keys();
     let rows = {
@@ -1267,7 +1289,10 @@ pub async fn select_for_prompt(
         }
     }
     if mem.all().next().is_none() {
-        return PromptMemory::default();
+        return PromptMemory {
+            ranking,
+            ..PromptMemory::default()
+        };
     }
     let revision = match (needs_revision, workspace_root) {
         (true, Some(root)) => git_head(root.to_owned()).await,
@@ -1280,6 +1305,7 @@ pub async fn select_for_prompt(
         hints: &[],
         now_ms: now,
         current_revision: revision.as_deref(),
+        ranking,
     });
     let mut excluded: Vec<(String, String)> = selection
         .excluded
@@ -1339,6 +1365,7 @@ pub async fn select_for_prompt(
         fragments,
         pack: Some(pack),
         excluded,
+        ranking,
     }
 }
 
@@ -1424,6 +1451,7 @@ impl modbit_tools::pipeline::MemoryPort for CoreMemory {
                         hints: &[],
                         now_ms: now,
                         current_revision: None,
+                        ranking: configured_ranking(),
                     })
                     .selected
                     .iter()
@@ -1765,5 +1793,92 @@ mod tests {
         let st = EventStore::open(dir.path()).unwrap();
         assert!(st.memory_get(&pid).unwrap().is_none());
         assert!(st.memory_get(&shared_id).unwrap().is_some());
+    }
+
+    /// PX-186: the prompt's memory record names the ranking that ordered it
+    /// and its weights; a ranking selects the same items from the same
+    /// store every time, and a sensitive item is never offered.
+    #[tokio::test]
+    async fn the_prompt_memory_record_names_its_ranking_and_never_offers_a_sensitive_item() {
+        let dir = tempfile::tempdir().unwrap();
+        let (tenant, session) = (TenantId::new(), SessionId::new());
+        let user = modbit_domain::UserId::new();
+        let store = Arc::new(Mutex::new(EventStore::open(dir.path()).unwrap()));
+        let ctx = ctx_for(Actor::User(user), session, tenant);
+        let chain =
+            ScopeChain::for_task(tenant, session, None, &user.to_string(), None, None, None);
+        let mut ids = Vec::new();
+        for (i, (topic, content, sensitive)) in [
+            ("deploy steps", "deploy: tag the build, push the tag", false),
+            (
+                "deploy procedure",
+                "deploy: tag the build and push the tag",
+                false,
+            ),
+            (
+                "deploy window",
+                "a deploy during the backup times out",
+                false,
+            ),
+            (
+                "deploy account",
+                "the deploy account belongs to the on-call person",
+                true,
+            ),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let mut it = MemoryItem::propose(
+                Scope::Session {
+                    id: session.to_string(),
+                },
+                RecordType::Procedure,
+                topic,
+                content,
+                Source::UserStated,
+                format!("user:{user}"),
+                0.9,
+                1 + i as i64,
+            );
+            if sensitive {
+                it.sensitivity = Sensitivity::Sensitive;
+            }
+            let id = it.id.clone();
+            propose(&store, &ctx, it, None).await.unwrap();
+            let p = promote(&store, &ctx, &id, None, None).await.unwrap();
+            assert!(matches!(p, Promoted::Curated { .. }), "{p:?}");
+            ids.push(id);
+        }
+        for ranking in Ranking::ALL {
+            let pm =
+                select_for_prompt(&store, &chain, "write the deploy steps", None, ranking).await;
+            let rec = pm.record();
+            assert_eq!(rec["ranking"]["version"], ranking.version());
+            assert_eq!(
+                rec["ranking"]["weights"]["relevance"].as_f64().unwrap(),
+                f64::from(ranking.weights().relevance)
+            );
+            let chosen: Vec<String> = pm.fragments.iter().map(|f| f.memory_id.clone()).collect();
+            assert_eq!(chosen.len(), 3, "{chosen:?}");
+            assert!(
+                !chosen.contains(&ids[3]),
+                "a sensitive item is never offered"
+            );
+            assert!(
+                pm.excluded
+                    .contains(&(ids[3].clone(), "sensitive".to_owned()))
+            );
+            let again =
+                select_for_prompt(&store, &chain, "write the deploy steps", None, ranking).await;
+            assert_eq!(again.record(), rec, "deterministic");
+        }
+        // Nothing in scope still names the ranking.
+        let empty = ScopeChain::for_task(tenant, SessionId::new(), None, "", None, None, None);
+        let pm = select_for_prompt(&store, &empty, "deploy", None, Ranking::default()).await;
+        assert_eq!(
+            pm.record()["ranking"]["version"],
+            Ranking::default().version()
+        );
     }
 }

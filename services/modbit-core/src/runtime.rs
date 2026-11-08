@@ -4222,6 +4222,7 @@ async fn run_loop(
                         &chain,
                         &task.goal_text,
                         task.workspace_root.as_deref(),
+                        crate::memory::configured_ranking(),
                     )
                     .await
                 };
