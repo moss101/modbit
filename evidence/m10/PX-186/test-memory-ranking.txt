@@ -1,0 +1,7 @@
+test qual_px_186_the_corpus_is_designed_before_measurement_and_refuses_a_defective_gold ... ok
+test qual_px_186_keep_needs_more_recall_at_the_same_budget_and_the_default_must_follow_the_decision ... ok
+test qual_px_186_a_comparison_at_unequal_budgets_nondeterministic_or_offering_a_sensitive_item_is_refused ... ok
+test qual_px_186_the_retained_comparison_is_recomputed_from_its_retained_passes ... ok
+test qual_px_186_through_the_real_core_the_reverted_candidate_is_refused_and_the_current_ranking_reproduces_the_decision has been running for over 60 seconds
+test qual_px_186_through_the_real_core_the_reverted_candidate_is_refused_and_the_current_ranking_reproduces_the_decision ... ok
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 194.10s

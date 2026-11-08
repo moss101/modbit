@@ -40398,8 +40398,23 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-186",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m10/PX-186/TASK_CARD.md",
+    "commit:fc2294a2",
+    "commit:fa400c20",
+    "artifact:evidence/m10/PX-186/evidence.json",
+    "test:benchmarks/agent-engineering/tests/memory_ranking.rs::qual_px_186_through_the_real_core_the_reverted_candidate_is_refused_and_the_current_ranking_reproduces_the_decision",
+    "test:benchmarks/agent-engineering/tests/memory_ranking.rs::qual_px_186_a_comparison_at_unequal_budgets_nondeterministic_or_offering_a_sensitive_item_is_refused",
+    "artifact:benchmarks/agent-engineering/baselines/memory-ranking/comparison.json",
+    "artifact:evidence/m10/PX-186/mutation-check.txt",
+    "run:42474226668",
+    "artifact:evidence/m10/PX-186/ci-run-42474226668.json",
+    "artifact:evidence/m10/PX-186/ci-per-os-42474226668.txt",
+    "commit:8a72f291"
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-11-08T15:14:14Z"
   },
   {
    "id": "PX-188",

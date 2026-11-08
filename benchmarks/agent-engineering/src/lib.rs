@@ -17,6 +17,7 @@ pub mod axes;
 pub mod bundle;
 pub mod events;
 pub mod profile;
+pub mod ranking;
 pub mod suite;
 pub mod verifier;
 pub mod workspace;

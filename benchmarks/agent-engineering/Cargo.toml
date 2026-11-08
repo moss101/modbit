@@ -33,4 +33,5 @@ capabilities = [
   { id = "bench.competence_baseline", requirements = ["REQ-PX-020"] },
   { id = "bench.four_axis", requirements = ["REQ-PX-184"] },
   { id = "bench.gui_regression", requirements = ["REQ-PX-179"] },
+  { id = "bench.memory_ranking", requirements = ["REQ-PX-186"] },
 ]

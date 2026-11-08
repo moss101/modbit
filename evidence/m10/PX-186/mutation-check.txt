@@ -1,0 +1,49 @@
+PX-186 mutation check (local, macOS arm64, 2026-11-08). Each mutation is an exact-string edit, undone with `git checkout --` afterwards; `git status` was clean of code changes after each.
+
+A. At the measurement commit fc2294a2 (candidate present)
+A1. Diversity penalty disabled
+   File: crates/memory/src/lib.rs (Ranking::weights, RecencyImportanceDiversityV2)
+   Mutation: `diversity: 0.3,` -> `diversity: 0.0,`
+   Command: cargo test -p modbit-memory
+   Result: FAILED. 16 passed; 2 failed
+     tests::px_186_the_current_ranking_is_the_default_and_each_ranking_names_its_weights ... FAILED
+     tests::px_186_recency_importance_and_diversity_reorder_deterministically_and_never_offer_sensitive ... FAILED
+
+B. At the revert commit fa400c20 (keyword-v1 only)
+B1. Sensitive filter disabled
+   File: crates/memory/src/lib.rs (MemoryStore::select)
+   Mutation: `if item.sensitivity == Sensitivity::Sensitive {` -> `if false && item.sensitivity == Sensitivity::Sensitive {`
+   cargo test -p modbit-memory: FAILED. 15 passed; 2 failed
+     tests::px_186_selection_is_deterministic_over_the_store_and_never_offers_a_sensitive_item ... FAILED
+     tests::selection_is_by_relevance_and_standing_and_never_offers_sensitive_expired_or_stale_items ... FAILED
+   cargo test -p modbit-core --bin modbit-core memory::tests: FAILED. 4 passed; 1 failed
+     memory::tests::the_prompt_memory_record_names_its_ranking_and_never_offers_a_sensitive_item ... FAILED
+
+B2. Nondeterministic tie-break inside select
+   File: crates/memory/src/lib.rs (best_first)
+   Mutation: `.then(a.item.id.cmp(&b.item.id))` -> a comparison of RandomState hashes of the ids (new keys per call)
+   cargo test -p modbit-memory: FAILED. 16 passed; 1 failed
+     tests::px_186_selection_is_deterministic_over_the_store_and_never_offers_a_sensitive_item ... FAILED
+   Real-Core harness test (qual_px_186_through_the_real_core_...): passed (165 s). Not caught there, and correctly so:
+   the Context Pack packer (crates/context pack_memory) re-sorts the selection by score and then memory id, so a
+   tie order inside select never reaches the prompt. The prompt stayed deterministic.
+
+B2b. Per-process jitter in the score (what the prompt would see)
+   File: crates/memory/src/lib.rs (MemoryStore::select)
+   Mutation: `+ w.validated * validated;` -> `+ w.validated * validated + (RandomState::new().hash_one(&item.id) % 1000) as f32 * 1e-4;`
+   Command: cargo build -p modbit-core -p modbit-cli && cargo test -p modbit-bench-agent-engineering --test memory_ranking real_core
+   Result: FAILED (159 s)
+     qual_px_186_through_the_real_core_the_reverted_candidate_is_refused_and_the_current_ranking_reproduces_the_decision ... FAILED
+     keyword-v1 is not deterministic on task staging-port: [timeout-format, staging-port, staging-port-new, prod-port, ...] then [timeout-format, staging-port, port-files, test-output, ...]
+   The Core was rebuilt after the restore.
+
+B3. Keep rule forced
+   File: benchmarks/agent-engineering/src/ranking.rs (compare_rankings)
+   Mutation: `cand.recalled > cur.recalled && cand.recall_per_1k_tokens >= cur.recall_per_1k_tokens;` -> `true;`
+   Command: cargo test -p modbit-bench-agent-engineering --test memory_ranking -- --skip real_core
+   Result: FAILED. 1 passed; 3 failed
+     qual_px_186_a_comparison_at_unequal_budgets_nondeterministic_or_offering_a_sensitive_item_is_refused ... FAILED (a kept candidate the default does not run is refused)
+     qual_px_186_keep_needs_more_recall_at_the_same_budget_and_the_default_must_follow_the_decision ... FAILED
+     qual_px_186_the_retained_comparison_is_recomputed_from_its_retained_passes ... FAILED
+
+With every file restored the tests pass (test-*.txt in this directory).
