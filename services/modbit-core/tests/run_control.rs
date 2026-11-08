@@ -2995,6 +2995,24 @@ async fn qual_px_146_an_autonomous_run_that_makes_no_progress_is_not_extended() 
     assert_eq!(st.failure_code, "NO_PROGRESS", "{st:?}");
     let events = replay(&core, &session).await;
     assert!(kinds(&events, "BudgetWindowExtended").is_empty());
+
+    // The window runs out while the run is already stalled, before the
+    // no-progress bound is reached: the Core stops on the budget and opens no
+    // window, so the stall is a person's to judge.
+    let t2 = create_task(&mut c, &session, g, &root, 0x12, "local_trusted", "think").await;
+    set_mode(&mut c, &t2, g, "AUTONOMOUS", true).await.unwrap();
+    start_with(&mut c, &t2, g, 2, 0).await;
+    let st = wait_task(&mut c, &t2, 60).await;
+    assert_eq!(st.state, "Waiting", "{st:?}");
+    assert!(
+        st.attention_reason.contains("max_turns"),
+        "a stalled run ends on its budget: {st:?}"
+    );
+    let events = replay(&core, &session).await;
+    assert!(
+        kinds(&events, "BudgetWindowExtended").is_empty(),
+        "a stalled run was given another window"
+    );
 }
 
 /// A subagent keeps the capsule it was admitted under: a parent a person put
@@ -3192,6 +3210,14 @@ async fn qual_px_146_an_autonomous_task_a_crash_cut_short_is_offered_for_resumpt
         offered,
         vec![auto.clone()],
         "only the autonomous task the crash cut short"
+    );
+    // Offered is not resumed: with no client and no lease the Core runs
+    // nothing of its own accord, however long it is left.
+    tokio::time::sleep(Duration::from_millis(1_500)).await;
+    let st = status_of(&mut c, &auto).await;
+    assert!(
+        !st.loop_alive && st.state != "ReadyForReview",
+        "the restarted Core resumed the task by itself: {st:?}"
     );
     // Resumption is the ordinary StartTask under a fresh lease.
     let g1 = lease_again(&mut c, &s1).await;

@@ -39476,9 +39476,19 @@
    "evidence": [
     "artifact:evidence/m10/PX-146/TASK_CARD.md",
     "commit:6e32d883",
-    "artifact:evidence/m10/PX-145/rust-tests.txt"
+    "artifact:evidence/m10/PX-145/rust-tests.txt",
+    "artifact:evidence/m10/PX-146/mutation-check.txt",
+    "artifact:evidence/m10/PX-146/rust-tests-2026-11-08.txt"
    ],
-   "status_changed_on": "2026-10-25T18:06:09Z"
+   "notes": [
+    {
+     "at": "2026-11-08T18:19:20Z",
+     "from": "REAL_TESTING",
+     "to": "REAL_TESTING",
+     "note": "2026-11-08: acceptance mapped clause by clause; wall-clock, stalled-window and no-self-resume cases added; mutations A-D killed"
+    }
+   ],
+   "status_changed_on": "2026-11-08T18:19:20Z"
   },
   {
    "id": "PX-147",

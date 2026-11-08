@@ -1,0 +1,5 @@
+2026-11-08, macOS arm64, branch wip/px-146-close
+cargo test -p modbit-core --test run_control (27 tests, including the four qual_px_146_*):
+test result: ok. 27 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 26.76s
+cargo test -p modbit-core-runtime --lib (incl. harness::tests::a_window_of_turns_and_tool_calls_can_be_reopened_a_bounded_number_of_times):
+test result: ok. 50 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
