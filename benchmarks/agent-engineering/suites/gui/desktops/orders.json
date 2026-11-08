@@ -1,0 +1,185 @@
+{
+ "display": {
+  "x": 0,
+  "y": 0,
+  "width": 1920,
+  "height": 1200
+ },
+ "apps": [
+  {
+   "bundle_id": "org.modbit.bench.orders",
+   "name": "Orders",
+   "pid": 5101,
+   "executable_path": "/Applications/Modbit Bench Orders.app/Contents/MacOS/Orders",
+   "signing_identity": "MODBIT:bench-orders",
+   "windows": [
+    {
+     "id": "w-order",
+     "title": "New order",
+     "bounds": {
+      "x": 0,
+      "y": 0,
+      "width": 1280,
+      "height": 800
+     },
+     "focused": false,
+     "elements": [
+      {
+       "id": "customer",
+       "role": "textfield",
+       "name": "Customer",
+       "value": "",
+       "settable": true,
+       "actions": [
+        "focus"
+       ],
+       "bounds": {
+        "x": 40,
+        "y": 80,
+        "width": 400,
+        "height": 30
+       },
+       "behaviors": {
+        "enter": [
+         {
+          "op": "SetValue",
+          "target": "status",
+          "value": "customer entered"
+         }
+        ]
+       }
+      },
+      {
+       "id": "qty",
+       "role": "textfield",
+       "name": "Quantity",
+       "value": "1",
+       "settable": true,
+       "actions": [
+        "focus"
+       ],
+       "bounds": {
+        "x": 40,
+        "y": 140,
+        "width": 120,
+        "height": 30
+       }
+      },
+      {
+       "id": "express",
+       "role": "checkbox",
+       "name": "Express delivery",
+       "value": "off",
+       "actions": [
+        "press"
+       ],
+       "bounds": {
+        "x": 40,
+        "y": 200,
+        "width": 200,
+        "height": 30
+       },
+       "behaviors": {
+        "press": [
+         {
+          "op": "SetValue",
+          "target": "express",
+          "value": "on"
+         }
+        ]
+       }
+      },
+      {
+       "id": "submit",
+       "role": "button",
+       "name": "Submit",
+       "actions": [
+        "press"
+       ],
+       "bounds": {
+        "x": 40,
+        "y": 260,
+        "width": 160,
+        "height": 40
+       },
+       "behaviors": {
+        "press": [
+         {
+          "op": "SetValue",
+          "target": "status",
+          "value": "submitted"
+         }
+        ]
+       }
+      },
+      {
+       "id": "clear",
+       "role": "button",
+       "name": "Clear",
+       "actions": [
+        "press"
+       ],
+       "bounds": {
+        "x": 240,
+        "y": 260,
+        "width": 160,
+        "height": 40
+       },
+       "behaviors": {
+        "press": [
+         {
+          "op": "SetValue",
+          "target": "status",
+          "value": "cleared"
+         },
+         {
+          "op": "SetValue",
+          "target": "customer",
+          "value": ""
+         },
+         {
+          "op": "SetValue",
+          "target": "qty",
+          "value": "1"
+         }
+        ]
+       }
+      },
+      {
+       "id": "status",
+       "role": "label",
+       "name": "Status",
+       "value": "draft",
+       "bounds": {
+        "x": 40,
+        "y": 340,
+        "width": 400,
+        "height": 30
+       }
+      },
+      {
+       "id": "stamp",
+       "role": "image",
+       "name": "Approval stamp",
+       "bounds": {
+        "x": 900,
+        "y": 600,
+        "width": 200,
+        "height": 100
+       },
+       "behaviors": {
+        "press": [
+         {
+          "op": "SetValue",
+          "target": "status",
+          "value": "stamped"
+         }
+        ]
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

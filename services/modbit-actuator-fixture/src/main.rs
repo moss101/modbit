@@ -41,6 +41,7 @@ async fn main() {
     let mut pid_file: Option<String> = None;
     let mut permissions_file: Option<String> = None;
     let mut hang_marker: Option<String> = None;
+    let mut state_out: Option<String> = None;
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
         match a.as_str() {
@@ -48,6 +49,7 @@ async fn main() {
             "--pid-file" => pid_file = args.next(),
             "--permissions-file" => permissions_file = args.next(),
             "--hang-marker" => hang_marker = args.next(),
+            "--state-out" => state_out = args.next(),
             other => {
                 eprintln!("modbit-actuator-fixture: unknown argument {other}");
                 std::process::exit(2);
@@ -150,6 +152,8 @@ async fn main() {
 
     let mut st0 = rpc::State::new(desktop, perms0);
     st0.hang_marker = hang_marker.map(Into::into);
+    st0.state_out = state_out.map(Into::into);
+    st0.write_state();
     let state = Arc::new(Mutex::new(st0));
     rpc::spawn_lease_watchdog(Arc::clone(&state));
     if let Some(p) = permissions_file {

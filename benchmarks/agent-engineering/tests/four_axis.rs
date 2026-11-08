@@ -230,7 +230,10 @@ fn synthetic(failing_axis: Option<&str>) -> Bundle {
     }
 }
 
-const GATE: Gate = Gate { max_drop: 0.05 };
+const GATE: Gate = Gate {
+    max_drop: 0.05,
+    per_task: false,
+};
 
 #[test]
 fn qual_px_184_the_report_refuses_cost_not_derived_from_recorded_usage_and_a_gate_that_cannot_fail()
@@ -337,7 +340,10 @@ fn qual_px_184_the_report_refuses_cost_not_derived_from_recorded_usage_and_a_gat
         Err(ReportRefused::GateCannotFail(w)) if w.contains("skill_use")
     ));
     let mut wide = r.clone();
-    wide.gate = Gate { max_drop: 1.0 };
+    wide.gate = Gate {
+        max_drop: 1.0,
+        per_task: false,
+    };
     let mut wide2 = again.clone();
     wide2.gate = wide.gate;
     assert!(matches!(
@@ -470,6 +476,7 @@ fn qual_px_184_a_verifier_reads_the_workspace_and_the_cores_records_never_the_mo
         workspace: ws.path(),
         memory_ids: &memory_ids,
         skill_hashes: &skill_hashes,
+        desktop: None,
     };
     let good = Verifier {
         id: "good".into(),
@@ -498,6 +505,7 @@ fn qual_px_184_a_verifier_reads_the_workspace_and_the_cores_records_never_the_mo
             results: 1,
             merged: 1,
         }),
+        gui: None,
     };
     let out = evaluate(&good, &o);
     assert!(out.passed, "{:#?}", out.checks);

@@ -121,6 +121,10 @@ pub struct State {
     /// A file written when an input begins to hang (`--hang-marker`): a test's
     /// real signal that the input is in flight inside the actuator.
     pub hang_marker: Option<std::path::PathBuf>,
+    /// A file the desktop's state is written to after every applied input
+    /// (`--state-out`): a test reads what the application holds after a run
+    /// from the application's side, outside the Core.
+    pub state_out: Option<std::path::PathBuf>,
     desktop: Desktop,
     lease: Option<Lease>,
     generation: u64,
@@ -137,6 +141,7 @@ impl State {
         Self {
             perms,
             hang_marker: None,
+            state_out: None,
             desktop,
             lease: None,
             generation: 0,
@@ -145,6 +150,19 @@ impl State {
             secure_desktop: secure,
             stop_epoch: 0,
             counters: HashMap::new(),
+        }
+    }
+}
+
+impl State {
+    /// Write the desktop's state to `--state-out`, whole or not at all.
+    pub fn write_state(&self) {
+        if let Some(p) = &self.state_out {
+            let tmp = p.with_extension("tmp");
+            let bytes = serde_json::to_vec_pretty(&self.desktop.state_json()).unwrap_or_default();
+            if std::fs::write(&tmp, bytes).is_ok() {
+                let _ = std::fs::rename(&tmp, p);
+            }
         }
     }
 }
@@ -756,10 +774,15 @@ fn run_ops(st: &mut State, pid: u32, win_id: &str, key: &str, ops: &[Op], fx: &m
     };
     for op in ops {
         match op {
-            Op::SetValue { target, value } => {
+            Op::SetValue {
+                target,
+                value,
+                window,
+            } => {
                 let value = value.replace("{n}", &n.to_string());
+                let in_win = window.as_deref().unwrap_or(win_id);
                 if let Some(app) = st.desktop.app_mut_by_pid(pid)
-                    && let Some(w) = app.windows.iter_mut().find(|w| w.id == win_id)
+                    && let Some(w) = app.windows.iter_mut().find(|w| w.id == in_win)
                     && let Some(i) = w.elements.iter().position(|e| &e.id == target)
                 {
                     let before = if w.elements[i].secure {
@@ -997,6 +1020,7 @@ async fn perform(
                     vec![Op::SetValue {
                         target: e.id.clone(),
                         value: a.value.clone(),
+                        window: None,
                     }],
                 ));
             }
@@ -1124,6 +1148,7 @@ async fn perform(
         for (key, o) in &ops {
             run_ops(&mut st, pid, &wid, key, o, &mut fx);
         }
+        st.write_state();
         // The window after the effect.
         let (info, digest) = match st.desktop.app_by_pid(pid) {
             Some(app) => match app.windows.iter().find(|w| w.id == wid) {

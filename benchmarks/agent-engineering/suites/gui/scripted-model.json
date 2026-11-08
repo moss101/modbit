@@ -1,0 +1,3668 @@
+{
+ "about": "PX-179: the scripted trajectories the GUI suite's test model server answers with, keyed by task id; a parent's script by its goal, each child's by its objective. `{{el:<name>}}` is the element handle of that name in the latest accessibility tree the agent was shown, `{{frame}}` the latest frame token. The Core never sees this file.",
+ "tasks": {
+  "gui_element/orders-submit-for-ada": {
+   "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Orders application enter Ada Lovelace as the customer and submit the order.",
+   "script": [
+    {
+     "calls": [
+      {
+       "name": "plan.update",
+       "args": {
+        "outcome": "a computer-use child completes the GUI task",
+        "expected_files": [],
+        "protected_effects": [
+         "agent",
+         "computer"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.spawn",
+       "args": {
+        "idempotency_key": "gui-1",
+        "objective": "In the Orders application enter Ada Lovelace as the customer and submit the order.",
+        "write_scope": [],
+        "mode": "FOREGROUND",
+        "profile": "computer-use",
+        "environment_healthy": "the bench fixture desktop is attached and computer.apps lists the application",
+        "completion_evidence": {
+         "kind": "accessibility",
+         "app": "org.modbit.bench.orders",
+         "role": "label",
+         "name": "Status",
+         "value": "submitted"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.result",
+       "args": {
+        "idempotency_key": "gui-1"
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "task.complete",
+       "args": {
+        "summary": "the child's GUI task is done",
+        "self_review": {
+         "findings": []
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "children": [
+    {
+     "goal": "In the Orders application enter Ada Lovelace as the customer and submit the order.",
+     "script": [
+      {
+       "calls": [
+        {
+         "name": "plan.update",
+         "args": {
+          "outcome": "In the Orders application enter Ada Lovelace as the customer and submit the order.",
+          "expected_files": [],
+          "protected_effects": [
+           "computer"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.start",
+         "args": {
+          "application": "org.modbit.bench.orders",
+          "reason": "the task needs this application"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.set_value",
+         "args": {
+          "element": "{{el:Customer}}",
+          "value": "Ada Lovelace"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.press",
+         "args": {
+          "element": "{{el:Submit}}"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "task.complete",
+         "args": {
+          "summary": "done: In the Orders application enter Ada Lovelace as the customer and submit the order.",
+          "self_review": {
+           "findings": []
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "gui_element/orders-quantity-four": {
+   "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Orders application set the quantity to 4 and submit the order.",
+   "script": [
+    {
+     "calls": [
+      {
+       "name": "plan.update",
+       "args": {
+        "outcome": "a computer-use child completes the GUI task",
+        "expected_files": [],
+        "protected_effects": [
+         "agent",
+         "computer"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.spawn",
+       "args": {
+        "idempotency_key": "gui-1",
+        "objective": "In the Orders application set the quantity to 4 and submit the order.",
+        "write_scope": [],
+        "mode": "FOREGROUND",
+        "profile": "computer-use",
+        "environment_healthy": "the bench fixture desktop is attached and computer.apps lists the application",
+        "completion_evidence": {
+         "kind": "accessibility",
+         "app": "org.modbit.bench.orders",
+         "role": "label",
+         "name": "Status",
+         "value": "submitted"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.result",
+       "args": {
+        "idempotency_key": "gui-1"
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "task.complete",
+       "args": {
+        "summary": "the child's GUI task is done",
+        "self_review": {
+         "findings": []
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "children": [
+    {
+     "goal": "In the Orders application set the quantity to 4 and submit the order.",
+     "script": [
+      {
+       "calls": [
+        {
+         "name": "plan.update",
+         "args": {
+          "outcome": "In the Orders application set the quantity to 4 and submit the order.",
+          "expected_files": [],
+          "protected_effects": [
+           "computer"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.start",
+         "args": {
+          "application": "org.modbit.bench.orders",
+          "reason": "the task needs this application"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.set_value",
+         "args": {
+          "element": "{{el:Quantity}}",
+          "value": "4"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.press",
+         "args": {
+          "element": "{{el:Submit}}"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "task.complete",
+         "args": {
+          "summary": "done: In the Orders application set the quantity to 4 and submit the order.",
+          "self_review": {
+           "findings": []
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "gui_element/orders-express": {
+   "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Orders application turn on express delivery.",
+   "script": [
+    {
+     "calls": [
+      {
+       "name": "plan.update",
+       "args": {
+        "outcome": "a computer-use child completes the GUI task",
+        "expected_files": [],
+        "protected_effects": [
+         "agent",
+         "computer"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.spawn",
+       "args": {
+        "idempotency_key": "gui-1",
+        "objective": "In the Orders application turn on express delivery.",
+        "write_scope": [],
+        "mode": "FOREGROUND",
+        "profile": "computer-use",
+        "environment_healthy": "the bench fixture desktop is attached and computer.apps lists the application",
+        "completion_evidence": {
+         "kind": "accessibility",
+         "app": "org.modbit.bench.orders",
+         "role": "checkbox",
+         "name": "Express delivery",
+         "value": "on"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.result",
+       "args": {
+        "idempotency_key": "gui-1"
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "task.complete",
+       "args": {
+        "summary": "the child's GUI task is done",
+        "self_review": {
+         "findings": []
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "children": [
+    {
+     "goal": "In the Orders application turn on express delivery.",
+     "script": [
+      {
+       "calls": [
+        {
+         "name": "plan.update",
+         "args": {
+          "outcome": "In the Orders application turn on express delivery.",
+          "expected_files": [],
+          "protected_effects": [
+           "computer"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.start",
+         "args": {
+          "application": "org.modbit.bench.orders",
+          "reason": "the task needs this application"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.press",
+         "args": {
+          "element": "{{el:Express delivery}}"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "task.complete",
+         "args": {
+          "summary": "done: In the Orders application turn on express delivery.",
+          "self_review": {
+           "findings": []
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "gui_element/orders-clear": {
+   "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Orders application type Temp as the customer, then clear the form.",
+   "script": [
+    {
+     "calls": [
+      {
+       "name": "plan.update",
+       "args": {
+        "outcome": "a computer-use child completes the GUI task",
+        "expected_files": [],
+        "protected_effects": [
+         "agent",
+         "computer"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.spawn",
+       "args": {
+        "idempotency_key": "gui-1",
+        "objective": "In the Orders application type Temp as the customer, then clear the form.",
+        "write_scope": [],
+        "mode": "FOREGROUND",
+        "profile": "computer-use",
+        "environment_healthy": "the bench fixture desktop is attached and computer.apps lists the application",
+        "completion_evidence": {
+         "kind": "accessibility",
+         "app": "org.modbit.bench.orders",
+         "role": "label",
+         "name": "Status",
+         "value": "cleared"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.result",
+       "args": {
+        "idempotency_key": "gui-1"
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "task.complete",
+       "args": {
+        "summary": "the child's GUI task is done",
+        "self_review": {
+         "findings": []
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "children": [
+    {
+     "goal": "In the Orders application type Temp as the customer, then clear the form.",
+     "script": [
+      {
+       "calls": [
+        {
+         "name": "plan.update",
+         "args": {
+          "outcome": "In the Orders application type Temp as the customer, then clear the form.",
+          "expected_files": [],
+          "protected_effects": [
+           "computer"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.start",
+         "args": {
+          "application": "org.modbit.bench.orders",
+          "reason": "the task needs this application"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.set_value",
+         "args": {
+          "element": "{{el:Customer}}",
+          "value": "Temp"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.press",
+         "args": {
+          "element": "{{el:Clear}}"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "task.complete",
+         "args": {
+          "summary": "done: In the Orders application type Temp as the customer, then clear the form.",
+          "self_review": {
+           "findings": []
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "gui_element/notes-bold": {
+   "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Notes application switch the note's style to bold with the Bold button.",
+   "script": [
+    {
+     "calls": [
+      {
+       "name": "plan.update",
+       "args": {
+        "outcome": "a computer-use child completes the GUI task",
+        "expected_files": [],
+        "protected_effects": [
+         "agent",
+         "computer"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.spawn",
+       "args": {
+        "idempotency_key": "gui-1",
+        "objective": "In the Notes application switch the note's style to bold with the Bold button.",
+        "write_scope": [],
+        "mode": "FOREGROUND",
+        "profile": "computer-use",
+        "environment_healthy": "the bench fixture desktop is attached and computer.apps lists the application",
+        "completion_evidence": {
+         "kind": "accessibility",
+         "app": "org.modbit.bench.notes",
+         "role": "label",
+         "name": "Style",
+         "value": "bold"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.result",
+       "args": {
+        "idempotency_key": "gui-1"
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "task.complete",
+       "args": {
+        "summary": "the child's GUI task is done",
+        "self_review": {
+         "findings": []
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "children": [
+    {
+     "goal": "In the Notes application switch the note's style to bold with the Bold button.",
+     "script": [
+      {
+       "calls": [
+        {
+         "name": "plan.update",
+         "args": {
+          "outcome": "In the Notes application switch the note's style to bold with the Bold button.",
+          "expected_files": [],
+          "protected_effects": [
+           "computer"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.start",
+         "args": {
+          "application": "org.modbit.bench.notes",
+          "reason": "the task needs this application"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.press",
+         "args": {
+          "element": "{{el:Bold}}"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "task.complete",
+         "args": {
+          "summary": "done: In the Notes application switch the note's style to bold with the Bold button.",
+          "self_review": {
+           "findings": []
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "gui_element/notes-set-text": {
+   "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Notes application make the document read exactly: Meeting at noon",
+   "script": [
+    {
+     "calls": [
+      {
+       "name": "plan.update",
+       "args": {
+        "outcome": "a computer-use child completes the GUI task",
+        "expected_files": [],
+        "protected_effects": [
+         "agent",
+         "computer"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.spawn",
+       "args": {
+        "idempotency_key": "gui-1",
+        "objective": "In the Notes application make the document read exactly: Meeting at noon",
+        "write_scope": [],
+        "mode": "FOREGROUND",
+        "profile": "computer-use",
+        "environment_healthy": "the bench fixture desktop is attached and computer.apps lists the application",
+        "completion_evidence": {
+         "kind": "accessibility",
+         "app": "org.modbit.bench.notes",
+         "role": "textarea",
+         "name": "Document",
+         "value": "Meeting at noon"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.result",
+       "args": {
+        "idempotency_key": "gui-1"
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "task.complete",
+       "args": {
+        "summary": "the child's GUI task is done",
+        "self_review": {
+         "findings": []
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "children": [
+    {
+     "goal": "In the Notes application make the document read exactly: Meeting at noon",
+     "script": [
+      {
+       "calls": [
+        {
+         "name": "plan.update",
+         "args": {
+          "outcome": "In the Notes application make the document read exactly: Meeting at noon",
+          "expected_files": [],
+          "protected_effects": [
+           "computer"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.start",
+         "args": {
+          "application": "org.modbit.bench.notes",
+          "reason": "the task needs this application"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.set_value",
+         "args": {
+          "element": "{{el:Document}}",
+          "value": "Meeting at noon"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "task.complete",
+         "args": {
+          "summary": "done: In the Notes application make the document read exactly: Meeting at noon",
+          "self_review": {
+           "findings": []
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "gui_element/settings-dark-mode": {
+   "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Settings application turn on dark mode.",
+   "script": [
+    {
+     "calls": [
+      {
+       "name": "plan.update",
+       "args": {
+        "outcome": "a computer-use child completes the GUI task",
+        "expected_files": [],
+        "protected_effects": [
+         "agent",
+         "computer"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.spawn",
+       "args": {
+        "idempotency_key": "gui-1",
+        "objective": "In the Settings application turn on dark mode.",
+        "write_scope": [],
+        "mode": "FOREGROUND",
+        "profile": "computer-use",
+        "environment_healthy": "the bench fixture desktop is attached and computer.apps lists the application",
+        "completion_evidence": {
+         "kind": "accessibility",
+         "app": "org.modbit.bench.settings",
+         "role": "label",
+         "name": "Theme",
+         "value": "dark"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.result",
+       "args": {
+        "idempotency_key": "gui-1"
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "task.complete",
+       "args": {
+        "summary": "the child's GUI task is done",
+        "self_review": {
+         "findings": []
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "children": [
+    {
+     "goal": "In the Settings application turn on dark mode.",
+     "script": [
+      {
+       "calls": [
+        {
+         "name": "plan.update",
+         "args": {
+          "outcome": "In the Settings application turn on dark mode.",
+          "expected_files": [],
+          "protected_effects": [
+           "computer"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.start",
+         "args": {
+          "application": "org.modbit.bench.settings",
+          "reason": "the task needs this application"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.press",
+         "args": {
+          "element": "{{el:Dark mode}}"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "task.complete",
+         "args": {
+          "summary": "done: In the Settings application turn on dark mode.",
+          "self_review": {
+           "findings": []
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "gui_element/settings-font-apply": {
+   "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Settings application set the font size to 14 and apply the settings.",
+   "script": [
+    {
+     "calls": [
+      {
+       "name": "plan.update",
+       "args": {
+        "outcome": "a computer-use child completes the GUI task",
+        "expected_files": [],
+        "protected_effects": [
+         "agent",
+         "computer"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.spawn",
+       "args": {
+        "idempotency_key": "gui-1",
+        "objective": "In the Settings application set the font size to 14 and apply the settings.",
+        "write_scope": [],
+        "mode": "FOREGROUND",
+        "profile": "computer-use",
+        "environment_healthy": "the bench fixture desktop is attached and computer.apps lists the application",
+        "completion_evidence": {
+         "kind": "accessibility",
+         "app": "org.modbit.bench.settings",
+         "role": "label",
+         "name": "Settings state",
+         "value": "applied"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.result",
+       "args": {
+        "idempotency_key": "gui-1"
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "task.complete",
+       "args": {
+        "summary": "the child's GUI task is done",
+        "self_review": {
+         "findings": []
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "children": [
+    {
+     "goal": "In the Settings application set the font size to 14 and apply the settings.",
+     "script": [
+      {
+       "calls": [
+        {
+         "name": "plan.update",
+         "args": {
+          "outcome": "In the Settings application set the font size to 14 and apply the settings.",
+          "expected_files": [],
+          "protected_effects": [
+           "computer"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.start",
+         "args": {
+          "application": "org.modbit.bench.settings",
+          "reason": "the task needs this application"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.set_value",
+         "args": {
+          "element": "{{el:Font size}}",
+          "value": "14"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.press",
+         "args": {
+          "element": "{{el:Apply}}"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "task.complete",
+         "args": {
+          "summary": "done: In the Settings application set the font size to 14 and apply the settings.",
+          "self_review": {
+           "findings": []
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "gui_element/settings-notifications-off": {
+   "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Settings application turn notifications off.",
+   "script": [
+    {
+     "calls": [
+      {
+       "name": "plan.update",
+       "args": {
+        "outcome": "a computer-use child completes the GUI task",
+        "expected_files": [],
+        "protected_effects": [
+         "agent",
+         "computer"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.spawn",
+       "args": {
+        "idempotency_key": "gui-1",
+        "objective": "In the Settings application turn notifications off.",
+        "write_scope": [],
+        "mode": "FOREGROUND",
+        "profile": "computer-use",
+        "environment_healthy": "the bench fixture desktop is attached and computer.apps lists the application",
+        "completion_evidence": {
+         "kind": "accessibility",
+         "app": "org.modbit.bench.settings",
+         "role": "switch",
+         "name": "Notifications",
+         "value": "off"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.result",
+       "args": {
+        "idempotency_key": "gui-1"
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "task.complete",
+       "args": {
+        "summary": "the child's GUI task is done",
+        "self_review": {
+         "findings": []
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "children": [
+    {
+     "goal": "In the Settings application turn notifications off.",
+     "script": [
+      {
+       "calls": [
+        {
+         "name": "plan.update",
+         "args": {
+          "outcome": "In the Settings application turn notifications off.",
+          "expected_files": [],
+          "protected_effects": [
+           "computer"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.start",
+         "args": {
+          "application": "org.modbit.bench.settings",
+          "reason": "the task needs this application"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.press",
+         "args": {
+          "element": "{{el:Notifications}}"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "task.complete",
+         "args": {
+          "summary": "done: In the Settings application turn notifications off.",
+          "self_review": {
+           "findings": []
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "gui_element/files-archive-confirm": {
+   "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Files application archive draft.txt, confirming in the dialog that opens.",
+   "script": [
+    {
+     "calls": [
+      {
+       "name": "plan.update",
+       "args": {
+        "outcome": "a computer-use child completes the GUI task",
+        "expected_files": [],
+        "protected_effects": [
+         "agent",
+         "computer"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.spawn",
+       "args": {
+        "idempotency_key": "gui-1",
+        "objective": "In the Files application archive draft.txt, confirming in the dialog that opens.",
+        "write_scope": [],
+        "mode": "FOREGROUND",
+        "profile": "computer-use",
+        "environment_healthy": "the bench fixture desktop is attached and computer.apps lists the application",
+        "completion_evidence": {
+         "kind": "accessibility",
+         "app": "org.modbit.bench.files",
+         "role": "label",
+         "name": "File state",
+         "value": "archived"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.result",
+       "args": {
+        "idempotency_key": "gui-1"
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "task.complete",
+       "args": {
+        "summary": "the child's GUI task is done",
+        "self_review": {
+         "findings": []
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "children": [
+    {
+     "goal": "In the Files application archive draft.txt, confirming in the dialog that opens.",
+     "script": [
+      {
+       "calls": [
+        {
+         "name": "plan.update",
+         "args": {
+          "outcome": "In the Files application archive draft.txt, confirming in the dialog that opens.",
+          "expected_files": [],
+          "protected_effects": [
+           "computer"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.start",
+         "args": {
+          "application": "org.modbit.bench.files",
+          "reason": "the task needs this application"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.press",
+         "args": {
+          "element": "{{el:Archive draft}}"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {
+          "window": "w-confirm"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.press",
+         "args": {
+          "element": "{{el:Archive}}"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "task.complete",
+         "args": {
+          "summary": "done: In the Files application archive draft.txt, confirming in the dialog that opens.",
+          "self_review": {
+           "findings": []
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "gui_element/files-archive-cancel": {
+   "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Files application open the archive dialog for draft.txt and cancel it, keeping the file.",
+   "script": [
+    {
+     "calls": [
+      {
+       "name": "plan.update",
+       "args": {
+        "outcome": "a computer-use child completes the GUI task",
+        "expected_files": [],
+        "protected_effects": [
+         "agent",
+         "computer"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.spawn",
+       "args": {
+        "idempotency_key": "gui-1",
+        "objective": "In the Files application open the archive dialog for draft.txt and cancel it, keeping the file.",
+        "write_scope": [],
+        "mode": "FOREGROUND",
+        "profile": "computer-use",
+        "environment_healthy": "the bench fixture desktop is attached and computer.apps lists the application",
+        "completion_evidence": {
+         "kind": "accessibility",
+         "app": "org.modbit.bench.files",
+         "role": "label",
+         "name": "File state",
+         "value": "kept"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.result",
+       "args": {
+        "idempotency_key": "gui-1"
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "task.complete",
+       "args": {
+        "summary": "the child's GUI task is done",
+        "self_review": {
+         "findings": []
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "children": [
+    {
+     "goal": "In the Files application open the archive dialog for draft.txt and cancel it, keeping the file.",
+     "script": [
+      {
+       "calls": [
+        {
+         "name": "plan.update",
+         "args": {
+          "outcome": "In the Files application open the archive dialog for draft.txt and cancel it, keeping the file.",
+          "expected_files": [],
+          "protected_effects": [
+           "computer"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.start",
+         "args": {
+          "application": "org.modbit.bench.files",
+          "reason": "the task needs this application"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.press",
+         "args": {
+          "element": "{{el:Archive draft}}"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {
+          "window": "w-confirm"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.press",
+         "args": {
+          "element": "{{el:Cancel}}"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "task.complete",
+         "args": {
+          "summary": "done: In the Files application open the archive dialog for draft.txt and cancel it, keeping the file.",
+          "self_review": {
+           "findings": []
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "gui_element/ledger-copy-invoice-total": {
+   "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: Read the total due and the invoice number in the Invoice application, then record a Ledger entry with that amount and that reference.",
+   "script": [
+    {
+     "calls": [
+      {
+       "name": "plan.update",
+       "args": {
+        "outcome": "a computer-use child completes the GUI task",
+        "expected_files": [],
+        "protected_effects": [
+         "agent",
+         "computer"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.spawn",
+       "args": {
+        "idempotency_key": "gui-1",
+        "objective": "Read the total due and the invoice number in the Invoice application, then record a Ledger entry with that amount and that reference.",
+        "write_scope": [],
+        "mode": "FOREGROUND",
+        "profile": "computer-use",
+        "environment_healthy": "the bench fixture desktop is attached and computer.apps lists the application",
+        "completion_evidence": {
+         "kind": "accessibility",
+         "app": "org.modbit.bench.ledger",
+         "role": "label",
+         "name": "Entry state",
+         "value": "recorded"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.result",
+       "args": {
+        "idempotency_key": "gui-1"
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "task.complete",
+       "args": {
+        "summary": "the child's GUI task is done",
+        "self_review": {
+         "findings": []
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "children": [
+    {
+     "goal": "Read the total due and the invoice number in the Invoice application, then record a Ledger entry with that amount and that reference.",
+     "script": [
+      {
+       "calls": [
+        {
+         "name": "plan.update",
+         "args": {
+          "outcome": "Read the total due and the invoice number in the Invoice application, then record a Ledger entry with that amount and that reference.",
+          "expected_files": [],
+          "protected_effects": [
+           "computer"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.start",
+         "args": {
+          "application": "org.modbit.bench.invoice",
+          "reason": "the task needs this application"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.release",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.start",
+         "args": {
+          "application": "org.modbit.bench.ledger",
+          "reason": "the task needs this application"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.set_value",
+         "args": {
+          "element": "{{el:Amount}}",
+          "value": "42.50"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.set_value",
+         "args": {
+          "element": "{{el:Reference}}",
+          "value": "INV-7"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.press",
+         "args": {
+          "element": "{{el:Record}}"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "task.complete",
+         "args": {
+          "summary": "done: Read the total due and the invoice number in the Invoice application, then record a Ledger entry with that amount and that reference.",
+          "self_review": {
+           "findings": []
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "gui_input/notes-type-text": {
+   "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Notes application type hello world into the document.",
+   "script": [
+    {
+     "calls": [
+      {
+       "name": "plan.update",
+       "args": {
+        "outcome": "a computer-use child completes the GUI task",
+        "expected_files": [],
+        "protected_effects": [
+         "agent",
+         "computer"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.spawn",
+       "args": {
+        "idempotency_key": "gui-1",
+        "objective": "In the Notes application type hello world into the document.",
+        "write_scope": [],
+        "mode": "FOREGROUND",
+        "profile": "computer-use",
+        "environment_healthy": "the bench fixture desktop is attached and computer.apps lists the application",
+        "completion_evidence": {
+         "kind": "accessibility",
+         "app": "org.modbit.bench.notes",
+         "role": "textarea",
+         "name": "Document",
+         "value": "hello world"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.result",
+       "args": {
+        "idempotency_key": "gui-1"
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "task.complete",
+       "args": {
+        "summary": "the child's GUI task is done",
+        "self_review": {
+         "findings": []
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "children": [
+    {
+     "goal": "In the Notes application type hello world into the document.",
+     "script": [
+      {
+       "calls": [
+        {
+         "name": "plan.update",
+         "args": {
+          "outcome": "In the Notes application type hello world into the document.",
+          "expected_files": [],
+          "protected_effects": [
+           "computer"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.start",
+         "args": {
+          "application": "org.modbit.bench.notes",
+          "reason": "the task needs this application"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.type",
+         "args": {
+          "text": "hello world"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "task.complete",
+         "args": {
+          "summary": "done: In the Notes application type hello world into the document.",
+          "self_review": {
+           "findings": []
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "gui_input/notes-save-shortcut": {
+   "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Notes application save the note with the keyboard shortcut.",
+   "script": [
+    {
+     "calls": [
+      {
+       "name": "plan.update",
+       "args": {
+        "outcome": "a computer-use child completes the GUI task",
+        "expected_files": [],
+        "protected_effects": [
+         "agent",
+         "computer"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.spawn",
+       "args": {
+        "idempotency_key": "gui-1",
+        "objective": "In the Notes application save the note with the keyboard shortcut.",
+        "write_scope": [],
+        "mode": "FOREGROUND",
+        "profile": "computer-use",
+        "environment_healthy": "the bench fixture desktop is attached and computer.apps lists the application",
+        "completion_evidence": {
+         "kind": "accessibility",
+         "app": "org.modbit.bench.notes",
+         "role": "label",
+         "name": "Saved state",
+         "value": "saved"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.result",
+       "args": {
+        "idempotency_key": "gui-1"
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "task.complete",
+       "args": {
+        "summary": "the child's GUI task is done",
+        "self_review": {
+         "findings": []
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "children": [
+    {
+     "goal": "In the Notes application save the note with the keyboard shortcut.",
+     "script": [
+      {
+       "calls": [
+        {
+         "name": "plan.update",
+         "args": {
+          "outcome": "In the Notes application save the note with the keyboard shortcut.",
+          "expected_files": [],
+          "protected_effects": [
+           "computer"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.start",
+         "args": {
+          "application": "org.modbit.bench.notes",
+          "reason": "the task needs this application"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.key",
+         "args": {
+          "keys": [
+           "cmd+s"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "task.complete",
+         "args": {
+          "summary": "done: In the Notes application save the note with the keyboard shortcut.",
+          "self_review": {
+           "findings": []
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "gui_input/notes-type-and-save": {
+   "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Notes application type draft one into the document and save it with the keyboard shortcut.",
+   "script": [
+    {
+     "calls": [
+      {
+       "name": "plan.update",
+       "args": {
+        "outcome": "a computer-use child completes the GUI task",
+        "expected_files": [],
+        "protected_effects": [
+         "agent",
+         "computer"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.spawn",
+       "args": {
+        "idempotency_key": "gui-1",
+        "objective": "In the Notes application type draft one into the document and save it with the keyboard shortcut.",
+        "write_scope": [],
+        "mode": "FOREGROUND",
+        "profile": "computer-use",
+        "environment_healthy": "the bench fixture desktop is attached and computer.apps lists the application",
+        "completion_evidence": {
+         "kind": "accessibility",
+         "app": "org.modbit.bench.notes",
+         "role": "label",
+         "name": "Saved state",
+         "value": "saved"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.result",
+       "args": {
+        "idempotency_key": "gui-1"
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "task.complete",
+       "args": {
+        "summary": "the child's GUI task is done",
+        "self_review": {
+         "findings": []
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "children": [
+    {
+     "goal": "In the Notes application type draft one into the document and save it with the keyboard shortcut.",
+     "script": [
+      {
+       "calls": [
+        {
+         "name": "plan.update",
+         "args": {
+          "outcome": "In the Notes application type draft one into the document and save it with the keyboard shortcut.",
+          "expected_files": [],
+          "protected_effects": [
+           "computer"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.start",
+         "args": {
+          "application": "org.modbit.bench.notes",
+          "reason": "the task needs this application"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.type",
+         "args": {
+          "text": "draft one"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.key",
+         "args": {
+          "keys": [
+           "cmd+s"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "task.complete",
+         "args": {
+          "summary": "done: In the Notes application type draft one into the document and save it with the keyboard shortcut.",
+          "self_review": {
+           "findings": []
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "gui_input/search-type-enter": {
+   "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Search application search for modbit by typing the query and pressing enter.",
+   "script": [
+    {
+     "calls": [
+      {
+       "name": "plan.update",
+       "args": {
+        "outcome": "a computer-use child completes the GUI task",
+        "expected_files": [],
+        "protected_effects": [
+         "agent",
+         "computer"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.spawn",
+       "args": {
+        "idempotency_key": "gui-1",
+        "objective": "In the Search application search for modbit by typing the query and pressing enter.",
+        "write_scope": [],
+        "mode": "FOREGROUND",
+        "profile": "computer-use",
+        "environment_healthy": "the bench fixture desktop is attached and computer.apps lists the application",
+        "completion_evidence": {
+         "kind": "accessibility",
+         "app": "org.modbit.bench.search",
+         "role": "label",
+         "name": "Results",
+         "value": "results ready"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.result",
+       "args": {
+        "idempotency_key": "gui-1"
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "task.complete",
+       "args": {
+        "summary": "the child's GUI task is done",
+        "self_review": {
+         "findings": []
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "children": [
+    {
+     "goal": "In the Search application search for modbit by typing the query and pressing enter.",
+     "script": [
+      {
+       "calls": [
+        {
+         "name": "plan.update",
+         "args": {
+          "outcome": "In the Search application search for modbit by typing the query and pressing enter.",
+          "expected_files": [],
+          "protected_effects": [
+           "computer"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.start",
+         "args": {
+          "application": "org.modbit.bench.search",
+          "reason": "the task needs this application"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.press",
+         "args": {
+          "element": "{{el:Query}}",
+          "action": "focus"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.type",
+         "args": {
+          "text": "modbit",
+          "then": "enter"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "task.complete",
+         "args": {
+          "summary": "done: In the Search application search for modbit by typing the query and pressing enter.",
+          "self_review": {
+           "findings": []
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "gui_input/orders-customer-by-typing": {
+   "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Orders application type Grace Hopper into the customer field and press enter.",
+   "script": [
+    {
+     "calls": [
+      {
+       "name": "plan.update",
+       "args": {
+        "outcome": "a computer-use child completes the GUI task",
+        "expected_files": [],
+        "protected_effects": [
+         "agent",
+         "computer"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.spawn",
+       "args": {
+        "idempotency_key": "gui-1",
+        "objective": "In the Orders application type Grace Hopper into the customer field and press enter.",
+        "write_scope": [],
+        "mode": "FOREGROUND",
+        "profile": "computer-use",
+        "environment_healthy": "the bench fixture desktop is attached and computer.apps lists the application",
+        "completion_evidence": {
+         "kind": "accessibility",
+         "app": "org.modbit.bench.orders",
+         "role": "label",
+         "name": "Status",
+         "value": "customer entered"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.result",
+       "args": {
+        "idempotency_key": "gui-1"
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "task.complete",
+       "args": {
+        "summary": "the child's GUI task is done",
+        "self_review": {
+         "findings": []
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "children": [
+    {
+     "goal": "In the Orders application type Grace Hopper into the customer field and press enter.",
+     "script": [
+      {
+       "calls": [
+        {
+         "name": "plan.update",
+         "args": {
+          "outcome": "In the Orders application type Grace Hopper into the customer field and press enter.",
+          "expected_files": [],
+          "protected_effects": [
+           "computer"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.start",
+         "args": {
+          "application": "org.modbit.bench.orders",
+          "reason": "the task needs this application"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.press",
+         "args": {
+          "element": "{{el:Customer}}",
+          "action": "focus"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.type",
+         "args": {
+          "text": "Grace Hopper",
+          "then": "enter"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "task.complete",
+         "args": {
+          "summary": "done: In the Orders application type Grace Hopper into the customer field and press enter.",
+          "self_review": {
+           "findings": []
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "gui_input/orders-stamp-by-click": {
+   "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Orders application click the approval stamp picture (it has no accessible action).",
+   "script": [
+    {
+     "calls": [
+      {
+       "name": "plan.update",
+       "args": {
+        "outcome": "a computer-use child completes the GUI task",
+        "expected_files": [],
+        "protected_effects": [
+         "agent",
+         "computer"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.spawn",
+       "args": {
+        "idempotency_key": "gui-1",
+        "objective": "In the Orders application click the approval stamp picture (it has no accessible action).",
+        "write_scope": [],
+        "mode": "FOREGROUND",
+        "profile": "computer-use",
+        "environment_healthy": "the bench fixture desktop is attached and computer.apps lists the application",
+        "completion_evidence": {
+         "kind": "accessibility",
+         "app": "org.modbit.bench.orders",
+         "role": "label",
+         "name": "Status",
+         "value": "stamped"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.result",
+       "args": {
+        "idempotency_key": "gui-1"
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "task.complete",
+       "args": {
+        "summary": "the child's GUI task is done",
+        "self_review": {
+         "findings": []
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "children": [
+    {
+     "goal": "In the Orders application click the approval stamp picture (it has no accessible action).",
+     "script": [
+      {
+       "calls": [
+        {
+         "name": "plan.update",
+         "args": {
+          "outcome": "In the Orders application click the approval stamp picture (it has no accessible action).",
+          "expected_files": [],
+          "protected_effects": [
+           "computer"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.start",
+         "args": {
+          "application": "org.modbit.bench.orders",
+          "reason": "the task needs this application"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.screenshot",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.click",
+         "args": {
+          "frame": "{{frame}}",
+          "x": 1000,
+          "y": 650
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "task.complete",
+         "args": {
+          "summary": "done: In the Orders application click the approval stamp picture (it has no accessible action).",
+          "self_review": {
+           "findings": []
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "gui_input/orders-submit-by-click": {
+   "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Orders application click the Submit button by its position on the screenshot.",
+   "script": [
+    {
+     "calls": [
+      {
+       "name": "plan.update",
+       "args": {
+        "outcome": "a computer-use child completes the GUI task",
+        "expected_files": [],
+        "protected_effects": [
+         "agent",
+         "computer"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.spawn",
+       "args": {
+        "idempotency_key": "gui-1",
+        "objective": "In the Orders application click the Submit button by its position on the screenshot.",
+        "write_scope": [],
+        "mode": "FOREGROUND",
+        "profile": "computer-use",
+        "environment_healthy": "the bench fixture desktop is attached and computer.apps lists the application",
+        "completion_evidence": {
+         "kind": "accessibility",
+         "app": "org.modbit.bench.orders",
+         "role": "label",
+         "name": "Status",
+         "value": "submitted"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.result",
+       "args": {
+        "idempotency_key": "gui-1"
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "task.complete",
+       "args": {
+        "summary": "the child's GUI task is done",
+        "self_review": {
+         "findings": []
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "children": [
+    {
+     "goal": "In the Orders application click the Submit button by its position on the screenshot.",
+     "script": [
+      {
+       "calls": [
+        {
+         "name": "plan.update",
+         "args": {
+          "outcome": "In the Orders application click the Submit button by its position on the screenshot.",
+          "expected_files": [],
+          "protected_effects": [
+           "computer"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.start",
+         "args": {
+          "application": "org.modbit.bench.orders",
+          "reason": "the task needs this application"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.screenshot",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.click",
+         "args": {
+          "frame": "{{frame}}",
+          "x": 120,
+          "y": 280
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "task.complete",
+         "args": {
+          "summary": "done: In the Orders application click the Submit button by its position on the screenshot.",
+          "self_review": {
+           "findings": []
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "gui_input/calculator-two-plus-three": {
+   "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Calculator application clear the display, then key in 2 plus 3 and press enter.",
+   "script": [
+    {
+     "calls": [
+      {
+       "name": "plan.update",
+       "args": {
+        "outcome": "a computer-use child completes the GUI task",
+        "expected_files": [],
+        "protected_effects": [
+         "agent",
+         "computer"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.spawn",
+       "args": {
+        "idempotency_key": "gui-1",
+        "objective": "In the Calculator application clear the display, then key in 2 plus 3 and press enter.",
+        "write_scope": [],
+        "mode": "FOREGROUND",
+        "profile": "computer-use",
+        "environment_healthy": "the bench fixture desktop is attached and computer.apps lists the application",
+        "completion_evidence": {
+         "kind": "accessibility",
+         "app": "org.modbit.bench.calculator",
+         "role": "label",
+         "name": "Result state",
+         "value": "computed"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.result",
+       "args": {
+        "idempotency_key": "gui-1"
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "task.complete",
+       "args": {
+        "summary": "the child's GUI task is done",
+        "self_review": {
+         "findings": []
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "children": [
+    {
+     "goal": "In the Calculator application clear the display, then key in 2 plus 3 and press enter.",
+     "script": [
+      {
+       "calls": [
+        {
+         "name": "plan.update",
+         "args": {
+          "outcome": "In the Calculator application clear the display, then key in 2 plus 3 and press enter.",
+          "expected_files": [],
+          "protected_effects": [
+           "computer"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.start",
+         "args": {
+          "application": "org.modbit.bench.calculator",
+          "reason": "the task needs this application"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.key",
+         "args": {
+          "keys": [
+           "escape"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.key",
+         "args": {
+          "keys": [
+           "2",
+           "plus",
+           "3"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.key",
+         "args": {
+          "keys": [
+           "enter"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "task.complete",
+         "args": {
+          "summary": "done: In the Calculator application clear the display, then key in 2 plus 3 and press enter.",
+          "self_review": {
+           "findings": []
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "gui_input/calculator-clear-then-seven": {
+   "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Calculator application clear the display and key in 7.",
+   "script": [
+    {
+     "calls": [
+      {
+       "name": "plan.update",
+       "args": {
+        "outcome": "a computer-use child completes the GUI task",
+        "expected_files": [],
+        "protected_effects": [
+         "agent",
+         "computer"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.spawn",
+       "args": {
+        "idempotency_key": "gui-1",
+        "objective": "In the Calculator application clear the display and key in 7.",
+        "write_scope": [],
+        "mode": "FOREGROUND",
+        "profile": "computer-use",
+        "environment_healthy": "the bench fixture desktop is attached and computer.apps lists the application",
+        "completion_evidence": {
+         "kind": "accessibility",
+         "app": "org.modbit.bench.calculator",
+         "role": "textfield",
+         "name": "Display",
+         "value": "7"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.result",
+       "args": {
+        "idempotency_key": "gui-1"
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "task.complete",
+       "args": {
+        "summary": "the child's GUI task is done",
+        "self_review": {
+         "findings": []
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "children": [
+    {
+     "goal": "In the Calculator application clear the display and key in 7.",
+     "script": [
+      {
+       "calls": [
+        {
+         "name": "plan.update",
+         "args": {
+          "outcome": "In the Calculator application clear the display and key in 7.",
+          "expected_files": [],
+          "protected_effects": [
+           "computer"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.start",
+         "args": {
+          "application": "org.modbit.bench.calculator",
+          "reason": "the task needs this application"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.key",
+         "args": {
+          "keys": [
+           "escape"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.key",
+         "args": {
+          "keys": [
+           "7"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "task.complete",
+         "args": {
+          "summary": "done: In the Calculator application clear the display and key in 7.",
+          "self_review": {
+           "findings": []
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "gui_input/search-click-then-type": {
+   "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Search application click into the query field, type agents and press enter.",
+   "script": [
+    {
+     "calls": [
+      {
+       "name": "plan.update",
+       "args": {
+        "outcome": "a computer-use child completes the GUI task",
+        "expected_files": [],
+        "protected_effects": [
+         "agent",
+         "computer"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.spawn",
+       "args": {
+        "idempotency_key": "gui-1",
+        "objective": "In the Search application click into the query field, type agents and press enter.",
+        "write_scope": [],
+        "mode": "FOREGROUND",
+        "profile": "computer-use",
+        "environment_healthy": "the bench fixture desktop is attached and computer.apps lists the application",
+        "completion_evidence": {
+         "kind": "accessibility",
+         "app": "org.modbit.bench.search",
+         "role": "label",
+         "name": "Results",
+         "value": "results ready"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.result",
+       "args": {
+        "idempotency_key": "gui-1"
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "task.complete",
+       "args": {
+        "summary": "the child's GUI task is done",
+        "self_review": {
+         "findings": []
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "children": [
+    {
+     "goal": "In the Search application click into the query field, type agents and press enter.",
+     "script": [
+      {
+       "calls": [
+        {
+         "name": "plan.update",
+         "args": {
+          "outcome": "In the Search application click into the query field, type agents and press enter.",
+          "expected_files": [],
+          "protected_effects": [
+           "computer"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.start",
+         "args": {
+          "application": "org.modbit.bench.search",
+          "reason": "the task needs this application"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.screenshot",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.click",
+         "args": {
+          "frame": "{{frame}}",
+          "x": 340,
+          "y": 100
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.type",
+         "args": {
+          "text": "agents",
+          "then": "enter"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "task.complete",
+         "args": {
+          "summary": "done: In the Search application click into the query field, type agents and press enter.",
+          "self_review": {
+           "findings": []
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "gui_input/ledger-tab-to-reference": {
+   "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Ledger application move from the amount to the reference field with the tab key and type INV-9.",
+   "script": [
+    {
+     "calls": [
+      {
+       "name": "plan.update",
+       "args": {
+        "outcome": "a computer-use child completes the GUI task",
+        "expected_files": [],
+        "protected_effects": [
+         "agent",
+         "computer"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.spawn",
+       "args": {
+        "idempotency_key": "gui-1",
+        "objective": "In the Ledger application move from the amount to the reference field with the tab key and type INV-9.",
+        "write_scope": [],
+        "mode": "FOREGROUND",
+        "profile": "computer-use",
+        "environment_healthy": "the bench fixture desktop is attached and computer.apps lists the application",
+        "completion_evidence": {
+         "kind": "accessibility",
+         "app": "org.modbit.bench.ledger",
+         "role": "textfield",
+         "name": "Reference",
+         "value": "INV-9"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.result",
+       "args": {
+        "idempotency_key": "gui-1"
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "task.complete",
+       "args": {
+        "summary": "the child's GUI task is done",
+        "self_review": {
+         "findings": []
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "children": [
+    {
+     "goal": "In the Ledger application move from the amount to the reference field with the tab key and type INV-9.",
+     "script": [
+      {
+       "calls": [
+        {
+         "name": "plan.update",
+         "args": {
+          "outcome": "In the Ledger application move from the amount to the reference field with the tab key and type INV-9.",
+          "expected_files": [],
+          "protected_effects": [
+           "computer"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.start",
+         "args": {
+          "application": "org.modbit.bench.ledger",
+          "reason": "the task needs this application"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.key",
+         "args": {
+          "keys": [
+           "tab"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.type",
+         "args": {
+          "text": "INV-9"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "task.complete",
+         "args": {
+          "summary": "done: In the Ledger application move from the amount to the reference field with the tab key and type INV-9.",
+          "self_review": {
+           "findings": []
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "gui_input/ledger-type-amount-shortcut": {
+   "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Ledger application type 19.99 as the amount and record the entry with command-enter.",
+   "script": [
+    {
+     "calls": [
+      {
+       "name": "plan.update",
+       "args": {
+        "outcome": "a computer-use child completes the GUI task",
+        "expected_files": [],
+        "protected_effects": [
+         "agent",
+         "computer"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.spawn",
+       "args": {
+        "idempotency_key": "gui-1",
+        "objective": "In the Ledger application type 19.99 as the amount and record the entry with command-enter.",
+        "write_scope": [],
+        "mode": "FOREGROUND",
+        "profile": "computer-use",
+        "environment_healthy": "the bench fixture desktop is attached and computer.apps lists the application",
+        "completion_evidence": {
+         "kind": "accessibility",
+         "app": "org.modbit.bench.ledger",
+         "role": "label",
+         "name": "Entry state",
+         "value": "recorded"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "agent.result",
+       "args": {
+        "idempotency_key": "gui-1"
+       }
+      }
+     ]
+    },
+    {
+     "calls": [
+      {
+       "name": "task.complete",
+       "args": {
+        "summary": "the child's GUI task is done",
+        "self_review": {
+         "findings": []
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "children": [
+    {
+     "goal": "In the Ledger application type 19.99 as the amount and record the entry with command-enter.",
+     "script": [
+      {
+       "calls": [
+        {
+         "name": "plan.update",
+         "args": {
+          "outcome": "In the Ledger application type 19.99 as the amount and record the entry with command-enter.",
+          "expected_files": [],
+          "protected_effects": [
+           "computer"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.start",
+         "args": {
+          "application": "org.modbit.bench.ledger",
+          "reason": "the task needs this application"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.type",
+         "args": {
+          "text": "19.99"
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.key",
+         "args": {
+          "keys": [
+           "cmd+enter"
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "computer.state",
+         "args": {}
+        }
+       ]
+      },
+      {
+       "calls": [
+        {
+         "name": "task.complete",
+         "args": {
+          "summary": "done: In the Ledger application type 19.99 as the amount and record the entry with command-enter.",
+          "self_review": {
+           "findings": []
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ }
+}

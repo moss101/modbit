@@ -14,6 +14,13 @@
 //! `max_drop` below the baseline's. A gate that cannot fail (the baseline's
 //! rate is at or below `max_drop`, or `max_drop` is not below one) refuses the
 //! comparison.
+//!
+//! The same report and gate serve a suite that declares its own axes (PX-179,
+//! the GUI regression suite: `gui_element` and `gui_input`). Such a suite may
+//! also set the per-task gate: the report then keeps each task's verified
+//! trials, and the comparison names every task that verified in the baseline
+//! and no longer does (a regression, which fails the gate whatever the axis
+//! rates) and every task that verifies now and did not before.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -38,10 +45,28 @@ pub const COMPARISON_SCHEMA: &str = "modbit-four-axis-comparison/1";
 /// The four-axis part of a suite's protocol.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AxesProtocol {
+    /// The axes the suite's tasks are tagged by, in report order (PX-179).
+    /// Absent: the four axes of [`AXES`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub names: Option<Vec<String>>,
     /// The fewest tasks each axis must have; never below [`MIN_TASKS_PER_AXIS`].
     pub min_tasks_per_axis: u32,
     /// The per-axis regression gate.
     pub gate: Gate,
+}
+
+impl AxesProtocol {
+    /// The axes in report order: the suite's own, or [`AXES`].
+    #[must_use]
+    pub fn axis_names(&self) -> Vec<String> {
+        self.names.clone().unwrap_or_else(default_axes)
+    }
+}
+
+/// The four axes of PX-184 as owned names.
+#[must_use]
+pub fn default_axes() -> Vec<String> {
+    AXES.iter().map(|a| (*a).to_owned()).collect()
 }
 
 /// The per-axis regression gate.
@@ -50,6 +75,11 @@ pub struct Gate {
     /// An axis fails when its verified-success rate is more than this below
     /// the baseline's (absolute, 0..1).
     pub max_drop: f64,
+    /// PX-179: a task that verified in every baseline trial and does not in
+    /// every current one fails the gate by itself, named, whatever its
+    /// axis's rate. Absent: the per-axis gate only.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub per_task: bool,
 }
 
 impl Gate {
@@ -99,7 +129,16 @@ pub fn check_suite(suite: &Suite) -> Result<(), String> {
     };
     p.gate.check()?;
     let min = p.min_tasks_per_axis.max(MIN_TASKS_PER_AXIS);
-    let mut per_axis: BTreeMap<&str, u32> = AXES.iter().map(|a| (*a, 0)).collect();
+    let names = p.axis_names();
+    if names.is_empty() {
+        return Err("suite declares an empty list of axes".into());
+    }
+    let mut per_axis: BTreeMap<&str, u32> = BTreeMap::new();
+    for a in &names {
+        if a.trim().is_empty() || per_axis.insert(a.as_str(), 0).is_some() {
+            return Err(format!("axis {a:?} is empty or declared twice"));
+        }
+    }
     let mut ids = BTreeSet::new();
     let mut prints = BTreeMap::new();
     for t in &suite.tasks {
@@ -109,7 +148,7 @@ pub fn check_suite(suite: &Suite) -> Result<(), String> {
             .ok_or_else(|| format!("{}: task is not tagged by axis", t.id))?;
         let n = per_axis
             .get_mut(axis)
-            .ok_or_else(|| format!("{}: axis {axis:?} is not one of {AXES:?}", t.id))?;
+            .ok_or_else(|| format!("{}: axis {axis:?} is not one of {names:?}", t.id))?;
         *n += 1;
         let v = t
             .verifier
@@ -185,6 +224,9 @@ pub struct AxisScore {
     pub cost_usd_per_thousand_tasks: Option<f64>,
     /// Tasks whose trials failed, with the failing checks.
     pub failures: Vec<String>,
+    /// PX-179 (per-task gate only): each task's verified trials and trials.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub task_results: BTreeMap<String, (u32, u32)>,
 }
 
 /// The cost per thousand tasks over the whole run.
@@ -236,7 +278,7 @@ pub struct AxisReport {
 pub enum ReportRefused {
     /// The bundle's trial carries no axis.
     Untagged(String),
-    /// An axis not in [`AXES`].
+    /// An axis the suite does not declare.
     UnknownAxis(String),
     /// A task's trial carries no verifier outcome.
     NoVerifier(String),
@@ -265,7 +307,7 @@ impl std::fmt::Display for ReportRefused {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Untagged(t) => write!(f, "{t}: trial is not tagged by axis"),
-            Self::UnknownAxis(a) => write!(f, "axis {a:?} is not one of {AXES:?}"),
+            Self::UnknownAxis(a) => write!(f, "axis {a:?} is not one of the suite's axes"),
             Self::NoVerifier(t) => write!(f, "{t}: trial has no verifier outcome of its own"),
             Self::TooFewTasks {
                 axis,
@@ -306,9 +348,30 @@ pub fn report(
     gate: Gate,
     min_tasks_per_axis: u32,
 ) -> Result<AxisReport, ReportRefused> {
+    report_axes(
+        bundle,
+        bundle_digest,
+        gate,
+        min_tasks_per_axis,
+        &default_axes(),
+    )
+}
+
+/// [`report`] over the axes a suite declares (PX-179).
+///
+/// # Errors
+/// See [`ReportRefused`].
+#[allow(clippy::too_many_lines)]
+pub fn report_axes(
+    bundle: &Bundle,
+    bundle_digest: &str,
+    gate: Gate,
+    min_tasks_per_axis: u32,
+    names: &[String],
+) -> Result<AxisReport, ReportRefused> {
     let required = min_tasks_per_axis.max(MIN_TASKS_PER_AXIS);
     let mut by_axis: BTreeMap<&str, Vec<&TrialOutcome>> =
-        AXES.iter().map(|a| (*a, Vec::new())).collect();
+        names.iter().map(|a| (a.as_str(), Vec::new())).collect();
     for t in &bundle.trials {
         let axis = t
             .axis
@@ -393,6 +456,14 @@ pub fn report(
                 )
             })
             .collect();
+        let mut task_results: BTreeMap<String, (u32, u32)> = BTreeMap::new();
+        if gate.per_task {
+            for t in trials {
+                let e = task_results.entry(t.task.clone()).or_default();
+                e.0 += u32::from(t.verified_success);
+                e.1 += 1;
+            }
+        }
         cost.trials += n;
         cost.output_tokens += out;
         usd_total = match (usd_total, usd) {
@@ -409,6 +480,7 @@ pub fn report(
                 output_tokens_per_thousand_tasks: per_thousand(out as f64, n),
                 cost_usd_per_thousand_tasks: usd.map(|c| per_thousand(c, n)),
                 failures,
+                task_results,
             },
         );
     }
@@ -450,7 +522,8 @@ impl AxisReport {
                 self.bundle_digest
             )));
         }
-        let fresh = report(bundle, bundle_digest, self.gate, MIN_TASKS_PER_AXIS)?;
+        let names = self.axis_order();
+        let fresh = report_axes(bundle, bundle_digest, self.gate, MIN_TASKS_PER_AXIS, &names)?;
         let close = |a: f64, b: f64| (a - b).abs() <= 1e-6 * a.abs().max(1.0);
         let same_usd = |a: Option<f64>, b: Option<f64>| match (a, b) {
             (None, None) => true,
@@ -480,11 +553,22 @@ impl AxisReport {
             if mine.verified.successes != s.verified.successes
                 || mine.verified.n != s.verified.n
                 || mine.output_tokens != s.output_tokens
+                || mine.task_results != s.task_results
             {
                 return Err(ReportRefused::NotDerived(format!("axis {axis}")));
             }
         }
         Ok(())
+    }
+
+    /// The report's axes in report order: [`AXES`] order when they are the
+    /// four, otherwise the order of their names.
+    #[must_use]
+    pub fn axis_order(&self) -> Vec<String> {
+        let keys: Vec<String> = self.axes.keys().cloned().collect();
+        let mut four = default_axes();
+        four.retain(|a| self.axes.contains_key(a));
+        if four.len() == keys.len() { four } else { keys }
     }
 }
 
@@ -526,6 +610,14 @@ pub struct Comparison {
     pub cost_usd_per_thousand_tasks: (Option<f64>, Option<f64>),
     /// Axes whose gate failed.
     pub failed_axes: Vec<String>,
+    /// PX-179 (per-task gate): tasks that verified in every baseline trial
+    /// and not in every current one. Any one fails the gate.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub regressed_tasks: Vec<String>,
+    /// PX-179 (per-task gate): tasks that verify now in every trial and did
+    /// not in the baseline. Reported, never a failure.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub recovered_tasks: Vec<String>,
     /// Every gate passed.
     pub passed: bool,
 }
@@ -554,8 +646,15 @@ pub fn compare(baseline: &AxisReport, current: &AxisReport) -> Result<Comparison
     }
     let gate = baseline.gate;
     gate.check().map_err(ReportRefused::GateCannotFail)?;
+    let names = baseline.axis_order();
+    if names != current.axis_order() {
+        return Err(ReportRefused::DifferentSuite("the axes differ".into()));
+    }
     let mut axes = Vec::new();
-    for axis in AXES {
+    let mut regressed_tasks = Vec::new();
+    let mut recovered_tasks = Vec::new();
+    for axis in &names {
+        let axis = axis.as_str();
         let (Some(b), Some(c)) = (baseline.axes.get(axis), current.axes.get(axis)) else {
             return Err(ReportRefused::DifferentSuite(format!(
                 "axis {axis} missing"
@@ -566,6 +665,24 @@ pub fn compare(baseline: &AxisReport, current: &AxisReport) -> Result<Comparison
                 "axis {axis}: baseline rate {:.3} with max_drop {} leaves no rate below the floor",
                 b.verified.rate, gate.max_drop
             )));
+        }
+        if gate.per_task {
+            let all = |r: &(u32, u32)| r.1 > 0 && r.0 == r.1;
+            if b.task_results.keys().ne(c.task_results.keys())
+                || b.task_results.len() != b.tasks.len()
+            {
+                return Err(ReportRefused::DifferentSuite(format!(
+                    "axis {axis}: the per-task results do not name the same tasks"
+                )));
+            }
+            for (task, br) in &b.task_results {
+                let cr = &c.task_results[task];
+                if all(br) && !all(cr) {
+                    regressed_tasks.push(task.clone());
+                } else if all(cr) && !all(br) {
+                    recovered_tasks.push(task.clone());
+                }
+            }
         }
         axes.push(AxisDelta {
             axis: axis.to_owned(),
@@ -591,8 +708,10 @@ pub fn compare(baseline: &AxisReport, current: &AxisReport) -> Result<Comparison
         baseline_digest: baseline.bundle_digest.clone(),
         current_digest: current.bundle_digest.clone(),
         gate,
-        passed: failed_axes.is_empty(),
+        passed: failed_axes.is_empty() && regressed_tasks.is_empty(),
         failed_axes,
+        regressed_tasks,
+        recovered_tasks,
         axes,
         output_tokens_per_thousand_tasks: (
             baseline.cost.output_tokens_per_thousand_tasks,
@@ -610,8 +729,14 @@ pub fn compare(baseline: &AxisReport, current: &AxisReport) -> Result<Comparison
 /// The report as Markdown, appended to the run's summary.
 #[must_use]
 pub fn render(r: &AxisReport) -> String {
+    let names = r.axis_order();
+    let title = if names == default_axes() {
+        "Four axes (PX-184)".to_owned()
+    } else {
+        format!("Axes of suite {} (PX-179)", r.suite_id)
+    };
     let mut s = format!(
-        "\n## Four axes (PX-184)\n\n- bundle digest: `{}`\n- gate: an axis fails when its verified-success rate is more than {} below the baseline's\n- output tokens per thousand tasks: {:.0} ({} output tokens over {} trials, {} model calls){}\n- source: {}\n\n| axis | tasks | verified | 95% interval | output tokens / 1000 tasks |\n|---|---|---|---|---|\n",
+        "\n## {title}\n\n- bundle digest: `{}`\n- gate: an axis fails when its verified-success rate is more than {} below the baseline's\n- output tokens per thousand tasks: {:.0} ({} output tokens over {} trials, {} model calls){}\n- source: {}\n{}\n| axis | tasks | verified | 95% interval | output tokens / 1000 tasks |\n|---|---|---|---|---|\n",
         r.bundle_digest,
         r.gate.max_drop,
         r.cost.output_tokens_per_thousand_tasks,
@@ -622,9 +747,14 @@ pub fn render(r: &AxisReport) -> String {
             .cost_usd_per_thousand_tasks
             .map(|c| format!("; {c:.4} USD per thousand tasks at catalog list prices"))
             .unwrap_or_default(),
-        r.cost.source
+        r.cost.source,
+        if r.gate.per_task {
+            "- per-task gate: a task that verified in the baseline and does not now fails the gate, named\n"
+        } else {
+            ""
+        }
     );
-    for axis in AXES {
+    for axis in &names {
         if let Some(a) = r.axes.get(axis) {
             s.push_str(&format!(
                 "| {axis} | {} | {}/{} = {:.3} | {:.3}–{:.3} | {:.0} |\n",
@@ -638,7 +768,7 @@ pub fn render(r: &AxisReport) -> String {
             ));
         }
     }
-    for axis in AXES {
+    for axis in &names {
         if let Some(a) = r.axes.get(axis) {
             for f in &a.failures {
                 s.push_str(&format!("\n- {axis}: {f}"));
@@ -653,7 +783,7 @@ pub fn render(r: &AxisReport) -> String {
 #[must_use]
 pub fn render_comparison(c: &Comparison) -> String {
     let mut s = format!(
-        "# Four-axis comparison (PX-184)\n\n- baseline: `{}`\n- current: `{}`\n- gate: max_drop {}\n- output tokens per thousand tasks: {:.0} -> {:.0} ({:+.0})\n\n| axis | baseline | current | delta | floor | gate |\n|---|---|---|---|---|---|\n",
+        "# Axis comparison (PX-184, PX-179)\n\n- baseline: `{}`\n- current: `{}`\n- gate: max_drop {}\n- output tokens per thousand tasks: {:.0} -> {:.0} ({:+.0})\n\n| axis | baseline | current | delta | floor | gate |\n|---|---|---|---|---|---|\n",
         c.baseline_digest,
         c.current_digest,
         c.gate.max_drop,
@@ -674,12 +804,26 @@ pub fn render_comparison(c: &Comparison) -> String {
             if a.passed { "pass" } else { "FAIL" }
         ));
     }
+    if !c.recovered_tasks.is_empty() {
+        s.push_str(&format!(
+            "\nrecovered tasks: {}\n",
+            c.recovered_tasks.join(", ")
+        ));
+    }
+    if !c.regressed_tasks.is_empty() {
+        s.push_str(&format!(
+            "\nregressed tasks: {}\n",
+            c.regressed_tasks.join(", ")
+        ));
+    }
+    let mut failed: Vec<String> = c.failed_axes.clone();
+    failed.extend(c.regressed_tasks.iter().map(|t| format!("task {t}")));
     s.push_str(&format!(
         "\n{}\n",
         if c.passed {
             "every axis passed its gate".to_owned()
         } else {
-            format!("gate failed for: {}", c.failed_axes.join(", "))
+            format!("gate failed for: {}", failed.join(", "))
         }
     ));
     s

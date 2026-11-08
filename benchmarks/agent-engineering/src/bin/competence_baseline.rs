@@ -16,6 +16,12 @@
 //!   [--task <id>]... [--trial-timeout-secs 900] [--keep] [--cli <bin>] [--core <bin>]
 //! ```
 //!
+//! A GUI suite (PX-179) runs the same way with the Core's computer actuator
+//! set to the fixture actuator (`--actuator`, default the sibling
+//! `modbit-actuator-fixture`) over each task's desktop; the harness acts as
+//! the person at that desktop and approves each `computer.*` input the Core
+//! asks about, and denies every other protected effect.
+//!
 //! `competence-baseline merge --out <dir> <bundle dir>...` combines per-task
 //! bundles produced by separate jobs of the same commit and protocol into one
 //! bundle (the hosted workflow runs one job per task so a lost runner loses
@@ -55,11 +61,13 @@ struct Args {
     adaptive: bool,
     /// Trials run at once, each on its own profile and Core (PX-184).
     jobs: usize,
+    /// The computer actuator a GUI task's Core launches (PX-179).
+    actuator: PathBuf,
 }
 
 fn usage() -> ! {
     eprintln!(
-        "usage: competence-baseline --suite <tasks.json> --fixtures <dir> --out <dir> --endpoint <openai|anthropic> [--model <id>] [--trials N] [--max-turns N] [--task <id>]... [--trial-timeout-secs N] [--keep] [--cli <bin>] [--core <bin>] [--profile <file> | --adaptive] [--jobs N]\n       competence-baseline merge --out <dir> <bundle dir>...\n       competence-baseline compare --baseline <bundle dir> --current <bundle dir> [--out <file>]"
+        "usage: competence-baseline --suite <tasks.json> --fixtures <dir> --out <dir> --endpoint <openai|anthropic> [--model <id>] [--trials N] [--max-turns N] [--task <id>]... [--trial-timeout-secs N] [--keep] [--cli <bin>] [--core <bin>] [--profile <file> | --adaptive] [--jobs N] [--actuator <bin>]\n       competence-baseline merge --out <dir> <bundle dir>...\n       competence-baseline compare --baseline <bundle dir> --current <bundle dir> [--out <file>]"
     );
     std::process::exit(1)
 }
@@ -82,6 +90,7 @@ fn parse_args() -> Args {
         profile: None,
         adaptive: false,
         jobs: 1,
+        actuator: PathBuf::new(),
     };
     let mut i = 0;
     let value = |i: &mut usize| -> String {
@@ -107,6 +116,7 @@ fn parse_args() -> Args {
             "--core" => a.core = PathBuf::from(value(&mut i)),
             "--profile" => a.profile = Some(PathBuf::from(value(&mut i))),
             "--adaptive" => a.adaptive = true,
+            "--actuator" => a.actuator = PathBuf::from(value(&mut i)),
             "--jobs" => {
                 a.jobs = value(&mut i)
                     .parse::<usize>()
@@ -146,7 +156,92 @@ fn parse_args() -> Args {
         a.core =
             env_nonempty("MODBIT_CORE_BIN").map_or_else(|| sibling("modbit-core"), PathBuf::from);
     }
+    if a.actuator.as_os_str().is_empty() {
+        a.actuator = sibling(&format!(
+            "modbit-actuator-fixture{}",
+            std::env::consts::EXE_SUFFIX
+        ));
+    }
     a
+}
+
+/// The person at the fixture desktop (PX-179): while a GUI task runs, every
+/// `computer.*` approval the Core asks is approved with the intent it was
+/// asked under, and every other protected effect is denied. Returns the
+/// approved and denied counts when `stop` is set.
+fn spawn_approver(
+    cli_bin: PathBuf,
+    data_dir: PathBuf,
+    env: Vec<(String, String)>,
+    session: String,
+    log: PathBuf,
+    stop: std::sync::Arc<std::sync::atomic::AtomicBool>,
+) -> std::thread::JoinHandle<(u32, u32)> {
+    std::thread::spawn(move || {
+        let Ok(log) = std::fs::File::create(&log) else {
+            return (0, 0);
+        };
+        let mut cli = Cli {
+            bin: &cli_bin,
+            data_dir,
+            env,
+            log,
+        };
+        let short = Duration::from_secs(60);
+        let mut done = std::collections::BTreeSet::new();
+        let (mut approved, mut denied) = (0u32, 0u32);
+        while !stop.load(std::sync::atomic::Ordering::SeqCst) {
+            let list = cli.call(&["approval", "list", "--session", &session], short);
+            for line in list.stdout.lines() {
+                let Some(id) = first_word_after(line, "approval ") else {
+                    continue;
+                };
+                let status = kv(line, "status").unwrap_or_default();
+                if !matches!(status.as_str(), "REQUESTED" | "PENDING") || done.contains(&id) {
+                    continue;
+                }
+                let tool = kv(line, "tool").unwrap_or_default();
+                let intent = kv(line, "intent").unwrap_or_default();
+                let computer = tool.starts_with("computer.");
+                let (verb, reason) = if computer {
+                    (
+                        "approve",
+                        "benchmark protocol: the person at the fixture desktop approves this input",
+                    )
+                } else {
+                    (
+                        "deny",
+                        "benchmark protocol: protected effects other than computer inputs are denied",
+                    )
+                };
+                let r = cli.call(
+                    &[
+                        "approval",
+                        "resolve",
+                        "--session",
+                        &session,
+                        "--approval",
+                        &id,
+                        "--intent",
+                        &intent,
+                        verb,
+                        reason,
+                    ],
+                    short,
+                );
+                if r.code == 0 {
+                    done.insert(id);
+                    if computer {
+                        approved += 1;
+                    } else {
+                        denied += 1;
+                    }
+                }
+            }
+            std::thread::sleep(Duration::from_millis(150));
+        }
+        (approved, denied)
+    })
 }
 
 fn env_nonempty(name: &str) -> Option<String> {
@@ -405,19 +500,45 @@ fn run_trial(
         .trim_start_matches(r"\\?\")
         .to_owned();
     let flaky_state = scratch.join("flaky-state");
+    let mut cli_env: Vec<(String, String)> = vec![
+        (
+            "MODBIT_CORE_BIN".into(),
+            args.core.to_string_lossy().into_owned(),
+        ),
+        (
+            "FIXTURE_FLAKY_STATE".into(),
+            flaky_state.to_string_lossy().into_owned(),
+        ),
+    ];
+    // PX-179: a GUI task's Core launches the actuator over the task's own
+    // desktop, which writes what the applications hold after every input.
+    let desktop_state = scratch.join("desktop-state.json");
+    if let Some(g) = &task.gui {
+        let desktop = scratch.join("desktop.json");
+        let src = suite_path
+            .parent()
+            .unwrap_or_else(|| Path::new("."))
+            .join(&g.desktop);
+        std::fs::write(&desktop, Suite::hidden_bytes(&src)?).map_err(|e| e.to_string())?;
+        cli_env.push((
+            "MODBIT_COMPUTER_ACTUATOR".into(),
+            args.actuator.to_string_lossy().into_owned(),
+        ));
+        cli_env.push((
+            "MODBIT_COMPUTER_ACTUATOR_ARGS".into(),
+            serde_json::to_string(&[
+                "--desktop",
+                &desktop.to_string_lossy(),
+                "--state-out",
+                &desktop_state.to_string_lossy(),
+            ])
+            .map_err(|e| e.to_string())?,
+        ));
+    }
     let mut cli = Cli {
         bin: &args.cli,
         data_dir: data_dir.clone(),
-        env: vec![
-            (
-                "MODBIT_CORE_BIN".into(),
-                args.core.to_string_lossy().into_owned(),
-            ),
-            (
-                "FIXTURE_FLAKY_STATE".into(),
-                flaky_state.to_string_lossy().into_owned(),
-            ),
-        ],
+        env: cli_env.clone(),
         log: std::fs::File::create(trial_dir.join("cli.log")).map_err(|e| e.to_string())?,
     };
     let short = Duration::from_secs(120);
@@ -482,6 +603,22 @@ fn run_trial(
     owned.push("--wait".into());
     let run_args: Vec<&str> = owned.iter().map(String::as_str).collect();
     let started = Instant::now();
+    // PX-179: the person at the fixture desktop answers the Core's approvals
+    // while the run is in progress (`task run --wait` does not return while a
+    // run waits on one).
+    let approver_stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let approver = (suite.protocol.approvals
+        == modbit_bench_agent_engineering::APPROVE_COMPUTER_INPUTS)
+        .then(|| {
+            spawn_approver(
+                args.cli.clone(),
+                data_dir.clone(),
+                cli_env.clone(),
+                session.clone(),
+                trial_dir.join("approvals.log"),
+                std::sync::Arc::clone(&approver_stop),
+            )
+        });
     let mut r = cli.call(&run_args, args.trial_timeout);
     let mut interactions = 0u32;
     let mut state = kv(&r.stdout, "state").unwrap_or_default();
@@ -552,6 +689,14 @@ fn run_trial(
         state = kv(&r.stdout, "state").unwrap_or(state);
         timed_out = r.timed_out;
     }
+    approver_stop.store(true, std::sync::atomic::Ordering::SeqCst);
+    if let Some(h) = approver {
+        let (approved, denied) = h.join().unwrap_or((0, 0));
+        interactions += approved + denied;
+        notes.push(format!(
+            "approvals by protocol: {approved} computer input(s) approved as the person at the fixture desktop, {denied} other protected effect(s) denied"
+        ));
+    }
     if timed_out {
         notes.push(format!(
             "trial timed out after {}s; task cancelled",
@@ -615,6 +760,13 @@ fn run_trial(
     let usage = trial_usage(&mut cli, &events, &task_id, &economics, short);
     let diff = git(&workspace, &["diff", "HEAD"]).unwrap_or_default();
     std::fs::write(trial_dir.join("diff.patch"), &diff).map_err(|e| e.to_string())?;
+    // PX-179: what the fixture desktop's applications hold after the run, as
+    // the fixture actuator wrote it, travels with the trial.
+    let desktop: Option<serde_json::Value> = task.gui.as_ref().and_then(|_| {
+        let bytes = std::fs::read(&desktop_state).ok()?;
+        let _ = std::fs::write(trial_dir.join("desktop-state.json"), &bytes);
+        serde_json::from_slice(&bytes).ok()
+    });
     // The task's own verifier runs before any hidden file is placed: it reads
     // what the run left in the workspace and in the Core's records.
     let verifier = task.verifier.as_ref().map(|v| {
@@ -627,6 +779,7 @@ fn run_trial(
                 workspace: &workspace,
                 memory_ids: &memory_ids,
                 skill_hashes: &skill_hashes,
+                desktop: desktop.as_ref(),
             },
         );
         let _ = std::fs::write(
@@ -1088,7 +1241,12 @@ fn main() {
         eprintln!("competence-baseline: no task matches {:?}", args.tasks);
         std::process::exit(1);
     }
-    for bin in [&args.cli, &args.core] {
+    let gui = selected.iter().any(|t| t.gui.is_some());
+    let mut bins = vec![&args.cli, &args.core];
+    if gui {
+        bins.push(&args.actuator);
+    }
+    for bin in bins {
         if !bin.is_file() {
             eprintln!("competence-baseline: binary not found: {}", bin.display());
             std::process::exit(1);
@@ -1101,13 +1259,15 @@ fn main() {
     let build_digest = {
         let core = std::fs::read(&args.core).unwrap_or_default();
         let cli = std::fs::read(&args.cli).unwrap_or_default();
-        sha256_hex(
-            &[
-                sha256_hex(&core).into_bytes(),
-                sha256_hex(&cli).into_bytes(),
-            ]
-            .concat(),
-        )
+        let mut parts = vec![
+            sha256_hex(&core).into_bytes(),
+            sha256_hex(&cli).into_bytes(),
+        ];
+        // PX-179: a GUI run's build includes the actuator it drove.
+        if gui {
+            parts.push(sha256_hex(&std::fs::read(&args.actuator).unwrap_or_default()).into_bytes());
+        }
+        sha256_hex(&parts.concat())
     };
     let environment = Environment {
         modbit_revision: cmd_output("git", &["rev-parse", "HEAD"]),
@@ -1326,11 +1486,12 @@ fn main() {
     // thousand tasks from recorded usage — or the refusal that fails it.
     let mut refused = None;
     if let Some(axes) = &suite.protocol.axes {
-        match modbit_bench_agent_engineering::report(
+        match modbit_bench_agent_engineering::report_axes(
             &bundle,
             &digest,
             axes.gate,
             axes.min_tasks_per_axis,
+            &axes.axis_names(),
         ) {
             Ok(r) => {
                 std::fs::write(

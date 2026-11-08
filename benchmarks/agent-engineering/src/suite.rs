@@ -45,6 +45,12 @@ pub struct SuiteProtocol {
     pub axes: Option<crate::axes::AxesProtocol>,
 }
 
+/// The approvals protocol of a GUI suite (PX-179): the harness, as the
+/// person at the fixture desktop, approves each `computer.*` input the Core
+/// asks about and denies every other protected effect (a handover included:
+/// nobody is there to do the step).
+pub const APPROVE_COMPUTER_INPUTS: &str = "approve-computer-inputs";
+
 /// Run modes the Core accepts on `run-mode set` (docs/domain `RunMode`).
 pub const RUN_MODES: [&str; 5] = [
     "ASK",
@@ -86,6 +92,17 @@ pub struct TaskSpec {
     /// curated memory and owner-trusted skills (PX-184).
     #[serde(default, skip_serializing_if = "crate::verifier::Seed::is_empty")]
     pub seed: crate::verifier::Seed,
+    /// A GUI task (PX-179): the desktop the Core's actuator serves.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gui: Option<GuiTask>,
+}
+
+/// The desktop of a GUI task (PX-179).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct GuiTask {
+    /// The fixture desktop (`modbit-actuator-fixture --desktop`), relative to
+    /// the suite file's directory; digested with the suite.
+    pub desktop: String,
 }
 
 /// A file edit.
@@ -164,6 +181,16 @@ impl Suite {
         h.update(&canonical);
         h.update([0]);
         for t in &suite.tasks {
+            if let Some(g) = &t.gui {
+                let bytes = Self::hidden_bytes(&base.join(&g.desktop))
+                    .map_err(|e| format!("{}: desktop {e}", t.id))?;
+                h.update(t.id.as_bytes());
+                h.update([0]);
+                h.update(b"desktop");
+                h.update([0]);
+                h.update(&bytes);
+                h.update([0]);
+            }
             for f in &t.acceptance.hidden_files {
                 let src = base.join(&f.from);
                 let bytes =
@@ -212,6 +239,28 @@ impl Suite {
             t.seed.check().map_err(|e| format!("{}: {e}", t.id))?;
             if t.goal.trim().is_empty() {
                 return Err(format!("{}: empty goal", t.id));
+            }
+            // PX-179: a GUI task names its desktop, is verified by the GUI
+            // verifier row, and runs under the approvals protocol that has
+            // the harness approve its inputs as the person.
+            if let Some(g) = &t.gui {
+                if g.desktop.trim().is_empty() || g.desktop.split(['/', '\\']).any(|p| p == "..") {
+                    return Err(format!(
+                        "{}: desktop path {:?} is not inside the suite",
+                        t.id, g.desktop
+                    ));
+                }
+                if t.verifier.as_ref().is_none_or(|v| v.gui.is_none()) {
+                    return Err(format!("{}: a GUI task needs a gui verifier", t.id));
+                }
+                if self.protocol.approvals != APPROVE_COMPUTER_INPUTS {
+                    return Err(format!(
+                        "{}: a GUI task needs the {APPROVE_COMPUTER_INPUTS} approvals protocol",
+                        t.id
+                    ));
+                }
+            } else if t.verifier.as_ref().is_some_and(|v| v.gui.is_some()) {
+                return Err(format!("{}: a gui verifier needs a GUI task", t.id));
             }
         }
         if self.protocol.axes.is_some() {
