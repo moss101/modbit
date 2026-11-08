@@ -29,3 +29,4 @@ Mutation: `mutation-check.txt` — the judge ignoring environment facts fails te
 - Facts are gathered over the task's whole log, not one run's slice: a child resumed after an environment failure that then fails on its own is still judged an environment failure.
 - The browser stack is not covered: the predicate kinds read the computer runtime, the workspace and the log; a browser-run predicate is not built.
 - PX-179 (the GUI regression suite) consumes this and is not built.
+- Closed 2026-11-08: CI run 42421157777 (head 9d3e4e46) green on all 15 jobs, including the five qual_px_178 tests in px_computer on macOS, Linux and Windows (ci-run-42421157777.json). Landed on main as 1435ac81 (squash of moss101/modbit#174). Limits as above: parent-declared evidence only; no browser predicate; PX-179 not built.

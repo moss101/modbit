@@ -40132,10 +40132,13 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-178",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "test:services/modbit-core/tests/px_computer.rs::qual_px_178_a_completed_gui_task_passes_the_declared_evidence_and_is_judged_verified",
-    "artifact:evidence/m10/PX-178/mutation-check.txt"
+    "artifact:evidence/m10/PX-178/mutation-check.txt",
+    "run:42421157777",
+    "artifact:evidence/m10/PX-178/ci-run-42421157777.json",
+    "commit:1435ac81"
    ],
    "notes": [
     {
@@ -40163,7 +40166,7 @@
      "note": "Local, macOS arm64, real Core, real fixture actuator, real approvals, scripted parent and computer-use child: the five qual_px_178 tests pass (VERIFIED, MODEL_FAILURE unfinished, MODEL_FAILURE wrong element, POLICY_STOP denial, ENVIRONMENT_FAILURE killed actuator); full px_computer 40/40; mutation-check.txt: judge ignoring environment facts and a gate that never blocks each fail a test. CI on macOS, Linux and Windows still to run."
     }
    ],
-   "status_changed_on": "2026-11-07T15:09:47Z"
+   "status_changed_on": "2026-11-08T02:28:40Z"
   },
   {
    "id": "PX-179",
