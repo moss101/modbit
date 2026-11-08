@@ -39704,8 +39704,15 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-152",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "artifact:evidence/m10/PX-152/TASK_CARD.md",
+    "commit:76050ad7",
+    "commit:9ddd14da",
+    "artifact:evidence/m10/PX-152/rust-tests-2026-11-08.txt"
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-11-08T06:38:14Z"
   },
   {
    "id": "PX-153",
