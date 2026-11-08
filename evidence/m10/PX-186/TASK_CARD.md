@@ -47,3 +47,4 @@ Tests (all local, macOS arm64, at fa400c20; outputs in this directory):
 - The optional semantic match of the card is out of scope (the embedder has no dependency admission).
 - `MODBIT_MEMORY_RANKING` is an operator setting read at Core start; it now names one ranking. An unknown name falls back to the default, and the record says which ran.
 - CI has not run this change; the graph stops at REAL_TESTING. Linux and Windows are untested locally (the harness keeps the workspace path at 120 bytes on each and waits for a pass's Core to exit before the next pass reuses the path).
+- Closed 2026-11-08: CI run 42474226668 (head c160bd9c, merged as 8a72f291 via moss101/modbit#187) green on all 19 jobs (ci-run-42474226668.json); per-OS test lines in ci-per-os-42474226668.txt. Decision recorded: revert; keyword-v1 stays the default and the negative comparison is retained.
