@@ -39482,13 +39482,27 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-146",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m10/PX-146/TASK_CARD.md",
     "commit:6e32d883",
-    "artifact:evidence/m10/PX-145/rust-tests.txt"
+    "artifact:evidence/m10/PX-145/rust-tests.txt",
+    "artifact:evidence/m10/PX-146/mutation-check.txt",
+    "artifact:evidence/m10/PX-146/rust-tests-2026-11-08.txt",
+    "run:42518378707",
+    "artifact:evidence/m10/PX-146/ci-run-42518378707.json",
+    "artifact:evidence/m10/PX-146/ci-per-os-42518378707.txt",
+    "commit:ff7bb2d5c35f189203a1e87690bc71689f4ff0e9"
    ],
-   "status_changed_on": "2026-10-25T18:06:09Z"
+   "notes": [
+    {
+     "at": "2026-11-08T18:19:20Z",
+     "from": "REAL_TESTING",
+     "to": "REAL_TESTING",
+     "note": "2026-11-08: acceptance mapped clause by clause; wall-clock, stalled-window and no-self-resume cases added; mutations A-D killed"
+    }
+   ],
+   "status_changed_on": "2026-11-08T23:38:08Z"
   },
   {
    "id": "PX-147",

@@ -1,0 +1,85 @@
+PX-146 mutation check, 2026-11-08, macOS arm64, branch wip/px-146-close. Each mutation is an exact string replacement (script below), restored with git checkout and rebuilt.
+
+=== BASELINE
+--- core-runtime harness::a_window_of_turns_and_tool_calls_can_be_reopened_a_bounded_number_of_times
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 49 filtered out; finished in 0.00s
+--- run_control qual_px_146_*
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 23 filtered out; finished in 17.30s
+=== MUTATION A window-base-skipped: a new window does not move the turn and tool bases (crates/core-runtime/src/harness.rs)
+--- core-runtime harness::a_window_of_turns_and_tool_calls_can_be_reopened_a_bounded_number_of_times
+thread 'harness::tests::a_window_of_turns_and_tool_calls_can_be_reopened_a_bounded_number_of_times' (8677080) panicked at crates/core-runtime/src/harness.rs:1898:9:
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 49 filtered out; finished in 0.00s
+--- run_control qual_px_146_*
+thread 'qual_px_146_an_exhausted_budget_is_a_window_a_person_or_an_autonomous_run_can_continue' (8677543) panicked at services/modbit-core/tests/run_control.rs:2903:5:
+test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 23 filtered out; finished in 7.99s
+=== MUTATION B windows-unbounded: open_budget_window never refuses (crates/core-runtime/src/harness.rs)
+--- core-runtime harness::a_window_of_turns_and_tool_calls_can_be_reopened_a_bounded_number_of_times
+thread 'harness::tests::a_window_of_turns_and_tool_calls_can_be_reopened_a_bounded_number_of_times' (8684536) panicked at crates/core-runtime/src/harness.rs:934:9:
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 49 filtered out; finished in 15.36s
+--- run_control qual_px_146_*
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 23 filtered out; finished in 16.56s
+=== MUTATION C no-progress-extended: the Core extends a run with no progress (services/modbit-core/src/runtime.rs)
+--- core-runtime harness::a_window_of_turns_and_tool_calls_can_be_reopened_a_bounded_number_of_times
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 49 filtered out; finished in 0.00s
+--- run_control qual_px_146_*
+thread 'qual_px_146_an_autonomous_run_that_makes_no_progress_is_not_extended' (8703163) panicked at services/modbit-core/tests/run_control.rs:3007:5:
+test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 23 filtered out; finished in 14.63s
+=== MUTATION D window-resets-wall-clock: a new window gives back the wall clock (crates/core-runtime/src/harness.rs)
+--- core-runtime harness::a_window_of_turns_and_tool_calls_can_be_reopened_a_bounded_number_of_times
+thread 'harness::tests::a_window_of_turns_and_tool_calls_can_be_reopened_a_bounded_number_of_times' (8715532) panicked at crates/core-runtime/src/harness.rs:1936:35:
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 49 filtered out; finished in 0.00s
+--- run_control qual_px_146_*
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 23 filtered out; finished in 16.21s
+=== RESTORED (git checkout; rebuilt)
+--- core-runtime harness::a_window_of_turns_and_tool_calls_can_be_reopened_a_bounded_number_of_times
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 49 filtered out; finished in 0.00s
+--- run_control qual_px_146_*
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 23 filtered out; finished in 15.98s
+
+=== script
+#!/bin/zsh
+# PX-146 mutation check: each mutation is an exact string replacement, restored with git checkout.
+export PATH="$HOME/.cargo/bin:$PATH"
+cd /Users/mohsin/projects/modbit/.claude/worktrees/px-146 || exit 1
+UNIT=a_window_of_turns_and_tool_calls_can_be_reopened_a_bounded_number_of_times
+run() {
+  cargo build -q -p modbit-core --bins 2>&1 | tail -3
+  echo "--- core-runtime harness::$UNIT"
+  cargo test -q -p modbit-core-runtime --lib $UNIT 2>&1 | grep -E "^test |test result|panicked" | head -6
+  echo "--- run_control qual_px_146_*"
+  cargo test -q -p modbit-core --test run_control qual_px_146 2>&1 | grep -E "^test |test result|panicked" | head -12
+}
+mutate() { # file old new
+  python3 - "$1" "$2" "$3" <<'PY'
+import sys
+p,old,new=sys.argv[1:]
+s=open(p).read()
+assert s.count(old)==1, (p, s.count(old))
+open(p,'w').write(s.replace(old,new))
+PY
+}
+cargo build -q --workspace --bins 2>&1 | tail -3
+./target/debug/modbit-core --help >/dev/null
+echo "=== BASELINE"; run
+H=crates/core-runtime/src/harness.rs
+R=services/modbit-core/src/runtime.rs
+echo "=== MUTATION A window-base-skipped: a new window does not move the turn and tool bases ($H)"
+mutate $H "        self.window_turn_base = self.turns;
+        self.window_tool_base = self.tool_calls;
+" ""
+run; git checkout -q -- $H
+echo "=== MUTATION B windows-unbounded: open_budget_window never refuses ($H)"
+mutate $H "if self.budget_windows + 1 >= MAX_BUDGET_WINDOWS {" "if false {"
+run; git checkout -q -- $H
+echo "=== MUTATION C no-progress-extended: the Core extends a run with no progress ($R)"
+mutate $R "                && state.no_progress_turns == 0
+" ""
+run; git checkout -q -- $R
+echo "=== MUTATION D window-resets-wall-clock: a new window gives back the wall clock ($H)"
+mutate $H "        self.window_tool_base = self.tool_calls;
+        true" "        self.window_tool_base = self.tool_calls;
+        self.wall_ms = 0;
+        true"
+run; git checkout -q -- $H
+echo "=== RESTORED (git checkout; rebuilt)"; run
+git status --short crates services

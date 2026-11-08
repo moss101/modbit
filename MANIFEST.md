@@ -539,7 +539,12 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-145/live-desktop-run-4.json` | retained evidence | 739 | `93abcc52b31360ddd32235210983c4066a88cd9242d538edd9a5118c2d42fb39` |
 | `evidence/m10/PX-145/live-desktop-run-5.json` | retained evidence | 757 | `62a8b1be0c876cb0bae373249d5169128cf6a51f5385b64eedf6a981cbccea80` |
 | `evidence/m10/PX-145/rust-tests.txt` | retained evidence | 1511 | `8938ce82af03ced81a3d6cc2c29e4b80b7775e0e7aabe3c5741ab4281b14f90a` |
-| `evidence/m10/PX-146/TASK_CARD.md` | retained evidence | 799 | `9ec357e608432e28137e426489c95d03bb2f83633865549c2f3a18bfb2fd7ae0` |
+| `evidence/m10/PX-146/TASK_CARD.md` | retained evidence | 4098 | `a1d76b982357b1ab88b481dce7dac84bdf7df616eecd6fc386c92a2303d9240b` |
+| `evidence/m10/PX-146/ci-per-os-42518378707.txt` | retained evidence | 1216 | `98ab87831eaee722a909a8f699777220eca458082ccbf21f233b973f8ab89705` |
+| `evidence/m10/PX-146/ci-run-42518378707.json` | retained evidence | 2064 | `1fdaa38dbd3b3cc1df479661bbd92b089d3fae04e280cce618bc85b2be3a599e` |
+| `evidence/m10/PX-146/clippy-2026-11-08.txt` | retained evidence | 14830 | `436b8b787b6f70f92ed65064d2853b741370dca7825d014e905fb202f84c8800` |
+| `evidence/m10/PX-146/mutation-check.txt` | retained evidence | 5479 | `a6e757cff19c3569d551dd307baddacae9ac1c5bde2c2a28a5cf96a9b532630d` |
+| `evidence/m10/PX-146/rust-tests-2026-11-08.txt` | retained evidence | 452 | `630f5437b9db65adb1ccb88dc869faaeb0974dbc758d2bda8717fd288152d284` |
 | `evidence/m10/PX-147/TASK_CARD.md` | retained evidence | 1226 | `1a2c3b745b8479fbd6fdf52d66b02214cb9fbcbb33bbc253c1ab230b7d63aa11` |
 | `evidence/m10/PX-147/ci-per-os-42384475339.txt` | retained evidence | 1097 | `55a11e96a9fd9d19c3c8cb0cfa98ca2f251810d57c65d83030c64aae1abc0f6d` |
 | `evidence/m10/PX-147/ci-run-42384475339.json` | retained evidence | 1462 | `d86206b83d32013225bab8761c3be43e0242c7cf1c6a04031f6629ac5d4d1bbe` |
@@ -2179,8 +2184,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/zcode-ui/reference/zcode-colors-rgba.json` | retained evidence | 18690 | `76372c3edbcd50fe596d5e4b7fcd7991adab9686588ddc578a728afa24b4f028` |
 | `evidence/zcode-ui/reference/zcode-computed.json` | retained evidence | 718674 | `9ae8821ce72aa0fff3be44aacd0f4c9d995465c54bad7f17d1a81f92841d1c2d` |
 | `evidence/zcode-ui/reference/zcode-tokens-resolved.json` | retained evidence | 30635 | `066725c00059a05d073fbcdac9a8d965eab05f05c1f5df16e654854ff3e22b91` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 47139 | `59a5906008aa9b1ac0fc3a76976138e5b44e6e52c873b77346809a9ae7d59bc6` |
-| `graph/project-graph.json` | project driver graph with live status | 2550395 | `51724740f2c68cafbb76c9d74441c83badf2efa32559238cbc85826890139a38` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 47139 | `391072136bc50325b5d52b34dfa8a822d86d09c915597e2204926e64f3694de9` |
+| `graph/project-graph.json` | project driver graph with live status | 2550974 | `7fa56887f9457a3e4d738921b1945679786bf5fefbb095b8bf50ebe21dfd6d70` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 66687 | `3df787bdd1053b447b28e905d9d859d4c4f440e8a2761649b122e0c1983b04b0` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |
