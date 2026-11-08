@@ -716,6 +716,54 @@ async fn qual_px_069_an_accessibility_first_task_completes_and_leaves_its_audit(
     );
 }
 
+/// QUAL-PX-069, typed input: the focused window is not the keyboard focus. A
+/// window that is itself focused (as the key window is) holds the focused
+/// field; text goes to that field, and with no field focused the window
+/// alone is refused as not taking text.
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_069_text_is_typed_into_the_focused_field_of_a_focused_window() {
+    let steps = vec![
+        start(FORM),
+        fx(call("computer.state", json!({}))),
+        // 2 nothing but the window is focused: no field takes the text.
+        fx(call("computer.type", json!({"text": "Ada"}))),
+        st(|s| {
+            call(
+                "computer.press",
+                json!({"element": s.el("Name"), "action": "focus"}),
+            )
+        }),
+        fx(call("computer.state", json!({}))),
+        // 5 the field holds the focus inside the focused window.
+        fx(call("computer.type", json!({"text": "Ada"}))),
+        fx(call("computer.state", json!({}))),
+        fx(call("computer.release", json!({}))),
+    ];
+    let mut rig = run(Opts::default(), steps, approve_all()).await;
+    rig.finish().await;
+    let o = rig.outs();
+    expect_refusal(&o, 2, "TARGET_NOT_EDITABLE", "re_observe");
+    assert!(o[2].0.contains("(window)"), "{}", o[2].0);
+    for i in [0, 1, 3, 4, 5, 6, 7] {
+        assert!(
+            o[i].0.starts_with("status: SUCCESS"),
+            "call {i}: {}\n{}",
+            o[i].0,
+            o[i].1
+        );
+    }
+    let focused = o[4].1["tree"].as_str().unwrap();
+    assert!(
+        focused.lines().filter(|l| l.contains("focused")).count() >= 2,
+        "the window and the field are both focused: {focused}"
+    );
+    let tree = o[6].1["tree"].as_str().unwrap();
+    assert!(tree.contains("\"Name\" | value=\"Ada\""), "{tree}");
+    let typed = rig.approvals_of("computer.type");
+    assert_eq!(typed.len(), 1, "only the typing that ran was approved");
+    assert_eq!(typed[0].1["intent"]["computer"]["target"]["name"], "Name");
+}
+
 /// Assert that result `i` (after the plan's) is the refusal `code` with `escalation`.
 fn expect_refusal(outs: &[(String, Value)], i: usize, code: &str, escalation: &str) {
     let (t, _) = &outs[i];
