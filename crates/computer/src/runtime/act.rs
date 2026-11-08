@@ -230,13 +230,16 @@ impl ComputerRuntime {
             }
             Act::Type { .. } => {
                 // Typed input goes to a verified focus: the last tree names
-                // one, and it takes text.
+                // one, and it takes text. The keyboard focus is the deepest
+                // focused element: a window that is itself focused (the key
+                // window reports AXFocused) holds it, and is the focus only
+                // when nothing inside it is.
                 let focus = snapshot.as_ref().and_then(|s| {
-                    s.nodes
+                    let focused: Vec<&Node> = s.nodes.iter().filter(|n| n.focused).collect();
+                    focused
                         .iter()
-                        .find(|n| n.focused)
-                        .cloned()
-                        .map(|n| (s.id.clone(), n))
+                        .find(|n| !focused.iter().any(|c| c.parent == n.id))
+                        .map(|n| (s.id.clone(), (*n).clone()))
                 });
                 let Some((snap, node)) = focus else {
                     return Err(Refusal::new(
