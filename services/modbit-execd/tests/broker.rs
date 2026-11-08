@@ -425,6 +425,63 @@ async fn pty_mode_runs_a_real_terminal_session() {
     assert_eq!(exited.exit_code, Some(0));
 }
 
+/// PX-099 (found by a flaky `shell.input` test on Linux CI): an acknowledged
+/// write's cursor is where the input landed, so reading after it returns the
+/// terminal's echo and the program's answer. The cursor used to be read after
+/// the write, and a program that answered quickly had already been counted:
+/// the reader then waited past the reply for output that never came. Each
+/// write here carries many lines, so the program answers the first ones while
+/// the rest are still being written; each round waits for the last answer,
+/// so the terminal is idle and the cursor must equal exactly the bytes it had
+/// printed before the write.
+#[tokio::test]
+async fn an_acknowledged_writes_cursor_is_where_the_input_landed() {
+    const ROUNDS: usize = 20;
+    const LINES: usize = 300;
+    let dir = tempfile::tempdir().unwrap();
+    let execd = Execd::spawn(dir.path());
+    let mut c = execd.client().await;
+    let mut r = req("ack-cursor", "cat", &[]);
+    r.pty = true;
+    c.exec(r).await.unwrap();
+    let Event::Started(s) = c.next().await.unwrap().unwrap() else {
+        panic!()
+    };
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(120);
+    let mut out: Vec<u8> = Vec::new();
+    let mut early = Vec::new();
+    for i in 0..ROUNDS {
+        let printed = out.len() as u64;
+        let batch: String = (0..LINES).map(|j| format!("{i}-{j}\r")).collect();
+        c.write_stdin_acked(&s.session_id, batch.as_bytes())
+            .await
+            .unwrap();
+        let last = format!("got:{i}-{}", LINES - 1);
+        let mut cursor = None;
+        while cursor.is_none() || !String::from_utf8_lossy(&out[printed as usize..]).contains(&last)
+        {
+            match tokio::time::timeout_at(deadline, c.next()).await {
+                Err(_) => panic!(
+                    "round {i}: no last answer and acknowledgement within two minutes; output {:?}",
+                    String::from_utf8_lossy(&out[printed as usize..])
+                ),
+                Ok(Ok(Some(Event::Output(o)))) => out.extend(o.data),
+                Ok(Ok(Some(Event::StdinWritten(w)))) => cursor = Some(w.cursor),
+                Ok(other) => panic!("round {i}: unexpected {other:?}"),
+            }
+        }
+        if cursor != Some(printed) {
+            early.push((i, printed, cursor));
+        }
+    }
+    assert!(
+        early.is_empty(),
+        "{} of {ROUNDS} acknowledgements put the cursor past where the input landed (round, printed, cursor): {early:?}",
+        early.len(),
+    );
+    c.write_stdin(&s.session_id, b"quit\r").await.unwrap();
+}
+
 /// PX-043 (found by a flaky ten-megabyte build on Linux CI): a finished
 /// terminal's output is exactly what the command printed. Closing the
 /// broker's end of the terminal used to put a blank line (`\r\n`) after the

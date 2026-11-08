@@ -37692,10 +37692,20 @@
    "evidence": [
     "run:39960289486",
     "commit:f5a67b545a74017c3b632f687b09a8323cf2c8c3",
-    "artifact:evidence/m10/PX-099/evidence.json"
+    "artifact:evidence/m10/PX-099/evidence.json",
+    "artifact:evidence/m10/PX-099/mutation-check-2026-11-08.txt",
+    "artifact:evidence/m10/PX-099/rust-tests-2026-11-08.txt"
+   ],
+   "notes": [
+    {
+     "at": "2026-11-08T20:10:50Z",
+     "from": "COMPLETE",
+     "to": "COMPLETE",
+     "note": "2026-11-08 defect fix: shell.input's output_cursor is taken before the write (CI run 42510436004 race)"
+    }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-10-23T15:45:31Z"
+   "status_changed_on": "2026-11-08T20:10:50Z"
   },
   {
    "id": "PX-100",
