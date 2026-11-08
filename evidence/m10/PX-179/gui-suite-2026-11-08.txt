@@ -1,0 +1,13 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.08s
+     Running tests/gui_suite.rs (target/debug/deps/gui_suite-30d0b98713138571)
+
+running 5 tests
+test qual_px_179_the_per_task_gate_names_every_regressed_task_and_cannot_be_made_unfailable ... ok
+test qual_px_179_the_gui_verifier_reads_the_cores_records_and_the_desktop_never_the_models_claim ... ok
+test qual_px_179_the_retained_baseline_is_a_valid_bundle_of_this_suite_with_model_build_and_cost ... ok
+test qual_px_179_twenty_four_gui_tasks_each_with_its_own_gui_verifier_that_fails_before_the_run ... ok
+test qual_px_179_gui_tasks_through_the_real_core_and_fixture_actuator_a_rerun_matches_the_baseline_and_a_regression_fails_naming_the_tasks has been running for over 60 seconds
+test qual_px_179_gui_tasks_through_the_real_core_and_fixture_actuator_a_rerun_matches_the_baseline_and_a_regression_fails_naming_the_tasks ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 90.10s
+

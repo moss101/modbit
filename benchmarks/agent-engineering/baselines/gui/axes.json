@@ -1,0 +1,182 @@
+{
+  "schema": "modbit-four-axis-report/1",
+  "suite_id": "gui-regression",
+  "suite_version": "1.0.0",
+  "task_list_digest": "02bdb743e6da71c8df599409f0f4a09dda7f27743955deee5039f4ab743d9d0b",
+  "bundle_digest": "f7a8c9196a01d19701b1ff8f5632cd019ed605d501a497634b12ddcb6d408cca",
+  "endpoint": "openai",
+  "model": "gpt-5-mini",
+  "configuration": "direct",
+  "axes": {
+    "gui_element": {
+      "tasks": [
+        "gui_element/files-archive-cancel",
+        "gui_element/files-archive-confirm",
+        "gui_element/ledger-copy-invoice-total",
+        "gui_element/notes-bold",
+        "gui_element/notes-set-text",
+        "gui_element/orders-clear",
+        "gui_element/orders-express",
+        "gui_element/orders-quantity-four",
+        "gui_element/orders-submit-for-ada",
+        "gui_element/settings-dark-mode",
+        "gui_element/settings-font-apply",
+        "gui_element/settings-notifications-off"
+      ],
+      "verified": {
+        "successes": 12,
+        "n": 12,
+        "rate": 1.0,
+        "ci95": [
+          0.7575059933447591,
+          1.0
+        ]
+      },
+      "output_tokens": 4448,
+      "output_tokens_per_thousand_tasks": 370666.6666666667,
+      "cost_usd_per_thousand_tasks": 8.730833333333333,
+      "failures": [],
+      "task_results": {
+        "gui_element/files-archive-cancel": [
+          1,
+          1
+        ],
+        "gui_element/files-archive-confirm": [
+          1,
+          1
+        ],
+        "gui_element/ledger-copy-invoice-total": [
+          1,
+          1
+        ],
+        "gui_element/notes-bold": [
+          1,
+          1
+        ],
+        "gui_element/notes-set-text": [
+          1,
+          1
+        ],
+        "gui_element/orders-clear": [
+          1,
+          1
+        ],
+        "gui_element/orders-express": [
+          1,
+          1
+        ],
+        "gui_element/orders-quantity-four": [
+          1,
+          1
+        ],
+        "gui_element/orders-submit-for-ada": [
+          1,
+          1
+        ],
+        "gui_element/settings-dark-mode": [
+          1,
+          1
+        ],
+        "gui_element/settings-font-apply": [
+          1,
+          1
+        ],
+        "gui_element/settings-notifications-off": [
+          1,
+          1
+        ]
+      }
+    },
+    "gui_input": {
+      "tasks": [
+        "gui_input/calculator-clear-then-seven",
+        "gui_input/calculator-two-plus-three",
+        "gui_input/ledger-tab-to-reference",
+        "gui_input/ledger-type-amount-shortcut",
+        "gui_input/notes-save-shortcut",
+        "gui_input/notes-type-and-save",
+        "gui_input/notes-type-text",
+        "gui_input/orders-customer-by-typing",
+        "gui_input/orders-stamp-by-click",
+        "gui_input/orders-submit-by-click",
+        "gui_input/search-click-then-type",
+        "gui_input/search-type-enter"
+      ],
+      "verified": {
+        "successes": 12,
+        "n": 12,
+        "rate": 1.0,
+        "ci95": [
+          0.7575059933447591,
+          1.0
+        ]
+      },
+      "output_tokens": 4512,
+      "output_tokens_per_thousand_tasks": 376000.0,
+      "cost_usd_per_thousand_tasks": 11.366333333333335,
+      "failures": [],
+      "task_results": {
+        "gui_input/calculator-clear-then-seven": [
+          1,
+          1
+        ],
+        "gui_input/calculator-two-plus-three": [
+          1,
+          1
+        ],
+        "gui_input/ledger-tab-to-reference": [
+          1,
+          1
+        ],
+        "gui_input/ledger-type-amount-shortcut": [
+          1,
+          1
+        ],
+        "gui_input/notes-save-shortcut": [
+          1,
+          1
+        ],
+        "gui_input/notes-type-and-save": [
+          1,
+          1
+        ],
+        "gui_input/notes-type-text": [
+          1,
+          1
+        ],
+        "gui_input/orders-customer-by-typing": [
+          1,
+          1
+        ],
+        "gui_input/orders-stamp-by-click": [
+          1,
+          1
+        ],
+        "gui_input/orders-submit-by-click": [
+          1,
+          1
+        ],
+        "gui_input/search-click-then-type": [
+          1,
+          1
+        ],
+        "gui_input/search-type-enter": [
+          1,
+          1
+        ]
+      }
+    }
+  },
+  "cost": {
+    "trials": 24,
+    "model_calls": 280,
+    "output_tokens": 8960,
+    "output_tokens_per_thousand_tasks": 373333.3333333333,
+    "cost_usd_per_thousand_tasks": 10.048583333333335,
+    "source": "per trial: GetTaskEconomics of the task and every child it admitted, equal to the ModelUsageRecorded events of the trial's log"
+  },
+  "gate": {
+    "max_drop": 0.05,
+    "per_task": true
+  }
+}

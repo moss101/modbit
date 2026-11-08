@@ -9,6 +9,13 @@
 //! place through the product's own commands before the run; the verifier
 //! names them by key and the harness resolves each key to the id or content
 //! hash the Core assigned.
+//!
+//! A GUI task (PX-179) is verified by the GUI verifier row (PX-178): the
+//! Core's own `GuiEvidenceEvaluated` at completion, which must have held the
+//! child to exactly the predicate the suite states (a model that declares an
+//! easier one does not pass), and the Core's `GuiOutcomeJudged` verdict. On
+//! the fixture desktop the harness also reads the application's state after
+//! the run from the fixture actuator itself, outside the Core and the model.
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -38,6 +45,36 @@ pub struct Verifier {
     /// Children the task delegated to and integrated.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub subagents: Option<SubagentCheck>,
+    /// A GUI task's outcome (PX-179), from the GUI verifier row.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gui: Option<GuiCheck>,
+}
+
+/// What a GUI task (PX-179) must show: the Core held a computer-use child of
+/// the task to the suite's own completion evidence and judged its run
+/// `VERIFIED` (PX-178), and, on the fixture desktop, the application's state
+/// after the run holds what the task asked for.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct GuiCheck {
+    /// The completion evidence (`CompletionEvidence` of `crates/verification`)
+    /// the child must have been held to, exactly: a child declared with
+    /// another predicate does not count.
+    pub evidence: Value,
+    /// Element values of the fixture desktop after the run, read from the
+    /// fixture actuator's own state (absent on a real application).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub desktop: Vec<DesktopCheck>,
+}
+
+/// One element of the fixture desktop after the run.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DesktopCheck {
+    /// Application bundle identifier.
+    pub app: String,
+    /// The element's accessible name.
+    pub name: String,
+    /// The value it must hold, exactly.
+    pub value: String,
 }
 
 /// A workspace file after the run.
@@ -212,11 +249,13 @@ impl Verifier {
             .memory
             .as_ref()
             .map_or(0, |m| m.used.len() + m.not_used.len() + m.proposed.len());
+        let g = self.gui.as_ref().map_or(0, |g| 2 + g.desktop.len());
         self.files.len()
             + self.tools.len()
             + m
             + self.skills_used.len()
             + usize::from(self.subagents.is_some())
+            + g
     }
 
     /// The checks without the id: two tasks with the same checks share a
@@ -264,6 +303,23 @@ impl Verifier {
                 "verifier {}: a sub-agent check of zeros cannot fail",
                 self.id
             ));
+        }
+        if let Some(g) = &self.gui {
+            let kind = g.evidence["kind"].as_str().unwrap_or_default();
+            if !matches!(kind, "accessibility" | "file" | "recorded") {
+                return Err(format!(
+                    "verifier {}: gui evidence {} is not a completion-evidence predicate",
+                    self.id, g.evidence
+                ));
+            }
+            for d in &g.desktop {
+                if d.app.trim().is_empty() || d.name.trim().is_empty() {
+                    return Err(format!(
+                        "verifier {}: a desktop check names no application or element",
+                        self.id
+                    ));
+                }
+            }
         }
         Ok(())
     }
@@ -317,6 +373,9 @@ pub struct Observed<'a> {
     pub memory_ids: &'a BTreeMap<String, String>,
     /// Skill seed name → the content hash the owner trusted.
     pub skill_hashes: &'a BTreeMap<String, String>,
+    /// The fixture desktop's state after the run, as the fixture actuator
+    /// wrote it (`--state-out`); `None` when no fixture desktop ran.
+    pub desktop: Option<&'a Value>,
 }
 
 fn norm(id: &str) -> String {
@@ -518,10 +577,133 @@ pub fn evaluate(v: &Verifier, o: &Observed<'_>) -> VerifierOutcome {
             ),
         );
     }
+    if let Some(g) = &v.gui {
+        for (check, passed, detail) in gui_checks(g, o) {
+            push(check, passed, detail);
+        }
+    }
     let passed = !checks.is_empty() && checks.iter().all(|c| c.passed);
     VerifierOutcome {
         id: v.id.clone(),
         passed,
         checks,
     }
+}
+
+/// The GUI checks (PX-179) over the Core's records and the fixture desktop.
+fn gui_checks(g: &GuiCheck, o: &Observed<'_>) -> Vec<(String, bool, String)> {
+    let mut out = Vec::new();
+    // The computer-use children this task admitted.
+    let children: std::collections::BTreeSet<String> = o
+        .of_task()
+        .filter(|e| e.event_type == "SubagentAdmitted")
+        .filter_map(|e| e.payload["child_task_id"].as_str().map(norm))
+        .collect();
+    let of_child = |e: &&Event| {
+        e.task_id
+            .as_deref()
+            .is_some_and(|t| children.contains(&norm(t)))
+    };
+    // The evaluation at completion, of exactly the suite's predicate.
+    let evaluations: Vec<&Event> = o
+        .events
+        .iter()
+        .filter(of_child)
+        .filter(|e| e.event_type == "GuiEvidenceEvaluated" && e.payload["at"] == "COMPLETION")
+        .collect();
+    let held = evaluations
+        .iter()
+        .find(|e| e.payload["evidence"] == g.evidence && e.payload["status"] == "PASS");
+    let other_predicate = evaluations
+        .iter()
+        .any(|e| e.payload["evidence"] != g.evidence);
+    out.push((
+        format!("the Core held a GUI child to {} and it passed", g.evidence),
+        held.is_some(),
+        match held {
+            Some(e) => format!("PASS: {}", e.payload["read"].as_str().unwrap_or_default()),
+            None if evaluations.is_empty() => format!(
+                "no evaluation at completion ({} children admitted)",
+                children.len()
+            ),
+            None => format!(
+                "{} evaluation(s), none PASS of this predicate{}: {}",
+                evaluations.len(),
+                if other_predicate {
+                    "; a child was declared with another predicate"
+                } else {
+                    ""
+                },
+                evaluations
+                    .iter()
+                    .map(|e| e.payload["detail"].as_str().unwrap_or_default())
+                    .collect::<Vec<_>>()
+                    .join(" | ")
+            ),
+        },
+    ));
+    // The Core's verdict on that child's run.
+    let verdicts: Vec<&Event> = o
+        .events
+        .iter()
+        .filter(of_child)
+        .filter(|e| e.event_type == "GuiOutcomeJudged")
+        .collect();
+    let verified = held.is_some_and(|h| {
+        verdicts.iter().any(|v| {
+            v.task_id.as_deref().map(norm) == h.task_id.as_deref().map(norm)
+                && v.payload["verdict"] == "VERIFIED"
+                && v.payload["evidence_status"] == "PASS"
+        })
+    });
+    out.push((
+        "the Core judged the GUI run VERIFIED".to_owned(),
+        verified,
+        verdicts
+            .iter()
+            .map(|v| {
+                format!(
+                    "{} ({})",
+                    v.payload["verdict"].as_str().unwrap_or_default(),
+                    v.payload["run_end"].as_str().unwrap_or_default()
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(", "),
+    ));
+    for d in &g.desktop {
+        let found = o
+            .desktop
+            .and_then(|state| desktop_value(state, &d.app, &d.name));
+        out.push((
+            format!("desktop {} {:?} reads {:?}", d.app, d.name, d.value),
+            found.as_deref() == Some(d.value.as_str()),
+            match (o.desktop, found) {
+                (None, _) => "no fixture desktop state was recorded".to_owned(),
+                (Some(_), None) => "no such element on the desktop".to_owned(),
+                (Some(_), Some(v)) => format!("reads {v:?}"),
+            },
+        ));
+    }
+    out
+}
+
+/// The value of the element named `name` in any window of application `app`
+/// in a fixture actuator's state file; `None` when absent or ambiguous.
+#[must_use]
+pub fn desktop_value(state: &Value, app: &str, name: &str) -> Option<String> {
+    let mut found: Vec<String> = Vec::new();
+    for a in state["apps"].as_array().into_iter().flatten() {
+        if a["bundle_id"].as_str() != Some(app) {
+            continue;
+        }
+        for w in a["windows"].as_array().into_iter().flatten() {
+            for e in w["elements"].as_array().into_iter().flatten() {
+                if e["name"].as_str() == Some(name) {
+                    found.push(e["value"].as_str().unwrap_or_default().to_owned());
+                }
+            }
+        }
+    }
+    if found.len() == 1 { found.pop() } else { None }
 }

@@ -1,0 +1,147 @@
+{
+ "display": {
+  "x": 0,
+  "y": 0,
+  "width": 1920,
+  "height": 1200
+ },
+ "apps": [
+  {
+   "bundle_id": "org.modbit.bench.settings",
+   "name": "Settings",
+   "pid": 5103,
+   "executable_path": "/Applications/Modbit Bench Settings.app/Contents/MacOS/Settings",
+   "signing_identity": "MODBIT:bench-settings",
+   "windows": [
+    {
+     "id": "w-settings",
+     "title": "Preferences",
+     "bounds": {
+      "x": 0,
+      "y": 0,
+      "width": 1280,
+      "height": 800
+     },
+     "elements": [
+      {
+       "id": "dark",
+       "role": "switch",
+       "name": "Dark mode",
+       "value": "off",
+       "actions": [
+        "press"
+       ],
+       "bounds": {
+        "x": 40,
+        "y": 80,
+        "width": 200,
+        "height": 30
+       },
+       "behaviors": {
+        "press": [
+         {
+          "op": "SetValue",
+          "target": "dark",
+          "value": "on"
+         },
+         {
+          "op": "SetValue",
+          "target": "theme",
+          "value": "dark"
+         }
+        ]
+       }
+      },
+      {
+       "id": "theme",
+       "role": "label",
+       "name": "Theme",
+       "value": "light",
+       "bounds": {
+        "x": 300,
+        "y": 80,
+        "width": 200,
+        "height": 30
+       }
+      },
+      {
+       "id": "notify",
+       "role": "switch",
+       "name": "Notifications",
+       "value": "on",
+       "actions": [
+        "press"
+       ],
+       "bounds": {
+        "x": 40,
+        "y": 140,
+        "width": 200,
+        "height": 30
+       },
+       "behaviors": {
+        "press": [
+         {
+          "op": "SetValue",
+          "target": "notify",
+          "value": "off"
+         }
+        ]
+       }
+      },
+      {
+       "id": "font",
+       "role": "textfield",
+       "name": "Font size",
+       "value": "12",
+       "settable": true,
+       "actions": [
+        "focus"
+       ],
+       "bounds": {
+        "x": 40,
+        "y": 200,
+        "width": 120,
+        "height": 30
+       }
+      },
+      {
+       "id": "apply",
+       "role": "button",
+       "name": "Apply",
+       "actions": [
+        "press"
+       ],
+       "bounds": {
+        "x": 40,
+        "y": 260,
+        "width": 120,
+        "height": 40
+       },
+       "behaviors": {
+        "press": [
+         {
+          "op": "SetValue",
+          "target": "applied",
+          "value": "applied"
+         }
+        ]
+       }
+      },
+      {
+       "id": "applied",
+       "role": "label",
+       "name": "Settings state",
+       "value": "pending",
+       "bounds": {
+        "x": 200,
+        "y": 260,
+        "width": 300,
+        "height": 30
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

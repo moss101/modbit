@@ -1,0 +1,108 @@
+{
+ "display": {
+  "x": 0,
+  "y": 0,
+  "width": 1920,
+  "height": 1200
+ },
+ "apps": [
+  {
+   "bundle_id": "org.modbit.bench.calculator",
+   "name": "Calculator",
+   "pid": 5108,
+   "executable_path": "/Applications/Modbit Bench Calculator.app/Contents/MacOS/Calculator",
+   "signing_identity": "MODBIT:bench-calculator",
+   "windows": [
+    {
+     "id": "w-calc",
+     "title": "Calculator",
+     "bounds": {
+      "x": 0,
+      "y": 0,
+      "width": 1280,
+      "height": 800
+     },
+     "elements": [
+      {
+       "id": "display",
+       "role": "textfield",
+       "name": "Display",
+       "value": "9",
+       "focused": true,
+       "actions": [
+        "focus"
+       ],
+       "bounds": {
+        "x": 40,
+        "y": 40,
+        "width": 600,
+        "height": 60
+       },
+       "behaviors": {
+        "key:escape": [
+         {
+          "op": "SetValue",
+          "target": "display",
+          "value": ""
+         },
+         {
+          "op": "SetValue",
+          "target": "result",
+          "value": "cleared"
+         }
+        ],
+        "key:2": [
+         {
+          "op": "Append",
+          "target": "display",
+          "text": "2"
+         }
+        ],
+        "key:3": [
+         {
+          "op": "Append",
+          "target": "display",
+          "text": "3"
+         }
+        ],
+        "key:7": [
+         {
+          "op": "Append",
+          "target": "display",
+          "text": "7"
+         }
+        ],
+        "key:plus": [
+         {
+          "op": "Append",
+          "target": "display",
+          "text": "+"
+         }
+        ],
+        "key:enter": [
+         {
+          "op": "SetValue",
+          "target": "result",
+          "value": "computed"
+         }
+        ]
+       }
+      },
+      {
+       "id": "result",
+       "role": "label",
+       "name": "Result state",
+       "value": "idle",
+       "bounds": {
+        "x": 40,
+        "y": 120,
+        "width": 600,
+        "height": 30
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
