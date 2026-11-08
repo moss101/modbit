@@ -2769,6 +2769,63 @@ async fn px_119_a_parent_merges_two_conflicting_children_through_a_real_run() {
     );
 }
 
+/// A parent that integrates its children through consecutive merge calls is
+/// making progress: under the default no-progress budget (3 turns), staging
+/// one child, committing it and staging the next does not end the run as
+/// stalled.
+#[tokio::test]
+async fn px_119_consecutive_merge_calls_are_progress_under_the_default_budget() {
+    let parent_script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "integrate two children", "expected_files": ["src/shared.txt"], "protected_effects": ["git.merge"]}}]}),
+        spawn_call("k-a", "alpha"),
+        wait_call("k-a"),
+        spawn_call("k-b", "beta"),
+        wait_call("k-b"),
+        // A read resets the counter, so what follows is three merge calls in a row.
+        json!({"calls": [{"name": "fs.read", "args": {"path": "src/shared.txt"}}]}),
+        json!({"calls": [{"name": "git.merge.prepare", "args": {"child": "k-a", "id": "tx-a"}}]}),
+        json!({"calls": [{"name": "git.merge.commit", "args": {"id": "tx-a"}}]}),
+        json!({"calls": [{"name": "git.merge.prepare", "args": {"child": "k-b", "id": "tx-b"}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "src/shared.txt"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "src/shared.txt", "op": "replace", "content": "alpha and beta\n"}}]}),
+        json!({"calls": [{"name": "git.merge.commit", "args": {"id": "tx-b"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "both children integrated", "self_review": {"findings": []}}}]}),
+    ];
+    let (mut fx, parent, seen) = family_fx(parent_script).await;
+    let wt = fx.worktree_dir(&parent);
+    let _: modbit_protocol::v1::TaskRunStarted = fx
+        .cmd(
+            "StartTask",
+            modbit_protocol::v1::StartTask {
+                task_id: Some(parent.clone()),
+                model: "gpt-5-mini".into(),
+                max_turns: 60,
+                max_no_progress_turns: 3,
+                ..Default::default()
+            },
+            true,
+        )
+        .await
+        .unwrap();
+    let st = drive(&mut fx, &parent, 240).await;
+    assert_eq!(
+        st.state,
+        "ReadyForReview",
+        "{}\n{:#?}",
+        st.attention_reason,
+        parent_tool_texts(&seen)
+            .iter()
+            .map(|t| t.chars().take(300).collect::<String>())
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(text(&wt.join("src/shared.txt")), "alpha and beta\n");
+    let evs = fx.events().await;
+    assert!(
+        events_of(&evs, "NoProgressDetected").is_empty(),
+        "consecutive merges were counted as a stall"
+    );
+}
+
 #[tokio::test]
 async fn px_119_a_parent_cannot_complete_beside_an_unintegrated_child_until_it_is_merged_or_discarded()
  {

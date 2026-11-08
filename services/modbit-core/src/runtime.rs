@@ -9797,7 +9797,13 @@ async fn execute_tool_call(
                         | "computer.scroll"
                 )
                 || name.starts_with("lsp.")
-                || name.starts_with("git.worktree"))
+                || name.starts_with("git.worktree")
+                // PX-119: staging, committing or abandoning a child's merge,
+                // or applying a worktree back, changes the parent's tree or
+                // its recorded integration state: integrating children is
+                // work, and a parent that merges several in a row is not stalled.
+                || name.starts_with("git.merge.")
+                || name.starts_with("git.apply."))
             // PX-176: a computer-use child's command result is a new
             // observation of the work, as an interface read of the screen is.
             || (name == "shell.exec" && core.tools.computer.is_child(task.task_id));
