@@ -1,0 +1,6 @@
+test memory::tests::an_id_prefix_resolves_only_when_it_is_unambiguous ... ok
+test memory::tests::the_scope_chain_is_narrowest_first_includes_agent_and_space_and_refuses_what_it_lacks ... ok
+test memory::tests::row_round_trips_through_item ... ok
+test memory::tests::sharing_stores_the_redacted_form_privacy_holds_and_a_delete_leaves_nothing ... ok
+test memory::tests::the_prompt_memory_record_names_its_ranking_and_never_offers_a_sensitive_item ... ok
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 82 filtered out; finished in 0.05s

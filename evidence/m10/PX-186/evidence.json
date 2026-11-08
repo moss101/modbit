@@ -1,0 +1,28 @@
+{
+ "task": "PX-186",
+ "requirements": ["REQ-PX-186", "QUAL-PX-186"],
+ "scenarios": ["QUAL-PX-186", "PX-E2E-186"],
+ "evidence_tier": "release-critical",
+ "decision": "revert",
+ "tests": [
+  "benchmarks/agent-engineering/tests/memory_ranking.rs",
+  "crates/memory/src/lib.rs (tests px_186_*)",
+  "services/modbit-core/src/memory.rs (the_prompt_memory_record_names_its_ranking_and_never_offers_a_sensitive_item)"
+ ],
+ "comparison": {
+  "path": "benchmarks/agent-engineering/baselines/memory-ranking/comparison.json",
+  "passes": "benchmarks/agent-engineering/baselines/memory-ranking/passes.json",
+  "corpus": "benchmarks/agent-engineering/suites/memory-ranking/corpus.json",
+  "corpus_sha256": "6329a8439de359d86752969664e1ede8cc7a8bf277770fa39a6bbc04102c8cce",
+  "modbit_revision": "fc2294a2c42b68fec014757d25e343f6cd2326bf",
+  "build_digest": "361ec61e0dce8a2a9fba08eb0cc6b1b857a5f6525074a8db6cbe17bcca734cc3",
+  "token_budget_per_task": 800,
+  "tasks": 12,
+  "gold_groups": 16,
+  "current": {"version": "keyword-v1", "recalled": 16, "recall": 1.0, "injected_tokens": 9058, "budget_tokens": 9600},
+  "candidate": {"version": "recency-importance-diversity-v2", "recalled": 14, "recall": 0.875, "injected_tokens": 9078, "budget_tokens": 9600},
+  "product_default": "keyword-v1"
+ },
+ "commits": {"measurement": "fc2294a2c42b68fec014757d25e343f6cd2326bf", "revert": "fa400c203edda684846ed3979b6e24897d744141"},
+ "model": "scripted (one line of text per request; the measurement is of the prompt the Core builds)"
+}

@@ -627,6 +627,17 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-184/ci-run-42421002112.json` | retained evidence | 1460 | `c725c93bf49cb1e11753382741a13e1af346733c8bfa20f5caf6cca9cefb2214` |
 | `evidence/m10/PX-184/evidence.json` | retained evidence | 2197 | `13d646ef1083dc89f1b2cab03a3a82a896cd4b21274dfb3db1fd9021ebe4e357` |
 | `evidence/m10/PX-184/mutation-check.txt` | retained evidence | 2085 | `7d1b350a040c837d0748e3a34025b0db29fe9cc9d93b0ab9e9306836b7a3d271` |
+| `evidence/m10/PX-186/TASK_CARD.md` | retained evidence | 12121 | `32c9ce750e65e9c9fb51347b5a22b9833ec3c8ddb021f537c6d291cb13faa03c` |
+| `evidence/m10/PX-186/ci-per-os-42474226668.txt` | retained evidence | 1365 | `275e0f7dae8cd084b7762ef4a60b94a50daf61c91529c4a07dfcc4ec0f25b65a` |
+| `evidence/m10/PX-186/ci-run-42474226668.json` | retained evidence | 2065 | `d29864e4d446cf8aa7fafafc453f0e7603d26c1006a2317a46ffc03a42899379` |
+| `evidence/m10/PX-186/clippy.txt` | retained evidence | 11050 | `f1171395942ec2e383083b068a7b56953b1cd4deba57fd519a924f2671f635a9` |
+| `evidence/m10/PX-186/evidence.json` | retained evidence | 1511 | `fc4de9e952b0b1dfe64709ad7a661e26a09b92dde4db58486f71232f85c1285c` |
+| `evidence/m10/PX-186/mutation-check.txt` | retained evidence | 3713 | `3269913ddc111deb9b20ffd19b960c803df1a7b19d235925cf7f3819e0c8d972` |
+| `evidence/m10/PX-186/test-bench-crate.txt` | retained evidence | 3525 | `3e62d6617e9eabc459b0476b38d28dd20924217c30fc37a155de4125a7985d0f` |
+| `evidence/m10/PX-186/test-core-memory-graph-index.txt` | retained evidence | 1944 | `520224ec509163d69b80bf01d5abd6cc0d855b8e07eb4e60647a3adf30d89e8f` |
+| `evidence/m10/PX-186/test-core-memory.txt` | retained evidence | 547 | `604266913e0b13c7ea3c1b94918ddc1951b9cbe1993e6cb26fa559dfc3f4f715` |
+| `evidence/m10/PX-186/test-memory-ranking.txt` | retained evidence | 784 | `3975d25c3a20ea6fe14c7ba841c997639959d29fc2a924d1390c2fdd2d5c19ae` |
+| `evidence/m10/PX-186/test-memory.txt` | retained evidence | 189 | `5c67608f63efcdeba7ec12dc39e790ee2f3b72567db8593314bbe0a57a975029` |
 | `evidence/m10/PX-188/TASK_CARD.md` | retained evidence | 1151 | `c7c680e790d6580b368f3b0215888bad57a2fd81dc8b7aa991850ab88f20078c` |
 | `evidence/m10/PX-188/ci-run-40742315645.json` | retained evidence | 49429 | `ae0c64183fbbb7f4e945362aae483216f6b55ec54e50a252bd97fa840413dd20` |
 | `evidence/m10/PX-188/evidence.json` | retained evidence | 1178 | `a6d876a55060a979fb4394e436af513cc29268c7a279841b1db608e54d6ce810` |
@@ -2160,8 +2171,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/zcode-ui/reference/zcode-colors-rgba.json` | retained evidence | 18690 | `76372c3edbcd50fe596d5e4b7fcd7991adab9686588ddc578a728afa24b4f028` |
 | `evidence/zcode-ui/reference/zcode-computed.json` | retained evidence | 718674 | `9ae8821ce72aa0fff3be44aacd0f4c9d995465c54bad7f17d1a81f92841d1c2d` |
 | `evidence/zcode-ui/reference/zcode-tokens-resolved.json` | retained evidence | 30635 | `066725c00059a05d073fbcdac9a8d965eab05f05c1f5df16e654854ff3e22b91` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 47139 | `847c9d8fb4d4d7e7a5c11bbd046892046220bcaec9a387cf00aed048dcc5de6e` |
-| `graph/project-graph.json` | project driver graph with live status | 2548172 | `1bdc22804a95489ee9cb65bc155270c8fcefac6bba00d2252a83d3460734d107` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 47139 | `f7aeb22b3103748bde3ac722db5d2136772383035311e34d52506d4496824b63` |
+| `graph/project-graph.json` | project driver graph with live status | 2549051 | `1c5b401b05682cce6c40f4d918646e695b35c94fd1c2a545627393f03ef8da81` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 66687 | `3df787bdd1053b447b28e905d9d859d4c4f440e8a2761649b122e0c1983b04b0` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |

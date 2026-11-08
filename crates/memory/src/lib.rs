@@ -781,6 +781,81 @@ pub struct SelectionInput<'a> {
     /// The repository's current revision, when known: a repository fact
     /// validated against another revision is stale.
     pub current_revision: Option<&'a str>,
+    /// Which score orders the candidates (PX-186); recorded with the
+    /// selection.
+    pub ranking: Ranking,
+}
+
+/// The score a selection orders its candidates by (PX-186). A ranking is
+/// pure and deterministic over the store and the input; the one that ran is
+/// recorded with the selection, with its weights, so a prompt's memory can
+/// be traced to the rule that chose it. A new ranking is added here only
+/// when the memory-ranking comparison of the memory axis
+/// (`benchmarks/agent-engineering`, `competence-baseline memory-ranking`)
+/// shows it recalls more at the same token budget; the PX-186 candidate
+/// (recency, importance by record type, a diversity penalty) recalled less
+/// and was reverted (`evidence/m10/PX-186`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Ranking {
+    /// M9.1/PX-113: keyword relevance 0.5, scope precedence 0.2, confidence
+    /// 0.2, validated or user-stated 0.1.
+    #[default]
+    KeywordV1,
+}
+
+/// The weights of a [`Ranking`] (recorded with each selection).
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+pub struct RankingWeights {
+    /// Keyword relevance to the goal and hints.
+    pub relevance: f32,
+    /// Scope precedence (narrower is higher).
+    pub precedence: f32,
+    /// The item's confidence.
+    pub confidence: f32,
+    /// Validated or stated by the user.
+    pub validated: f32,
+}
+
+impl Ranking {
+    /// Every ranking.
+    pub const ALL: [Ranking; 1] = [Ranking::KeywordV1];
+
+    /// The stable version label recorded with a selection.
+    #[must_use]
+    pub fn version(self) -> &'static str {
+        match self {
+            Ranking::KeywordV1 => "keyword-v1",
+        }
+    }
+
+    /// The ranking a version label names; `None` for any other text.
+    #[must_use]
+    pub fn from_version(label: &str) -> Option<Self> {
+        Ranking::ALL
+            .into_iter()
+            .find(|r| r.version() == label.trim())
+    }
+
+    /// The ranking's weights.
+    #[must_use]
+    pub fn weights(self) -> RankingWeights {
+        match self {
+            Ranking::KeywordV1 => RankingWeights {
+                relevance: 0.5,
+                precedence: 0.2,
+                confidence: 0.2,
+                validated: 0.1,
+            },
+        }
+    }
+
+    /// The record of the ranking kept with a selection: its version and
+    /// weights.
+    #[must_use]
+    pub fn record(self) -> serde_json::Value {
+        serde_json::json!({"version": self.version(), "weights": self.weights()})
+    }
 }
 
 /// One item chosen for a task, with why.
@@ -815,6 +890,8 @@ pub struct Selection<'a> {
     pub selected: Vec<Selected<'a>>,
     /// What was left out and why.
     pub excluded: Vec<Excluded>,
+    /// The ranking that ordered `selected`.
+    pub ranking: Ranking,
 }
 
 /// Words that carry no relevance signal.
@@ -850,6 +927,7 @@ impl MemoryStore {
     /// is carried, not resolved. Pure and deterministic.
     #[must_use]
     pub fn select<'a>(&'a self, input: &SelectionInput<'_>) -> Selection<'a> {
+        let w = input.ranking.weights();
         let in_scope = self.query(input.scope_keys, input.now_ms);
         let mut terms = terms_of(input.goal);
         for h in input.hints {
@@ -902,14 +980,15 @@ impl MemoryStore {
             let denom = (3 * terms.len().max(1)) as f32;
             let relevance = ((3 * topic_hits + content_hits) as f32 / denom).min(1.0);
             let precedence = 1.0 - f32::from(item.scope.rank()) / 6.0;
-            let score = 0.5 * relevance
-                + 0.2 * precedence
-                + 0.2 * item.confidence
-                + if item.validated || item.source == Source::UserStated {
-                    0.1
-                } else {
-                    0.0
-                };
+            let validated = if item.validated || item.source == Source::UserStated {
+                1.0
+            } else {
+                0.0
+            };
+            let score = w.relevance * relevance
+                + w.precedence * precedence
+                + w.confidence * item.confidence
+                + w.validated * validated;
             let mut reasons = Vec::new();
             if topic_hits + content_hits > 0 {
                 reasons.push(format!(
@@ -969,16 +1048,23 @@ impl MemoryStore {
                     .collect(),
             })
             .collect();
-        selected.sort_by(|a, b| {
-            b.score
-                .partial_cmp(&a.score)
-                .unwrap_or(std::cmp::Ordering::Equal)
-                .then(a.item.scope.rank().cmp(&b.item.scope.rank()))
-                .then(a.item.id.cmp(&b.item.id))
-        });
+        selected.sort_by(best_first);
         excluded.sort_by(|a, b| a.id.cmp(&b.id));
-        Selection { selected, excluded }
+        Selection {
+            selected,
+            excluded,
+            ranking: input.ranking,
+        }
     }
+}
+
+/// Score descending, then narrower scope, then id.
+fn best_first(a: &Selected<'_>, b: &Selected<'_>) -> std::cmp::Ordering {
+    b.score
+        .partial_cmp(&a.score)
+        .unwrap_or(std::cmp::Ordering::Equal)
+        .then(a.item.scope.rank().cmp(&b.item.scope.rank()))
+        .then(a.item.id.cmp(&b.item.id))
 }
 
 #[cfg(test)]
@@ -1561,5 +1647,125 @@ mod tests {
                 .is_none()
         );
         assert!(mine.shared_as(mine.scope.clone(), "user:u1", 5).is_none());
+    }
+
+    // ------------------------------------------------------------ PX-186
+
+    #[test]
+    fn px_186_the_kept_ranking_is_the_default_and_its_record_names_the_weights_the_score_uses() {
+        assert_eq!(Ranking::default(), Ranking::KeywordV1);
+        assert_eq!(Ranking::ALL, [Ranking::KeywordV1]);
+        let w = Ranking::KeywordV1.weights();
+        assert_eq!(
+            (w.relevance, w.precedence, w.confidence, w.validated),
+            (0.5, 0.2, 0.2, 0.1)
+        );
+        let rec = Ranking::KeywordV1.record();
+        assert_eq!(rec["version"], "keyword-v1");
+        assert_eq!(rec["weights"]["relevance"].as_f64(), Some(0.5));
+        assert_eq!(
+            Ranking::from_version(" keyword-v1 "),
+            Some(Ranking::KeywordV1)
+        );
+        // The reverted candidate is no ranking (the Core falls back to the
+        // default and records which ran).
+        assert_eq!(
+            Ranking::from_version("recency-importance-diversity-v2"),
+            None
+        );
+        assert_eq!(Ranking::from_version(""), None);
+
+        // The recorded weights are the ones the score uses: a lone relevant
+        // user-stated, validated item of confidence 1 in the run scope (rank
+        // 0) whose topic holds every goal word scores exactly their sum.
+        let mut store = MemoryStore::new();
+        let it = MemoryItem::propose(
+            Scope::Session { id: "s".into() },
+            RecordType::Fact,
+            "staging port",
+            "the staging port",
+            Source::UserStated,
+            "user:u1",
+            1.0,
+            1_000,
+        );
+        let id = it.id.clone();
+        store.upsert(it);
+        store.promote(&id);
+        let keys = chain();
+        let sel = store.select(&SelectionInput {
+            scope_keys: &keys,
+            goal: "staging port",
+            now_ms: 2_000,
+            ..Default::default()
+        });
+        assert_eq!(sel.ranking, Ranking::KeywordV1);
+        let precedence = 1.0 - 1.0 / 6.0;
+        let expect = w.relevance + w.precedence * precedence + w.confidence + w.validated;
+        assert!(
+            (sel.selected[0].score - expect).abs() < 1e-6,
+            "{}",
+            sel.selected[0].score
+        );
+    }
+
+    #[test]
+    fn px_186_selection_is_deterministic_over_the_store_and_never_offers_a_sensitive_item() {
+        let mut store = MemoryStore::new();
+        let repo = || Scope::Repository { id: "/r".into() };
+        for (topic, content) in [
+            (
+                "deploy steps",
+                "deploy staging: tag the build, push the tag",
+            ),
+            ("deploy procedure", "deploy staging: tag and push"),
+            ("staging port", "staging listens on 9443"),
+            (
+                "staging window",
+                "a staging deploy during the backup times out",
+            ),
+        ] {
+            curated(&mut store, repo(), RecordType::Procedure, topic, content);
+        }
+        let mut secret = MemoryItem::propose(
+            Scope::Session { id: "s".into() },
+            RecordType::Fact,
+            "staging deploy secret",
+            "the staging deploy account and its port",
+            Source::UserStated,
+            "user:u1",
+            1.0,
+            1_000,
+        );
+        secret.sensitivity = Sensitivity::Sensitive;
+        let sid = secret.id.clone();
+        store.upsert(secret);
+        store.promote(&sid);
+        let keys = chain();
+        let order = |s: &MemoryStore| {
+            s.select(&SelectionInput {
+                scope_keys: &keys,
+                goal: "deploy staging port",
+                now_ms: 2_000,
+                ..Default::default()
+            })
+            .selected
+            .iter()
+            .map(|x| (x.item.id.clone(), x.score))
+            .collect::<Vec<_>>()
+        };
+        let first = order(&store);
+        assert_eq!(first.len(), 4);
+        assert!(first.iter().all(|(id, _)| *id != sid));
+        assert!(first.windows(2).all(|w| w[0].1 >= w[1].1));
+        assert_eq!(first, order(&store));
+        // A store filled in the opposite order selects the same.
+        let mut reversed = MemoryStore::new();
+        let mut all: Vec<MemoryItem> = store.all().cloned().collect();
+        all.reverse();
+        for it in all {
+            reversed.upsert(it);
+        }
+        assert_eq!(first, order(&reversed));
     }
 }

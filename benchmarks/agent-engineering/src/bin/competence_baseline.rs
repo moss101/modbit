@@ -36,6 +36,9 @@ use modbit_bench_agent_engineering::{
     TaskSpec, TrialOutcome, count, metrics, parse_events, protected_intact, sha256_hex,
 };
 
+#[path = "competence_baseline/memory_ranking.rs"]
+mod memory_ranking;
+
 struct Args {
     suite: PathBuf,
     fixtures: PathBuf,
@@ -59,7 +62,7 @@ struct Args {
 
 fn usage() -> ! {
     eprintln!(
-        "usage: competence-baseline --suite <tasks.json> --fixtures <dir> --out <dir> --endpoint <openai|anthropic> [--model <id>] [--trials N] [--max-turns N] [--task <id>]... [--trial-timeout-secs N] [--keep] [--cli <bin>] [--core <bin>] [--profile <file> | --adaptive] [--jobs N]\n       competence-baseline merge --out <dir> <bundle dir>...\n       competence-baseline compare --baseline <bundle dir> --current <bundle dir> [--out <file>]"
+        "usage: competence-baseline --suite <tasks.json> --fixtures <dir> --out <dir> --endpoint <openai|anthropic> [--model <id>] [--trials N] [--max-turns N] [--task <id>]... [--trial-timeout-secs N] [--keep] [--cli <bin>] [--core <bin>] [--profile <file> | --adaptive] [--jobs N]\n       competence-baseline merge --out <dir> <bundle dir>...\n       competence-baseline compare --baseline <bundle dir> --current <bundle dir> [--out <file>]\n       competence-baseline memory-ranking --corpus <corpus.json> --fixtures <dir> --out <dir> --endpoint <p> --model <id> [--current <version>] --candidate <version>"
     );
     std::process::exit(1)
 }
@@ -1071,6 +1074,9 @@ fn main() {
     }
     if std::env::args().nth(1).as_deref() == Some("compare") {
         std::process::exit(compare_main());
+    }
+    if std::env::args().nth(1).as_deref() == Some("memory-ranking") {
+        std::process::exit(memory_ranking::main());
     }
     let args = parse_args();
     let (suite, task_list_digest) = Suite::load(&args.suite).unwrap_or_else(|e| {

@@ -9,3 +9,5 @@ tests/fixtures/media/** binary
 # content, so every platform checks out exactly the committed bytes (a Windows CRLF checkout changed the bundle digest).
 benchmarks/agent-engineering/baselines/** -text
 benchmarks/agent-engineering/suites/four-axis/** -text
+# PX-186: the memory-ranking corpus is digested byte for byte and the retained comparison names that digest.
+benchmarks/agent-engineering/suites/memory-ranking/** -text

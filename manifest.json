@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2044,
+    "root_and_tooling": 2055,
     "docs_bytes": 2339419
   },
   "sections": [
@@ -3417,6 +3417,61 @@
       "path": "evidence/m10/PX-184/mutation-check.txt",
       "bytes": 2085,
       "sha256": "7d1b350a040c837d0748e3a34025b0db29fe9cc9d93b0ab9e9306836b7a3d271"
+    },
+    {
+      "path": "evidence/m10/PX-186/TASK_CARD.md",
+      "bytes": 12121,
+      "sha256": "32c9ce750e65e9c9fb51347b5a22b9833ec3c8ddb021f537c6d291cb13faa03c"
+    },
+    {
+      "path": "evidence/m10/PX-186/ci-per-os-42474226668.txt",
+      "bytes": 1365,
+      "sha256": "275e0f7dae8cd084b7762ef4a60b94a50daf61c91529c4a07dfcc4ec0f25b65a"
+    },
+    {
+      "path": "evidence/m10/PX-186/ci-run-42474226668.json",
+      "bytes": 2065,
+      "sha256": "d29864e4d446cf8aa7fafafc453f0e7603d26c1006a2317a46ffc03a42899379"
+    },
+    {
+      "path": "evidence/m10/PX-186/clippy.txt",
+      "bytes": 11050,
+      "sha256": "f1171395942ec2e383083b068a7b56953b1cd4deba57fd519a924f2671f635a9"
+    },
+    {
+      "path": "evidence/m10/PX-186/evidence.json",
+      "bytes": 1511,
+      "sha256": "fc4de9e952b0b1dfe64709ad7a661e26a09b92dde4db58486f71232f85c1285c"
+    },
+    {
+      "path": "evidence/m10/PX-186/mutation-check.txt",
+      "bytes": 3713,
+      "sha256": "3269913ddc111deb9b20ffd19b960c803df1a7b19d235925cf7f3819e0c8d972"
+    },
+    {
+      "path": "evidence/m10/PX-186/test-bench-crate.txt",
+      "bytes": 3525,
+      "sha256": "3e62d6617e9eabc459b0476b38d28dd20924217c30fc37a155de4125a7985d0f"
+    },
+    {
+      "path": "evidence/m10/PX-186/test-core-memory-graph-index.txt",
+      "bytes": 1944,
+      "sha256": "520224ec509163d69b80bf01d5abd6cc0d855b8e07eb4e60647a3adf30d89e8f"
+    },
+    {
+      "path": "evidence/m10/PX-186/test-core-memory.txt",
+      "bytes": 547,
+      "sha256": "604266913e0b13c7ea3c1b94918ddc1951b9cbe1993e6cb26fa559dfc3f4f715"
+    },
+    {
+      "path": "evidence/m10/PX-186/test-memory-ranking.txt",
+      "bytes": 784,
+      "sha256": "3975d25c3a20ea6fe14c7ba841c997639959d29fc2a924d1390c2fdd2d5c19ae"
+    },
+    {
+      "path": "evidence/m10/PX-186/test-memory.txt",
+      "bytes": 189,
+      "sha256": "5c67608f63efcdeba7ec12dc39e790ee2f3b72567db8593314bbe0a57a975029"
     },
     {
       "path": "evidence/m10/PX-188/TASK_CARD.md",
@@ -11086,12 +11141,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 47139,
-      "sha256": "847c9d8fb4d4d7e7a5c11bbd046892046220bcaec9a387cf00aed048dcc5de6e"
+      "sha256": "f7aeb22b3103748bde3ac722db5d2136772383035311e34d52506d4496824b63"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2548172,
-      "sha256": "1bdc22804a95489ee9cb65bc155270c8fcefac6bba00d2252a83d3460734d107"
+      "bytes": 2549051,
+      "sha256": "1c5b401b05682cce6c40f4d918646e695b35c94fd1c2a545627393f03ef8da81"
     },
     {
       "path": "tools/build_graph.py",
