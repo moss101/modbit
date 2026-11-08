@@ -1,0 +1,5 @@
+CI run 42455710101 (head 64086e87, merged to main as c4ab5c75 via moss101/modbit#184), all jobs success.
+PX-152 tests in the rust CI_COMPATIBLE jobs (from the job logs):
+  macos   : run_control qual_px_152_a_refusal_by_the_sandbox_reaches_the_model_typed_and_a_failing_command_does_not ok (network and, on macOS, the write outside the root); px_150_152_review_sandbox qual_px_152_a_refused_network_operation_returns_the_typed_denial ok, qual_px_152_an_ordinary_failure_is_never_a_sandbox_denial ok
+  ubuntu  : the same three ok. The Core-path test skips only off macOS and Linux, so on ubuntu the seccomp sandbox's network refusal reached the model as SANDBOX_DENIED and the failing command as NON_ZERO_EXIT.
+  windows : 0 (cfg(unix); no review sandbox).

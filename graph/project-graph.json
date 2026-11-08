@@ -39704,15 +39704,19 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-152",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m10/PX-152/TASK_CARD.md",
     "commit:76050ad7",
     "commit:9ddd14da",
-    "artifact:evidence/m10/PX-152/rust-tests-2026-11-08.txt"
+    "artifact:evidence/m10/PX-152/rust-tests-2026-11-08.txt",
+    "run:42455710101",
+    "artifact:evidence/m10/PX-152/ci-run-42455710101.json",
+    "artifact:evidence/m10/PX-152/ci-per-os-42455710101.txt",
+    "commit:c4ab5c75"
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-11-08T06:38:14Z"
+   "status_changed_on": "2026-11-08T08:13:36Z"
   },
   {
    "id": "PX-153",

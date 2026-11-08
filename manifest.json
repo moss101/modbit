@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2042,
+    "root_and_tooling": 2044,
     "docs_bytes": 2339419
   },
   "sections": [
@@ -3055,8 +3055,18 @@
     },
     {
       "path": "evidence/m10/PX-152/TASK_CARD.md",
-      "bytes": 2734,
-      "sha256": "450c085ff879e2ad2b32dba8b36f0431cee0dadbf48db8610a21b52a755c0f41"
+      "bytes": 3010,
+      "sha256": "e3a3800e2a82d4783deb6547eef487c793694e98c5773a67b8f7d1db9b4b8bbe"
+    },
+    {
+      "path": "evidence/m10/PX-152/ci-per-os-42455710101.txt",
+      "bytes": 755,
+      "sha256": "7f7020a691b543238d2c867ccb24d6a8dbe5d11c030cf17d9977ed0027f4a255"
+    },
+    {
+      "path": "evidence/m10/PX-152/ci-run-42455710101.json",
+      "bytes": 2064,
+      "sha256": "b60a108049f4309b4e26468390854f23ec06c70ad445b9e264a876452c017415"
     },
     {
       "path": "evidence/m10/PX-152/rust-tests-2026-11-08.txt",
@@ -11076,12 +11086,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 47139,
-      "sha256": "29da61ce1fa39acaafe38550a8292996c71eed3924b8ee2ee0c50f33dd88e596"
+      "sha256": "847c9d8fb4d4d7e7a5c11bbd046892046220bcaec9a387cf00aed048dcc5de6e"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2548008,
-      "sha256": "58fe87d41a6270b0acf993de6989d684deec6a23defdc1ecab75eca8e6966cde"
+      "bytes": 2548172,
+      "sha256": "1bdc22804a95489ee9cb65bc155270c8fcefac6bba00d2252a83d3460734d107"
     },
     {
       "path": "tools/build_graph.py",
