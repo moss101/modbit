@@ -1,0 +1,3549 @@
+{
+  "schema": "modbit-competence-baseline/1",
+  "suite_id": "gui-regression",
+  "suite_version": "1.0.0",
+  "task_list_digest": "c5273e1464db676ed13c51f7048d743bf27652f5e476137fea6800a6aa9b2b4f",
+  "tasks": [
+    "gui_element/orders-submit-for-ada",
+    "gui_element/orders-quantity-four",
+    "gui_element/orders-express",
+    "gui_element/orders-clear",
+    "gui_element/notes-bold",
+    "gui_element/notes-set-text",
+    "gui_element/settings-dark-mode",
+    "gui_element/settings-font-apply",
+    "gui_element/settings-notifications-off",
+    "gui_element/files-archive-confirm",
+    "gui_element/files-archive-cancel",
+    "gui_element/ledger-copy-invoice-total",
+    "gui_input/notes-type-text",
+    "gui_input/notes-save-shortcut",
+    "gui_input/notes-type-and-save",
+    "gui_input/search-type-enter",
+    "gui_input/orders-customer-by-typing",
+    "gui_input/orders-stamp-by-click",
+    "gui_input/orders-submit-by-click",
+    "gui_input/calculator-two-plus-three",
+    "gui_input/calculator-clear-then-seven",
+    "gui_input/search-click-then-type",
+    "gui_input/ledger-tab-to-reference",
+    "gui_input/ledger-type-amount-shortcut"
+  ],
+  "protocol": {
+    "trials_per_task": 1,
+    "max_turns": 24,
+    "configuration": "direct",
+    "endpoint": "openai",
+    "model": "gpt-5-mini",
+    "base_url_host": "127.0.0.1:57120",
+    "catalog_prices_usd_per_mtok": null,
+    "gold_patch_access": false,
+    "images": [],
+    "question_answer": "Use your best judgement and proceed without further questions.",
+    "approvals": "approve-computer-inputs"
+  },
+  "environment": {
+    "modbit_revision": "029b8ac039ea1c93cea4624720f264e2db4469a6",
+    "build_digest": "8c3a03b6bfca9c9450ba41850e5b047d0ae9b4b6fa4ee14d32a18f5592173185",
+    "harness_version": "competence-baseline/1",
+    "toolchains": {
+      "cargo": "cargo 1.97.1 (c980f4866 2026-06-30)",
+      "git": "git version 2.54.0 (Apple Git-157)",
+      "node": "v26.11.1",
+      "python3": "Python 3.9.6",
+      "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)"
+    },
+    "os": "macos-aarch64"
+  },
+  "trials": [
+    {
+      "task": "gui_element/orders-submit-for-ada",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "INCONCLUSIVE",
+        "last_verification": [
+          "COMPLETION",
+          "UNKNOWN"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          396
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 9239,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002566,
+        "wall_ms": 5776,
+        "model_ms": 65,
+        "tool_ms": 0,
+        "tool_calls": 0
+      },
+      "event_log": {
+        "file": "trials/gui_element__orders-submit-for-ada-1/events.jsonl",
+        "sha256": "32ab427b45e7ec15359a2177fe32ad9882a3faf7dbd140d971f69ca24df4390a",
+        "offsets": [
+          1,
+          396
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 3,
+      "notes": [
+        "approvals by protocol: 3 computer input(s) approved as the person at the fixture desktop, 0 other protected effect(s) denied"
+      ],
+      "axis": "gui_element",
+      "verifier": {
+        "id": "px179/gui_element/orders-submit-for-ada",
+        "passed": true,
+        "checks": [
+          {
+            "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.orders\",\"kind\":\"accessibility\",\"name\":\"Status\",\"role\":\"label\",\"value\":\"submitted\"} and it passed",
+            "passed": true,
+            "detail": "PASS: state read of org.modbit.bench.orders (snapshot s6f36f29e7453)"
+          },
+          {
+            "check": "the Core judged the GUI run VERIFIED",
+            "passed": true,
+            "detail": "VERIFIED (READY_FOR_REVIEW)"
+          },
+          {
+            "check": "desktop org.modbit.bench.orders \"Customer\" reads \"Ada Lovelace\"",
+            "passed": true,
+            "detail": "reads \"Ada Lovelace\""
+          },
+          {
+            "check": "desktop org.modbit.bench.orders \"Status\" reads \"submitted\"",
+            "passed": true,
+            "detail": "reads \"submitted\""
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "b281beacd3505b2f70380e9c344c6aa4",
+          "01a1ba578b9272139de1c6821a54b521"
+        ],
+        "model_calls": 12,
+        "input_tokens": 34301,
+        "output_tokens": 384,
+        "cost_usd": 0.009343,
+        "recorded_model_calls": 12,
+        "recorded_output_tokens": 384
+      }
+    },
+    {
+      "task": "gui_element/orders-quantity-four",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "INCONCLUSIVE",
+        "last_verification": [
+          "COMPLETION",
+          "UNKNOWN"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          396
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 9207,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002558,
+        "wall_ms": 6013,
+        "model_ms": 67,
+        "tool_ms": 0,
+        "tool_calls": 0
+      },
+      "event_log": {
+        "file": "trials/gui_element__orders-quantity-four-1/events.jsonl",
+        "sha256": "c26acb886d8491343636ba3db0c301c20a40848528eebf6b895270e4a8dd04a2",
+        "offsets": [
+          1,
+          396
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 3,
+      "notes": [
+        "approvals by protocol: 3 computer input(s) approved as the person at the fixture desktop, 0 other protected effect(s) denied"
+      ],
+      "axis": "gui_element",
+      "verifier": {
+        "id": "px179/gui_element/orders-quantity-four",
+        "passed": true,
+        "checks": [
+          {
+            "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.orders\",\"kind\":\"accessibility\",\"name\":\"Status\",\"role\":\"label\",\"value\":\"submitted\"} and it passed",
+            "passed": true,
+            "detail": "PASS: state read of org.modbit.bench.orders (snapshot s659288eb1326)"
+          },
+          {
+            "check": "the Core judged the GUI run VERIFIED",
+            "passed": true,
+            "detail": "VERIFIED (READY_FOR_REVIEW)"
+          },
+          {
+            "check": "desktop org.modbit.bench.orders \"Quantity\" reads \"4\"",
+            "passed": true,
+            "detail": "reads \"4\""
+          },
+          {
+            "check": "desktop org.modbit.bench.orders \"Status\" reads \"submitted\"",
+            "passed": true,
+            "detail": "reads \"submitted\""
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "77ab2195955fe01d64e6298387042760",
+          "01a1ba578b927a01a239dd08ad00e572"
+        ],
+        "model_calls": 12,
+        "input_tokens": 34109,
+        "output_tokens": 384,
+        "cost_usd": 0.009296,
+        "recorded_model_calls": 12,
+        "recorded_output_tokens": 384
+      }
+    },
+    {
+      "task": "gui_element/orders-express",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "INCONCLUSIVE",
+        "last_verification": [
+          "COMPLETION",
+          "UNKNOWN"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          334
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 9156,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002545,
+        "wall_ms": 5165,
+        "model_ms": 79,
+        "tool_ms": 0,
+        "tool_calls": 0
+      },
+      "event_log": {
+        "file": "trials/gui_element__orders-express-1/events.jsonl",
+        "sha256": "8488eb10071bfcafcaa5d0befe5c24790642f44180ac52dfa512f3622a770470",
+        "offsets": [
+          1,
+          334
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 2,
+      "notes": [
+        "approvals by protocol: 2 computer input(s) approved as the person at the fixture desktop, 0 other protected effect(s) denied"
+      ],
+      "axis": "gui_element",
+      "verifier": {
+        "id": "px179/gui_element/orders-express",
+        "passed": true,
+        "checks": [
+          {
+            "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.orders\",\"kind\":\"accessibility\",\"name\":\"Express delivery\",\"role\":\"checkbox\",\"value\":\"on\"} and it passed",
+            "passed": true,
+            "detail": "PASS: state read of org.modbit.bench.orders (snapshot s25fa92fce9e4)"
+          },
+          {
+            "check": "the Core judged the GUI run VERIFIED",
+            "passed": true,
+            "detail": "VERIFIED (READY_FOR_REVIEW)"
+          },
+          {
+            "check": "desktop org.modbit.bench.orders \"Express delivery\" reads \"on\"",
+            "passed": true,
+            "detail": "reads \"on\""
+          },
+          {
+            "check": "desktop org.modbit.bench.orders \"Status\" reads \"draft\"",
+            "passed": true,
+            "detail": "reads \"draft\""
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "a41eda32dd927c6cefaaa28c9de68c00",
+          "01a1ba578b9271018428368d71c88c74"
+        ],
+        "model_calls": 10,
+        "input_tokens": 24747,
+        "output_tokens": 320,
+        "cost_usd": 0.006827,
+        "recorded_model_calls": 10,
+        "recorded_output_tokens": 320
+      }
+    },
+    {
+      "task": "gui_element/orders-clear",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "INCONCLUSIVE",
+        "last_verification": [
+          "COMPLETION",
+          "UNKNOWN"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          396
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 9197,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002555,
+        "wall_ms": 6012,
+        "model_ms": 68,
+        "tool_ms": 0,
+        "tool_calls": 0
+      },
+      "event_log": {
+        "file": "trials/gui_element__orders-clear-1/events.jsonl",
+        "sha256": "3ea0562afcc7bcd6f116485904eb5bd213118f08e9129751c8c6faddee7b3d24",
+        "offsets": [
+          1,
+          396
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 3,
+      "notes": [
+        "approvals by protocol: 3 computer input(s) approved as the person at the fixture desktop, 0 other protected effect(s) denied"
+      ],
+      "axis": "gui_element",
+      "verifier": {
+        "id": "px179/gui_element/orders-clear",
+        "passed": true,
+        "checks": [
+          {
+            "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.orders\",\"kind\":\"accessibility\",\"name\":\"Status\",\"role\":\"label\",\"value\":\"cleared\"} and it passed",
+            "passed": true,
+            "detail": "PASS: state read of org.modbit.bench.orders (snapshot s1ec6cf882a2d)"
+          },
+          {
+            "check": "the Core judged the GUI run VERIFIED",
+            "passed": true,
+            "detail": "VERIFIED (READY_FOR_REVIEW)"
+          },
+          {
+            "check": "desktop org.modbit.bench.orders \"Customer\" reads \"\"",
+            "passed": true,
+            "detail": "reads \"\""
+          },
+          {
+            "check": "desktop org.modbit.bench.orders \"Status\" reads \"cleared\"",
+            "passed": true,
+            "detail": "reads \"cleared\""
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "ec622fd35252e9f0e6a56f2c1b502612",
+          "01a1ba578b927931bf63d72f86062f8c"
+        ],
+        "model_calls": 12,
+        "input_tokens": 34253,
+        "output_tokens": 384,
+        "cost_usd": 0.009330999999999999,
+        "recorded_model_calls": 12,
+        "recorded_output_tokens": 384
+      }
+    },
+    {
+      "task": "gui_element/notes-bold",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "INCONCLUSIVE",
+        "last_verification": [
+          "COMPLETION",
+          "UNKNOWN"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          334
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 9201,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002556,
+        "wall_ms": 3857,
+        "model_ms": 49,
+        "tool_ms": 0,
+        "tool_calls": 0
+      },
+      "event_log": {
+        "file": "trials/gui_element__notes-bold-1/events.jsonl",
+        "sha256": "409640290970f60a662303957cae01ab6d7428eab56b3389d42e4a03b8684201",
+        "offsets": [
+          1,
+          334
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 2,
+      "notes": [
+        "approvals by protocol: 2 computer input(s) approved as the person at the fixture desktop, 0 other protected effect(s) denied"
+      ],
+      "axis": "gui_element",
+      "verifier": {
+        "id": "px179/gui_element/notes-bold",
+        "passed": true,
+        "checks": [
+          {
+            "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.notes\",\"kind\":\"accessibility\",\"name\":\"Style\",\"role\":\"label\",\"value\":\"bold\"} and it passed",
+            "passed": true,
+            "detail": "PASS: state read of org.modbit.bench.notes (snapshot scd4c2cea45ad)"
+          },
+          {
+            "check": "the Core judged the GUI run VERIFIED",
+            "passed": true,
+            "detail": "VERIFIED (READY_FOR_REVIEW)"
+          },
+          {
+            "check": "desktop org.modbit.bench.notes \"Style\" reads \"bold\"",
+            "passed": true,
+            "detail": "reads \"bold\""
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "181cb8fc6e1cc0957e61feb4f1f6c974",
+          "01a1ba57a6357091a5f1cc1252e01cdb"
+        ],
+        "model_calls": 10,
+        "input_tokens": 24322,
+        "output_tokens": 320,
+        "cost_usd": 0.00672,
+        "recorded_model_calls": 10,
+        "recorded_output_tokens": 320
+      }
+    },
+    {
+      "task": "gui_element/notes-set-text",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "INCONCLUSIVE",
+        "last_verification": [
+          "COMPLETION",
+          "UNKNOWN"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          334
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 9205,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002557,
+        "wall_ms": 4082,
+        "model_ms": 46,
+        "tool_ms": 0,
+        "tool_calls": 0
+      },
+      "event_log": {
+        "file": "trials/gui_element__notes-set-text-1/events.jsonl",
+        "sha256": "a497fa61fd6d10cfdab65d061904ad1a6115bcad26cf7b7fc534cb907e111b0b",
+        "offsets": [
+          1,
+          334
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 2,
+      "notes": [
+        "approvals by protocol: 2 computer input(s) approved as the person at the fixture desktop, 0 other protected effect(s) denied"
+      ],
+      "axis": "gui_element",
+      "verifier": {
+        "id": "px179/gui_element/notes-set-text",
+        "passed": true,
+        "checks": [
+          {
+            "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.notes\",\"kind\":\"accessibility\",\"name\":\"Document\",\"role\":\"textarea\",\"value\":\"Meeting at noon\"} and it passed",
+            "passed": true,
+            "detail": "PASS: state read of org.modbit.bench.notes (snapshot s5bf67b15a590)"
+          },
+          {
+            "check": "the Core judged the GUI run VERIFIED",
+            "passed": true,
+            "detail": "VERIFIED (READY_FOR_REVIEW)"
+          },
+          {
+            "check": "desktop org.modbit.bench.notes \"Document\" reads \"Meeting at noon\"",
+            "passed": true,
+            "detail": "reads \"Meeting at noon\""
+          },
+          {
+            "check": "desktop org.modbit.bench.notes \"Saved state\" reads \"unsaved\"",
+            "passed": true,
+            "detail": "reads \"unsaved\""
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "f4bbd19f2713e7fd8d8c1cbb6da0e2bc",
+          "01a1ba57a88673c1ab1672bec6f5b4a8"
+        ],
+        "model_calls": 10,
+        "input_tokens": 24369,
+        "output_tokens": 320,
+        "cost_usd": 0.006732,
+        "recorded_model_calls": 10,
+        "recorded_output_tokens": 320
+      }
+    },
+    {
+      "task": "gui_element/settings-dark-mode",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "INCONCLUSIVE",
+        "last_verification": [
+          "COMPLETION",
+          "UNKNOWN"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          334
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 9149,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002543,
+        "wall_ms": 4337,
+        "model_ms": 53,
+        "tool_ms": 0,
+        "tool_calls": 0
+      },
+      "event_log": {
+        "file": "trials/gui_element__settings-dark-mode-1/events.jsonl",
+        "sha256": "2b03c350cb9e967ebe95c4be6720a570d903dfdac85a12c6e3e69a9096e8a2f6",
+        "offsets": [
+          1,
+          334
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 2,
+      "notes": [
+        "approvals by protocol: 2 computer input(s) approved as the person at the fixture desktop, 0 other protected effect(s) denied"
+      ],
+      "axis": "gui_element",
+      "verifier": {
+        "id": "px179/gui_element/settings-dark-mode",
+        "passed": true,
+        "checks": [
+          {
+            "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.settings\",\"kind\":\"accessibility\",\"name\":\"Theme\",\"role\":\"label\",\"value\":\"dark\"} and it passed",
+            "passed": true,
+            "detail": "PASS: state read of org.modbit.bench.settings (snapshot s2e6028c1eb55)"
+          },
+          {
+            "check": "the Core judged the GUI run VERIFIED",
+            "passed": true,
+            "detail": "VERIFIED (READY_FOR_REVIEW)"
+          },
+          {
+            "check": "desktop org.modbit.bench.settings \"Dark mode\" reads \"on\"",
+            "passed": true,
+            "detail": "reads \"on\""
+          },
+          {
+            "check": "desktop org.modbit.bench.settings \"Theme\" reads \"dark\"",
+            "passed": true,
+            "detail": "reads \"dark\""
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "3b5d70a769907660c361bda0dbb72e87",
+          "01a1ba57aa707b11a2cb216d5f510e34"
+        ],
+        "model_calls": 10,
+        "input_tokens": 24637,
+        "output_tokens": 320,
+        "cost_usd": 0.006799,
+        "recorded_model_calls": 10,
+        "recorded_output_tokens": 320
+      }
+    },
+    {
+      "task": "gui_element/settings-font-apply",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "INCONCLUSIVE",
+        "last_verification": [
+          "COMPLETION",
+          "UNKNOWN"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          396
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 9222,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002561,
+        "wall_ms": 4533,
+        "model_ms": 43,
+        "tool_ms": 0,
+        "tool_calls": 0
+      },
+      "event_log": {
+        "file": "trials/gui_element__settings-font-apply-1/events.jsonl",
+        "sha256": "f5f9c96ee70ffa3b1c0eca30a53fa21636f155bf257f00d3df1d78fd5cfab735",
+        "offsets": [
+          1,
+          396
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 3,
+      "notes": [
+        "approvals by protocol: 3 computer input(s) approved as the person at the fixture desktop, 0 other protected effect(s) denied"
+      ],
+      "axis": "gui_element",
+      "verifier": {
+        "id": "px179/gui_element/settings-font-apply",
+        "passed": true,
+        "checks": [
+          {
+            "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.settings\",\"kind\":\"accessibility\",\"name\":\"Settings state\",\"role\":\"label\",\"value\":\"applied\"} and it passed",
+            "passed": true,
+            "detail": "PASS: state read of org.modbit.bench.settings (snapshot s2f72ab880d3d)"
+          },
+          {
+            "check": "the Core judged the GUI run VERIFIED",
+            "passed": true,
+            "detail": "VERIFIED (READY_FOR_REVIEW)"
+          },
+          {
+            "check": "desktop org.modbit.bench.settings \"Font size\" reads \"14\"",
+            "passed": true,
+            "detail": "reads \"14\""
+          },
+          {
+            "check": "desktop org.modbit.bench.settings \"Settings state\" reads \"applied\"",
+            "passed": true,
+            "detail": "reads \"applied\""
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "f43ced360240e1973bd3b59e4c4f1981",
+          "01a1ba57aa707b82a36f451db5417d50"
+        ],
+        "model_calls": 12,
+        "input_tokens": 33805,
+        "output_tokens": 384,
+        "cost_usd": 0.009219,
+        "recorded_model_calls": 12,
+        "recorded_output_tokens": 384
+      }
+    },
+    {
+      "task": "gui_element/settings-notifications-off",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "INCONCLUSIVE",
+        "last_verification": [
+          "COMPLETION",
+          "UNKNOWN"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          334
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 9182,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002551,
+        "wall_ms": 4181,
+        "model_ms": 41,
+        "tool_ms": 0,
+        "tool_calls": 0
+      },
+      "event_log": {
+        "file": "trials/gui_element__settings-notifications-off-1/events.jsonl",
+        "sha256": "29c024843c8edc45bbb5950db8a7144b69a0235e8055e9b1ed6f36124aaad133",
+        "offsets": [
+          1,
+          334
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 2,
+      "notes": [
+        "approvals by protocol: 2 computer input(s) approved as the person at the fixture desktop, 0 other protected effect(s) denied"
+      ],
+      "axis": "gui_element",
+      "verifier": {
+        "id": "px179/gui_element/settings-notifications-off",
+        "passed": true,
+        "checks": [
+          {
+            "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.settings\",\"kind\":\"accessibility\",\"name\":\"Notifications\",\"role\":\"switch\",\"value\":\"off\"} and it passed",
+            "passed": true,
+            "detail": "PASS: state read of org.modbit.bench.settings (snapshot sde32a8b7f236)"
+          },
+          {
+            "check": "the Core judged the GUI run VERIFIED",
+            "passed": true,
+            "detail": "VERIFIED (READY_FOR_REVIEW)"
+          },
+          {
+            "check": "desktop org.modbit.bench.settings \"Notifications\" reads \"off\"",
+            "passed": true,
+            "detail": "reads \"off\""
+          },
+          {
+            "check": "desktop org.modbit.bench.settings \"Theme\" reads \"light\"",
+            "passed": true,
+            "detail": "reads \"light\""
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "6352cad9d7309aa64e446b59df2173a7",
+          "01a1ba57be1076f3a79b8cc23ed29df6"
+        ],
+        "model_calls": 10,
+        "input_tokens": 24654,
+        "output_tokens": 320,
+        "cost_usd": 0.006803,
+        "recorded_model_calls": 10,
+        "recorded_output_tokens": 320
+      }
+    },
+    {
+      "task": "gui_element/files-archive-confirm",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "INCONCLUSIVE",
+        "last_verification": [
+          "COMPLETION",
+          "UNKNOWN"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          395
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 9235,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002565,
+        "wall_ms": 4966,
+        "model_ms": 43,
+        "tool_ms": 0,
+        "tool_calls": 0
+      },
+      "event_log": {
+        "file": "trials/gui_element__files-archive-confirm-1/events.jsonl",
+        "sha256": "d9903c1a71f2203ff8afd58f6ea06bbf4cc1a7fff8de1d44a673ca46bf2a9c75",
+        "offsets": [
+          1,
+          395
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 3,
+      "notes": [
+        "approvals by protocol: 3 computer input(s) approved as the person at the fixture desktop, 0 other protected effect(s) denied"
+      ],
+      "axis": "gui_element",
+      "verifier": {
+        "id": "px179/gui_element/files-archive-confirm",
+        "passed": true,
+        "checks": [
+          {
+            "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.files\",\"kind\":\"accessibility\",\"name\":\"File state\",\"role\":\"label\",\"value\":\"archived\"} and it passed",
+            "passed": true,
+            "detail": "PASS: state read of org.modbit.bench.files (snapshot s4616885be7d7)"
+          },
+          {
+            "check": "the Core judged the GUI run VERIFIED",
+            "passed": true,
+            "detail": "VERIFIED (READY_FOR_REVIEW)"
+          },
+          {
+            "check": "desktop org.modbit.bench.files \"File state\" reads \"archived\"",
+            "passed": true,
+            "detail": "reads \"archived\""
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "7ceedee035777560f350243000ea5f2b",
+          "01a1ba57bf907f21b555735079f36c67"
+        ],
+        "model_calls": 12,
+        "input_tokens": 32216,
+        "output_tokens": 384,
+        "cost_usd": 0.008822,
+        "recorded_model_calls": 12,
+        "recorded_output_tokens": 384
+      }
+    },
+    {
+      "task": "gui_element/files-archive-cancel",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "INCONCLUSIVE",
+        "last_verification": [
+          "COMPLETION",
+          "UNKNOWN"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          395
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 9266,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002573,
+        "wall_ms": 5015,
+        "model_ms": 66,
+        "tool_ms": 0,
+        "tool_calls": 0
+      },
+      "event_log": {
+        "file": "trials/gui_element__files-archive-cancel-1/events.jsonl",
+        "sha256": "b09e7bb6104bdd7e934aa833beed2023d62fd226ae48cc48f60da707cf8c2587",
+        "offsets": [
+          1,
+          395
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 3,
+      "notes": [
+        "approvals by protocol: 3 computer input(s) approved as the person at the fixture desktop, 0 other protected effect(s) denied"
+      ],
+      "axis": "gui_element",
+      "verifier": {
+        "id": "px179/gui_element/files-archive-cancel",
+        "passed": true,
+        "checks": [
+          {
+            "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.files\",\"kind\":\"accessibility\",\"name\":\"File state\",\"role\":\"label\",\"value\":\"kept\"} and it passed",
+            "passed": true,
+            "detail": "PASS: state read of org.modbit.bench.files (snapshot s6814a70fcc12)"
+          },
+          {
+            "check": "the Core judged the GUI run VERIFIED",
+            "passed": true,
+            "detail": "VERIFIED (READY_FOR_REVIEW)"
+          },
+          {
+            "check": "desktop org.modbit.bench.files \"File state\" reads \"kept\"",
+            "passed": true,
+            "detail": "reads \"kept\""
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "15ee4b580b07197094ab0bf1c6ac368d",
+          "01a1ba57c20b7af0be5c85e58716e11e"
+        ],
+        "model_calls": 12,
+        "input_tokens": 32341,
+        "output_tokens": 384,
+        "cost_usd": 0.008854,
+        "recorded_model_calls": 12,
+        "recorded_output_tokens": 384
+      }
+    },
+    {
+      "task": "gui_element/ledger-copy-invoice-total",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "INCONCLUSIVE",
+        "last_verification": [
+          "COMPLETION",
+          "UNKNOWN"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          546
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 9365,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002597,
+        "wall_ms": 5755,
+        "model_ms": 38,
+        "tool_ms": 0,
+        "tool_calls": 0
+      },
+      "event_log": {
+        "file": "trials/gui_element__ledger-copy-invoice-total-1/events.jsonl",
+        "sha256": "c87a92050831c6c6c98992209f9c3a9fddd2772935d0beb85b6ceabfa037a4ee",
+        "offsets": [
+          1,
+          546
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 5,
+      "notes": [
+        "approvals by protocol: 5 computer input(s) approved as the person at the fixture desktop, 0 other protected effect(s) denied"
+      ],
+      "axis": "gui_element",
+      "verifier": {
+        "id": "px179/gui_element/ledger-copy-invoice-total",
+        "passed": true,
+        "checks": [
+          {
+            "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.ledger\",\"kind\":\"accessibility\",\"name\":\"Entry state\",\"role\":\"label\",\"value\":\"recorded\"} and it passed",
+            "passed": true,
+            "detail": "PASS: state read of org.modbit.bench.ledger (snapshot sac18f5f44f27)"
+          },
+          {
+            "check": "the Core judged the GUI run VERIFIED",
+            "passed": true,
+            "detail": "VERIFIED (READY_FOR_REVIEW)"
+          },
+          {
+            "check": "desktop org.modbit.bench.ledger \"Amount\" reads \"42.50\"",
+            "passed": true,
+            "detail": "reads \"42.50\""
+          },
+          {
+            "check": "desktop org.modbit.bench.ledger \"Reference\" reads \"INV-7\"",
+            "passed": true,
+            "detail": "reads \"INV-7\""
+          },
+          {
+            "check": "desktop org.modbit.bench.ledger \"Entry state\" reads \"recorded\"",
+            "passed": true,
+            "detail": "reads \"recorded\""
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "9eb8d59d9e1646946aa776fdce8e4f9c",
+          "01a1ba57c3107571a13c3b92f8dcf81b"
+        ],
+        "model_calls": 17,
+        "input_tokens": 59404,
+        "output_tokens": 544,
+        "cost_usd": 0.015939,
+        "recorded_model_calls": 17,
+        "recorded_output_tokens": 544
+      }
+    },
+    {
+      "task": "gui_input/notes-type-text",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "INCONCLUSIVE",
+        "last_verification": [
+          "COMPLETION",
+          "UNKNOWN"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          334
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 9174,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.00255,
+        "wall_ms": 4387,
+        "model_ms": 66,
+        "tool_ms": 0,
+        "tool_calls": 0
+      },
+      "event_log": {
+        "file": "trials/gui_input__notes-type-text-1/events.jsonl",
+        "sha256": "eeeec54c726d3a0f9d646a1de10e92d7cee51009a3af00a997fae9fb77eb019d",
+        "offsets": [
+          1,
+          334
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 2,
+      "notes": [
+        "approvals by protocol: 2 computer input(s) approved as the person at the fixture desktop, 0 other protected effect(s) denied"
+      ],
+      "axis": "gui_input",
+      "verifier": {
+        "id": "px179/gui_input/notes-type-text",
+        "passed": true,
+        "checks": [
+          {
+            "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.notes\",\"kind\":\"accessibility\",\"name\":\"Document\",\"role\":\"textarea\",\"value\":\"hello world\"} and it passed",
+            "passed": true,
+            "detail": "PASS: state read of org.modbit.bench.notes (snapshot s28de1b02253a)"
+          },
+          {
+            "check": "the Core judged the GUI run VERIFIED",
+            "passed": true,
+            "detail": "VERIFIED (READY_FOR_REVIEW)"
+          },
+          {
+            "check": "desktop org.modbit.bench.notes \"Document\" reads \"hello world\"",
+            "passed": true,
+            "detail": "reads \"hello world\""
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "a9392c2aec3b9ede6caeb7df85f7eac8",
+          "01a1ba57d6dd79a182ce757c82ad11ee"
+        ],
+        "model_calls": 10,
+        "input_tokens": 24242,
+        "output_tokens": 320,
+        "cost_usd": 0.006701,
+        "recorded_model_calls": 10,
+        "recorded_output_tokens": 320
+      }
+    },
+    {
+      "task": "gui_input/notes-save-shortcut",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "INCONCLUSIVE",
+        "last_verification": [
+          "COMPLETION",
+          "UNKNOWN"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          334
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 9194,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002555,
+        "wall_ms": 3899,
+        "model_ms": 41,
+        "tool_ms": 0,
+        "tool_calls": 0
+      },
+      "event_log": {
+        "file": "trials/gui_input__notes-save-shortcut-1/events.jsonl",
+        "sha256": "84d08154510a77829c6e94ac86b7e4336a5fd6f7d38fe9ae5083e0d585b46786",
+        "offsets": [
+          1,
+          334
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 2,
+      "notes": [
+        "approvals by protocol: 2 computer input(s) approved as the person at the fixture desktop, 0 other protected effect(s) denied"
+      ],
+      "axis": "gui_input",
+      "verifier": {
+        "id": "px179/gui_input/notes-save-shortcut",
+        "passed": true,
+        "checks": [
+          {
+            "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.notes\",\"kind\":\"accessibility\",\"name\":\"Saved state\",\"role\":\"label\",\"value\":\"saved\"} and it passed",
+            "passed": true,
+            "detail": "PASS: state read of org.modbit.bench.notes (snapshot sb78c805f00df)"
+          },
+          {
+            "check": "the Core judged the GUI run VERIFIED",
+            "passed": true,
+            "detail": "VERIFIED (READY_FOR_REVIEW)"
+          },
+          {
+            "check": "desktop org.modbit.bench.notes \"Saved state\" reads \"saved\"",
+            "passed": true,
+            "detail": "reads \"saved\""
+          },
+          {
+            "check": "desktop org.modbit.bench.notes \"Document\" reads \"\"",
+            "passed": true,
+            "detail": "reads \"\""
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "71215d7b08cda077b1ffc8260fa61e2d",
+          "01a1ba57daff7ee1b9c4c43fb8cd6945"
+        ],
+        "model_calls": 10,
+        "input_tokens": 24289,
+        "output_tokens": 320,
+        "cost_usd": 0.006713,
+        "recorded_model_calls": 10,
+        "recorded_output_tokens": 320
+      }
+    },
+    {
+      "task": "gui_input/notes-type-and-save",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "INCONCLUSIVE",
+        "last_verification": [
+          "COMPLETION",
+          "UNKNOWN"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          396
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 9263,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002572,
+        "wall_ms": 4293,
+        "model_ms": 42,
+        "tool_ms": 0,
+        "tool_calls": 0
+      },
+      "event_log": {
+        "file": "trials/gui_input__notes-type-and-save-1/events.jsonl",
+        "sha256": "d997b663aabf3053b42f024e3edce14c3a3507c05f73879d3e79b21b58e50689",
+        "offsets": [
+          1,
+          396
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 3,
+      "notes": [
+        "approvals by protocol: 3 computer input(s) approved as the person at the fixture desktop, 0 other protected effect(s) denied"
+      ],
+      "axis": "gui_input",
+      "verifier": {
+        "id": "px179/gui_input/notes-type-and-save",
+        "passed": true,
+        "checks": [
+          {
+            "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.notes\",\"kind\":\"accessibility\",\"name\":\"Saved state\",\"role\":\"label\",\"value\":\"saved\"} and it passed",
+            "passed": true,
+            "detail": "PASS: state read of org.modbit.bench.notes (snapshot s50e85fac7015)"
+          },
+          {
+            "check": "the Core judged the GUI run VERIFIED",
+            "passed": true,
+            "detail": "VERIFIED (READY_FOR_REVIEW)"
+          },
+          {
+            "check": "desktop org.modbit.bench.notes \"Document\" reads \"draft one\"",
+            "passed": true,
+            "detail": "reads \"draft one\""
+          },
+          {
+            "check": "desktop org.modbit.bench.notes \"Saved state\" reads \"saved\"",
+            "passed": true,
+            "detail": "reads \"saved\""
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "369cb080adf91e8a1c21326ed5f7c78d",
+          "01a1ba57ddbf7620b0b354ce573614ab"
+        ],
+        "model_calls": 12,
+        "input_tokens": 32942,
+        "output_tokens": 384,
+        "cost_usd": 0.009004,
+        "recorded_model_calls": 12,
+        "recorded_output_tokens": 384
+      }
+    },
+    {
+      "task": "gui_input/search-type-enter",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "INCONCLUSIVE",
+        "last_verification": [
+          "COMPLETION",
+          "UNKNOWN"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          396
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 9229,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002563,
+        "wall_ms": 4234,
+        "model_ms": 42,
+        "tool_ms": 0,
+        "tool_calls": 0
+      },
+      "event_log": {
+        "file": "trials/gui_input__search-type-enter-1/events.jsonl",
+        "sha256": "53208462895b4684e135f15a2e6e5c78e2250159f9b6a1f7d62840e92a9287e4",
+        "offsets": [
+          1,
+          396
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 3,
+      "notes": [
+        "approvals by protocol: 3 computer input(s) approved as the person at the fixture desktop, 0 other protected effect(s) denied"
+      ],
+      "axis": "gui_input",
+      "verifier": {
+        "id": "px179/gui_input/search-type-enter",
+        "passed": true,
+        "checks": [
+          {
+            "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.search\",\"kind\":\"accessibility\",\"name\":\"Results\",\"role\":\"label\",\"value\":\"results ready\"} and it passed",
+            "passed": true,
+            "detail": "PASS: state read of org.modbit.bench.search (snapshot s1bc043379e32)"
+          },
+          {
+            "check": "the Core judged the GUI run VERIFIED",
+            "passed": true,
+            "detail": "VERIFIED (READY_FOR_REVIEW)"
+          },
+          {
+            "check": "desktop org.modbit.bench.search \"Query\" reads \"modbit\"",
+            "passed": true,
+            "detail": "reads \"modbit\""
+          },
+          {
+            "check": "desktop org.modbit.bench.search \"Results\" reads \"results ready\"",
+            "passed": true,
+            "detail": "reads \"results ready\""
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "0999f4f2957a733586240f018866b46e",
+          "01a1ba57e1ac74b19ebe73b1889c953a"
+        ],
+        "model_calls": 12,
+        "input_tokens": 31946,
+        "output_tokens": 384,
+        "cost_usd": 0.008754000000000001,
+        "recorded_model_calls": 12,
+        "recorded_output_tokens": 384
+      }
+    },
+    {
+      "task": "gui_input/orders-customer-by-typing",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "INCONCLUSIVE",
+        "last_verification": [
+          "COMPLETION",
+          "UNKNOWN"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          396
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 9252,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002569,
+        "wall_ms": 4833,
+        "model_ms": 40,
+        "tool_ms": 0,
+        "tool_calls": 0
+      },
+      "event_log": {
+        "file": "trials/gui_input__orders-customer-by-typing-1/events.jsonl",
+        "sha256": "531401929db6bebcbe98bfd407a6f0797839b8862ef378d70e43f7f73c37ee9c",
+        "offsets": [
+          1,
+          396
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 3,
+      "notes": [
+        "approvals by protocol: 3 computer input(s) approved as the person at the fixture desktop, 0 other protected effect(s) denied"
+      ],
+      "axis": "gui_input",
+      "verifier": {
+        "id": "px179/gui_input/orders-customer-by-typing",
+        "passed": true,
+        "checks": [
+          {
+            "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.orders\",\"kind\":\"accessibility\",\"name\":\"Status\",\"role\":\"label\",\"value\":\"customer entered\"} and it passed",
+            "passed": true,
+            "detail": "PASS: state read of org.modbit.bench.orders (snapshot s22bd406048e5)"
+          },
+          {
+            "check": "the Core judged the GUI run VERIFIED",
+            "passed": true,
+            "detail": "VERIFIED (READY_FOR_REVIEW)"
+          },
+          {
+            "check": "desktop org.modbit.bench.orders \"Customer\" reads \"Grace Hopper\"",
+            "passed": true,
+            "detail": "reads \"Grace Hopper\""
+          },
+          {
+            "check": "desktop org.modbit.bench.orders \"Status\" reads \"customer entered\"",
+            "passed": true,
+            "detail": "reads \"customer entered\""
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "5bb842d59d39aa486cb5da3e376757c3",
+          "01a1ba57ee857462b25af332b2490592"
+        ],
+        "model_calls": 12,
+        "input_tokens": 34425,
+        "output_tokens": 384,
+        "cost_usd": 0.009374,
+        "recorded_model_calls": 12,
+        "recorded_output_tokens": 384
+      }
+    },
+    {
+      "task": "gui_input/orders-stamp-by-click",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "INCONCLUSIVE",
+        "last_verification": [
+          "COMPLETION",
+          "UNKNOWN"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          362
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 9317,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002585,
+        "wall_ms": 4854,
+        "model_ms": 46,
+        "tool_ms": 0,
+        "tool_calls": 0
+      },
+      "event_log": {
+        "file": "trials/gui_input__orders-stamp-by-click-1/events.jsonl",
+        "sha256": "f4f7fde84eafb8c65af04ed0fb521615c926835898eb33e94d24d5f73f2b7576",
+        "offsets": [
+          1,
+          362
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 2,
+      "notes": [
+        "approvals by protocol: 2 computer input(s) approved as the person at the fixture desktop, 0 other protected effect(s) denied"
+      ],
+      "axis": "gui_input",
+      "verifier": {
+        "id": "px179/gui_input/orders-stamp-by-click",
+        "passed": true,
+        "checks": [
+          {
+            "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.orders\",\"kind\":\"accessibility\",\"name\":\"Status\",\"role\":\"label\",\"value\":\"stamped\"} and it passed",
+            "passed": true,
+            "detail": "PASS: state read of org.modbit.bench.orders (snapshot s250c7bdad89d)"
+          },
+          {
+            "check": "the Core judged the GUI run VERIFIED",
+            "passed": true,
+            "detail": "VERIFIED (READY_FOR_REVIEW)"
+          },
+          {
+            "check": "desktop org.modbit.bench.orders \"Status\" reads \"stamped\"",
+            "passed": true,
+            "detail": "reads \"stamped\""
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "ff200fca527c264040eef3d5b0519711",
+          "01a1ba57f33476419cacd9be9b52a745"
+        ],
+        "model_calls": 11,
+        "input_tokens": 66531,
+        "output_tokens": 352,
+        "cost_usd": 0.017336,
+        "recorded_model_calls": 11,
+        "recorded_output_tokens": 352
+      }
+    },
+    {
+      "task": "gui_input/orders-submit-by-click",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "INCONCLUSIVE",
+        "last_verification": [
+          "COMPLETION",
+          "UNKNOWN"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          362
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 9309,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002583,
+        "wall_ms": 4841,
+        "model_ms": 50,
+        "tool_ms": 0,
+        "tool_calls": 0
+      },
+      "event_log": {
+        "file": "trials/gui_input__orders-submit-by-click-1/events.jsonl",
+        "sha256": "86dc6114bec85d6e8473da289d08ac568d73e64fe0bf381f787246f84082b497",
+        "offsets": [
+          1,
+          362
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 2,
+      "notes": [
+        "approvals by protocol: 2 computer input(s) approved as the person at the fixture desktop, 0 other protected effect(s) denied"
+      ],
+      "axis": "gui_input",
+      "verifier": {
+        "id": "px179/gui_input/orders-submit-by-click",
+        "passed": true,
+        "checks": [
+          {
+            "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.orders\",\"kind\":\"accessibility\",\"name\":\"Status\",\"role\":\"label\",\"value\":\"submitted\"} and it passed",
+            "passed": true,
+            "detail": "PASS: state read of org.modbit.bench.orders (snapshot s4fb652cea125)"
+          },
+          {
+            "check": "the Core judged the GUI run VERIFIED",
+            "passed": true,
+            "detail": "VERIFIED (READY_FOR_REVIEW)"
+          },
+          {
+            "check": "desktop org.modbit.bench.orders \"Status\" reads \"submitted\"",
+            "passed": true,
+            "detail": "reads \"submitted\""
+          },
+          {
+            "check": "desktop org.modbit.bench.orders \"Customer\" reads \"\"",
+            "passed": true,
+            "detail": "reads \"\""
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "c408979dca6f4146d35685b9cf7b9cde",
+          "01a1ba57f5fb761394f04e70c7ff45cf"
+        ],
+        "model_calls": 11,
+        "input_tokens": 66501,
+        "output_tokens": 352,
+        "cost_usd": 0.017329,
+        "recorded_model_calls": 11,
+        "recorded_output_tokens": 352
+      }
+    },
+    {
+      "task": "gui_input/calculator-two-plus-three",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "INCONCLUSIVE",
+        "last_verification": [
+          "COMPLETION",
+          "UNKNOWN"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          456
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 9257,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.00257,
+        "wall_ms": 5328,
+        "model_ms": 65,
+        "tool_ms": 0,
+        "tool_calls": 0
+      },
+      "event_log": {
+        "file": "trials/gui_input__calculator-two-plus-three-1/events.jsonl",
+        "sha256": "32b0a719ef631ab4683d4ce418d375fb5e986f34690b092fc7cc2888d0f8280b",
+        "offsets": [
+          1,
+          456
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 4,
+      "notes": [
+        "approvals by protocol: 4 computer input(s) approved as the person at the fixture desktop, 0 other protected effect(s) denied"
+      ],
+      "axis": "gui_input",
+      "verifier": {
+        "id": "px179/gui_input/calculator-two-plus-three",
+        "passed": true,
+        "checks": [
+          {
+            "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.calculator\",\"kind\":\"accessibility\",\"name\":\"Result state\",\"role\":\"label\",\"value\":\"computed\"} and it passed",
+            "passed": true,
+            "detail": "PASS: state read of org.modbit.bench.calculator (snapshot s59a0d6ecfa22)"
+          },
+          {
+            "check": "the Core judged the GUI run VERIFIED",
+            "passed": true,
+            "detail": "VERIFIED (READY_FOR_REVIEW)"
+          },
+          {
+            "check": "desktop org.modbit.bench.calculator \"Display\" reads \"2+3\"",
+            "passed": true,
+            "detail": "reads \"2+3\""
+          },
+          {
+            "check": "desktop org.modbit.bench.calculator \"Result state\" reads \"computed\"",
+            "passed": true,
+            "detail": "reads \"computed\""
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "0c948b7c733b9335bb2e43df84d4a7ad",
+          "01a1ba57fb1072608a81e2428b145b5a"
+        ],
+        "model_calls": 14,
+        "input_tokens": 42122,
+        "output_tokens": 448,
+        "cost_usd": 0.011425999999999999,
+        "recorded_model_calls": 14,
+        "recorded_output_tokens": 448
+      }
+    },
+    {
+      "task": "gui_input/calculator-clear-then-seven",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "INCONCLUSIVE",
+        "last_verification": [
+          "COMPLETION",
+          "UNKNOWN"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          395
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 9200,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002556,
+        "wall_ms": 5261,
+        "model_ms": 45,
+        "tool_ms": 0,
+        "tool_calls": 0
+      },
+      "event_log": {
+        "file": "trials/gui_input__calculator-clear-then-seven-1/events.jsonl",
+        "sha256": "fc336ce57f761917eebe88f9b9e61456ee86d2e2c09954500c616af4a36c99be",
+        "offsets": [
+          1,
+          395
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 3,
+      "notes": [
+        "approvals by protocol: 3 computer input(s) approved as the person at the fixture desktop, 0 other protected effect(s) denied"
+      ],
+      "axis": "gui_input",
+      "verifier": {
+        "id": "px179/gui_input/calculator-clear-then-seven",
+        "passed": true,
+        "checks": [
+          {
+            "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.calculator\",\"kind\":\"accessibility\",\"name\":\"Display\",\"role\":\"textfield\",\"value\":\"7\"} and it passed",
+            "passed": true,
+            "detail": "PASS: state read of org.modbit.bench.calculator (snapshot se576b418f7ab)"
+          },
+          {
+            "check": "the Core judged the GUI run VERIFIED",
+            "passed": true,
+            "detail": "VERIFIED (READY_FOR_REVIEW)"
+          },
+          {
+            "check": "desktop org.modbit.bench.calculator \"Display\" reads \"7\"",
+            "passed": true,
+            "detail": "reads \"7\""
+          },
+          {
+            "check": "desktop org.modbit.bench.calculator \"Result state\" reads \"cleared\"",
+            "passed": true,
+            "detail": "reads \"cleared\""
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "51dd2d82ee70875ec29f8ff0b5045ae7",
+          "01a1ba5809df794397a4f9c0970b3f74"
+        ],
+        "model_calls": 12,
+        "input_tokens": 31948,
+        "output_tokens": 384,
+        "cost_usd": 0.008754999999999999,
+        "recorded_model_calls": 12,
+        "recorded_output_tokens": 384
+      }
+    },
+    {
+      "task": "gui_input/search-click-then-type",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "INCONCLUSIVE",
+        "last_verification": [
+          "COMPLETION",
+          "UNKNOWN"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          424
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 9305,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002582,
+        "wall_ms": 5485,
+        "model_ms": 43,
+        "tool_ms": 0,
+        "tool_calls": 0
+      },
+      "event_log": {
+        "file": "trials/gui_input__search-click-then-type-1/events.jsonl",
+        "sha256": "db25e3e266b42942c2002b8debd4f236d364e39e165d328d0968a343838af435",
+        "offsets": [
+          1,
+          424
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 3,
+      "notes": [
+        "approvals by protocol: 3 computer input(s) approved as the person at the fixture desktop, 0 other protected effect(s) denied"
+      ],
+      "axis": "gui_input",
+      "verifier": {
+        "id": "px179/gui_input/search-click-then-type",
+        "passed": true,
+        "checks": [
+          {
+            "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.search\",\"kind\":\"accessibility\",\"name\":\"Results\",\"role\":\"label\",\"value\":\"results ready\"} and it passed",
+            "passed": true,
+            "detail": "PASS: state read of org.modbit.bench.search (snapshot sf6e44cdc4b4e)"
+          },
+          {
+            "check": "the Core judged the GUI run VERIFIED",
+            "passed": true,
+            "detail": "VERIFIED (READY_FOR_REVIEW)"
+          },
+          {
+            "check": "desktop org.modbit.bench.search \"Query\" reads \"agents\"",
+            "passed": true,
+            "detail": "reads \"agents\""
+          },
+          {
+            "check": "desktop org.modbit.bench.search \"Results\" reads \"results ready\"",
+            "passed": true,
+            "detail": "reads \"results ready\""
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "d6ee56c43d39ee1a1e6cf10dd9db42d1",
+          "01a1ba580d9c7e92a09f1e5cf70f7bb6"
+        ],
+        "model_calls": 13,
+        "input_tokens": 87867,
+        "output_tokens": 416,
+        "cost_usd": 0.022798000000000002,
+        "recorded_model_calls": 13,
+        "recorded_output_tokens": 416
+      }
+    },
+    {
+      "task": "gui_input/ledger-tab-to-reference",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "INCONCLUSIVE",
+        "last_verification": [
+          "COMPLETION",
+          "UNKNOWN"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          396
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 9286,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002577,
+        "wall_ms": 5139,
+        "model_ms": 47,
+        "tool_ms": 0,
+        "tool_calls": 0
+      },
+      "event_log": {
+        "file": "trials/gui_input__ledger-tab-to-reference-1/events.jsonl",
+        "sha256": "432ed0fe8a44c7d6045c4f10592af9c6141c0c3cc5dfddb6e430f402288ab6b9",
+        "offsets": [
+          1,
+          396
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 3,
+      "notes": [
+        "approvals by protocol: 3 computer input(s) approved as the person at the fixture desktop, 0 other protected effect(s) denied"
+      ],
+      "axis": "gui_input",
+      "verifier": {
+        "id": "px179/gui_input/ledger-tab-to-reference",
+        "passed": true,
+        "checks": [
+          {
+            "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.ledger\",\"kind\":\"accessibility\",\"name\":\"Reference\",\"role\":\"textfield\",\"value\":\"INV-9\"} and it passed",
+            "passed": true,
+            "detail": "PASS: state read of org.modbit.bench.ledger (snapshot sa79f6b8e6b4d)"
+          },
+          {
+            "check": "the Core judged the GUI run VERIFIED",
+            "passed": true,
+            "detail": "VERIFIED (READY_FOR_REVIEW)"
+          },
+          {
+            "check": "desktop org.modbit.bench.ledger \"Reference\" reads \"INV-9\"",
+            "passed": true,
+            "detail": "reads \"INV-9\""
+          },
+          {
+            "check": "desktop org.modbit.bench.ledger \"Amount\" reads \"\"",
+            "passed": true,
+            "detail": "reads \"\""
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "55e18c8f56331512abb602ea2b3db3f2",
+          "01a1ba5811007f71a221e690b5a3b0c0"
+        ],
+        "model_calls": 12,
+        "input_tokens": 33151,
+        "output_tokens": 384,
+        "cost_usd": 0.009055,
+        "recorded_model_calls": 12,
+        "recorded_output_tokens": 384
+      }
+    },
+    {
+      "task": "gui_input/ledger-type-amount-shortcut",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [],
+        "plan_revisions": 0,
+        "questions": 0,
+        "files_changed": [],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "INCONCLUSIVE",
+        "last_verification": [
+          "COMPLETION",
+          "UNKNOWN"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 4,
+        "offsets": [
+          1,
+          396
+        ]
+      },
+      "economics": {
+        "model_calls": 4,
+        "input_tokens": 9270,
+        "cached_input_tokens": 0,
+        "output_tokens": 128,
+        "cost_usd": 0.002574,
+        "wall_ms": 4334,
+        "model_ms": 48,
+        "tool_ms": 0,
+        "tool_calls": 0
+      },
+      "event_log": {
+        "file": "trials/gui_input__ledger-type-amount-shortcut-1/events.jsonl",
+        "sha256": "b0e36374f481f5ed5de0bfa6a3ef6f93bded4fea8648e019dfee0eb82465b3d4",
+        "offsets": [
+          1,
+          396
+        ]
+      },
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "interactions": 3,
+      "notes": [
+        "approvals by protocol: 3 computer input(s) approved as the person at the fixture desktop, 0 other protected effect(s) denied"
+      ],
+      "axis": "gui_input",
+      "verifier": {
+        "id": "px179/gui_input/ledger-type-amount-shortcut",
+        "passed": true,
+        "checks": [
+          {
+            "check": "the Core held a GUI child to {\"app\":\"org.modbit.bench.ledger\",\"kind\":\"accessibility\",\"name\":\"Entry state\",\"role\":\"label\",\"value\":\"recorded\"} and it passed",
+            "passed": true,
+            "detail": "PASS: state read of org.modbit.bench.ledger (snapshot seeaa88bb7403)"
+          },
+          {
+            "check": "the Core judged the GUI run VERIFIED",
+            "passed": true,
+            "detail": "VERIFIED (READY_FOR_REVIEW)"
+          },
+          {
+            "check": "desktop org.modbit.bench.ledger \"Amount\" reads \"19.99\"",
+            "passed": true,
+            "detail": "reads \"19.99\""
+          },
+          {
+            "check": "desktop org.modbit.bench.ledger \"Entry state\" reads \"recorded\"",
+            "passed": true,
+            "detail": "reads \"recorded\""
+          }
+        ]
+      },
+      "usage": {
+        "tasks": [
+          "762652b8d1360db71d6d0abb001b1f73",
+          "01a1ba58181b7e9297d3ba4d4b7280d3"
+        ],
+        "model_calls": 12,
+        "input_tokens": 33093,
+        "output_tokens": 384,
+        "cost_usd": 0.009042,
+        "recorded_model_calls": 12,
+        "recorded_output_tokens": 384
+      }
+    }
+  ],
+  "metrics": {
+    "verified_success": {
+      "successes": 24,
+      "n": 24,
+      "rate": 1.0,
+      "ci95": [
+        0.8620237953250198,
+        1.0
+      ]
+    },
+    "first_pass_success": {
+      "successes": 24,
+      "n": 24,
+      "rate": 1.0,
+      "ci95": [
+        0.8620237953250198,
+        1.0
+      ]
+    },
+    "first_candidate_success": {
+      "successes": 24,
+      "n": 24,
+      "rate": 1.0,
+      "ci95": [
+        0.8620237953250198,
+        1.0
+      ]
+    },
+    "repair_loops": {
+      "0": 24
+    },
+    "equivalent_hypothesis_escalations": [
+      0,
+      0.0
+    ],
+    "no_progress_escalations": [
+      0,
+      0.0
+    ],
+    "wrong_effect_attempts_blocked": [
+      0,
+      0.0
+    ],
+    "evidence_coverage": {
+      "successes": 24,
+      "n": 24,
+      "rate": 1.0,
+      "ci95": [
+        0.8620237953250198,
+        1.0
+      ]
+    },
+    "cost_and_time": {
+      "total_cost_usd": 0.061563000000000014,
+      "unpriced_trials": 0,
+      "cost_per_verified_success_usd": 0.0025651250000000006,
+      "wall_ms_per_verified_success": 4857.5,
+      "tool_ms_total": 0,
+      "wall_ms_total": 116580
+    },
+    "retrieval_discipline_edits_without_record": 0,
+    "scope_discipline": {
+      "files_outside_original_plan_per_trial": 0.0,
+      "scope_expansions_per_trial": 0.0,
+      "scope_questions_per_trial": 0.0
+    },
+    "regression_attribution": 0,
+    "flaky_check_rate": [
+      0,
+      0.0
+    ],
+    "test_integrity_violations": 0,
+    "test_selection_quality": "not measured: the fixture suites are below the size at which TARGETED selection differs from the full suite (PX-035 reports it)",
+    "per_task": {
+      "gui_element/files-archive-cancel": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "gui_element/files-archive-confirm": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "gui_element/ledger-copy-invoice-total": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "gui_element/notes-bold": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "gui_element/notes-set-text": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "gui_element/orders-clear": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "gui_element/orders-express": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "gui_element/orders-quantity-four": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "gui_element/orders-submit-for-ada": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "gui_element/settings-dark-mode": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "gui_element/settings-font-apply": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "gui_element/settings-notifications-off": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "gui_input/calculator-clear-then-seven": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "gui_input/calculator-two-plus-three": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "gui_input/ledger-tab-to-reference": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "gui_input/ledger-type-amount-shortcut": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "gui_input/notes-save-shortcut": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "gui_input/notes-type-and-save": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "gui_input/notes-type-text": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "gui_input/orders-customer-by-typing": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "gui_input/orders-stamp-by-click": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "gui_input/orders-submit-by-click": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "gui_input/search-click-then-type": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      },
+      "gui_input/search-type-enter": {
+        "verified_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "ci95": [
+            0.20654931437723742,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0
+        ],
+        "states": [
+          "ReadyForReview"
+        ]
+      }
+    }
+  },
+  "generated_at": "2026-11-08T08:48:23Z"
+}
