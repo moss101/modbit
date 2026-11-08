@@ -1,0 +1,14 @@
+== rust CI_COMPATIBLE (macos-latest), job 128875396498
+test qual_px_146_a_subagent_does_not_inherit_autonomous_or_a_budget_window ... ok
+test qual_px_146_an_autonomous_run_that_makes_no_progress_is_not_extended ... ok
+test qual_px_146_an_autonomous_task_a_crash_cut_short_is_offered_for_resumption_and_nothing_else_is ... ok
+test qual_px_146_an_exhausted_budget_is_a_window_a_person_or_an_autonomous_run_can_continue ... ok
+test harness::tests::a_window_of_turns_and_tool_calls_can_be_reopened_a_bounded_number_of_times ... ok
+== rust CI_COMPATIBLE (ubuntu-latest), job 128875362323
+test qual_px_146_a_subagent_does_not_inherit_autonomous_or_a_budget_window ... ok
+test qual_px_146_an_autonomous_run_that_makes_no_progress_is_not_extended ... ok
+test qual_px_146_an_autonomous_task_a_crash_cut_short_is_offered_for_resumption_and_nothing_else_is ... ok
+test qual_px_146_an_exhausted_budget_is_a_window_a_person_or_an_autonomous_run_can_continue ... ok
+test harness::tests::a_window_of_turns_and_tool_calls_can_be_reopened_a_bounded_number_of_times ... ok
+== rust CI_COMPATIBLE (windows-latest), job 128875392563
+test harness::tests::a_window_of_turns_and_tool_calls_can_be_reopened_a_bounded_number_of_times ... ok

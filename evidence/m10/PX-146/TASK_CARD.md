@@ -24,3 +24,5 @@ Failing cases the QUAL names:
 - A mutation that skips the window base fails the resume test → mutation A fails both the unit test and the Supervised resume (`run_control.rs:2903`).
 Evidence: `mutation-check.txt` (baseline 4/4 and 1/1; A, B, C, D each killed; restored 4/4 and 1/1), `rust-tests-2026-11-08.txt` (run_control 27/27, core-runtime 50/50), `clippy-2026-11-08.txt` (clean).
 Limits (not acceptance clauses): no live provider leg and no live desktop approval-deck leg for this row; Windows does not run `run_control.rs` (`cfg(unix)`: the SIGKILL leg is Unix), CI covers macOS and Linux.
+
+Closed 2026-11-09: CI run 42518378707 green (19 jobs) at 84fbea2d; the four `qual_px_146_*` Core tests pass on macos-latest and ubuntu-latest and the harness window test on all three (`ci-per-os-42518378707.txt`; the Core legs are `cfg(unix)`); landed as ff7bb2d5 (#189).
