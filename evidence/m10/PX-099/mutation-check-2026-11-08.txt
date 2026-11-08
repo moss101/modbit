@@ -18,3 +18,9 @@ A one-line-per-round variant (300 and 3000 rounds) killed the mutation only 2/3 
 times, so the many-lines-per-write form is the one kept.
 
 Restored (git checkout + touch, rebuilt): 5/5 runs ok.
+
+Revision (CI run 42519062542, windows-latest): the test itself undercounted by 2 bytes in one
+round: ConPTY sent the line end after the last answer on its own, after the test stopped reading.
+Each round now also drains until the terminal is quiet for 250 ms before the next write.
+Re-check on macOS arm64: mutation 3/3 runs FAILED (20 of 20 rounds); restored: broker 16/16 ok,
+clippy clean.

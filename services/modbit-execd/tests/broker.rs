@@ -431,9 +431,10 @@ async fn pty_mode_runs_a_real_terminal_session() {
 /// the write, and a program that answered quickly had already been counted:
 /// the reader then waited past the reply for output that never came. Each
 /// write here carries many lines, so the program answers the first ones while
-/// the rest are still being written; each round waits for the last answer,
-/// so the terminal is idle and the cursor must equal exactly the bytes it had
-/// printed before the write.
+/// the rest are still being written; each round waits for the last answer
+/// and then for the terminal to fall quiet (ConPTY can send the line end
+/// after the answer on its own), so the cursor must equal exactly the bytes
+/// it had printed before the write.
 #[tokio::test]
 async fn an_acknowledged_writes_cursor_is_where_the_input_landed() {
     const ROUNDS: usize = 20;
@@ -468,6 +469,13 @@ async fn an_acknowledged_writes_cursor_is_where_the_input_landed() {
                 Ok(Ok(Some(Event::Output(o)))) => out.extend(o.data),
                 Ok(Ok(Some(Event::StdinWritten(w)))) => cursor = Some(w.cursor),
                 Ok(other) => panic!("round {i}: unexpected {other:?}"),
+            }
+        }
+        // Idle: nothing more for a quarter of a second.
+        while let Ok(ev) = tokio::time::timeout(Duration::from_millis(250), c.next()).await {
+            match ev {
+                Ok(Some(Event::Output(o))) => out.extend(o.data),
+                other => panic!("round {i}: unexpected {other:?}"),
             }
         }
         if cursor != Some(printed) {
