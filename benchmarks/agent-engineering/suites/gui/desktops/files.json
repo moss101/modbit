@@ -1,0 +1,158 @@
+{
+ "display": {
+  "x": 0,
+  "y": 0,
+  "width": 1920,
+  "height": 1200
+ },
+ "apps": [
+  {
+   "bundle_id": "org.modbit.bench.files",
+   "name": "Files",
+   "pid": 5104,
+   "executable_path": "/Applications/Modbit Bench Files.app/Contents/MacOS/Files",
+   "signing_identity": "MODBIT:bench-files",
+   "windows": [
+    {
+     "id": "w-files",
+     "title": "Documents",
+     "bounds": {
+      "x": 0,
+      "y": 0,
+      "width": 1280,
+      "height": 800
+     },
+     "elements": [
+      {
+       "id": "selected",
+       "role": "label",
+       "name": "Selected file",
+       "value": "draft.txt",
+       "bounds": {
+        "x": 40,
+        "y": 80,
+        "width": 300,
+        "height": 30
+       }
+      },
+      {
+       "id": "archive",
+       "role": "button",
+       "name": "Archive draft",
+       "actions": [
+        "press"
+       ],
+       "bounds": {
+        "x": 40,
+        "y": 140,
+        "width": 200,
+        "height": 40
+       },
+       "behaviors": {
+        "press": [
+         {
+          "op": "OpenWindow",
+          "window": "w-confirm"
+         }
+        ]
+       }
+      },
+      {
+       "id": "state",
+       "role": "label",
+       "name": "File state",
+       "value": "active",
+       "bounds": {
+        "x": 40,
+        "y": 220,
+        "width": 300,
+        "height": 30
+       }
+      }
+     ]
+    },
+    {
+     "id": "w-confirm",
+     "title": "Confirm archive",
+     "hidden": true,
+     "modal": true,
+     "bounds": {
+      "x": 400,
+      "y": 300,
+      "width": 480,
+      "height": 200
+     },
+     "elements": [
+      {
+       "id": "msg",
+       "role": "label",
+       "name": "Move draft.txt to the archive?",
+       "bounds": {
+        "x": 420,
+        "y": 320,
+        "width": 440,
+        "height": 30
+       }
+      },
+      {
+       "id": "ok",
+       "role": "button",
+       "name": "Archive",
+       "actions": [
+        "press"
+       ],
+       "bounds": {
+        "x": 420,
+        "y": 440,
+        "width": 100,
+        "height": 30
+       },
+       "behaviors": {
+        "press": [
+         {
+          "op": "SetValue",
+          "target": "state",
+          "value": "archived",
+          "window": "w-files"
+         },
+         {
+          "op": "CloseWindow",
+          "window": "w-confirm"
+         }
+        ]
+       }
+      },
+      {
+       "id": "cancel",
+       "role": "button",
+       "name": "Cancel",
+       "actions": [
+        "press"
+       ],
+       "bounds": {
+        "x": 560,
+        "y": 440,
+        "width": 100,
+        "height": 30
+       },
+       "behaviors": {
+        "press": [
+         {
+          "op": "SetValue",
+          "target": "state",
+          "value": "kept",
+          "window": "w-files"
+         },
+         {
+          "op": "CloseWindow",
+          "window": "w-confirm"
+         }
+        ]
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

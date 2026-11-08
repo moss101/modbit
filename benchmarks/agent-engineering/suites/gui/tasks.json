@@ -1,0 +1,939 @@
+{
+  "id": "gui-regression",
+  "version": "1.0.0",
+  "protocol": {
+    "trials": 1,
+    "max_turns": 24,
+    "question_answer": "Use your best judgement and proceed without further questions.",
+    "approvals": "approve-computer-inputs",
+    "axes": {
+      "names": [
+        "gui_element",
+        "gui_input"
+      ],
+      "min_tasks_per_axis": 10,
+      "gate": {
+        "max_drop": 0.05,
+        "per_task": true
+      }
+    }
+  },
+  "tasks": [
+    {
+      "id": "gui_element/orders-submit-for-ada",
+      "fixture": "desk",
+      "language": "gui",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "gui_element",
+      "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Orders application enter Ada Lovelace as the customer and submit the order.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px179/gui_element/orders-submit-for-ada",
+        "gui": {
+          "evidence": {
+            "kind": "accessibility",
+            "app": "org.modbit.bench.orders",
+            "role": "label",
+            "name": "Status",
+            "value": "submitted"
+          },
+          "desktop": [
+            {
+              "app": "org.modbit.bench.orders",
+              "name": "Customer",
+              "value": "Ada Lovelace"
+            },
+            {
+              "app": "org.modbit.bench.orders",
+              "name": "Status",
+              "value": "submitted"
+            }
+          ]
+        }
+      },
+      "gui": {
+        "desktop": "desktops/orders.json"
+      }
+    },
+    {
+      "id": "gui_element/orders-quantity-four",
+      "fixture": "desk",
+      "language": "gui",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "gui_element",
+      "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Orders application set the quantity to 4 and submit the order.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px179/gui_element/orders-quantity-four",
+        "gui": {
+          "evidence": {
+            "kind": "accessibility",
+            "app": "org.modbit.bench.orders",
+            "role": "label",
+            "name": "Status",
+            "value": "submitted"
+          },
+          "desktop": [
+            {
+              "app": "org.modbit.bench.orders",
+              "name": "Quantity",
+              "value": "4"
+            },
+            {
+              "app": "org.modbit.bench.orders",
+              "name": "Status",
+              "value": "submitted"
+            }
+          ]
+        }
+      },
+      "gui": {
+        "desktop": "desktops/orders.json"
+      }
+    },
+    {
+      "id": "gui_element/orders-express",
+      "fixture": "desk",
+      "language": "gui",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "gui_element",
+      "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Orders application turn on express delivery.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px179/gui_element/orders-express",
+        "gui": {
+          "evidence": {
+            "kind": "accessibility",
+            "app": "org.modbit.bench.orders",
+            "role": "checkbox",
+            "name": "Express delivery",
+            "value": "on"
+          },
+          "desktop": [
+            {
+              "app": "org.modbit.bench.orders",
+              "name": "Express delivery",
+              "value": "on"
+            },
+            {
+              "app": "org.modbit.bench.orders",
+              "name": "Status",
+              "value": "draft"
+            }
+          ]
+        }
+      },
+      "gui": {
+        "desktop": "desktops/orders.json"
+      }
+    },
+    {
+      "id": "gui_element/orders-clear",
+      "fixture": "desk",
+      "language": "gui",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "gui_element",
+      "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Orders application type Temp as the customer, then clear the form.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px179/gui_element/orders-clear",
+        "gui": {
+          "evidence": {
+            "kind": "accessibility",
+            "app": "org.modbit.bench.orders",
+            "role": "label",
+            "name": "Status",
+            "value": "cleared"
+          },
+          "desktop": [
+            {
+              "app": "org.modbit.bench.orders",
+              "name": "Customer",
+              "value": ""
+            },
+            {
+              "app": "org.modbit.bench.orders",
+              "name": "Status",
+              "value": "cleared"
+            }
+          ]
+        }
+      },
+      "gui": {
+        "desktop": "desktops/orders.json"
+      }
+    },
+    {
+      "id": "gui_element/notes-bold",
+      "fixture": "desk",
+      "language": "gui",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "gui_element",
+      "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Notes application switch the note's style to bold with the Bold button.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px179/gui_element/notes-bold",
+        "gui": {
+          "evidence": {
+            "kind": "accessibility",
+            "app": "org.modbit.bench.notes",
+            "role": "label",
+            "name": "Style",
+            "value": "bold"
+          },
+          "desktop": [
+            {
+              "app": "org.modbit.bench.notes",
+              "name": "Style",
+              "value": "bold"
+            }
+          ]
+        }
+      },
+      "gui": {
+        "desktop": "desktops/notes.json"
+      }
+    },
+    {
+      "id": "gui_element/notes-set-text",
+      "fixture": "desk",
+      "language": "gui",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "gui_element",
+      "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Notes application make the document read exactly: Meeting at noon",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px179/gui_element/notes-set-text",
+        "gui": {
+          "evidence": {
+            "kind": "accessibility",
+            "app": "org.modbit.bench.notes",
+            "role": "textarea",
+            "name": "Document",
+            "value": "Meeting at noon"
+          },
+          "desktop": [
+            {
+              "app": "org.modbit.bench.notes",
+              "name": "Document",
+              "value": "Meeting at noon"
+            },
+            {
+              "app": "org.modbit.bench.notes",
+              "name": "Saved state",
+              "value": "unsaved"
+            }
+          ]
+        }
+      },
+      "gui": {
+        "desktop": "desktops/notes.json"
+      }
+    },
+    {
+      "id": "gui_element/settings-dark-mode",
+      "fixture": "desk",
+      "language": "gui",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "gui_element",
+      "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Settings application turn on dark mode.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px179/gui_element/settings-dark-mode",
+        "gui": {
+          "evidence": {
+            "kind": "accessibility",
+            "app": "org.modbit.bench.settings",
+            "role": "label",
+            "name": "Theme",
+            "value": "dark"
+          },
+          "desktop": [
+            {
+              "app": "org.modbit.bench.settings",
+              "name": "Dark mode",
+              "value": "on"
+            },
+            {
+              "app": "org.modbit.bench.settings",
+              "name": "Theme",
+              "value": "dark"
+            }
+          ]
+        }
+      },
+      "gui": {
+        "desktop": "desktops/settings.json"
+      }
+    },
+    {
+      "id": "gui_element/settings-font-apply",
+      "fixture": "desk",
+      "language": "gui",
+      "tier": "A",
+      "difficulty": "medium",
+      "axis": "gui_element",
+      "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Settings application set the font size to 14 and apply the settings.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px179/gui_element/settings-font-apply",
+        "gui": {
+          "evidence": {
+            "kind": "accessibility",
+            "app": "org.modbit.bench.settings",
+            "role": "label",
+            "name": "Settings state",
+            "value": "applied"
+          },
+          "desktop": [
+            {
+              "app": "org.modbit.bench.settings",
+              "name": "Font size",
+              "value": "14"
+            },
+            {
+              "app": "org.modbit.bench.settings",
+              "name": "Settings state",
+              "value": "applied"
+            }
+          ]
+        }
+      },
+      "gui": {
+        "desktop": "desktops/settings.json"
+      }
+    },
+    {
+      "id": "gui_element/settings-notifications-off",
+      "fixture": "desk",
+      "language": "gui",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "gui_element",
+      "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Settings application turn notifications off.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px179/gui_element/settings-notifications-off",
+        "gui": {
+          "evidence": {
+            "kind": "accessibility",
+            "app": "org.modbit.bench.settings",
+            "role": "switch",
+            "name": "Notifications",
+            "value": "off"
+          },
+          "desktop": [
+            {
+              "app": "org.modbit.bench.settings",
+              "name": "Notifications",
+              "value": "off"
+            },
+            {
+              "app": "org.modbit.bench.settings",
+              "name": "Theme",
+              "value": "light"
+            }
+          ]
+        }
+      },
+      "gui": {
+        "desktop": "desktops/settings.json"
+      }
+    },
+    {
+      "id": "gui_element/files-archive-confirm",
+      "fixture": "desk",
+      "language": "gui",
+      "tier": "A",
+      "difficulty": "medium",
+      "axis": "gui_element",
+      "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Files application archive draft.txt, confirming in the dialog that opens.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px179/gui_element/files-archive-confirm",
+        "gui": {
+          "evidence": {
+            "kind": "accessibility",
+            "app": "org.modbit.bench.files",
+            "role": "label",
+            "name": "File state",
+            "value": "archived"
+          },
+          "desktop": [
+            {
+              "app": "org.modbit.bench.files",
+              "name": "File state",
+              "value": "archived"
+            }
+          ]
+        }
+      },
+      "gui": {
+        "desktop": "desktops/files.json"
+      }
+    },
+    {
+      "id": "gui_element/files-archive-cancel",
+      "fixture": "desk",
+      "language": "gui",
+      "tier": "A",
+      "difficulty": "medium",
+      "axis": "gui_element",
+      "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Files application open the archive dialog for draft.txt and cancel it, keeping the file.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px179/gui_element/files-archive-cancel",
+        "gui": {
+          "evidence": {
+            "kind": "accessibility",
+            "app": "org.modbit.bench.files",
+            "role": "label",
+            "name": "File state",
+            "value": "kept"
+          },
+          "desktop": [
+            {
+              "app": "org.modbit.bench.files",
+              "name": "File state",
+              "value": "kept"
+            }
+          ]
+        }
+      },
+      "gui": {
+        "desktop": "desktops/files.json"
+      }
+    },
+    {
+      "id": "gui_element/ledger-copy-invoice-total",
+      "fixture": "desk",
+      "language": "gui",
+      "tier": "A",
+      "difficulty": "medium",
+      "axis": "gui_element",
+      "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: Read the total due and the invoice number in the Invoice application, then record a Ledger entry with that amount and that reference.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px179/gui_element/ledger-copy-invoice-total",
+        "gui": {
+          "evidence": {
+            "kind": "accessibility",
+            "app": "org.modbit.bench.ledger",
+            "role": "label",
+            "name": "Entry state",
+            "value": "recorded"
+          },
+          "desktop": [
+            {
+              "app": "org.modbit.bench.ledger",
+              "name": "Amount",
+              "value": "42.50"
+            },
+            {
+              "app": "org.modbit.bench.ledger",
+              "name": "Reference",
+              "value": "INV-7"
+            },
+            {
+              "app": "org.modbit.bench.ledger",
+              "name": "Entry state",
+              "value": "recorded"
+            }
+          ]
+        }
+      },
+      "gui": {
+        "desktop": "desktops/ledger.json"
+      }
+    },
+    {
+      "id": "gui_input/notes-type-text",
+      "fixture": "desk",
+      "language": "gui",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "gui_input",
+      "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Notes application type hello world into the document.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px179/gui_input/notes-type-text",
+        "gui": {
+          "evidence": {
+            "kind": "accessibility",
+            "app": "org.modbit.bench.notes",
+            "role": "textarea",
+            "name": "Document",
+            "value": "hello world"
+          },
+          "desktop": [
+            {
+              "app": "org.modbit.bench.notes",
+              "name": "Document",
+              "value": "hello world"
+            }
+          ]
+        }
+      },
+      "gui": {
+        "desktop": "desktops/notes.json"
+      }
+    },
+    {
+      "id": "gui_input/notes-save-shortcut",
+      "fixture": "desk",
+      "language": "gui",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "gui_input",
+      "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Notes application save the note with the keyboard shortcut.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px179/gui_input/notes-save-shortcut",
+        "gui": {
+          "evidence": {
+            "kind": "accessibility",
+            "app": "org.modbit.bench.notes",
+            "role": "label",
+            "name": "Saved state",
+            "value": "saved"
+          },
+          "desktop": [
+            {
+              "app": "org.modbit.bench.notes",
+              "name": "Saved state",
+              "value": "saved"
+            },
+            {
+              "app": "org.modbit.bench.notes",
+              "name": "Document",
+              "value": ""
+            }
+          ]
+        }
+      },
+      "gui": {
+        "desktop": "desktops/notes.json"
+      }
+    },
+    {
+      "id": "gui_input/notes-type-and-save",
+      "fixture": "desk",
+      "language": "gui",
+      "tier": "A",
+      "difficulty": "medium",
+      "axis": "gui_input",
+      "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Notes application type draft one into the document and save it with the keyboard shortcut.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px179/gui_input/notes-type-and-save",
+        "gui": {
+          "evidence": {
+            "kind": "accessibility",
+            "app": "org.modbit.bench.notes",
+            "role": "label",
+            "name": "Saved state",
+            "value": "saved"
+          },
+          "desktop": [
+            {
+              "app": "org.modbit.bench.notes",
+              "name": "Document",
+              "value": "draft one"
+            },
+            {
+              "app": "org.modbit.bench.notes",
+              "name": "Saved state",
+              "value": "saved"
+            }
+          ]
+        }
+      },
+      "gui": {
+        "desktop": "desktops/notes.json"
+      }
+    },
+    {
+      "id": "gui_input/search-type-enter",
+      "fixture": "desk",
+      "language": "gui",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "gui_input",
+      "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Search application search for modbit by typing the query and pressing enter.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px179/gui_input/search-type-enter",
+        "gui": {
+          "evidence": {
+            "kind": "accessibility",
+            "app": "org.modbit.bench.search",
+            "role": "label",
+            "name": "Results",
+            "value": "results ready"
+          },
+          "desktop": [
+            {
+              "app": "org.modbit.bench.search",
+              "name": "Query",
+              "value": "modbit"
+            },
+            {
+              "app": "org.modbit.bench.search",
+              "name": "Results",
+              "value": "results ready"
+            }
+          ]
+        }
+      },
+      "gui": {
+        "desktop": "desktops/search.json"
+      }
+    },
+    {
+      "id": "gui_input/orders-customer-by-typing",
+      "fixture": "desk",
+      "language": "gui",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "gui_input",
+      "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Orders application type Grace Hopper into the customer field and press enter.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px179/gui_input/orders-customer-by-typing",
+        "gui": {
+          "evidence": {
+            "kind": "accessibility",
+            "app": "org.modbit.bench.orders",
+            "role": "label",
+            "name": "Status",
+            "value": "customer entered"
+          },
+          "desktop": [
+            {
+              "app": "org.modbit.bench.orders",
+              "name": "Customer",
+              "value": "Grace Hopper"
+            },
+            {
+              "app": "org.modbit.bench.orders",
+              "name": "Status",
+              "value": "customer entered"
+            }
+          ]
+        }
+      },
+      "gui": {
+        "desktop": "desktops/orders.json"
+      }
+    },
+    {
+      "id": "gui_input/orders-stamp-by-click",
+      "fixture": "desk",
+      "language": "gui",
+      "tier": "A",
+      "difficulty": "medium",
+      "axis": "gui_input",
+      "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Orders application click the approval stamp picture (it has no accessible action).",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px179/gui_input/orders-stamp-by-click",
+        "gui": {
+          "evidence": {
+            "kind": "accessibility",
+            "app": "org.modbit.bench.orders",
+            "role": "label",
+            "name": "Status",
+            "value": "stamped"
+          },
+          "desktop": [
+            {
+              "app": "org.modbit.bench.orders",
+              "name": "Status",
+              "value": "stamped"
+            }
+          ]
+        }
+      },
+      "gui": {
+        "desktop": "desktops/orders.json"
+      }
+    },
+    {
+      "id": "gui_input/orders-submit-by-click",
+      "fixture": "desk",
+      "language": "gui",
+      "tier": "A",
+      "difficulty": "medium",
+      "axis": "gui_input",
+      "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Orders application click the Submit button by its position on the screenshot.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px179/gui_input/orders-submit-by-click",
+        "gui": {
+          "evidence": {
+            "kind": "accessibility",
+            "app": "org.modbit.bench.orders",
+            "role": "label",
+            "name": "Status",
+            "value": "submitted"
+          },
+          "desktop": [
+            {
+              "app": "org.modbit.bench.orders",
+              "name": "Status",
+              "value": "submitted"
+            },
+            {
+              "app": "org.modbit.bench.orders",
+              "name": "Customer",
+              "value": ""
+            }
+          ]
+        }
+      },
+      "gui": {
+        "desktop": "desktops/orders.json"
+      }
+    },
+    {
+      "id": "gui_input/calculator-two-plus-three",
+      "fixture": "desk",
+      "language": "gui",
+      "tier": "A",
+      "difficulty": "medium",
+      "axis": "gui_input",
+      "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Calculator application clear the display, then key in 2 plus 3 and press enter.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px179/gui_input/calculator-two-plus-three",
+        "gui": {
+          "evidence": {
+            "kind": "accessibility",
+            "app": "org.modbit.bench.calculator",
+            "role": "label",
+            "name": "Result state",
+            "value": "computed"
+          },
+          "desktop": [
+            {
+              "app": "org.modbit.bench.calculator",
+              "name": "Display",
+              "value": "2+3"
+            },
+            {
+              "app": "org.modbit.bench.calculator",
+              "name": "Result state",
+              "value": "computed"
+            }
+          ]
+        }
+      },
+      "gui": {
+        "desktop": "desktops/calculator.json"
+      }
+    },
+    {
+      "id": "gui_input/calculator-clear-then-seven",
+      "fixture": "desk",
+      "language": "gui",
+      "tier": "A",
+      "difficulty": "easy",
+      "axis": "gui_input",
+      "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Calculator application clear the display and key in 7.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px179/gui_input/calculator-clear-then-seven",
+        "gui": {
+          "evidence": {
+            "kind": "accessibility",
+            "app": "org.modbit.bench.calculator",
+            "role": "textfield",
+            "name": "Display",
+            "value": "7"
+          },
+          "desktop": [
+            {
+              "app": "org.modbit.bench.calculator",
+              "name": "Display",
+              "value": "7"
+            },
+            {
+              "app": "org.modbit.bench.calculator",
+              "name": "Result state",
+              "value": "cleared"
+            }
+          ]
+        }
+      },
+      "gui": {
+        "desktop": "desktops/calculator.json"
+      }
+    },
+    {
+      "id": "gui_input/search-click-then-type",
+      "fixture": "desk",
+      "language": "gui",
+      "tier": "A",
+      "difficulty": "medium",
+      "axis": "gui_input",
+      "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Search application click into the query field, type agents and press enter.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px179/gui_input/search-click-then-type",
+        "gui": {
+          "evidence": {
+            "kind": "accessibility",
+            "app": "org.modbit.bench.search",
+            "role": "label",
+            "name": "Results",
+            "value": "results ready"
+          },
+          "desktop": [
+            {
+              "app": "org.modbit.bench.search",
+              "name": "Query",
+              "value": "agents"
+            },
+            {
+              "app": "org.modbit.bench.search",
+              "name": "Results",
+              "value": "results ready"
+            }
+          ]
+        }
+      },
+      "gui": {
+        "desktop": "desktops/search.json"
+      }
+    },
+    {
+      "id": "gui_input/ledger-tab-to-reference",
+      "fixture": "desk",
+      "language": "gui",
+      "tier": "A",
+      "difficulty": "medium",
+      "axis": "gui_input",
+      "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Ledger application move from the amount to the reference field with the tab key and type INV-9.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px179/gui_input/ledger-tab-to-reference",
+        "gui": {
+          "evidence": {
+            "kind": "accessibility",
+            "app": "org.modbit.bench.ledger",
+            "role": "textfield",
+            "name": "Reference",
+            "value": "INV-9"
+          },
+          "desktop": [
+            {
+              "app": "org.modbit.bench.ledger",
+              "name": "Reference",
+              "value": "INV-9"
+            },
+            {
+              "app": "org.modbit.bench.ledger",
+              "name": "Amount",
+              "value": ""
+            }
+          ]
+        }
+      },
+      "gui": {
+        "desktop": "desktops/ledger.json"
+      }
+    },
+    {
+      "id": "gui_input/ledger-type-amount-shortcut",
+      "fixture": "desk",
+      "language": "gui",
+      "tier": "A",
+      "difficulty": "medium",
+      "axis": "gui_input",
+      "goal": "Have a computer-use child agent do this on the desktop and hold it to the stated evidence: In the Ledger application type 19.99 as the amount and record the entry with command-enter.",
+      "acceptance": {
+        "commands": []
+      },
+      "verifier": {
+        "id": "px179/gui_input/ledger-type-amount-shortcut",
+        "gui": {
+          "evidence": {
+            "kind": "accessibility",
+            "app": "org.modbit.bench.ledger",
+            "role": "label",
+            "name": "Entry state",
+            "value": "recorded"
+          },
+          "desktop": [
+            {
+              "app": "org.modbit.bench.ledger",
+              "name": "Amount",
+              "value": "19.99"
+            },
+            {
+              "app": "org.modbit.bench.ledger",
+              "name": "Entry state",
+              "value": "recorded"
+            }
+          ]
+        }
+      },
+      "gui": {
+        "desktop": "desktops/ledger.json"
+      }
+    }
+  ]
+}
