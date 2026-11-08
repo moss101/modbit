@@ -4338,7 +4338,8 @@ async fn run_loop(
                 // not transcript: the provider's own count calibrates the
                 // estimate, and the compaction trigger counts the transcript
                 // against the window less this overhead.
-                let request_estimate = estimate_request_tokens(&request);
+                let image_rule = ImageRule::of(&core, &cfg.endpoint);
+                let request_estimate = estimate_request_tokens(&request, image_rule);
                 // PX-059: what each part of this request is estimated to cost,
                 // kept with the compile step; the provider's own count joins
                 // it when the turn's usage arrives.
@@ -4358,7 +4359,9 @@ async fn run_loop(
                     request_estimate.saturating_sub(
                         frame_window(&transcript, kept)
                             .iter()
-                            .map(|m| message_tokens(m, modbit_compaction::estimate_tokens_v2))
+                            .map(|m| {
+                                message_tokens(m, modbit_compaction::estimate_tokens_v2, image_rule)
+                            })
                             .sum(),
                     ),
                 );
@@ -7846,11 +7849,11 @@ async fn compaction_core_facts(core: &Core, task: &Task) -> Vec<modbit_compactio
 
 /// Estimated tokens of a whole request: its messages and the tool schemas it
 /// projects, in the units of `estimate_tokens_v2`.
-fn estimate_request_tokens(request: &modbit_providers::ModelRequest) -> u32 {
+fn estimate_request_tokens(request: &modbit_providers::ModelRequest, rule: ImageRule) -> u32 {
     let messages: u32 = request
         .messages
         .iter()
-        .map(|m| message_tokens(m, modbit_compaction::estimate_tokens_v2))
+        .map(|m| message_tokens(m, modbit_compaction::estimate_tokens_v2, rule))
         .sum();
     let tools = modbit_compaction::estimate_tokens_v2(
         &serde_json::to_string(&request.tool_projection).unwrap_or_default(),
@@ -7859,10 +7862,10 @@ fn estimate_request_tokens(request: &modbit_providers::ModelRequest) -> u32 {
 }
 
 /// Estimated tokens of the model-visible transcript.
-fn transcript_tokens(transcript: &[Message]) -> u32 {
+fn transcript_tokens(transcript: &[Message], rule: ImageRule) -> u32 {
     transcript
         .iter()
-        .map(|m| message_tokens(m, modbit_compaction::estimate_tokens))
+        .map(|m| message_tokens(m, modbit_compaction::estimate_tokens, rule))
         .sum()
 }
 
@@ -7939,10 +7942,12 @@ async fn install_epoch(
     compaction_id: &str,
     mode: &str,
     summarizer_usage: Vec<serde_json::Value>,
+    rule: ImageRule,
 ) {
-    let tokens_after = manifest
-        .projection_tokens
-        .saturating_add(transcript_tokens(&transcript[cut.min(transcript.len())..]));
+    let tokens_after = manifest.projection_tokens.saturating_add(transcript_tokens(
+        &transcript[cut.min(transcript.len())..],
+        rule,
+    ));
     let manifest_ref = {
         let store = core.store.lock().await;
         store
@@ -8128,6 +8133,7 @@ fn measured_tokens(
     keep: usize,
     th: &crate::compaction_model::Thresholds,
     calibration: &modbit_compaction::Calibration,
+    rule: ImageRule,
 ) -> u32 {
     // PX-174: the trigger counts what the model is sent, so frames outside
     // the window are not charged as images.
@@ -8136,11 +8142,11 @@ fn measured_tokens(
         calibration.apply(
             transcript
                 .iter()
-                .map(|m| message_tokens(m, modbit_compaction::estimate_tokens_v2))
+                .map(|m| message_tokens(m, modbit_compaction::estimate_tokens_v2, rule))
                 .sum(),
         )
     } else {
-        transcript_tokens(transcript)
+        transcript_tokens(transcript, rule)
     }
 }
 
@@ -8247,8 +8253,18 @@ async fn compaction_step(
                 ) {
                     Ok(()) => {
                         install_epoch(
-                            core, task, lt, actor, transcript, epoch, manifest, w.cut, &w.id,
-                            "ASYNC", summarizer,
+                            core,
+                            task,
+                            lt,
+                            actor,
+                            transcript,
+                            epoch,
+                            manifest,
+                            w.cut,
+                            &w.id,
+                            "ASYNC",
+                            summarizer,
+                            ImageRule::of(core, ctx.endpoint),
                         )
                         .await;
                         *ctx.rearm_floor = th.rearm_floor(measured_tokens(
@@ -8256,6 +8272,7 @@ async fn compaction_step(
                             kept,
                             &th,
                             &ctx.calibration,
+                            ImageRule::of(core, ctx.endpoint),
                         ));
                     }
                     Err(rejected) => {
@@ -8290,7 +8307,13 @@ async fn compaction_step(
             }
         }
     }
-    let tokens = measured_tokens(transcript, kept, &th, &ctx.calibration);
+    let tokens = measured_tokens(
+        transcript,
+        kept,
+        &th,
+        &ctx.calibration,
+        ImageRule::of(core, ctx.endpoint),
+    );
     let Some(cut) = compaction_cut(transcript) else {
         return;
     };
@@ -8359,7 +8382,7 @@ async fn compaction_step(
                     window_tokens: th.window,
                     budget_tokens: budget,
                     budget_source: th.source.label().to_owned(),
-                    tokens_before: transcript_tokens(transcript),
+                    tokens_before: transcript_tokens(transcript, ImageRule::of(core, ctx.endpoint)),
                 },
                 actor.clone(),
             )],
@@ -8416,10 +8439,16 @@ async fn compaction_step(
                     &id,
                     "SYNC_FALLBACK",
                     summarizer,
+                    ImageRule::of(core, ctx.endpoint),
                 )
                 .await;
-                *ctx.rearm_floor =
-                    th.rearm_floor(measured_tokens(transcript, kept, &th, &ctx.calibration));
+                *ctx.rearm_floor = th.rearm_floor(measured_tokens(
+                    transcript,
+                    kept,
+                    &th,
+                    &ctx.calibration,
+                    ImageRule::of(core, ctx.endpoint),
+                ));
                 // The prefix a worker in flight is summarising has just been
                 // replaced under it. Nothing changes for it here — its result
                 // is judged by `accept_async` at the next boundary either way
@@ -8476,15 +8505,87 @@ async fn compaction_step(
     });
 }
 
-/// The text of a message, for the token estimate and the compaction source.
-/// Tokens an image costs the model, charged by its size (PX-158): about one
-/// token per 750 pixels, floored at a small image's cost and capped where the
-/// providers resize. An image whose size the result did not name is charged
-/// a mid-size default rather than nothing.
-fn image_tokens(mime: &str, alt: &str) -> u32 {
-    const MIN: u64 = 85;
-    const MAX: u64 = 1600;
-    const UNKNOWN: u64 = 1200;
+/// How a provider charges an image (PX-158): each family's published rule.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ImageRule {
+    /// Anthropic Messages: the image is resized so its long edge is at most
+    /// 1568 px and it holds at most about 1.15 megapixels, then costs
+    /// `width * height / 750` tokens (about 1600 at most).
+    Area,
+    /// OpenAI Chat Completions. The adapter leaves `detail` unset, so the
+    /// provider applies `auto`; the estimate charges it as the `high` class,
+    /// the dearer of the two (`low` is a flat 85): fit inside 2048x2048,
+    /// scale the short side to 768, then 85 + 170 per 512 px tile.
+    TilesHigh,
+}
+
+impl ImageRule {
+    /// The rule for an endpoint's family; an endpoint the gateway does not
+    /// know is charged by area, the larger of the two at screenshot sizes.
+    pub(crate) fn of(core: &Core, endpoint: &str) -> Self {
+        match core
+            .gateway
+            .endpoints()
+            .into_iter()
+            .find(|e| e.name == endpoint)
+            .map(|e| e.kind)
+        {
+            Some(modbit_providers::ProviderKind::OpenAi) => Self::TilesHigh,
+            _ => Self::Area,
+        }
+    }
+
+    /// Tokens for an image of `w` x `h` pixels.
+    fn tokens(self, w: u64, h: u64) -> u64 {
+        match self {
+            Self::Area => {
+                let (mut w, mut h) = (w.max(1) as f64, h.max(1) as f64);
+                let long = w.max(h);
+                if long > 1568.0 {
+                    let k = 1568.0 / long;
+                    w *= k;
+                    h *= k;
+                }
+                let mp = w * h;
+                if mp > 1_150_000.0 {
+                    let k = (1_150_000.0 / mp).sqrt();
+                    w *= k;
+                    h *= k;
+                }
+                ((w * h) / 750.0).ceil() as u64
+            }
+            Self::TilesHigh => {
+                let (mut w, mut h) = (w.max(1) as f64, h.max(1) as f64);
+                let long = w.max(h);
+                if long > 2048.0 {
+                    let k = 2048.0 / long;
+                    w *= k;
+                    h *= k;
+                }
+                let short = w.min(h);
+                if short > 768.0 {
+                    let k = 768.0 / short;
+                    w *= k;
+                    h *= k;
+                }
+                let tiles = (w / 512.0).ceil() * (h / 512.0).ceil();
+                85 + 170 * tiles as u64
+            }
+        }
+    }
+
+    /// What an image whose size the result did not name is charged: the
+    /// rule's cost for a full-HD screenshot, rather than nothing.
+    fn unknown(self) -> u64 {
+        self.tokens(1920, 1080)
+    }
+}
+
+/// Tokens an image costs the model, charged by its size and its provider's
+/// rule (PX-158). The size is read from the media part's description
+/// (`WIDTHxHEIGHT`); an image whose size is not named is charged a full-HD
+/// screenshot's cost.
+fn image_tokens(mime: &str, alt: &str, rule: ImageRule) -> u32 {
     if !mime.starts_with("image/") {
         return 0;
     }
@@ -8501,25 +8602,27 @@ fn image_tokens(mime: &str, alt: &str) -> u32 {
         left.reverse();
         let right = digits(&mut bytes[i + 1..].iter())?;
         let n = |d: Vec<u8>| String::from_utf8(d).ok()?.parse::<u64>().ok();
-        Some(n(left)?.saturating_mul(n(right)?))
+        Some((n(left)?, n(right)?))
     });
-    size.map_or(UNKNOWN, |px| (px / 750).clamp(MIN, MAX)) as u32
+    u32::try_from(size.map_or_else(|| rule.unknown(), |(w, h)| rule.tokens(w, h)))
+        .unwrap_or(u32::MAX)
 }
 
 /// Estimated tokens of one message: its text through `estimate`, plus the
 /// size-charged cost of each image it carries.
-fn message_tokens(m: &Message, estimate: fn(&str) -> u32) -> u32 {
+fn message_tokens(m: &Message, estimate: fn(&str) -> u32, rule: ImageRule) -> u32 {
     let images: u32 = m
         .parts
         .iter()
         .map(|p| match p {
-            ContentPart::Media { mime, alt, .. } => image_tokens(mime, alt),
+            ContentPart::Media { mime, alt, .. } => image_tokens(mime, alt, rule),
             _ => 0,
         })
         .sum();
     estimate(&message_text(m)).saturating_add(images)
 }
 
+/// The text of a message, for the token estimate and the compaction source.
 fn message_text(m: &Message) -> String {
     m.parts
         .iter()
@@ -11295,14 +11398,24 @@ mod tests {
     /// PX-158: an image is charged by its size, never by its caption.
     #[test]
     fn image_tokens_follow_the_size_the_result_named() {
-        let small = image_tokens("image/png", "image/png read from a.png, 32x16; x");
-        let screen = image_tokens("image/png", "image/png read from a.png, 1024x768; x");
-        let huge = image_tokens("image/png", "image/png read from a.png, 9000x9000; x");
-        assert_eq!(small, 85, "a tiny image costs the floor");
-        assert_eq!(screen, 786_432 / 750);
-        assert_eq!(huge, 1600, "capped where providers resize");
-        assert_eq!(image_tokens("image/png", "no size named"), 1200);
-        assert_eq!(image_tokens("application/pdf", "10x10"), 0);
+        let a = |alt: &str| image_tokens("image/png", alt, ImageRule::Area);
+        let t = |alt: &str| image_tokens("image/png", alt, ImageRule::TilesHigh);
+        // Anthropic: width * height / 750 after the resize to a 1568 px long
+        // edge and about 1.15 megapixels.
+        assert_eq!(a("image/png read from a.png, 32x16; x"), 1);
+        assert_eq!(a("image/png read from a.png, 1024x768; x"), 1049);
+        assert_eq!(a("1280x800"), 1366);
+        assert_eq!(a("9000x9000"), 1534, "resized before it is charged");
+        // OpenAI at the high class: 85 + 170 per 512 px tile after the fit to
+        // 2048 and the short side to 768.
+        assert_eq!(t("32x16"), 255, "one tile");
+        assert_eq!(t("1024x768"), 765);
+        assert_eq!(t("1920x1080"), 1105);
+        assert_eq!(t("9000x9000"), 765);
+        // An unnamed size is a full-HD screenshot under the provider's rule.
+        assert_eq!(a("no size named"), 1534);
+        assert_eq!(t("no size named"), 1105);
+        assert_eq!(image_tokens("application/pdf", "10x10", ImageRule::Area), 0);
     }
 
     #[test]
@@ -11312,7 +11425,7 @@ mod tests {
             .iter()
             .map(|m| modbit_compaction::estimate_tokens(&message_text(m)))
             .sum();
-        let charged = transcript_tokens(&frames);
+        let charged = transcript_tokens(&frames, ImageRule::Area);
         assert!(by_text < 3_000, "captions alone are cheap: {by_text}");
         assert!(
             charged > 40 * 1_000,
@@ -11326,13 +11439,14 @@ mod tests {
             }],
         }];
         assert_eq!(
-            transcript_tokens(&text),
+            transcript_tokens(&text, ImageRule::Area),
             modbit_compaction::estimate_tokens("hello there")
         );
     }
 
     use super::{
-        ContentPart, b64, image_tokens, media_parts, media_refs, message_text, transcript_tokens,
+        ContentPart, ImageRule, b64, image_tokens, media_parts, media_refs, message_text,
+        transcript_tokens,
     };
 
     /// A turn that called `name` and the tool message answering it with one image.
