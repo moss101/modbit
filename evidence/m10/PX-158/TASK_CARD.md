@@ -31,3 +31,9 @@ Local: both tests pass; `RUSTFLAGS="-D warnings" cargo clippy --workspace --all-
 - The OpenAI-compatible adapter is the only transport exercised; the Anthropic adapter's media placement is not.
 - Hard-pressure (synchronous) compaction is not the path these runs take; the soft trigger fires first at both sizes.
 - No CI run yet.
+
+## 2026-11-08: CI, and what main's PX-178 exposed
+
+- CI run 42420813633 on head efc7e709: green on all 15 jobs (the macOS Rust job after a rerun of the px_161 flake, since fixed by #183).
+- Merged with main after PX-178 (1435ac81), `qual_px_158_frames_reach_the_compaction_threshold_where_reported_usage_does` fails at 1280x800, bisected to that commit: the Core triggers at the same request with the same `tokens_before` (11686) and the provider's counts are unchanged (10397 at request 8), but PX-178's larger `agent.spawn` schema raises the Core's estimate of the non-transcript overhead, so the hard budget falls from 12111 to 11901 and the soft threshold from 9973 to 9800; 10397 is then more than the 480 margin above it. Before PX-178 it passed by 56 tokens.
+- What that shows: the per-request estimate stays within the margin, but the trigger compares a calibrated transcript estimate against a threshold made from a calibrated overhead estimate, with one calibration factor for the whole request; the split between transcript and overhead is not calibrated, so the transcript-level agreement depends on how large the overhead is. Fixing the split (or judging the trigger on the whole request against the window) is PX-158 work, not done here; the margin is not widened.
