@@ -1,0 +1,11 @@
+{
+ "task": "PX-179",
+ "requirements": ["REQ-PX-179", "QUAL-PX-179"],
+ "scenarios": ["QUAL-PX-179", "PX-E2E-179"],
+ "evidence_tier": "iteration",
+ "tests": ["benchmarks/agent-engineering/tests/gui_suite.rs"],
+ "baseline": {"path": "benchmarks/agent-engineering/baselines/gui/baseline.json", "sha256": "3593c32e0c1203c62fbf7ca3b1be0208a17ef55dc5f730cf9585504416946029", "modbit_revision": "029b8ac039ea1c93cea4624720f264e2db4469a6", "build_digest": "8c3a03b6bfca9c9450ba41850e5b047d0ae9b4b6fa4ee14d32a18f5592173185", "model": "scripted (suites/gui/scripted-model.json), named gpt-5-mini to the Core", "output_tokens_per_thousand_tasks": 373333},
+ "proof": "Local run (macOS arm64). The real competence-baseline binary drives the real CLI, Core and fixture actuator over 24 GUI tasks (12 gui_element, 12 gui_input), each a parent spawning a computer-use child held to the suite's completion evidence, verified by the GUI verifier row (GuiEvidenceEvaluated PASS of the exact predicate, GuiOutcomeJudged VERIFIED) and the application state the actuator wrote: 24/24. compare against the retained baseline: exit 0, no difference. Three named tasks regressed on the model side: exactly those fail (MODEL_FAILURE), compare exits 3 naming them. Validation refuses a verifier that holds before the run, an easier predicate and a gate that cannot fail. The bench crate (23 tests), px_computer (42), clippy -D warnings, fmt and the architecture lints pass. mutation-check.txt: disabling the per-task gate or the predicate check fails the tests.",
+ "limitations": "The real-macOS-application leg is not built and not proven (PX-071 NOT_STARTED, no owner-designated prepared machine, live gateway key refused 401 on 2026-11-07). Scripted-model baseline. Model-side regression only. A possible computer-runtime defect (a focused window node taken as the keyboard focus refuses computer.type) is recorded, worked around in the desktops, not fixed. CI has not run this branch.",
+ "runs": []
+}
