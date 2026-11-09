@@ -47,3 +47,6 @@ A person or a CI job driving Modbit headlessly reaches the same Core, Policy and
 
 - `evidence.json` in this directory
 - docs/29 "One Core, many thin clients" and docs/30 "ProtocolCapabilitySet" as built
+
+## 2026-11-09: macOS CI hang (test harness, fixed)
+- `qual_ev_0126_…` hung on macos-latest until the job's timeout (run 42483653881 attempt 1, 2026-11-08). The approver thread's `approval list` pipe was inherited by the concurrently spawned `question answer --wait` CLI (macOS std has no `pipe2`), so the approval was never resolved. The cause, the fix (`tests/support/bounded.rs` `SPAWN_LOCK`, every call bounded with diagnostics) and the proof are recorded on PX-000: `evidence/m2/PX-000/TASK_CARD.md`, `evidence/m2/PX-000/headless-hang-2026-11-09.txt`.

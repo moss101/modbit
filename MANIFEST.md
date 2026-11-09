@@ -332,7 +332,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/IMP-EV-0032/TASK_CARD.md` | retained evidence | 3872 | `df98e842abbea080060e89491e444b6a40737faa94051196be239f163903b0c2` |
 | `evidence/m10/IMP-EV-0032/ci-run-36170517237.json` | retained evidence | 42518 | `6451312454d4bd9f37f9209262d8aa2e0aa282254c993e213ac3561d8dc390a6` |
 | `evidence/m10/IMP-EV-0032/evidence.json` | retained evidence | 2446 | `20d3555970705e42b015446ce8e37d9ba7b62a157676644ea69a9386a9126fa3` |
-| `evidence/m10/IMP-EV-0126/TASK_CARD.md` | retained evidence | 10500 | `68c13320d0c4b39038ed9b7729c92a4d03b6c569e30761c096ce93d335f9eb93` |
+| `evidence/m10/IMP-EV-0126/TASK_CARD.md` | retained evidence | 11059 | `cf08248c615b808bbf3b681181f5c13439304abbab7123f01e965e848c761e77` |
 | `evidence/m10/IMP-EV-0126/ci-run-36114892259.json` | retained evidence | 1369 | `9d6b4fd046c808166a84dc4658560503750064dde06073ebaf63dafe0f06d06c` |
 | `evidence/m10/IMP-EV-0126/evidence.json` | retained evidence | 5219 | `c3628d2b6249b3c0878198410071b79977c964b07eba12ee5f22be2762808bbc` |
 | `evidence/m10/IMP-EV-0142/TASK_CARD.md` | retained evidence | 4641 | `d0322325379bfe94907d6ac3b6f81aa46a73fd3fb13501a250f0ce58bc9bd054` |
@@ -950,10 +950,11 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m2/M2.9/ci-run-34391973639-tests.log` | retained evidence | 21185 | `1b7fe238d9de9eb873dd839d34dc85affd4d8d1e8b0ae921809782519cd48512` |
 | `evidence/m2/M2.9/ci-run-34391973639.json` | retained evidence | 36717 | `33769422be07389ebdb41e22d37abf1247138614809e3d789d42d4a3984755a1` |
 | `evidence/m2/M2.9/evidence.json` | retained evidence | 1845 | `dc82a5488947db73d94e0a18108e9ac1e2b1d178c5fe613a3124b3631116009e` |
-| `evidence/m2/PX-000/TASK_CARD.md` | retained evidence | 2146 | `5cf9f39130596ddca5e806db7ef5a2787bab2695de0dfe33b466e7481a0e4a0e` |
+| `evidence/m2/PX-000/TASK_CARD.md` | retained evidence | 3963 | `492bb014e7d07b105433f68b76d3c4e532b1c53edcea08f3dd14f69d4ef6bd96` |
 | `evidence/m2/PX-000/ci-run-34437627213-tests.log` | retained evidence | 89460 | `77b0b9b704403e2e4fd814a458eadc5f940ec7fd82bab290882c5c184148d640` |
 | `evidence/m2/PX-000/ci-run-34437627213.json` | retained evidence | 36682 | `9080da190811d409f4b3d1310407f3a70fd6be7a11e2d26418b49f4f7e6d6a8f` |
 | `evidence/m2/PX-000/evidence.json` | retained evidence | 1257 | `bac1e118d98795fbb10da1a0328369e557857f087391dd95b8f0a07bfb8bb88e` |
+| `evidence/m2/PX-000/headless-hang-2026-11-09.txt` | retained evidence | 6436 | `50903523dd928460b792c94b640c7887bd3a1d5287296666611123361be37343` |
 | `evidence/m2/PX-014/TASK_CARD.md` | retained evidence | 1951 | `43502ff55ec4efd0baaeca80aca632bd585a186bf1b5bf23dd1b1f15f49874c7` |
 | `evidence/m2/PX-014/ci-run-34437627213-tests.log` | retained evidence | 89460 | `77b0b9b704403e2e4fd814a458eadc5f940ec7fd82bab290882c5c184148d640` |
 | `evidence/m2/PX-014/ci-run-34437627213.json` | retained evidence | 36682 | `9080da190811d409f4b3d1310407f3a70fd6be7a11e2d26418b49f4f7e6d6a8f` |

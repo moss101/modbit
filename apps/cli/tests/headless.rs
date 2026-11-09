@@ -26,6 +26,28 @@ use prost::Message;
 #[path = "../../../tests/support/program_wait.rs"]
 mod program_wait;
 use program_wait::{program_wait_reply, script_steps_done};
+#[path = "../../../tests/support/bounded.rs"]
+mod bounded;
+
+/// How long one CLI invocation (and the Core work it waits on, `--wait`
+/// included) may take before the test fails. Generous: the slowest call here,
+/// a run to its protected effect on a loaded macOS runner, takes seconds; a
+/// call past this bound is a hang, and it fails with its diagnostics instead
+/// of holding the job to its 75-minute timeout.
+const CALL_BOUND: Duration = Duration::from_secs(180);
+
+/// The bound on a diagnosis taken after a call already timed out: the Core
+/// may be the thing that hangs, and the first failure must still be reported.
+const DIAGNOSIS_BOUND: Duration = Duration::from_secs(30);
+
+/// A short command (git, pkill) within its bound, or a panic that says which
+/// one hung and what it printed.
+fn bounded_status(cmd: &mut Command) -> std::process::ExitStatus {
+    match bounded::output_within(cmd, CALL_BOUND) {
+        Ok(out) => out.status,
+        Err(t) => panic!("{t}"),
+    }
+}
 
 /// Command ids only have to be unique within this test binary.
 static NEXT_COMMAND: AtomicU64 = AtomicU64::new(1);
@@ -83,20 +105,88 @@ struct Cli {
 }
 
 impl Cli {
+    /// One CLI invocation: exit code, stdout, stderr. Bounded by
+    /// [`CALL_BOUND`]: a call that outlives it is killed and the test panics
+    /// with the command line, what the CLI printed, the tail of the Core's
+    /// log, the Core processes still alive for this profile and — when the
+    /// call named a session or task — what that session's log and the task's
+    /// status say, so a hang explains itself.
     fn run(&self, args: &[&str]) -> (i32, String, String) {
-        let out = Command::new(env!("CARGO_BIN_EXE_modbit-cli"))
-            .env("MODBIT_CORE_BIN", &self.core)
-            .envs(self.env.iter().map(|(k, v)| (k.as_str(), v.as_str())))
-            .arg("--data-dir")
-            .arg(&self.data_dir)
-            .args(args)
-            .output()
-            .unwrap();
-        (
+        self.run_bounded(args, CALL_BOUND)
+    }
+
+    /// [`Cli::run`] under `limit`.
+    fn run_bounded(&self, args: &[&str], limit: Duration) -> (i32, String, String) {
+        match self.run_within(args, limit) {
+            Ok(r) => r,
+            Err(t) => {
+                let mut report = format!("modbit-cli hung: {t}\n");
+                report.push_str(&format!(
+                    "--- core.log ---\n{}\n",
+                    bounded::file_tail(&self.data_dir.join("core.log"), 60)
+                ));
+                let profile = self.data_dir.display().to_string();
+                report.push_str(&format!(
+                    "--- processes for this profile ---\n{}\n",
+                    bounded::processes_matching(&profile)
+                ));
+                let flag = |name: &str| {
+                    args.iter()
+                        .position(|a| *a == name)
+                        .and_then(|i| args.get(i + 1))
+                        .copied()
+                };
+                if let Some(session) = flag("--session") {
+                    report.push_str(&format!(
+                        "--- session {session} ---\n{}\n",
+                        self.diagnose_within(session, DIAGNOSIS_BOUND)
+                    ));
+                }
+                if let Some(task) = flag("--task") {
+                    report.push_str(&format!(
+                        "--- task {task} ---\n{}\n",
+                        match self.run_within(&["task", "status", "--task", task], DIAGNOSIS_BOUND)
+                        {
+                            Ok((code, out, err)) => format!("exit {code}: {out}{err}"),
+                            Err(t) => format!("task status hung too: {t}"),
+                        }
+                    ));
+                }
+                // The hung Core would otherwise outlive the failed test.
+                if cfg!(unix) {
+                    let _ = bounded::output_within(
+                        Command::new("pkill").args([
+                            "-9",
+                            "-f",
+                            &format!("modbit-core --data-dir {profile}"),
+                        ]),
+                        DIAGNOSIS_BOUND,
+                    );
+                }
+                panic!("{report}");
+            }
+        }
+    }
+
+    fn run_within(
+        &self,
+        args: &[&str],
+        limit: Duration,
+    ) -> Result<(i32, String, String), bounded::TimedOut> {
+        let out = bounded::output_within(
+            Command::new(env!("CARGO_BIN_EXE_modbit-cli"))
+                .env("MODBIT_CORE_BIN", &self.core)
+                .envs(self.env.iter().map(|(k, v)| (k.as_str(), v.as_str())))
+                .arg("--data-dir")
+                .arg(&self.data_dir)
+                .args(args),
+            limit,
+        )?;
+        Ok((
             out.status.code().unwrap_or(-1),
             String::from_utf8_lossy(&out.stdout).to_string(),
             String::from_utf8_lossy(&out.stderr).to_string(),
-        )
+        ))
     }
 
     /// Why a run did not end where the test expected: the tail of the
@@ -105,7 +195,17 @@ impl Cli {
     /// suspended the run is named), then the task's status. Only evaluated
     /// when an assertion has already failed.
     fn diagnose(&self, session: &str) -> String {
-        let (_, events, _) = self.run(&[
+        self.diagnose_within(session, CALL_BOUND)
+    }
+
+    /// [`Cli::diagnose`] with each of its calls bounded by `limit`; a call
+    /// that hangs is reported in place of its output, never a second panic.
+    fn diagnose_within(&self, session: &str, limit: Duration) -> String {
+        let call = |args: &[&str]| match self.run_within(args, limit) {
+            Ok((_, out, _)) => out,
+            Err(t) => format!("(hung) {t}\n"),
+        };
+        let events = call(&[
             "events",
             "tail",
             "--session",
@@ -128,7 +228,10 @@ impl Cli {
         for (kind, payload) in &rows[from..] {
             out.push_str(&format!("  {kind} {payload}\n"));
         }
-        let (_, attention, _) = self.run(&["attention", "list", "--session", session]);
+        if rows.is_empty() {
+            out.push_str(&events);
+        }
+        let attention = call(&["attention", "list", "--session", session]);
         out.push_str(&format!("attention:\n{attention}"));
         out
     }
@@ -231,15 +334,231 @@ fn scripted_model(script: Vec<serde_json::Value>) -> String {
 }
 
 fn git(dir: &Path, args: &[&str]) {
+    assert!(bounded_status(Command::new("git").arg("-C").arg(dir).args(args)).success());
+}
+
+/// The root cause of the macOS hangs (`bounded::SPAWN_LOCK`): no child this
+/// binary spawns inherits a pipe another thread's spawn is creating. Real CLI
+/// calls (`platform`, no Core) run from eight threads — the shape of the
+/// approver thread's `approval list` racing the main thread's `question
+/// answer --wait` — while probe children started from four more threads
+/// report every pipe they hold above stdio. A probe that holds one inherited
+/// another call's stdout or stderr: had it lived on, as the `--wait` CLI did,
+/// that call's output would never have reached EOF. Without the lock this
+/// fails on macOS (std has no `pipe2` there and sets `FD_CLOEXEC` after
+/// `pipe()`); Linux creates the pipes `O_CLOEXEC` atomically.
+#[cfg(unix)]
+#[test]
+fn no_spawn_inherits_a_pipe_another_thread_is_creating() {
+    use std::sync::Arc;
+    use std::sync::atomic::AtomicBool;
+    let stop = Arc::new(AtomicBool::new(false));
+    // `[ -p /dev/fd/N ]`: descriptor N is open and is a pipe. The shell opens
+    // none of its own; 0-2 are the probe's stdio.
+    let probe = "for fd in $(seq 3 63); do [ -p /dev/fd/$fd ] && echo $fd; done; true";
+    let probers: Vec<_> = (0..4)
+        .map(|_| {
+            let stop = Arc::clone(&stop);
+            std::thread::spawn(move || {
+                let mut probes = 0u32;
+                let mut held = Vec::new();
+                while !stop.load(Ordering::Relaxed) {
+                    let out = bounded::output_within(
+                        Command::new("/bin/sh").args(["-c", probe]),
+                        CALL_BOUND,
+                    )
+                    .unwrap_or_else(|t| panic!("{t}"));
+                    probes += 1;
+                    let fds = String::from_utf8_lossy(&out.stdout).trim().to_owned();
+                    if !fds.is_empty() {
+                        held.push(fds);
+                    }
+                }
+                (probes, held)
+            })
+        })
+        .collect();
+    let callers: Vec<_> = (0..8)
+        .map(|_| {
+            std::thread::spawn(|| {
+                for _ in 0..400 {
+                    let out = bounded::output_within(
+                        Command::new(env!("CARGO_BIN_EXE_modbit-cli")).arg("platform"),
+                        CALL_BOUND,
+                    )
+                    .unwrap_or_else(|t| panic!("{t}"));
+                    assert!(
+                        out.status.success()
+                            && String::from_utf8_lossy(&out.stdout).starts_with("platform "),
+                        "{out:?}"
+                    );
+                }
+            })
+        })
+        .collect();
+    for c in callers {
+        c.join().unwrap();
+    }
+    stop.store(true, Ordering::Relaxed);
+    let (mut probes, mut held) = (0, Vec::new());
+    for p in probers {
+        let (n, h) = p.join().unwrap();
+        probes += n;
+        held.extend(h);
+    }
+    assert!(probes > 0, "the probes ran alongside the calls");
     assert!(
-        Command::new("git")
-            .arg("-C")
-            .arg(dir)
-            .args(args)
-            .status()
-            .unwrap()
-            .success()
+        held.is_empty(),
+        "{} of {probes} probes inherited another call's pipe (descriptors: {held:?})",
+        held.len()
     );
+}
+
+/// A hang in this file fails fast and explains itself (the macOS CI hangs of
+/// `qual_px_000` and `qual_ev_0126`, 2026-11-08, held the job to its 75-minute
+/// timeout with nothing to read). A real `task run --wait` whose model accepts
+/// the request and never answers outlives a short bound: the CLI is killed,
+/// and the panic carries the command line, the Core's log, the profile's Core
+/// processes, the session's events and the task's status; the hung Core is
+/// gone afterwards.
+#[test]
+fn a_hung_cli_call_is_killed_and_fails_with_its_diagnostics() {
+    let core = core_bin();
+    let tmp = tempfile::tempdir().unwrap();
+    let data_dir = tmp.path().join("profile");
+    std::fs::create_dir_all(&data_dir).unwrap();
+    let repo = tmp.path().join("repo");
+    std::fs::create_dir_all(&repo).unwrap();
+    std::fs::write(repo.join("a.txt"), "a\n").unwrap();
+    git(&repo, &["init", "-q", "-b", "main"]);
+    git(&repo, &["add", "-A"]);
+    git(
+        &repo,
+        &[
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@e",
+            "commit",
+            "-q",
+            "-m",
+            "base",
+        ],
+    );
+    let repo_str = repo
+        .canonicalize()
+        .unwrap()
+        .to_string_lossy()
+        .trim_start_matches(r"\\?\")
+        .to_owned();
+    // A model that takes the request and never replies.
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    std::thread::spawn(move || {
+        let mut held = Vec::new();
+        for s in listener.incoming().flatten() {
+            held.push(s);
+        }
+    });
+    let cli = Cli {
+        data_dir: data_dir.clone(),
+        core,
+        env: vec![
+            (
+                "MODBIT_OPENAI_BASE_URL".into(),
+                format!("http://127.0.0.1:{port}"),
+            ),
+            ("OPENAI_API_KEY".into(), String::new()),
+            ("ANTHROPIC_API_KEY".into(), String::new()),
+        ],
+    };
+    let (code, out, err) = cli.run(&["session", "create"]);
+    assert_eq!(code, 0, "{err}");
+    let sid = out.trim().strip_prefix("session ").unwrap().to_owned();
+    let (code, out, err) = cli.run(&[
+        "task",
+        "create",
+        "--session",
+        &sid,
+        "--workspace",
+        &repo_str,
+        "greet",
+    ]);
+    assert_eq!(code, 0, "{err}");
+    let tid = out.trim().strip_prefix("task ").unwrap().to_owned();
+    let limit = Duration::from_secs(5);
+    let started = std::time::Instant::now();
+    let hung = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        cli.run_bounded(
+            &[
+                "task",
+                "run",
+                "--session",
+                &sid,
+                "--task",
+                &tid,
+                "--endpoint",
+                "openai",
+                "--model",
+                "gpt-5",
+                "--wait",
+            ],
+            limit,
+        )
+    }))
+    .expect_err("a run whose model never answers must not return");
+    let report = hung
+        .downcast_ref::<String>()
+        .expect("the hang panics with a report")
+        .clone();
+    assert!(
+        started.elapsed() < limit + DIAGNOSIS_BOUND * 4,
+        "the hang failed fast: {:?}",
+        started.elapsed()
+    );
+    assert!(
+        report.contains("modbit-cli hung: still running after 5s, killed:"),
+        "{report}"
+    );
+    assert!(
+        report.contains(r#""task" "run" "--session""#) && report.contains(r#""--wait""#),
+        "the command line: {report}"
+    );
+    assert!(
+        report.contains("MODBIT_OPENAI_BASE_URL="),
+        "the environment the call set: {report}"
+    );
+    assert!(
+        report.contains("--- core.log ---\nlast "),
+        "the Core's log: {report}"
+    );
+    assert!(
+        report.contains("--- processes for this profile ---\n") && report.contains("modbit-core"),
+        "the Core that was still serving the hung run: {report}"
+    );
+    assert!(
+        report.contains(&format!("--- session {sid} ---\nlast "))
+            && report.contains("ModelInvocationStarted"),
+        "the session's events, up to where the run hangs: {report}"
+    );
+    assert!(
+        report.contains(&format!("--- task {tid} ---\nexit ")) && report.contains("state="),
+        "the task's status: {report}"
+    );
+    // The hung Core does not outlive the failure.
+    if cfg!(unix) {
+        let profile = data_dir.display().to_string();
+        let gone = (0..50).any(|_| {
+            let left = bounded::processes_matching(&profile);
+            if left.contains("modbit-core") {
+                std::thread::sleep(Duration::from_millis(100));
+                false
+            } else {
+                true
+            }
+        });
+        assert!(gone, "{}", bounded::processes_matching(&profile));
+    }
 }
 
 #[test]
@@ -464,13 +783,11 @@ fn qual_px_000_headless_cli_task_lifecycle() {
     // invocation, so every command already boots a fresh Core (a restart per
     // step). Kill any lingering one as well, then resume by cursor.
     if cfg!(unix) {
-        let _ = Command::new("pkill")
-            .args([
-                "-9",
-                "-f",
-                &format!("modbit-core --data-dir {}", data_dir.display()),
-            ])
-            .status();
+        let _ = bounded_status(Command::new("pkill").args([
+            "-9",
+            "-f",
+            &format!("modbit-core --data-dir {}", data_dir.display()),
+        ]));
         std::thread::sleep(Duration::from_millis(300));
     }
     let (code, after, err) = cli.run(&[
@@ -1211,7 +1528,23 @@ fn qual_ev_0126_an_identical_task_runs_the_same_through_the_desktop_client_and_t
         .enable_all()
         .build()
         .unwrap();
-    let desktop = rt.block_on(drive_desktop(&ready.endpoint, &secret, &repo_desktop));
+    // The desktop half talks to the Core in-process; it is bounded like a CLI
+    // call (its whole drive at once), and a hang names the Core's log.
+    let desktop = rt
+        .block_on(async {
+            tokio::time::timeout(
+                CALL_BOUND * 2,
+                drive_desktop(&ready.endpoint, &secret, &repo_desktop),
+            )
+            .await
+        })
+        .unwrap_or_else(|_| {
+            panic!(
+                "the desktop client's drive hung past {:?}\n{}",
+                CALL_BOUND * 2,
+                bounded::file_tail(&data_dir.join("core.log"), 60)
+            )
+        });
 
     // ---- the same canonical states ----
     let (code, out, err) = cli.run(&[
@@ -1279,11 +1612,20 @@ fn qual_ev_0126_an_identical_task_runs_the_same_through_the_desktop_client_and_t
     assert!(origins.contains(&"cli"), "{origins:?}");
     // A UI-only surface is refused to a headless connection at the transport,
     // and the task it named stays valid (REQ-EV-0043, docs/30).
-    let refusal = rt.block_on(code_view_as_cli(
-        &ready.endpoint,
-        &secret,
-        parse_test_id(&tid_cli),
-    ));
+    let refusal = rt
+        .block_on(async {
+            tokio::time::timeout(
+                CALL_BOUND,
+                code_view_as_cli(&ready.endpoint, &secret, parse_test_id(&tid_cli)),
+            )
+            .await
+        })
+        .unwrap_or_else(|_| {
+            panic!(
+                "the code-view request hung past {CALL_BOUND:?}\n{}",
+                bounded::file_tail(&data_dir.join("core.log"), 60)
+            )
+        });
     assert_eq!(
         refusal, "CLIENT_CAPABILITY",
         "a headless client holds no ui.code_view"
