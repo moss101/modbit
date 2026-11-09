@@ -108,3 +108,10 @@ Scope given by the owner: an UNSIGNED packaged desktop build that the packaged-E
 - `unsigned/` (increment 5): `run-info.txt`, `package.log`, `codesign.txt`, `bundled-binaries.sha256`, `packaged-e2e.log`, `perf/`, `sbom.log`, `sbom/` (per-source SBOMs), the package SBOM, `build-info.json`, `SHA256SUMS-UNSIGNED`, `repro.json`.
 - `DR-draft-sbom.md`: the SBOM Decision Record draft, status proposed, for the owner.
 - `evidence.json` in this directory, when sealed (not before signing exists).
+
+## 2026-11-09: defect fixed — overlapping update checks
+
+- found: CI run 42536447505 (packaged desktop, macOS) failed `packaged-update.spec.ts:108` with a release staged during a refused check: the timer's first check (5 s after launch) overlapped the clicked checks and staged a release it had verified from the feed as it was before the test changed it
+- fix: `UpdateClient.checkAndStage` and `stageRollback` run through one queue; a second check waits, then reads the feed itself (interleaved checks also shared one `.part` path)
+- test: `client.test.ts` "a check started while another runs waits for it and then reads the feed itself" (real HTTP feed, held response); the unserialized mutation fails it (`serial-checks-2026-11-09.txt`)
+- state unchanged (REAL_TESTING)
