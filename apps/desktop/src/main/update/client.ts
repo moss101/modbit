@@ -98,6 +98,13 @@ export class UpdateClient {
   private readonly now: () => number;
 
   private readonly deps: UpdateClientDeps;
+  /**
+   * Checks and rollback stagings run one after another, never interleaved: a
+   * click during the timer's check waits for it, then reads the feed itself.
+   * Interleaved, two checks wrote one `.part` file and the slower one could
+   * stage a release fetched before the feed changed.
+   */
+  private queue: Promise<unknown> = Promise.resolve();
 
   constructor(deps: UpdateClientDeps) {
     this.deps = deps;
@@ -144,7 +151,18 @@ export class UpdateClient {
    * migration is critical, and stage. Never installs. Anything that fails
    * verification is refused and leaves nothing staged.
    */
-  async checkAndStage(): Promise<UpdateStatus> {
+  checkAndStage(): Promise<UpdateStatus> {
+    return this.serial(() => this.checkAndStageNow());
+  }
+
+  /** Run `f` after every check and staging queued before it. */
+  private serial<T>(f: () => Promise<T>): Promise<T> {
+    const run = this.queue.then(f, f);
+    this.queue = run.catch(() => undefined);
+    return run;
+  }
+
+  private async checkAndStageNow(): Promise<UpdateStatus> {
     const checkedAtMs = this.now();
     try {
       const raw = await this.fetchBytes(`${this.deps.feedUrl.replace(/\/$/, "")}/manifest.json`);
@@ -246,7 +264,11 @@ export class UpdateClient {
    * against the pinned keys, download and verify its artifact. Nothing is
    * installed; a release with no signed manifest on the feed cannot be rolled back to.
    */
-  async stageRollback(): Promise<UpdateStatus> {
+  stageRollback(): Promise<UpdateStatus> {
+    return this.serial(() => this.stageRollbackNow());
+  }
+
+  private async stageRollbackNow(): Promise<UpdateStatus> {
     const checkedAtMs = this.now();
     try {
       const { plan } = await this.planRollback();

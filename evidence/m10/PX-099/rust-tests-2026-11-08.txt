@@ -1,0 +1,33 @@
+cargo test -p modbit-execd (macOS arm64, 2026-11-08, fix applied)
+     Running unittests src/main.rs (target/debug/deps/modbit_execd-a9140f7607f27cb5)
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.74s
+     Running tests/broker.rs (target/debug/deps/broker-702fe21550d20b29)
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.48s
+     Running tests/px_148_hardening.rs (target/debug/deps/px_148_hardening-8d8b5feae6151d1c)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.47s
+     Running tests/px_150_152_review_sandbox.rs (target/debug/deps/px_150_152_review_sandbox-7cfae5d3eace7728)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.24s
+     Running tests/services.rs (target/debug/deps/services-97b2d77c6192d48e)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s
+     Running tests/terminal_flow.rs (target/debug/deps/terminal_flow-d2445e8eec5dcc15)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.43s
+
+cargo test -p modbit-core --test terminal_stream
+test unix::a_stream_is_complete_only_once_the_last_line_is_whole ... ok
+test unix::px_099_a_resize_is_answered_while_many_small_frames_are_queued_behind_it ... ok
+test unix::px_099_a_second_task_cannot_read_input_or_attach_to_anothers_terminal ... ok
+test unix::px_043_attach_detach_reattach_resumes_from_the_cursor_byte_exactly ... ok
+test unix::px_099_resize_through_the_stream_reaches_the_child_and_is_recorded ... ok
+test unix::px_043_the_registry_lists_every_terminal_with_owner_state_and_timer ... ok
+test unix::px_099_the_user_input_lease_blocks_agent_input_and_is_journaled_without_content ... ok
+test unix::px_043_an_expired_cursor_is_typed_and_the_window_start_attaches ... ok
+test unix::px_043_kill_terminal_ends_the_process_records_who_and_why_and_acts_once ... ok
+test unix::px_099_the_agent_answers_a_prompt_through_shell_input_and_attach ... ok
+test unix::shell_read_hints_to_stop_polling_an_idle_running_command ... ok
+test unix::px_043_a_process_that_ends_by_itself_is_recorded_once_without_a_killer ... ok
+test unix::px_099_killing_the_core_mid_stream_leaves_the_shell_running_and_reattach_resumes ... ok
+test unix::px_043_a_ten_megabyte_build_streams_survives_detach_and_core_restart_and_older_output_reads_by_output_ref ... ok
+test unix::px_099_a_slow_client_does_not_grow_the_core_or_the_broker_and_catches_up ... ok
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 39.24s
+
+cargo clippy -p modbit-execd --all-targets -- -D warnings: exit 0

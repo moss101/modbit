@@ -43,12 +43,15 @@ function payload(version: string, bytes: Buffer, over: Partial<UpdatePayload> = 
 class Feed {
   files = new Map<string, Buffer>();
   hits: string[] = [];
+  /** A path whose response waits for this promise; the body is read once it settles. */
+  holds = new Map<string, Promise<void>>();
   server!: Server;
   url = "";
   async start(): Promise<void> {
-    this.server = createServer((req, res) => {
+    this.server = createServer(async (req, res) => {
       const path = (req.url ?? "").replace(/^\//, "");
       this.hits.push(path);
+      await this.holds.get(path);
       const body = this.files.get(path);
       if (!body) {
         res.writeHead(404).end();
@@ -105,6 +108,38 @@ describe("UpdateClient over a real feed", () => {
     assert.deepEqual(p.from, { version: "0.1.0", schema_version: 17 });
     assert.equal(readFileSync(p.file).toString(), "artifact-0.2.0");
     assert.equal(sha(readFileSync(p.file)), p.sha256);
+    assert.deepEqual(readdirSync(join(stateDir, "downloads")).filter((n) => n.endsWith(".part")), []);
+  });
+
+  it("a check started while another runs waits for it and then reads the feed itself", async () => {
+    // The timer's check is downloading when a person clicks Check; the feed changes in between.
+    const real = Buffer.from("artifact-0.3.5");
+    feed.publish(payload("0.3.5", real), real);
+    let release!: () => void;
+    feed.holds.set("Modbit-0.3.5.zip", new Promise<void>((r) => (release = r)));
+    feed.hits.length = 0;
+    const { c, stateDir } = client(feed);
+    const first = c.checkAndStage();
+    let second: Promise<Awaited<typeof first>>;
+    try {
+      while (!feed.hits.includes("Modbit-0.3.5.zip")) await new Promise((r) => setTimeout(r, 5));
+      second = c.checkAndStage();
+      await new Promise((r) => setTimeout(r, 200));
+      assert.deepEqual(feed.hits, ["manifest.json", "Modbit-0.3.5.zip"], "the second check did not wait for the first");
+      // The feed now serves a manifest this build does not pin.
+      const other = generateUpdateKeyPair();
+      feed.publish(payload("0.3.6", real), real, { signWith: other.privateKeyPem });
+    } finally {
+      // A failure above must not leave a held response keeping the feed open.
+      feed.holds.delete("Modbit-0.3.5.zip");
+      release();
+    }
+    const a = await first;
+    assert.deepEqual([a.state, a.state === "staged" && a.version], ["staged", "0.3.5"], JSON.stringify(a));
+    const b = await second;
+    assert.deepEqual([b.state, b.state === "error" && b.code], ["error", "SIGNATURE_UNKNOWN_KEY"], JSON.stringify(b));
+    assert.deepEqual(feed.hits, ["manifest.json", "Modbit-0.3.5.zip", "manifest.json"]);
+    assert.equal(c.pending()?.version, "0.3.5", "the first check's verified release stays staged");
     assert.deepEqual(readdirSync(join(stateDir, "downloads")).filter((n) => n.endsWith(".part")), []);
   });
 

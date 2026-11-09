@@ -1064,6 +1064,11 @@ async fn serve(broker: Arc<Broker>, mut stream: BoxedStream) -> Result<()> {
                     continue;
                 }
                 let mut guard = s.stdin.lock().await;
+                // PX-099: the reply is read from here, so the cursor is where the
+                // input lands, taken before the write. Read after it, a quick
+                // program's echo and answer can already be counted and the
+                // reader would wait past them for output that never comes.
+                let landed_at = s.data_bytes.load(Ordering::SeqCst);
                 let result = match &mut *guard {
                     Stdin::Pipe(w) => {
                         use tokio::io::AsyncWriteExt;
@@ -1089,7 +1094,7 @@ async fn serve(broker: Arc<Broker>, mut stream: BoxedStream) -> Result<()> {
                                 body: Some(Body::StdinWritten(StdinWritten {
                                     session_id: session_id.clone(),
                                     bytes: data.len() as u64,
-                                    cursor: s.data_bytes.load(Ordering::SeqCst),
+                                    cursor: landed_at,
                                 })),
                             })
                             .await;

@@ -4791,7 +4791,11 @@
     "test:packaged.spec.ts",
     "artifact:evidence/m10/M10.2/unsigned/modbit-desktop-0.0.0-mac-arm64-UNSIGNED.package.cdx.json",
     "artifact:evidence/m10/M10.2/unsigned/repro.json",
-    "test:packaged-update.spec.ts"
+    "test:packaged-update.spec.ts",
+    "artifact:evidence/m10/M10.2/serial-checks-2026-11-09.txt",
+    "run:42545674289",
+    "artifact:evidence/m10/M10.2/ci-run-42545674289.json",
+    "commit:ef06f6f12932156a4b9658a09328e8d174b47fc4"
    ],
    "notes": [
     {
@@ -4817,10 +4821,22 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "Integration passes on the real UNSIGNED package (macOS arm64, 92dd23a4): 29 of 29 packaged E2E incl. the update suite fault cases and the render-budget leg; SBOMs and license gate pass; repro 12 of 12 identical. UNSIGNED: no code signing, notarization or update key; Linux and Windows CI not yet run; the signing part of the acceptance keeps this task below E2E_PROVEN"
+    },
+    {
+     "at": "2026-11-09T01:25:29Z",
+     "from": "REAL_TESTING",
+     "to": "REAL_TESTING",
+     "note": "2026-11-09 defect fix: update checks and rollback stagings are serialized (CI run 42536447505 race)"
+    },
+    {
+     "at": "2026-11-09T03:15:06Z",
+     "from": "REAL_TESTING",
+     "to": "REAL_TESTING",
+     "note": "2026-11-09 serialized update checks landed (#190)"
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-11-07T19:17:32Z"
+   "status_changed_on": "2026-11-09T03:15:06Z"
   },
   {
    "id": "M10.3",
@@ -37692,10 +37708,29 @@
    "evidence": [
     "run:39960289486",
     "commit:f5a67b545a74017c3b632f687b09a8323cf2c8c3",
-    "artifact:evidence/m10/PX-099/evidence.json"
+    "artifact:evidence/m10/PX-099/evidence.json",
+    "artifact:evidence/m10/PX-099/mutation-check-2026-11-08.txt",
+    "artifact:evidence/m10/PX-099/rust-tests-2026-11-08.txt",
+    "run:42545674289",
+    "artifact:evidence/m10/PX-099/ci-run-42545674289.json",
+    "commit:ef06f6f12932156a4b9658a09328e8d174b47fc4"
+   ],
+   "notes": [
+    {
+     "at": "2026-11-08T20:10:50Z",
+     "from": "COMPLETE",
+     "to": "COMPLETE",
+     "note": "2026-11-08 defect fix: shell.input's output_cursor is taken before the write (CI run 42510436004 race)"
+    },
+    {
+     "at": "2026-11-09T03:15:06Z",
+     "from": "COMPLETE",
+     "to": "COMPLETE",
+     "note": "2026-11-09 input-cursor fix landed (#190)"
+    }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-10-23T15:45:31Z"
+   "status_changed_on": "2026-11-09T03:15:06Z"
   },
   {
    "id": "PX-100",

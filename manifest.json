@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2067,
+    "root_and_tooling": 2072,
     "docs_bytes": 2339419
   },
   "sections": [
@@ -2105,8 +2105,18 @@
     },
     {
       "path": "evidence/m10/M10.2/TASK_CARD.md",
-      "bytes": 18322,
-      "sha256": "59867432770de2d70dcc77ab694b8844bce90580557821d38f03b29e8295e5b2"
+      "bytes": 19188,
+      "sha256": "ed3b96c79e822d2b10a3f93789875ee8e3efb2e6adf3a3681e6739c722b0104e"
+    },
+    {
+      "path": "evidence/m10/M10.2/ci-run-42545674289.json",
+      "bytes": 2064,
+      "sha256": "068af47c20da75bd1cd6fcd8ccf119376e14e4cd8d60ffd885c7feb8537d00e4"
+    },
+    {
+      "path": "evidence/m10/M10.2/serial-checks-2026-11-09.txt",
+      "bytes": 1331,
+      "sha256": "4f036980ee45d36e9bdfd04e4d01a33d4d66fb2d76ce4e08ca9bc8ea7096bce5"
     },
     {
       "path": "evidence/m10/M10.2/unsigned/SHA256SUMS-UNSIGNED",
@@ -2490,8 +2500,8 @@
     },
     {
       "path": "evidence/m10/PX-099/TASK_CARD.md",
-      "bytes": 1506,
-      "sha256": "176efbba92374c5adc0774fef998ebc2ea6f6e23f3942f3d59ebe863211e73bd"
+      "bytes": 2461,
+      "sha256": "05273dd967947eb05c1fcff2fb99d506fee20a4f4eb7feda65021b00b33f9673"
     },
     {
       "path": "evidence/m10/PX-099/ci-run-39960289486.json",
@@ -2499,9 +2509,24 @@
       "sha256": "a8dbcd6ad3f3d474c37e6bf506048288320694cbf9e882e0a9124bb70a7480dd"
     },
     {
+      "path": "evidence/m10/PX-099/ci-run-42545674289.json",
+      "bytes": 2064,
+      "sha256": "068af47c20da75bd1cd6fcd8ccf119376e14e4cd8d60ffd885c7feb8537d00e4"
+    },
+    {
       "path": "evidence/m10/PX-099/evidence.json",
       "bytes": 1484,
       "sha256": "6f5e382a877e71f9391af8ce0898dde8c0908cdcefce80690b8f06f1cda50720"
+    },
+    {
+      "path": "evidence/m10/PX-099/mutation-check-2026-11-08.txt",
+      "bytes": 1633,
+      "sha256": "61f5145e2ceb8587f55294dfb7d9e62821a8a2e1690f0fed5827b72182ff4f74"
+    },
+    {
+      "path": "evidence/m10/PX-099/rust-tests-2026-11-08.txt",
+      "bytes": 2709,
+      "sha256": "87664b96fe7016748befd32ee3cf03880f9b318b3381621cecef12e6b87ab15a"
     },
     {
       "path": "evidence/m10/PX-102/mutation-check.txt",
@@ -11205,8 +11230,8 @@
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2550613,
-      "sha256": "7a2817fe083c1889adb64a0d127244dd2a9630fac45a74fa64bcda368f277fad"
+      "bytes": 2551854,
+      "sha256": "56dac714eb37eaf2735a76bcd100063a8dee10e38b825be878402aecc0d02789"
     },
     {
       "path": "tools/build_graph.py",
