@@ -4792,7 +4792,10 @@
     "artifact:evidence/m10/M10.2/unsigned/modbit-desktop-0.0.0-mac-arm64-UNSIGNED.package.cdx.json",
     "artifact:evidence/m10/M10.2/unsigned/repro.json",
     "test:packaged-update.spec.ts",
-    "artifact:evidence/m10/M10.2/serial-checks-2026-11-09.txt"
+    "artifact:evidence/m10/M10.2/serial-checks-2026-11-09.txt",
+    "run:42545674289",
+    "artifact:evidence/m10/M10.2/ci-run-42545674289.json",
+    "commit:ef06f6f12932156a4b9658a09328e8d174b47fc4"
    ],
    "notes": [
     {
@@ -4824,10 +4827,16 @@
      "from": "REAL_TESTING",
      "to": "REAL_TESTING",
      "note": "2026-11-09 defect fix: update checks and rollback stagings are serialized (CI run 42536447505 race)"
+    },
+    {
+     "at": "2026-11-09T03:15:06Z",
+     "from": "REAL_TESTING",
+     "to": "REAL_TESTING",
+     "note": "2026-11-09 serialized update checks landed (#190)"
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-11-09T01:25:29Z"
+   "status_changed_on": "2026-11-09T03:15:06Z"
   },
   {
    "id": "M10.3",
@@ -37701,7 +37710,10 @@
     "commit:f5a67b545a74017c3b632f687b09a8323cf2c8c3",
     "artifact:evidence/m10/PX-099/evidence.json",
     "artifact:evidence/m10/PX-099/mutation-check-2026-11-08.txt",
-    "artifact:evidence/m10/PX-099/rust-tests-2026-11-08.txt"
+    "artifact:evidence/m10/PX-099/rust-tests-2026-11-08.txt",
+    "run:42545674289",
+    "artifact:evidence/m10/PX-099/ci-run-42545674289.json",
+    "commit:ef06f6f12932156a4b9658a09328e8d174b47fc4"
    ],
    "notes": [
     {
@@ -37709,10 +37721,16 @@
      "from": "COMPLETE",
      "to": "COMPLETE",
      "note": "2026-11-08 defect fix: shell.input's output_cursor is taken before the write (CI run 42510436004 race)"
+    },
+    {
+     "at": "2026-11-09T03:15:06Z",
+     "from": "COMPLETE",
+     "to": "COMPLETE",
+     "note": "2026-11-09 input-cursor fix landed (#190)"
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-11-08T20:10:50Z"
+   "status_changed_on": "2026-11-09T03:15:06Z"
   },
   {
    "id": "PX-100",

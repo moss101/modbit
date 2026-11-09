@@ -115,3 +115,4 @@ Scope given by the owner: an UNSIGNED packaged desktop build that the packaged-E
 - fix: `UpdateClient.checkAndStage` and `stageRollback` run through one queue; a second check waits, then reads the feed itself (interleaved checks also shared one `.part` path)
 - test: `client.test.ts` "a check started while another runs waits for it and then reads the feed itself" (real HTTP feed, held response); the unserialized mutation fails it (`serial-checks-2026-11-09.txt`)
 - state unchanged (REAL_TESTING)
+- landed: CI run 42545674289 green (packaged desktop included); merged as ef06f6f1 (#190)

@@ -31,3 +31,4 @@
 - test: `services/modbit-execd/tests/broker.rs::an_acknowledged_writes_cursor_is_where_the_input_landed` (real broker, real PTY); the mutation that restores the old read fails it on every run (`mutation-check-2026-11-08.txt`)
 - runs: `rust-tests-2026-11-08.txt` (modbit-execd 39/39, terminal_stream 15/15, clippy clean)
 - state unchanged (COMPLETE); the clauses were met, this closes a race in the one that returns the reply
+- landed: CI run 42545674289 green; merged as ef06f6f1 (#190)
