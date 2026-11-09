@@ -1,0 +1,20 @@
+M10.2 defect fix 2026-11-09: update checks and rollback stagings run one after another.
+
+Found: CI run 42536447505 (packaged desktop, macos-latest), packaged-update.spec.ts:108
+"hostile feeds are refused with their own reason and nothing is staged" failed at line 141
+(the unpinned-key case) with pending.json present. UpdateService.start() runs a check 5 s after
+launch; it overlapped the test's clicked checks. A timer check that had fetched the valid manifest
+downloaded the artifact after the test republished the real zip, and staged that verified release
+while the UI showed the clicked check's refusal. Interleaved checks also share one .part path.
+Nothing unverified was staged: the artifact matched its signed manifest.
+
+Fix: apps/desktop/src/main/update/client.ts: checkAndStage and stageRollback go through one queue
+(serial); a check started while another runs waits for it, then reads the feed itself.
+
+Test: apps/desktop/src/main/update/client.test.ts
+"a check started while another runs waits for it and then reads the feed itself"
+(real HTTP feed, the first check's artifact response held; real ed25519 manifests).
+
+Mutation (serial runs f() at once): the test fails, "the second check did not wait for the
+first", 10/11 pass, 0.6 s. Restored: 11/11.
+Desktop unit tests: 350/350 pass. tsc -p tsconfig.json: exit 0.

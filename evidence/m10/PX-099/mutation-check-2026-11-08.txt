@@ -1,0 +1,26 @@
+PX-099 defect fix 2026-11-08: an acknowledged write's cursor is where the input landed.
+
+Found: CI run 42510436004 (rust CI_COMPATIBLE, ubuntu-latest), terminal_stream.rs:1098
+px_099_the_agent_answers_a_prompt_through_shell_input_and_attach. The attach after
+output_cursor saw head_cursor 22 = "name? " (6) + echo "ada\r\n" (5) + "hello ada\r\n" (11):
+the reply had been counted before the broker read the cursor, so the read waited past it.
+
+Fix: services/modbit-execd/src/broker.rs reads data_bytes before the PTY/pipe write
+(still under the stdin lock) and acknowledges that value.
+
+Test: services/modbit-execd/tests/broker.rs::an_acknowledged_writes_cursor_is_where_the_input_landed
+(real broker, real PTY, cat child; 20 rounds x 300 lines; cursor must equal bytes printed before the write).
+
+Mutation (cursor read after the write again, as before the fix), six runs on macOS arm64:
+  run 1..6: FAILED, 20 of 20 acknowledgements past where the input landed
+  e.g. (round 0, printed 0, cursor 3289), (round 1, printed 4994, cursor 8066)
+A one-line-per-round variant (300 and 3000 rounds) killed the mutation only 2/3 and 4/6
+times, so the many-lines-per-write form is the one kept.
+
+Restored (git checkout + touch, rebuilt): 5/5 runs ok.
+
+Revision (CI run 42519062542, windows-latest): the test itself undercounted by 2 bytes in one
+round: ConPTY sent the line end after the last answer on its own, after the test stopped reading.
+Each round now also drains until the terminal is quiet for 250 ms before the next write.
+Re-check on macOS arm64: mutation 3/3 runs FAILED (20 of 20 rounds); restored: broker 16/16 ok,
+clippy clean.

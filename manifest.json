@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2066,
+    "root_and_tooling": 2069,
     "docs_bytes": 2339419
   },
   "sections": [
@@ -2105,8 +2105,13 @@
     },
     {
       "path": "evidence/m10/M10.2/TASK_CARD.md",
-      "bytes": 18322,
-      "sha256": "59867432770de2d70dcc77ab694b8844bce90580557821d38f03b29e8295e5b2"
+      "bytes": 19098,
+      "sha256": "e41648d3f7f4a9fdf1aaf76c3b7c619c53e5f1da3c69e2bbe04c633e860faca9"
+    },
+    {
+      "path": "evidence/m10/M10.2/serial-checks-2026-11-09.txt",
+      "bytes": 1331,
+      "sha256": "4f036980ee45d36e9bdfd04e4d01a33d4d66fb2d76ce4e08ca9bc8ea7096bce5"
     },
     {
       "path": "evidence/m10/M10.2/unsigned/SHA256SUMS-UNSIGNED",
@@ -2490,8 +2495,8 @@
     },
     {
       "path": "evidence/m10/PX-099/TASK_CARD.md",
-      "bytes": 1506,
-      "sha256": "176efbba92374c5adc0774fef998ebc2ea6f6e23f3942f3d59ebe863211e73bd"
+      "bytes": 2399,
+      "sha256": "dbb004f5fda6f04ef7c8bc032f370cec45b1aaf80932b4ee64eed4c7bfb03bbc"
     },
     {
       "path": "evidence/m10/PX-099/ci-run-39960289486.json",
@@ -2502,6 +2507,16 @@
       "path": "evidence/m10/PX-099/evidence.json",
       "bytes": 1484,
       "sha256": "6f5e382a877e71f9391af8ce0898dde8c0908cdcefce80690b8f06f1cda50720"
+    },
+    {
+      "path": "evidence/m10/PX-099/mutation-check-2026-11-08.txt",
+      "bytes": 1633,
+      "sha256": "61f5145e2ceb8587f55294dfb7d9e62821a8a2e1690f0fed5827b72182ff4f74"
+    },
+    {
+      "path": "evidence/m10/PX-099/rust-tests-2026-11-08.txt",
+      "bytes": 2709,
+      "sha256": "87664b96fe7016748befd32ee3cf03880f9b318b3381621cecef12e6b87ab15a"
     },
     {
       "path": "evidence/m10/PX-102/mutation-check.txt",
@@ -11200,8 +11215,8 @@
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2550613,
-      "sha256": "7a2817fe083c1889adb64a0d127244dd2a9630fac45a74fa64bcda368f277fad"
+      "bytes": 2551257,
+      "sha256": "e8c34f4a2cb2ac709fa63d8872e993b1497473b7a726ad602e4abc66f4916414"
     },
     {
       "path": "tools/build_graph.py",

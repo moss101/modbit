@@ -23,3 +23,11 @@
 ## Evidence
 
 - `evidence.json` and `ci-run-39960289486.json` in this directory
+
+## 2026-11-08: defect fixed — the input cursor is taken before the write
+
+- found: CI run 42510436004 (ubuntu-latest) failed `px_099_the_agent_answers_a_prompt_through_shell_input_and_attach`; the broker read `output_cursor` after writing the input, so a program that answered quickly was already counted and `shell.attach after_cursor` waited past its reply
+- fix: `services/modbit-execd/src/broker.rs` reads the cursor before the write, under the same stdin lock
+- test: `services/modbit-execd/tests/broker.rs::an_acknowledged_writes_cursor_is_where_the_input_landed` (real broker, real PTY); the mutation that restores the old read fails it on every run (`mutation-check-2026-11-08.txt`)
+- runs: `rust-tests-2026-11-08.txt` (modbit-execd 39/39, terminal_stream 15/15, clippy clean)
+- state unchanged (COMPLETE); the clauses were met, this closes a race in the one that returns the reply
