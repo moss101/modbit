@@ -34,8 +34,29 @@ struct Plan {
     scope: Scope,
     snapshot_id: String,
     element: Option<Node>,
+    /// The element sits inside a sheet: the one part of a modal window an
+    /// input may reach (the sheet is the dialog being answered).
+    in_sheet: bool,
     frame: Option<FrameHandle>,
     gate: Arc<tokio::sync::Mutex<()>>,
+}
+
+/// Whether element `id` of a tree lies inside a sheet (it or an ancestor is one).
+fn inside_sheet(nodes: &[Node], id: &str) -> bool {
+    let mut cur = id;
+    for _ in 0..nodes.len() {
+        let Some(n) = nodes.iter().find(|n| n.id == cur) else {
+            return false;
+        };
+        if n.role == "sheet" {
+            return true;
+        }
+        if n.parent.is_empty() || n.parent == n.id {
+            return false;
+        }
+        cur = &n.parent;
+    }
+    false
 }
 
 /// Codes an actuator gives for a refusal made before it injected anything.
@@ -159,6 +180,7 @@ impl ComputerRuntime {
             scope,
             snapshot_id: String::new(),
             element: None,
+            in_sheet: false,
             frame: None,
             gate,
         };
@@ -264,6 +286,9 @@ impl ComputerRuntime {
             }
             Act::Key { .. } => {}
         }
+        if let (Some(e), Some(snap)) = (&plan.element, &snapshot) {
+            plan.in_sheet = inside_sheet(&snap.nodes, &e.id);
+        }
         Ok(plan)
     }
 
@@ -342,7 +367,9 @@ impl ComputerRuntime {
             .find(|w| w.id == plan.window.id)
             .cloned()
             .ok_or_else(|| Refusal::new(Code::WindowUnverifiable, "the window is gone"))?;
-        if window.modal {
+        // A modal window takes no input except into the sheet that makes it
+        // modal: that sheet is the dialog, and answering it is the task.
+        if window.modal && !plan.in_sheet {
             return Err(Refusal::new(
                 Code::ModalBlocking,
                 "a modal dialog blocks the window",

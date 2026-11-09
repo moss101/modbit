@@ -3759,6 +3759,337 @@ async fn qual_px_071_the_real_core_drives_a_real_application_through_the_real_he
     assert_eq!(of(&evs, "ComputerSessionClosed").len(), 1);
 }
 
+// ---------------------------------------------------------------- QUAL-PX-069 on the real helper
+//
+// The same qualification as the fixture-actuator tests above, with the real
+// macOS helper of PX-071 driving the fixture application suite
+// (`modbit-actuator-macos/tests/fixtures/axfixture`: a form application with a
+// secure field, a document application and a modal-dialog application), each a
+// real AppKit process that writes what happened to it to a file the test reads
+// from outside the accessibility API. They need Accessibility and Screen
+// Recording for this process and an unlocked, quiet screen, so they are
+// `#[ignore]`d and run by services/modbit-actuator-macos/scripts/ax-tests.sh.
+
+#[cfg(target_os = "macos")]
+fn real() -> Opts {
+    Opts {
+        helper: Some(helper_bin()),
+        ..Opts::default()
+    }
+}
+
+/// QUAL-PX-069 (real helper): a document application and a modal-dialog
+/// application complete their tasks with no coordinate used; acting on the
+/// window a sheet blocks is refused MODAL_BLOCKING and actuates nothing; each
+/// application says, from outside the accessibility API, what happened.
+#[cfg(target_os = "macos")]
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "needs Accessibility + Screen Recording for this process and an unlocked screen: services/modbit-actuator-macos/scripts/ax-tests.sh"]
+async fn qual_px_069_real_helper_a_document_and_a_modal_dialog_are_driven_by_accessibility_alone() {
+    use fixture_app::Kind;
+    let doc = fixture_app::Fixture::launch_kind(Kind::Document);
+    let dlg = fixture_app::Fixture::launch_kind(Kind::Dialog);
+    let steps = vec![
+        // 0-5 the document application.
+        start(Kind::Document.bundle_id()),
+        fx(call("computer.state", json!({}))),
+        st(|s| {
+            call(
+                "computer.set_value",
+                json!({"element": s.el("Document"), "value": "Dear Ada,\nthe engine runs."}),
+            )
+        }),
+        st(|s| call("computer.press", json!({"element": s.el("Save")}))),
+        fx(call("computer.state", json!({}))),
+        fx(call("computer.release", json!({}))),
+        // 6-8 the modal-dialog application: Delete... opens the sheet.
+        start(Kind::Dialog.bundle_id()),
+        fx(call("computer.state", json!({}))),
+        st(|s| call("computer.press", json!({"element": s.el("Delete\u{2026}")}))),
+        // 9 the sheet is read, 10 the window it blocks is refused.
+        fx(call("computer.state", json!({}))),
+        st(|s| call("computer.press", json!({"element": s.el("Delete\u{2026}")}))),
+        // 11 the sheet's own button answers it, 12 read back, 13 give the machine back.
+        st(|s| call("computer.press", json!({"element": s.el("Delete")}))),
+        fx(call("computer.state", json!({}))),
+        fx(call("computer.release", json!({}))),
+    ];
+    let mut rig = run(real(), steps, approve_all()).await;
+    rig.finish().await;
+    let o = rig.outs();
+    for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13] {
+        assert!(
+            o[i].0.starts_with("status: SUCCESS"),
+            "call {i}: {}",
+            o[i].0
+        );
+    }
+    for i in [2, 3, 8, 11] {
+        assert_eq!(
+            o[i].1["modality"], "ax",
+            "call {i} used no coordinate: {}",
+            o[i].1
+        );
+    }
+    // The document application saved what was set, from its own side.
+    assert_eq!(doc.get("saved").as_deref(), Some("1"));
+    assert_eq!(
+        doc.get("doc").as_deref(),
+        Some("Dear Ada,\\nthe engine runs.")
+    );
+    let tree = o[4].1["tree"].as_str().unwrap();
+    assert!(tree.contains("the engine runs"), "{tree}");
+    // The sheet was read and the blocked window refused, with nothing actuated.
+    let sheet = o[9].1["tree"].as_str().unwrap();
+    assert!(sheet.contains("Delete the item?"), "{sheet}");
+    expect_refusal(&o, 10, "MODAL_BLOCKING", "ask_user");
+    // The sheet's Delete answered the dialog.
+    assert_eq!(dlg.get("dialog").as_deref(), Some("deleted"));
+    assert_eq!(dlg.get("sheet").as_deref(), Some("closed"));
+    let last = o[12].1["tree"].as_str().unwrap();
+    assert!(last.contains("item=deleted"), "{last}");
+    // Two sessions, one per application, each closed by a release; every
+    // input an accessibility action.
+    let evs = rig.events().await;
+    let closed = of(&evs, "ComputerSessionClosed");
+    assert_eq!(closed.len(), 2, "{closed:?}");
+    let bundles: Vec<&str> = closed
+        .iter()
+        .map(|c| c["payload"]["payload"]["bundle_id"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        bundles,
+        [Kind::Document.bundle_id(), Kind::Dialog.bundle_id()]
+    );
+    let kinds: Vec<&str> = of(&evs, "ComputerActionPerformed")
+        .iter()
+        .map(|a| a["payload"]["payload"]["kind"].as_str().unwrap())
+        .collect();
+    assert!(
+        kinds.iter().all(|k| *k == "press" || *k == "set_value"),
+        "{kinds:?}"
+    );
+    // The computer audit holds no text the model set (the approval shows it
+    // in full, by design; the audit does not keep it).
+    let carrying: Vec<&str> = evs
+        .iter()
+        .filter(|e| e.to_string().contains("the engine runs"))
+        .map(|e| e["event_type"].as_str().unwrap_or(""))
+        .collect();
+    assert!(
+        carrying.iter().all(|t| !t.starts_with("Computer")),
+        "a computer event keeps the document text: {carrying:?}"
+    );
+    eprintln!("events carrying the set text (none may be a Computer event): {carrying:?}");
+}
+
+/// QUAL-PX-069 (real helper): a misspelt argument, a stale element id, a
+/// coordinate without a fresh screenshot, a secure field and an unnamed
+/// destructive key are each refused with their code and escalation, and the
+/// application saw no effect of any of them.
+#[cfg(target_os = "macos")]
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "needs Accessibility + Screen Recording for this process and an unlocked screen: services/modbit-actuator-macos/scripts/ax-tests.sh"]
+async fn qual_px_069_real_helper_refusals_are_typed_and_the_application_sees_nothing() {
+    let app = fixture_app::Fixture::launch();
+    let steps = vec![
+        // 0 a misspelt argument: the advertised names, no default action.
+        fx(call("computer.press", json!({"elemnt": "s1/n1"}))),
+        start(fixture_app::BUNDLE_ID),
+        // 2, 3 two reads: the first snapshot is stale after the second.
+        fx(call("computer.state", json!({}))),
+        fx(call("computer.state", json!({}))),
+        // 4 Increment, addressed through the first (stale) snapshot.
+        st(|s| {
+            let el = s.el("Increment");
+            let id = el.rsplit('/').next().unwrap().to_owned();
+            call(
+                "computer.press",
+                json!({"element": format!("{}/{id}", s.snapshot_at(3))}),
+            )
+        }),
+        // 5 a coordinate with no screenshot.
+        fx(call(
+            "computer.click",
+            json!({"frame": "f0", "x": 10, "y": 10}),
+        )),
+        // 6 the secure field never takes model text.
+        st(|s| {
+            call(
+                "computer.set_value",
+                json!({"element": s.el("Password"), "value": "x"}),
+            )
+        }),
+        // 7 a destructive key the call did not name.
+        fx(call("computer.key", json!({"keys": ["cmd+q"]}))),
+        fx(call("computer.release", json!({}))),
+    ];
+    let (rig, o) = quick(real(), steps, approve_all()).await;
+    expect_refusal(&o, 0, "INVALID_ARGUMENTS", "re_observe");
+    assert!(
+        o[0].0.contains("`elemnt`") && o[0].0.contains("`element`"),
+        "{}",
+        o[0].0
+    );
+    for i in [1, 2, 3, 8] {
+        assert!(
+            o[i].0.starts_with("status: SUCCESS"),
+            "call {i}: {}",
+            o[i].0
+        );
+    }
+    expect_refusal(&o, 4, "TARGET_STALE", "re_observe");
+    expect_refusal(&o, 5, "SCREENSHOT_REQUIRED", "re_observe");
+    expect_refusal(&o, 6, "ACTION_UNSAFE", "abandon");
+    expect_refusal(&o, 7, "ACTION_UNSAFE", "abandon");
+    // Nothing reached the application.
+    assert_eq!(app.get("pressed").as_deref(), Some("0"));
+    assert_eq!(app.get("field").as_deref(), Some(""));
+    assert_eq!(app.get("secure_len").as_deref(), Some("14"));
+    assert_eq!(app.get("window").as_deref(), Some("open"));
+    assert!(app.keys().is_empty(), "{:?}", app.keys());
+    // The person was asked only for the session: every refusal came first.
+    let asked: Vec<String> = rig
+        .approvals
+        .lock()
+        .unwrap()
+        .iter()
+        .map(|(a, ..)| a.tool_name.clone())
+        .collect();
+    assert_eq!(asked, vec!["computer.start"], "{asked:?}");
+    let evs = rig.events().await;
+    assert!(
+        of(&evs, "ComputerActionPerformed")
+            .iter()
+            .all(|a| a["payload"]["payload"]["outcome"] != "SUCCEEDED"),
+        "a refused input is never a success"
+    );
+}
+
+/// QUAL-PX-069 (real helper): two inputs the model sends in one turn run one
+/// at a time - the application receives every key of the first before any key
+/// of the second, in the order the calls were made.
+#[cfg(target_os = "macos")]
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "needs Accessibility + Screen Recording for this process and an unlocked screen: services/modbit-actuator-macos/scripts/ax-tests.sh"]
+async fn qual_px_069_real_helper_two_simultaneous_inputs_run_one_at_a_time() {
+    let app = fixture_app::Fixture::launch();
+    let a = vec!["a"; 16];
+    let b = vec!["b"; 16];
+    let steps = vec![
+        start(fixture_app::BUNDLE_ID),
+        fx(call("computer.state", json!({}))),
+        fx(json!({"calls": [
+            {"name": "computer.key", "args": {"keys": a}},
+            {"name": "computer.key", "args": {"keys": b}},
+        ]})),
+        fx(call("computer.release", json!({}))),
+    ];
+    let (rig, o) = quick(real(), steps, approve_all()).await;
+    for (i, (t, _)) in o.iter().enumerate() {
+        assert!(t.starts_with("status: SUCCESS"), "call {i}: {t}");
+    }
+    let chars: String = app.key_chars().into_iter().collect();
+    assert_eq!(chars.len(), 32, "every key arrived once: {chars}");
+    assert!(
+        chars == format!("{}{}", "a".repeat(16), "b".repeat(16))
+            || chars == format!("{}{}", "b".repeat(16), "a".repeat(16)),
+        "the two inputs interleaved: {chars}"
+    );
+    let evs = rig.events().await;
+    let acts = of(&evs, "ComputerActionPerformed");
+    assert_eq!(acts.len(), 2, "{acts:?}");
+    assert_eq!(rig.approvals_of("computer.key").len(), 2);
+}
+
+/// QUAL-PX-069 (real helper, failure injection): the real helper is killed
+/// after the application received keys of an input and before the result;
+/// the input is of unknown outcome, the next input is OUTCOME_UNKNOWN without
+/// being sent, only a new session with a fresh observation reconciles, and
+/// exactly one UNKNOWN receipt exists.
+#[cfg(target_os = "macos")]
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "needs Accessibility + Screen Recording for this process and an unlocked screen: services/modbit-actuator-macos/scripts/ax-tests.sh"]
+async fn qual_px_069_real_helper_killed_after_delivery_latches_until_a_new_session_observes() {
+    let app = fixture_app::Fixture::launch();
+    let steps = vec![
+        start(fixture_app::BUNDLE_ID),
+        fx(call("computer.state", json!({}))),
+        // 2 the input the helper dies in.
+        fx(call("computer.key", json!({"keys": vec!["a"; 16]}))),
+        // 3 the next input: refused, never sent.
+        fx(call("computer.key", json!({"keys": ["b"]}))),
+        // 4 the session went with the helper.
+        fx(call("computer.state", json!({}))),
+        // 5 a new session (the relaunched helper), still latched until it observes.
+        fx(
+            json!({"delay_ms": 1500, "calls": [{"name": "computer.start", "args": {"application": fixture_app::BUNDLE_ID, "reason": "test"}}]}),
+        ),
+        fx(call("computer.key", json!({"keys": ["b"]}))),
+        fx(call("computer.state", json!({}))),
+        // 8 after the fresh observation an input runs again.
+        fx(call("computer.key", json!({"keys": ["c"]}))),
+        fx(call("computer.release", json!({}))),
+    ];
+    let mut rig = run(real(), steps, approve_all()).await;
+    let first = rig.view_attached().await;
+    assert!(first.attached && first.actuator_pid != 0, "{first:?}");
+    // Kill the real helper the moment the application has keys of the input.
+    let t0 = std::time::Instant::now();
+    while app.keys().len() < 2 {
+        assert!(
+            t0.elapsed() < Duration::from_secs(WAIT_SECS),
+            "no key of the input reached the application"
+        );
+        tokio::time::sleep(Duration::from_millis(2)).await;
+    }
+    kill_pid(first.actuator_pid);
+    rig.finish().await;
+    let o = rig.outs();
+    let delivered_before_kill = app.key_chars().iter().take_while(|c| **c == 'a').count();
+    assert!(
+        (2..16).contains(&delivered_before_kill),
+        "the helper died mid-input: {delivered_before_kill} of 16 keys"
+    );
+    assert!(o[2].0.starts_with("status: UNKNOWNOUTCOME"), "{}", o[2].0);
+    expect_refusal(&o, 3, "OUTCOME_UNKNOWN", "ask_user");
+    assert!(o[3].0.contains("\"input_sent\":false"), "{}", o[3].0);
+    expect_refusal(&o, 4, "SESSION_REQUIRED", "re_observe");
+    assert!(
+        o[5].0.starts_with("status: SUCCESS") && o[5].1["reconciling"] == true,
+        "{}",
+        o[5].0
+    );
+    expect_refusal(&o, 6, "OUTCOME_UNKNOWN", "ask_user");
+    assert!(o[7].1["reconciled"].is_object(), "{}", o[7].0);
+    assert!(o[8].0.starts_with("status: SUCCESS"), "{}", o[8].0);
+    // The application never saw the refused inputs: no 'b'; one 'c' after.
+    let chars: String = app.key_chars().into_iter().collect();
+    assert!(
+        !chars.contains('b'),
+        "a refused input reached the application: {chars}"
+    );
+    assert!(chars.ends_with('c'), "{chars}");
+    let evs = rig.events().await;
+    assert_eq!(of(&evs, "ComputerLatched").len(), 1);
+    let resolved = of(&evs, "ComputerLatchResolved");
+    assert_eq!(resolved.len(), 1);
+    assert_eq!(resolved[0]["payload"]["payload"]["by"], "fresh_observation");
+    let r = receipts(&evs);
+    assert_eq!(
+        r.iter()
+            .filter(|x| x["status"] == "UNKNOWN_OUTCOME")
+            .count(),
+        1,
+        "{r:?}"
+    );
+    // A new helper serves the new session.
+    let now = rig.view_attached().await;
+    assert!(now.attached, "{now:?}");
+    assert_ne!(now.actuator_pid, first.actuator_pid);
+    assert!(process_gone(first.actuator_pid, WAIT_SECS).await);
+}
+
 impl Rig {
     async fn presence(&self) -> modbit_protocol::v1::ComputerPresenceView {
         use modbit_protocol::v1::GetComputerPresence;

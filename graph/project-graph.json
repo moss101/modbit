@@ -36688,7 +36688,7 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-069",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "WIRED",
+   "status": "REAL_TESTING",
    "evidence": [
     "commit:7fcd48ad",
     "run:38990216920",
@@ -36697,7 +36697,12 @@
     "test:services/modbit-core/tests/px_computer.rs::qual_px_069_a_crash_after_delivery_latches_and_only_a_new_session_observing_reconciles",
     "commit:9da0a2b0",
     "commit:c472e1cf",
-    "commit:390bdf71"
+    "commit:390bdf71",
+    "artifact:evidence/m10/PX-069/real-mac-run-2026-11-09.txt",
+    "artifact:evidence/m10/PX-069/mutation-checks-2026-11-09.txt",
+    "artifact:evidence/m10/PX-069/TASK_CARD.md",
+    "test:services/modbit-core/tests/px_computer.rs::qual_px_069_real_helper_a_document_and_a_modal_dialog_are_driven_by_accessibility_alone",
+    "test:services/modbit-core/tests/px_computer.rs::qual_px_069_real_helper_killed_after_delivery_latches_until_a_new_session_observes"
    ],
    "notes": [
     {
@@ -36705,10 +36710,16 @@
      "from": "IMPLEMENTING",
      "to": "WIRED",
      "note": "graph integration 2026-10-17 on main dbe83fc9: The Computer Runtime Core (16 tools, 25 typed refusals, unknown-outcome latch, single controller, watchdog) is wired through production routing against a fixture actuator; QUAL-PX-069 requires the real macOS actuator and the stop-ordering r Open: real OS actuator (PX-071, PR #82) not on main; QUAL needs it with fixture apps; PR #89: Stop recorded after the in-flight result (flaky qual_px_069_the_on_screen_stop on Ubuntu) not landed; positive credential entry into native secure fields not built (refusal only)"
+    },
+    {
+     "at": "2026-11-09T18:00:02Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "2026-11-09: QUAL-PX-069 on the real macOS helper and a three-application fixture suite on the owner's Mac (19 real-Mac tests pass); two defects found and fixed there (window choice at start on macOS 27, a sheet could not be answered); latch mutation killed on the real helper"
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:56Z"
+   "status_changed_on": "2026-11-09T18:00:02Z"
   },
   {
    "id": "PX-070",

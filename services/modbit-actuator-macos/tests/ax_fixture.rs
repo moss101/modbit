@@ -55,6 +55,7 @@ unsafe extern "C" {
     fn CGEventCreateMouseEvent(source: *const c_void, ty: u32, p: Pt, button: u32) -> *mut c_void;
     fn CGEventPost(tap: u32, e: *mut c_void);
     fn CGWarpMouseCursorPosition(p: Pt) -> i32;
+    fn CGEventSourceSecondsSinceLastEventType(state: i32, ty: u32) -> f64;
 }
 #[link(name = "CoreFoundation", kind = "framework")]
 unsafe extern "C" {
@@ -94,6 +95,13 @@ fn synthetic_hid_nudge() {
         std::thread::sleep(std::time::Duration::from_millis(60));
         CGWarpMouseCursorPosition(at);
     }
+}
+
+/// Seconds since the hardware event counter last moved: the counter the
+/// helper's human-input monitor reads (HID system state, any event type).
+fn hid_idle_secs() -> f64 {
+    // SAFETY: a pure query; state 1 = HID system state, type ~0 = any event.
+    unsafe { CGEventSourceSecondsSinceLastEventType(1, u32::MAX) }
 }
 
 // ---------------------------------------------------------------- a control session
@@ -612,7 +620,10 @@ async fn a_frame_is_the_canvas_the_secure_field_is_black_and_a_coordinate_click_
     eprintln!("click rung: {}", p.modality_reason);
 }
 
-#[tokio::test]
+// Multi-threaded: the input runs in a spawned task while this test waits for
+// its keys with a blocking sleep; on a one-thread runtime that wait would
+// starve the task and the input would never be sent.
+#[tokio::test(flavor = "multi_thread")]
 #[ignore = "needs Accessibility + Screen Recording and an unlocked screen: services/modbit-actuator-macos/scripts/ax-tests.sh"]
 async fn stop_halts_an_input_in_flight_within_500_ms_and_the_application_sees_no_more_keys() {
     let fx = Fixture::launch();
@@ -694,13 +705,15 @@ async fn stop_halts_an_input_in_flight_within_500_ms_and_the_application_sees_no
 
 #[tokio::test]
 #[ignore = "needs Accessibility + Screen Recording and an unlocked screen: services/modbit-actuator-macos/scripts/ax-tests.sh"]
-async fn synthesised_events_are_never_a_person_not_the_helpers_not_anyone_elses() {
+async fn the_helpers_own_events_are_never_a_person_and_anothers_count_as_the_hardware_counter_says()
+{
     let fx = Fixture::launch();
     let mut s = Sess::start(&fx, wire::Scope::App).await;
     let t = s.read(0).await;
     let ver = t.window.as_ref().unwrap().version;
     let mut events = s.a.events();
-    // The helper's own synthesised keys (delivered to the process).
+    // CUC-D04: the helper's own synthesised keys (delivered to the process)
+    // are never a person, on any macOS.
     let r = s
         .perform(
             "",
@@ -711,14 +724,7 @@ async fn synthesised_events_are_never_a_person_not_the_helpers_not_anyone_elses(
         )
         .await;
     assert_eq!(code(&r), "OK", "{r:?}");
-    // Events posted at the HID tap by another process (what an automation
-    // tool does): the hardware idle counter the helper watches is not reset by
-    // them either - measured, V01 - so they do not park the controller.
-    let before = cursor();
-    synthetic_hid_nudge();
-    synthetic_hid_nudge();
     tokio::time::sleep(Duration::from_millis(400)).await;
-    assert_eq!(cursor(), before, "the nudge was undone");
     let ping = call(
         &s.a,
         Call::Ping(wire::PingRequest {
@@ -728,12 +734,60 @@ async fn synthesised_events_are_never_a_person_not_the_helpers_not_anyone_elses(
     .await;
     assert!(
         matches!(ping, Ok(Reply::Ping(ref p)) if !p.human_active),
-        "synthetic events counted as a person: {ping:?}"
+        "the helper's own events counted as a person: {ping:?}"
     );
     assert!(
         events.try_recv().is_err(),
-        "a HumanInput event for synthetic input"
+        "a HumanInput event for the helper's own input"
     );
+    // Events another process posts at the HID tap (what an automation tool
+    // does). CUC-D04 excludes only the helper's own events; whether these move
+    // the hardware counter is the platform's answer, not the helper's (V01 on
+    // an earlier macOS measured no; macOS 27 measures yes). The helper must
+    // agree with the counter: a person is whatever moved it.
+    // Start on a whole pixel: a warp lands on one, so the nudge's warp back is exact.
+    let at = cursor();
+    // SAFETY: a warp posts no event.
+    unsafe {
+        CGWarpMouseCursorPosition(Pt {
+            x: at.x.round(),
+            y: at.y.round(),
+        });
+    }
+    tokio::time::sleep(Duration::from_millis(1500)).await;
+    let idle_before = hid_idle_secs();
+    assert!(
+        idle_before > 1.0,
+        "someone is using the machine ({idle_before:.2} s idle): the comparison below needs a quiet one"
+    );
+    let before = cursor();
+    synthetic_hid_nudge();
+    synthetic_hid_nudge();
+    let idle_after = hid_idle_secs();
+    let counter_moved = idle_after < idle_before;
+    tokio::time::sleep(Duration::from_millis(400)).await;
+    assert_eq!(cursor(), before, "the nudge was undone");
+    let ping = call(
+        &s.a,
+        Call::Ping(wire::PingRequest {
+            control_id: s.control.clone(),
+        }),
+    )
+    .await;
+    let Ok(Reply::Ping(p)) = ping else {
+        panic!("{ping:?}")
+    };
+    eprintln!(
+        "V01 re-measured: another process's HID-tap posts {} the hardware counter ({idle_before:.2} s -> {idle_after:.2} s); helper human_active={}",
+        if counter_moved { "move" } else { "do not move" },
+        p.human_active
+    );
+    assert_eq!(
+        p.human_active, counter_moved,
+        "the helper disagrees with the hardware counter about another process's events"
+    );
+    // The next input follows: parked (HUMAN_ACTIVE until the cooldown) when the
+    // counter said a person, delivered when it did not.
     let r = s
         .perform(
             "",
@@ -743,10 +797,14 @@ async fn synthesised_events_are_never_a_person_not_the_helpers_not_anyone_elses(
             }),
         )
         .await;
-    assert_eq!(code(&r), "OK", "{r:?}");
+    assert_eq!(
+        code(&r),
+        if counter_moved { "HUMAN_ACTIVE" } else { "OK" },
+        "{r:?}"
+    );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 #[ignore = "needs Accessibility + Screen Recording and an unlocked screen: services/modbit-actuator-macos/scripts/ax-tests.sh"]
 async fn the_core_going_away_stops_the_helper_mid_input_and_killing_the_helper_mid_input_is_noticed()
  {

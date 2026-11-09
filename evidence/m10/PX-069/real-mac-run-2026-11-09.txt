@@ -1,0 +1,53 @@
+# QUAL-PX-069 / QUAL-PX-071 real-Mac run, 2026-11-09 (services/modbit-actuator-macos/scripts/ax-tests.sh, MODBIT_REQUIRE_AX_TESTS=1)
+# machine: macOS 27.0.1 (26A434), arm64, Apple M5 Pro
+# started only after 120 s with no HID input (the person away); the owner's working Mac, authorized for this on 2026-11-09
+started at idle=130s 2026-11-09T17:55:46Z head=599d4c85363d20ed36b1000d392728128c69dacd
+running 2 tests
+test qual_px_071_the_real_helper_serves_the_real_core_and_a_missing_permission_is_a_typed_refusal ... 
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+ok
+test qual_px_072_the_core_launches_only_a_helper_the_signed_manifest_pins_and_rolls_back ... modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: no actuator attached: the actuator could not be verified: NO_VERIFIED_HELPER: no bundled helper could be used (0.2.0 -> DIGEST_MISMATCH: sha256 6f4316101d72a53c296a0fd16968d518db1ac3c2ac8973de181b24040cffcb3f, the manifest pins 64f5c709cac00790c57f77c715701eddddac025a8a18845a4fdd77afef3226c6; 0.1.0 -> DIGEST_MISMATCH: sha256 6f4316101d72a53c296a0fd16968d518db1ac3c2ac8973de181b24040cffcb3f, the manifest pins 64f5c709cac00790c57f77c715701eddddac025a8a18845a4fdd77afef3226c6)
+ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 48 filtered out; finished in 9.07s
+helper permissions: {"platform":"macos","accessibility":true,"screen_recording":true,"secure_desktop":false}
+running 1 test
+test qual_px_071_the_real_core_drives_a_real_application_through_the_real_helper ... 
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 49 filtered out; finished in 6.70s
+running 4 tests
+test qual_px_069_real_helper_a_document_and_a_modal_dialog_are_driven_by_accessibility_alone ... 
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+ok
+test qual_px_069_real_helper_killed_after_delivery_latches_until_a_new_session_observes ... modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+ok
+test qual_px_069_real_helper_refusals_are_typed_and_the_application_sees_nothing ... modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+ok
+test qual_px_069_real_helper_two_simultaneous_inputs_run_one_at_a_time ... modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+ok
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 21.48s
+running 12 tests
+test a_frame_is_the_canvas_the_secure_field_is_black_and_a_coordinate_click_lands_where_it_was_aimed ... 
+click rung: AXPress on the element under the point; the pointer did not move
+ok
+test a_press_runs_in_the_background_and_the_real_cursor_does_not_move ... ok
+test a_stale_snapshot_is_refused_and_nothing_is_actuated ... ok
+test a_swapped_identity_is_not_the_approved_application ... ok
+test a_value_is_set_through_the_tree_and_a_secure_field_is_refused_every_way ... ok
+test an_unlocked_screen_with_the_permissions_reports_them_and_a_denied_one_refuses_every_call ... ok
+test closing_the_connection_stops_injection_within_500_ms ... QUAL-PX-071: Core disconnect -> helper gone in 4 ms (exit status: 0); last key -20 ms after
+ok
+test stop_halts_an_input_in_flight_within_500_ms_and_the_application_sees_no_more_keys ... V01/QUAL-PX-071: Stop->last injected event = -19.5 ms (stop answered after 6.7 ms; helper reports 6 ms); 5 of 600 keys delivered
+ok
+test text_is_typed_into_the_focused_field_without_taking_the_keyboard ... V01: typing used the "ax" rung: inserted through the focused element's selected text
+ok
+test the_core_going_away_stops_the_helper_mid_input_and_killing_the_helper_mid_input_is_noticed ... ok
+test the_helpers_own_events_are_never_a_person_and_anothers_count_as_the_hardware_counter_says ... V01 re-measured: another process's HID-tap posts move the hardware counter (2.13 s -> 0.07 s); helper human_active=true
+ok
+test the_tree_lists_the_known_elements_is_bounded_and_stable_and_never_carries_a_secret ... V02: 12 nodes, digest stable across 5 reads
+ok
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 14.06s
+exit=0 2026-11-09T17:56:41Z

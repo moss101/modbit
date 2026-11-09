@@ -450,6 +450,41 @@ impl ComputerRuntime {
                 ),
             ));
         }
+        // The list above carries the window server's windows: no focus or
+        // main state, front-most first. An application can own a window in
+        // front of its real one (macOS 27 gives an application with a text
+        // view an untitled Siri panel), so "the first one" can be the wrong
+        // window. Ask the actuator about this one process: its answer carries
+        // the accessibility focus and main state, and the identity must still
+        // be the one matched.
+        let reply = a
+            .call(
+                Call::ResolveApplication(wire::ResolveApplicationRequest {
+                    bundle_id: app.identity.bundle_id.clone(),
+                    name: String::new(),
+                    pid: app.identity.pid,
+                }),
+                self.shared.cfg.observe_deadline,
+            )
+            .await
+            .map_err(|e| call_refusal(&e, true))?;
+        let Reply::ResolveApplication(r) = reply else {
+            return Err(Refusal::new(
+                Code::WindowUnverifiable,
+                "the actuator could not resolve the application",
+            ));
+        };
+        let Some(app) = r
+            .application
+            .as_ref()
+            .map(app_from_wire)
+            .filter(|n| n.identity.same_as(&app.identity))
+        else {
+            return Err(Refusal::new(
+                Code::WindowUnverifiable,
+                "the application running as that process is no longer the one that was matched (its identity changed)",
+            ));
+        };
         let chosen = match window {
             Some(id) => app.windows.iter().find(|w| w.id == id).cloned(),
             None => app

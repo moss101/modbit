@@ -1,0 +1,36 @@
+# PX-069 mutation checks, 2026-11-09, on branch wip/px-069-real-helper (base main 5a837a42).
+# Each mutation was applied to committed source, the named tests run, the source restored with
+# git checkout and touched (so the next build is not the mutated one), and the suite rerun green.
+
+== A. QUAL-PX-069 "removing the latch lets a second input through and fails the suite"
+mutation: the latch gate at the top of ComputerRuntime::plan removed (crates/computer/src/runtime/act.rs:
+  'if let Some(l) = self.lock().latches.get(&ctx.task_id) { return Err(Self::latched_refusal(l)); }')
+test result: FAILED. 40 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.75s
+...
+
+qual_px_069_killing_the_actuator_mid_action_leaves_the_outcome_unknown_and_the_latch_holds --- FAILED
+qual_px_069_a_crash_after_delivery_latches_and_only_a_new_session_observing_reconciles --- FAILED
+    qual_px_069_a_crash_after_delivery_latches_and_only_a_new_session_observing_reconciles
+    qual_px_069_killing_the_actuator_mid_action_leaves_the_outcome_unknown_and_the_latch_holds
+test result: FAILED. 0 passed; 2 failed; 1 ignored; 0 measured; 47 filtered out; finished in 4.79s
+real helper (idle-gated, this Mac):
+started at idle=125s 2026-11-09T17:58:46Z head=599d4c85363d20ed36b1000d392728128c69dacd
+thread 'qual_px_069_real_helper_killed_after_delivery_latches_until_a_new_session_observes' (21702656) panicked at services/modbit-core/tests/px_computer.rs:770:5:
+  left: "SESSION_REQUIRED"
+ right: "OUTCOME_UNKNOWN"
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 49 filtered out; finished in 8.29s
+=> killed by 2 runtime unit tests, 2 fixture-actuator Core tests and the real-helper Core test.
+
+== B. Window choice at session start (defect found on this Mac, fixed here)
+mutation: the ResolveApplication call added to ComputerRuntime::start_checks removed (the window chosen
+  from ListApplications, the window server's list, as before the fix)
+  runtime::tests::a_session_starts_on_the_focused_window_not_the_front_most_one ... FAILED
+  left: String("w-panel")  right: "w-doc"
+=> killed.
+
+== C. Answering a sheet (defect found on this Mac, fixed here)
+mutation: 'if window.modal && !plan.in_sheet' back to 'if window.modal' (crates/computer/src/runtime/act.rs)
+  runtime::tests::a_sheet_is_answered_and_the_window_it_blocks_is_refused ... FAILED (tests.rs:788)
+=> killed.
+
+restored: cargo test -p modbit-computer -> 42 passed; cargo test -p modbit-core --test px_computer -> 43 passed, 7 ignored (the real-Mac tests); real-Mac suite -> real-mac-run-2026-11-09.txt (19 passed).
