@@ -1,0 +1,74 @@
+=== headless.rs macOS hang: reproduction, root cause, fix, mutation (2026-11-09)
+=== CI hangs: run 42483653881 attempt 1, macOS job 128740742625 (qual_ev_0126, 2026-11-08 13:38Z);
+===           run 42528104994 attempt 1, macOS job 128876095414 (qual_px_000, 2026-11-08 22:17Z); both cancelled at the 75-minute job timeout.
+
+=== local loops before the fix (cargo test binary for apps/cli/tests/headless.rs, run directly)
+px000-serial   --test-threads=1 qual_px_000                 pass=60 fail=0
+ev0126-serial  --test-threads=1 qual_ev_0126                pass=30 fail=0
+both-parallel  --test-threads=8 qual_px_000 qual_ev_0126    pass=30 fail=0
+full-file-load --test-threads=8, 36 busy loops on 18 cores  iteration 8 hung (the bounded call failed it at 183 s);
+               iterations 1-7 passed; later iterations ran rebuilt binaries and are not counted
+
+=== root cause: std creates a child's pipes with pipe() and sets FD_CLOEXEC afterwards on macOS
+rustc 1.97.1 library/std/src/sys/pipe/unix.rs:
+  28: cvt(libc::pipe2(fds.as_mut_ptr(), libc::O_CLOEXEC))?;   (android, freebsd, linux, netbsd, openbsd, ...)
+  34: cvt(libc::pipe(fds.as_mut_ptr()))?;                    (every other target, macOS included)
+  38: fd0.set_cloexec()?;
+  39: fd1.set_cloexec()?;
+A process another thread spawns between 34 and 39 inherits the write end. Here the approver thread's
+`approval list` pipe went to the main thread's `question answer --wait` CLI: `approval list` exited 0 but its
+stdout never reached EOF, so the approver never resolved the approval, and the `--wait` CLI waited on that
+approval for good. Standalone check (raw pipe()+fcntl in 4 threads, std spawns in 4 others): 84 and 143
+leaks of 20000 pipes with no gap, 6042 with a 50 us gap.
+
+=== fix: tests/support/bounded.rs SPAWN_LOCK, held across every spawn of the test binary
+regression test no_spawn_inherits_a_pipe_another_thread_is_creating (8 threads x 400 `modbit-cli platform`
+calls, 4 threads of /bin/sh probes reporting any pipe they hold above stdio):
+mutation (lock removed: `let _ = &SPAWN_LOCK;`), 20 runs:  failed 20 of 20
+restored, 20 runs:                                         failed 0 of 20
+sample failure without the lock (100 calls per thread): 6 of 192 probes inherited another call's pipe (descriptors: ["28", "13\n18", "39", "36\n37\n47", "24\n26", "35"])
+
+=== after the fix: full headless.rs, --test-threads=8, 36 busy loops on 18 cores
+fixed full-file under load: pass=30 fail=0
+
+=== excerpt of the reproduced hang: full headless.rs under CPU load (36 busy loops on 18 cores), iteration 8 of 15, before SPAWN_LOCK
+=== (local macOS 27.0.1 arm64, rustc 1.97.1; environment prefix of each command line dropped, long lines cut at 220 chars, temp paths shortened)
+running 8 tests
+test qual_px_105_052_116_skill_trust_inventory_and_task_budget_through_the_cli ... ok
+test imp_ev_0142_doctor_trace_export_verify_and_handoff_through_the_cli ... ok
+test qual_ev_0181_0210_an_extension_skill_installs_lists_runs_its_procedure_and_survives_removal_and_reload ... ok
+test qual_ev_0181_a_procedure_that_outlives_the_inline_grace_is_waited_for_and_the_task_completes ... ok
+test a_hung_cli_call_is_killed_and_fails_with_its_diagnostics ... ok
+test qual_px_000_headless_cli_task_lifecycle ... ok
+test qual_ev_0111_0268_context_show_reports_compaction_epochs_and_the_cached_prefix has been running for over 60 seconds
+test qual_ev_0126_an_identical_task_runs_the_same_through_the_desktop_client_and_the_headless_cli has been running for over 60 seconds
+test qual_ev_0111_0268_context_show_reports_compaction_epochs_and_the_cached_prefix ... ok
+test qual_ev_0126_an_identical_task_runs_the_same_through_the_desktop_client_and_the_headless_cli ... FAILED
+thread '<unnamed>' (10766933) panicked at apps/cli/tests/headless.rs:166:17:
+modbit-cli hung: exited (exit status: 0) but its stdout/stderr stayed open for 180s (a descendant holds them): "./target/debug/modbit-cli" "--data-dir" "$TMPDIR/.tmpyUUz2G/profile" "approval" "list" "--session" "a40765d2
+--- stdout ---
+--- stderr ---
+--- core.log ---
+last 1 of 1 lines of $TMPDIR/.tmpyUUz2G/profile/core.log:
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+--- processes for this profile ---
+77423     1 S          03:03 ./target/debug/modbit-core --data-dir $TMPDIR/.tmpyUUz2G/profile --idle-exit-secs 30
+77510 77423 S          03:02 ./target/debug/modbit-execd --data-dir $TMPDIR/.tmpyUUz2G/profile/execd --object-dir $TMPDIR/.tmpyUUz2G/profile/core/objects --orphan-grace-secs 60
+--- session a40765d253527ad2b272facadbb5d817 ---
+  StepSucceeded {"event_type":"StepSucceeded","output_ref":"ec39a1f92a310629050dd34a35779776766c0c9ea6831d07bc6a3ee18a5091f2"}
+  ToolsActivated {"event_type":"ToolsActivated","query":"invoked:git.worktree.close","tools":["git.worktree.close"]}
+  ToolCallProposed {"arguments_hash":"8131a6e5686dd8ca4a3288b356b4985bb91ae329ea50cbf5ef372de3c0b46d79","arguments_ref":"8131a6e5686dd8ca4a3288b356b4985bb91ae329ea50cbf5ef372de3c0b46d79","call_id":"call_4_0","capability_
+  ToolCallValidated {"event_type":"ToolCallValidated"}
+  ToolCallApprovalRequested {"approval_id":"01a1bdab-3a53-7843-97c6-7f81ed987460","decision":"APPROVAL_REQUIRED: Destructive effects require an approval bound to the intent (ALWAYS_ASK:DELETION)","event_type":"ToolCallAp
+  ApprovalRequested {"effect_class":"DESTRUCTIVE","event_type":"ApprovalRequested","expires_at":1794269877843,"intent_hash":"8131a6e5686dd8ca4a3288b356b4985bb91ae329ea50cbf5ef372de3c0b46d79","scope_json":"{\"ask_classes\
+  TaskWaiting {"event_type":"TaskWaiting","reason":"APPROVAL"}
+attention:
+attention items=1 at_offset=164
+  APPROVAL task=301deace8e777b94f5fc87be34a1bc99 ref=01a1bdab-3a53-7843-97c6-7f81ed987460 since=0
+    git.worktree.close asks for a Destructive effect (intent 8131a6e5686d)
+    -> ResolveApproval 01a1bdab-3a53-7843-97c6-7f81ed987460 (approve or deny)
+...
+thread 'qual_ev_0126_an_identical_task_runs_the_same_through_the_desktop_client_and_the_headless_cli' (10761721) panicked at apps/cli/tests/headless.rs:166:17:
+modbit-cli hung: still running after 180s, killed: "./target/debug/modbit-cli" "--data-dir" "$TMPDIR/.tmpyUUz2G/profile" "question" "answer" "--session" "a40765d253527ad2b272facadbb5d817" "--task" "301deace8e777b94f5fc87
+...
+test result: FAILED. 7 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 183.36s

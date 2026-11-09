@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2071,
+    "root_and_tooling": 2072,
     "docs_bytes": 2339419
   },
   "sections": [
@@ -1945,8 +1945,8 @@
     },
     {
       "path": "evidence/m10/IMP-EV-0126/TASK_CARD.md",
-      "bytes": 10500,
-      "sha256": "68c13320d0c4b39038ed9b7729c92a4d03b6c569e30761c096ce93d335f9eb93"
+      "bytes": 11059,
+      "sha256": "cf08248c615b808bbf3b681181f5c13439304abbab7123f01e965e848c761e77"
     },
     {
       "path": "evidence/m10/IMP-EV-0126/ci-run-36114892259.json",
@@ -5060,8 +5060,8 @@
     },
     {
       "path": "evidence/m2/PX-000/TASK_CARD.md",
-      "bytes": 2146,
-      "sha256": "5cf9f39130596ddca5e806db7ef5a2787bab2695de0dfe33b466e7481a0e4a0e"
+      "bytes": 3963,
+      "sha256": "492bb014e7d07b105433f68b76d3c4e532b1c53edcea08f3dd14f69d4ef6bd96"
     },
     {
       "path": "evidence/m2/PX-000/ci-run-34437627213-tests.log",
@@ -5077,6 +5077,11 @@
       "path": "evidence/m2/PX-000/evidence.json",
       "bytes": 1257,
       "sha256": "bac1e118d98795fbb10da1a0328369e557857f087391dd95b8f0a07bfb8bb88e"
+    },
+    {
+      "path": "evidence/m2/PX-000/headless-hang-2026-11-09.txt",
+      "bytes": 6436,
+      "sha256": "50903523dd928460b792c94b640c7887bd3a1d5287296666611123361be37343"
     },
     {
       "path": "evidence/m2/PX-014/TASK_CARD.md",
