@@ -2,13 +2,13 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-11-09",
+  "generated_on": "2026-11-11",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2075,
-    "docs_bytes": 2339419
+    "root_and_tooling": 2079,
+    "docs_bytes": 2325531
   },
   "sections": [
     {
@@ -59,8 +59,8 @@
       "section": "authority",
       "section_title": "Authority and orientation",
       "title": "Modbit — AI-Agent Build Dossier V3.3 EPR v1.1",
-      "bytes": 18515,
-      "sha256": "f8b210edca50f014bc0631ec67f9f4f49744007914730b113d1fbf6c53383757"
+      "bytes": 18551,
+      "sha256": "7a97e88d93f94cd25df65d49290a742c3b7c11663ac4c83279b2b9ec8fbe7f03"
     },
     {
       "path": "docs/01_START_HERE_FOR_BUILD_AGENTS.md",
@@ -77,8 +77,8 @@
       "section": "authority",
       "section_title": "Authority and orientation",
       "title": "Authority, Decision Register, and Conflict Resolution",
-      "bytes": 33270,
-      "sha256": "55523c6c81e2aad51a94c005d54240e5877e77f7788c9308e2b80e04be54b0e5"
+      "bytes": 33322,
+      "sha256": "e4820abe6198d06fce295fd830b0766da220c3fb1ea051a7485e6bf7e737d1a9"
     },
     {
       "path": "docs/03_ARCHITECTURAL_CONFLICTS_AND_SUPERSESSIONS.md",
@@ -86,8 +86,8 @@
       "section": "authority",
       "section_title": "Authority and orientation",
       "title": "Architectural Conflicts and Supersessions",
-      "bytes": 12498,
-      "sha256": "ea0fad94a60f65459b4eae3d43873cbf94ee73559d8d4b547f287d904302f5b9"
+      "bytes": 12148,
+      "sha256": "f3dcd205bf9076d04098dadafa7c05382ea5602816703571079ab588f7db2946"
     },
     {
       "path": "docs/04_REQUIREMENT_BASIS_AND_LIMITS.md",
@@ -131,8 +131,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Product Requirements and UX Specification",
-      "bytes": 12933,
-      "sha256": "50b1a953fbb80d4d3059e43888856ba569550e0d1becdc8b2760c1ea025dce88"
+      "bytes": 12964,
+      "sha256": "1a4c9cdf1ae4215d59c2ada5ecf0eb979cf8869d2c8d217ed465b11fccc482c1"
     },
     {
       "path": "docs/11_SYSTEM_ARCHITECTURE.md",
@@ -221,8 +221,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Workspace, Git, Worktrees, Diagnostics, and Trusted Code Surface",
-      "bytes": 8504,
-      "sha256": "3bdb3079f97ceaac3fdf2287d3d4caecdc0d26900e740ea9662ae53323879a98"
+      "bytes": 8423,
+      "sha256": "ac88a985ec35e5d9695d671f929ccf2b38d06db01d46ae111926b4b2ed11f7ee"
     },
     {
       "path": "docs/21_TERMINAL_EXECUTION_AND_SANDBOX.md",
@@ -302,8 +302,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Client surfaces and source-control integration",
-      "bytes": 26785,
-      "sha256": "007d247eda8fc4cc25bf241acbfaec9dd8876d70a3f62fc71b8c4f9270475a78"
+      "bytes": 26765,
+      "sha256": "956dcb378ad5efa258e2e63bdf4619469f0dca3d38292dd181d0182e116d66a2"
     },
     {
       "path": "docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
@@ -329,8 +329,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Desktop Frontend Implementation",
-      "bytes": 17927,
-      "sha256": "3a6b1f4176e5657368a336536d0a67c01e7479ae880d2d55130c5f99090fcd0c"
+      "bytes": 17934,
+      "sha256": "c4cad78dd26c840c6375d7c4ad8191be3ea8e1bf1a705e3728e324699f69cff6"
     },
     {
       "path": "docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md",
@@ -599,8 +599,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Product extension requirements, tasks and qualifications",
-      "bytes": 654723,
-      "sha256": "db81113d3b3e12473efe2f5382a99f5cd0b4a21e6ae5460c6ad49b1d54aa28c7"
+      "bytes": 636021,
+      "sha256": "88dbbfae3b041e3c6c2972413b435a012c4d87470e3b6ea30072cc4c55bf99a7"
     },
     {
       "path": "docs/63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
@@ -626,8 +626,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Agent-first workspace specification (clean-room)",
-      "bytes": 88529,
-      "sha256": "a6d515aba3f734f2a64789effd48ce6d1ceb57bc4bb64db61a860d1b1cbf08a7"
+      "bytes": 88649,
+      "sha256": "0849217491bc524c599031e8da9f58383ad4d0ea47148f50430cca1788963239"
     },
     {
       "path": "docs/66_NATIVE_COMPUTER_CONTROL_SPECIFICATION.md",
@@ -643,9 +643,9 @@
       "number": 67,
       "section": "verification",
       "section_title": "Verification and testing",
-      "title": "Workspace Editor specification (clean-room)",
-      "bytes": 22092,
-      "sha256": "ebbfeea104ec2266087b5b70601e5487fb54d5e0dab91031f1e1a05223fe4022"
+      "title": "Workspace Editor specification (clean-room) — WITHDRAWN",
+      "bytes": 22428,
+      "sha256": "2577c248d4acaaafe9d663b8e2fbb60a0a2b2bf6ae910311996c11f74cedb67e"
     },
     {
       "path": "docs/68_AUTOMATIONS_SPECIFICATION.md",
@@ -752,8 +752,8 @@
       "section": "delivery",
       "section_title": "Delivery and operations",
       "title": "Audit-driven capability completion specification",
-      "bytes": 41317,
-      "sha256": "61a2e122d1c88ef01550f8180a1a34de55724f8053f0937b6d16f399350be0b2"
+      "bytes": 41461,
+      "sha256": "8965d29b267a5962780337207a80a0e266d69136ec8431ea233d3e9f2e3ea011"
     },
     {
       "path": "docs/80_ANTI_SUPERFICIAL_IMPLEMENTATION_STANDARD.md",
@@ -914,8 +914,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Dossier maintenance log",
-      "bytes": 146097,
-      "sha256": "52641648eeaf99f90409046fc1d2229cf4e742cf5da1bce95201c5e623a8f3c0"
+      "bytes": 150636,
+      "sha256": "03d8d40fde46d5128838479ea11c3dcccde6d640919a3902265d23f264643c84"
     },
     {
       "path": "docs/98_BUILD_MANIFEST.md",
@@ -962,6 +962,11 @@
       "path": "docs/decisions/DR-GOV-2026-10-30-008-bind-trajectory-metrics-to-px-189.md",
       "bytes": 1823,
       "sha256": "bf0f93d05528f3c253046158c7e18f76458ba784999e75c3cf004e40dd56903c"
+    },
+    {
+      "path": "docs/decisions/DR-GOV-2026-11-11-009-withdraw-the-workspace-editor.md",
+      "bytes": 5653,
+      "sha256": "0542dd30c46ce9fb8bc9086322dddef438a13ea5ead181d1836e80fed5f6bd6b"
     },
     {
       "path": "docs/decisions/DR-M0-002-locked-architecture-file-guard.md",
@@ -1065,8 +1070,8 @@
     },
     {
       "path": "docs/decisions/DR-PX-2026-10-03-009-workspace-editor.md",
-      "bytes": 10735,
-      "sha256": "395ce8a3a048b0cbbe9ceceef41853fcb3865113c74a77f2de95b6c2de787037"
+      "bytes": 11153,
+      "sha256": "c1be8361e5d7f0de6a2787453d077df79d7d5f0c22949ead4f8bec7f8fe17d9c"
     },
     {
       "path": "docs/decisions/DR-PX-2026-10-03-010-automations.md",
@@ -1125,8 +1130,8 @@
     },
     {
       "path": "docs/decisions/README.md",
-      "bytes": 10488,
-      "sha256": "063ce1263209688a7948246a7bc1fecaf4f5f1a1b01b6e1f64f461fa0800c117"
+      "bytes": 10976,
+      "sha256": "9f03b6156bc144ebbcc783c7f9195dab91ee0f41e67f2bd3d901e586d1c2c9b5"
     },
     {
       "path": "evidence/dossier-epr-v1.1/baseline.json",
@@ -1267,6 +1272,21 @@
       "path": "evidence/dossier-gov-008/validation.json",
       "bytes": 1808,
       "sha256": "f50c3729f5996902fac5fb232c6e71588a0e72e547dd2bb17a86ee66f1fa0156"
+    },
+    {
+      "path": "evidence/dossier-gov-009/baseline.json",
+      "bytes": 1695,
+      "sha256": "33f91d5b6e5b2498db285934dbb74396fb6a9f7f01e921c23263986a574390d9"
+    },
+    {
+      "path": "evidence/dossier-gov-009/tests.log",
+      "bytes": 7781,
+      "sha256": "1cc27e702cce8ef13f8f21c13be2418ec123f4dbccda03c07f8a66b1d9e601d5"
+    },
+    {
+      "path": "evidence/dossier-gov-009/validation.json",
+      "bytes": 3724,
+      "sha256": "67f1c48e14749b95569263b8b7cacf6201111945f0f0a91554b9fec5c1d5650f"
     },
     {
       "path": "evidence/dossier-gov/baseline.json",
@@ -11240,18 +11260,18 @@
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 47139,
-      "sha256": "391072136bc50325b5d52b34dfa8a822d86d09c915597e2204926e64f3694de9"
+      "bytes": 47210,
+      "sha256": "2e6048af42fc1a9e36ca7b80d9512919b512be30fdd3e4c80596ea77053c59a2"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2552710,
-      "sha256": "39998aac62bf92e2be481656446e2427a6888a9239c3f8981458b0df380c0841"
+      "bytes": 2532794,
+      "sha256": "5d0d2e3cb0c0f6830eabb87430c511e650bb977265f4ebccf4963755095b590f"
     },
     {
       "path": "tools/build_graph.py",
-      "bytes": 66687,
-      "sha256": "3df787bdd1053b447b28e905d9d859d4c4f440e8a2761649b122e0c1983b04b0"
+      "bytes": 69027,
+      "sha256": "33013fadc1f4475cd01d3ab92f7c9f3a82ec79b1e906f4d4f4e124895f192a67"
     },
     {
       "path": "tools/build_manifest.py",
@@ -11300,8 +11320,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 87037,
-      "sha256": "c2c66987337777856d41eb10236756d173f2dccf9440b37effd7363259cc6af8"
+      "bytes": 92072,
+      "sha256": "5ab280b07f11d9a9246dec68b53ca8bef1f0d5311476b9678c5d224ff3511235"
     }
   ],
   "renames_v3_to_v3_1": {

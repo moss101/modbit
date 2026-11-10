@@ -1,6 +1,8 @@
-# Workspace Editor specification (clean-room)
+# Workspace Editor specification (clean-room) — WITHDRAWN
 
-> **Authority:** DR-PX-2026-10-03-009 (`decisions/DR-PX-2026-10-03-009-workspace-editor.md`), status **proposed** until the owner ratifies it. Rows PX-077..PX-081 in `62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md` are NOT_STARTED and none may start before the record is accepted and DOC-PX-009 is COMPLETE.  
+> **WITHDRAWN 2026-11-11.** DR-PX-2026-10-03-009 was rejected by the owner (`DR-GOV-2026-11-11-009`, "drop IDE"). This document is not authoritative for any build: rows PX-077..081 are withdrawn, no task card or scenario exists for them, and MOD-SURF-002 and MOD-IDE-002 stand as written. It is kept as provenance of the rejected proposal; its requirements (WED-*) must not be cited as scope.
+
+> **Authority:** DR-PX-2026-10-03-009 (`decisions/DR-PX-2026-10-03-009-workspace-editor.md`), status **rejected** (2026-11-11, `DR-GOV-2026-11-11-009`). Rows REQ-PX-077..081 in `62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md` are withdrawn DEFERRED rows with no task.  
 > **Nature:** a product specification in Modbit's own words and design. Provenance (clean-room posture), the four verification tags (LIVE, DISK, STATIC, UNVERIFIED) and the evidence key are those of `65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md` sections 2, 3 and 12 and are not repeated. It records functional facts and says how well each is known; it is not an implementation and not proof that anything exists.
 
 ## 1. Purpose
@@ -9,7 +11,7 @@ Review in Modbit is read-oriented and revision-bound: a person can see exactly w
 
 ## 2. Constraints and ownership
 
-No canonical subsystem is added. The renderer holds no authority and every effect goes through the Core (doc 81, REQ-EV-0076). Decision: `MOD-EDIT-001` in `02_AUTHORITY_AND_DECISIONS.md` (PROVISIONAL until the record is accepted). Common failure, cancellation, idempotency and restart semantics are those of doc 65 section 8.
+No canonical subsystem is added. The renderer holds no authority and every effect goes through the Core (doc 81, REQ-EV-0076). Decision: `MOD-EDIT-001` in `02_AUTHORITY_AND_DECISIONS.md` (REJECTED). Common failure, cancellation, idempotency and restart semantics are those of doc 65 section 8.
 
 | Row | Owner | Tier |
 |---|---|---|

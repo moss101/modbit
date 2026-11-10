@@ -487,7 +487,7 @@ Five goals sit beside the agent-first workspace and each has its own Decision Re
 | Goal or non-goal | Where it is specified, or why it is out |
 |---|---|
 | Local operating-system (native computer) control and browser control hardening | DR-PX-2026-10-03-008, doc 66, PX-069 to PX-076. |
-| A code editor | DR-PX-2026-10-03-009, doc 67, PX-077 to PX-081 (a transactional Workspace Editor; no Monaco, no Code-OSS, no IDE). |
+| A code editor | Dropped: DR-PX-2026-10-03-009 (a transactional Workspace Editor, doc 67, PX-077 to PX-081) was rejected on 2026-11-11 by DR-GOV-2026-11-11-009; Modbit builds no editor and no IDE, and review stays the place where agent work is judged. |
 | Automations | DR-PX-2026-10-03-010, doc 68, PX-082 to PX-086 (through the existing Scheduler, policy and approval owners). |
 | A plugin marketplace, the Customize surface, hooks, MCP trust | DR-PX-2026-10-03-011, doc 69, PX-087 to PX-093. |
 | An Electron change: inset title bar, translucency opt-in, native integration, fuses, update application, version policy | DR-PX-2026-10-03-012, doc 78, PX-094 to PX-098. PX-049 here is limited to constructor size options and quit handling. |

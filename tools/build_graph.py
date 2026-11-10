@@ -59,6 +59,8 @@ GOV6_CHANGE = "DR-GOV-2026-09-24-006"
 GOV7_CHANGE = "DR-GOV-2026-09-25-007"
 # DOC-GOV-008 (docs/97): the PX-189 production-wiring line binds the committed trajectory metrics module to its producer.
 GOV8_CHANGE = "DR-GOV-2026-10-30-008"
+# DOC-GOV-009 (docs/97): the Workspace Editor is withdrawn. DR-PX-2026-10-03-009 is rejected, REQ-PX-077..081 become withdrawn DEFERRED rows, MOD-SURF-002 and MOD-IDE-002 stand.
+GOV9_CHANGE = "DR-GOV-2026-11-11-009"
 PX_STAGES = [("DOC-PX-001", "DOC-GOV-004", "Product extension stage A: authority, PX ledger tooling, phased releases, governance tiering"),
              ("DOC-PX-002", "DOC-PX-001", "Product extension stage B: client surfaces and source-control integration"),
              ("DOC-PX-003", "DOC-PX-002", "Product extension stage C: agent competence contracts and benchmarks"),
@@ -77,7 +79,7 @@ PX_PARITY = [
     ("DR-PX-2026-10-03-008", "DOC-PX-008", 69, 76, "66_NATIVE_COMPUTER_CONTROL_SPECIFICATION.md", "Native computer control and browser control hardening, PX-069..076",
      "Proposed: PX-069..076, doc 66; semantic-first Computer Runtime, per-call exact-intent approvals, helper process, browser hardening"),
     ("DR-PX-2026-10-03-009", "DOC-PX-009", 77, 81, "67_WORKSPACE_EDITOR_SPECIFICATION.md", "Workspace Editor, PX-077..081",
-     "Proposed: PX-077..081, doc 67; transactional editor with scoped supersession of MOD-IDE-002 and MOD-SURF-002"),
+     "Proposed: PX-077..081, doc 67; transactional editor with scoped supersession of MOD-IDE-002 and MOD-SURF-002 (rejected 2026-11-11 by DR-GOV-2026-11-11-009; the rows are withdrawn DEFERRED rows)"),
     ("DR-PX-2026-10-03-010", "DOC-PX-010", 82, 86, "68_AUTOMATIONS_SPECIFICATION.md", "Automations, PX-082..086",
      "Proposed: PX-082..086, doc 68; automations through the existing Scheduler, policy and approval owners"),
     ("DR-PX-2026-10-03-011", "DOC-PX-011", 87, 93, "69_EXTENSION_MARKETPLACE_AND_CUSTOMIZE_SPECIFICATION.md", "Extension marketplace and Customize, PX-087..093",
@@ -108,7 +110,7 @@ PX_PARITY = [
 
 
 def dr_status(dr_id):
-    """Front-matter status of a docs/decisions record, as the graph's change_record status (APPROVED or PROPOSED).
+    """Front-matter status of a docs/decisions record, as the graph's change_record status (APPROVED, PROPOSED or REJECTED).
 
     An accepted record must name who approved it; `approved_by: pending ...` with `status: accepted` is refused, so a
     record cannot be flipped without the approval being recorded (docs/decisions/README.md).
@@ -126,7 +128,12 @@ def dr_status(dr_id):
         return "APPROVED"
     if status == "proposed":
         return "PROPOSED"
-    raise SystemExit("%s has status %r; the PX records are accepted or proposed" % (dr_id, status))
+    if status == "rejected":
+        # A rejected record never took effect; it must name who rejected it and where, like an acceptance (DR-GOV-2026-11-11-009).
+        if fields.get("approved_by", "pending").lower().startswith("pending"):
+            raise SystemExit("%s is rejected but approved_by does not record the rejection" % dr_id)
+        return "REJECTED"
+    raise SystemExit("%s has status %r; the PX records are accepted, proposed or rejected" % (dr_id, status))
 
 
 # IMP-EV milestones derive from OWNER_MAP; the entries below are the recorded exceptions, each justified by a Decision Record.
@@ -655,7 +662,7 @@ def build(previous=None):
     link(PX6_CHANGE, px.CHANGE, "refines")
     for _dr in PX_PARITY:
         _st = dr_status(_dr[0])
-        add({"id": _dr[0], "type": "change_record", "title": _dr[6].replace("Proposed:", "Approved:", 1) if _st == "APPROVED" else _dr[6],
+        add({"id": _dr[0], "type": "change_record", "title": _dr[6].replace("Proposed:", {"APPROVED": "Approved:", "REJECTED": "Rejected:"}[_st], 1) if _st in ("APPROVED", "REJECTED") else _dr[6],
              "status": _st, "source": "docs/" + GOV_LOG_DOC})
         link(_dr[0], GOV_LOG_DOC, "specified_by")
         link(_dr[0], _dr[4], "specified_by")
@@ -836,8 +843,9 @@ def build(previous=None):
     for _dr in PX_PARITY:
         add({"id": _dr[1], "type": "dossier_task", "title": "Product extension stage: " + _dr[5], "subsystem": "governance", "source": "docs/" + GOV_LOG_DOC,
              "acceptance": "Decision Record, its rows, specification, supersession entries and change record added; implementation audit recorded; full integrity gate passes; " +
-                           ("the record is accepted by the owner and its status and approval are recorded; no product proof" if dr_status(_dr[0]) == "APPROVED"
-                            else "the record is flagged for owner ratification and the task stays below COMPLETE until it is accepted; no product proof")})
+                           {"APPROVED": "the record is accepted by the owner and its status and approval are recorded; no product proof",
+                            "REJECTED": "the record is rejected by the owner and its status and rejection are recorded; its rows are withdrawn and nothing is built; no product proof",
+                            "PROPOSED": "the record is flagged for owner ratification and the task stays below COMPLETE until it is accepted; no product proof"}[dr_status(_dr[0])]})
         link(_dr[1], "DOC-GOV-007", "after")
         link(_dr[1], "governance", "owned_by")
         link(_dr[1], GOV_LOG_DOC, "specified_by")
@@ -854,6 +862,17 @@ def build(previous=None):
     link("DOC-GOV-008", GOV_LOG_DOC, "specified_by")
     link("DOC-GOV-008", "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md", "specified_by")
     link("DOC-GOV-008", GOV8_CHANGE, "authorized_by")
+    add({"id": GOV9_CHANGE, "type": "change_record", "title": "Approved withdrawal of the Workspace Editor: DR-PX-2026-10-03-009 rejected, REQ-PX-077..081 withdrawn from Release Zero, MOD-SURF-002 and MOD-IDE-002 restored as written",
+         "status": "APPROVED", "source": "docs/" + GOV_LOG_DOC})
+    link(GOV9_CHANGE, GOV_LOG_DOC, "specified_by")
+    add({"id": "DOC-GOV-009", "type": "dossier_task", "title": "Withdraw the Workspace Editor (DR-PX-2026-10-03-009 rejected, PX-077..081 withdrawn)",
+         "subsystem": "governance", "source": "docs/" + GOV_LOG_DOC,
+         "acceptance": "DR-PX-2026-10-03-009 is rejected and DR-GOV-2026-11-11-009 accepted with the owner's instruction recorded; REQ-PX-077..081 are DEFERRED POST_ZERO rows with no task card or scenario and PX-077..081 are absent from the graph and from RELEASE_ZERO; MOD-EDIT-001 is REJECTED and the proposed supersession entries of docs 02, 03, 20, 29 and 32 say they never took effect; doc 67 is marked withdrawn; no sealed REQ-EV or EPR row, gate or product code changes; full integrity gate passes; no product proof"})
+    link("DOC-GOV-009", "DOC-GOV-008", "after")
+    link("DOC-GOV-009", "governance", "owned_by")
+    link("DOC-GOV-009", GOV_LOG_DOC, "specified_by")
+    link("DOC-GOV-009", "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md", "specified_by")
+    link("DOC-GOV-009", GOV9_CHANGE, "authorized_by")
 
     # releases: derived projections over work items (docs/75) ----------------
     ms_of, owner_of = {}, {}

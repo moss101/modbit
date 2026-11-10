@@ -1260,3 +1260,46 @@ A bookkeeping change to the project graph on the owner's chat instruction of 202
 - **Contradicted and kept COMPLETE with a note, for the owner:** IMP-EV-0152 (moving it takes ALPHA and BETA off READY and raises 66 integrity findings) and PX-043 (moving it fails G4 and it needs a Decision Record or a Core refusal). PX-195 and M8.8 stand, each with a note.
 - **Unfinished behaviour:** every gap in the row notes. No row owns the desktop's rendering of the cloud browser stream. Rows whose specs pull request 169 rewrote still cite earlier runs. Non-desktop open rows were not audited.
 - **Next safe action:** fix the reload defect and the Escape and fold defects, then walk PX-196 and PX-197 forward with a new CI run. The owner decides PX-043 and who owns the stream's rendering.
+
+
+## DOC-GOV-009 — Withdraw the Workspace Editor: DR-PX-2026-10-03-009 rejected, PX-077..081 withdrawn (2026-11-11)
+
+### Identity and authority
+
+- Task: DOC-GOV-009 (`dossier_task`); owner: governance; prerequisite: DOC-GOV-008 COMPLETE; outside product roll-ups.
+- Decision Record: DR-GOV-2026-11-11-009 (`decisions/DR-GOV-2026-11-11-009-withdraw-the-workspace-editor.md`), accepted. On 2026-11-08 the owner asked whether the product was creating an IDE, because it was meant to be built without one. Offered three options (drop, ratify as scoped, defer past Release Zero), the owner chose to drop it and said "implement this" and "drop IDE" on 2026-11-11.
+- Scope: DR-PX-2026-10-03-009 becomes `rejected`; REQ-PX-077..081 and QUAL-PX-077..081 stay in doc 62 as withdrawn DEFERRED, POST_ZERO rows (the ledger requires contiguous `REQ-PX` numbers), and the task cards PX-077..081 and scenarios PX-E2E-077..081 are removed; MOD-EDIT-001 becomes REJECTED and the proposed supersession entries of docs 02 and 03 and the notes of docs 10, 20, 29, 32, 65 and 79 say the proposal never took effect; doc 67 is marked withdrawn and kept as provenance; `../tools/build_graph.py` (rejected record status, DOC-GOV-009) and `../tools/test_dossier.py`. No sealed `REQ-EV` or EPR row, disposition, owner, gate or threshold, no product code and no other product status changes.
+- Revision before change: `../evidence/dossier-gov-009/baseline.json` (branch `dossier/drop-workspace-editor` at main 29af453a).
+
+### Decision Record (change-control fields)
+
+| Field | Content |
+|---|---|
+| Trigger / evidence | The owner's question of 2026-11-08 (an IDE was not meant to be built) and the graph at 29af453a: DR-PX-2026-10-03-009 proposed a scoped Workspace Editor (doc 67, PX-077..081, five RELEASE_ZERO tasks) with a scoped supersession of MOD-SURF-002 (LOCKED) and MOD-IDE-002 (REJECTED); it was never ratified. |
+| Current behavior | AUDIT: PX-077..081 were NOT_STARTED behind DOC-PX-009 (REAL_TESTING, awaiting ratification); no product code, protocol message or renderer component implements the editor; nothing depends on the five tasks. They counted toward the 539 Release Zero work items. |
+| Replacement | The record is rejected, the rows are withdrawn, the locked and rejected decisions stand as written. DEFERRED here means "not owed", not "scheduled": reactivation needs a new accepted record. |
+| Migration | RELEASE_ZERO 539 to 534 work items; ALPHA and BETA unchanged. PX rows stay 198; ADOPT tasks 176 to 171; DEFERRED rows 22 to 27. Review, the inline patch (PX-005) and the Files app of PX-048 are unchanged. |
+| Compatibility | The 291 `REQ-EV` rows, the EPR ledger, gates A to G and every threshold are untouched. No file is renumbered. |
+| Security impact | None; planned attack surface (draft overlay, multi-file save path, text engine) is removed. |
+| Test impact | `test_dossier.py`: the parity records carry a three-valued status, the unratified-records test covers DOC-PX-011 and DOC-PX-012 only, pins become 171 and 27, a new test pins the withdrawal, and the governance chain test covers DOC-GOV-009. |
+| Rollback | Revert the change commit, or restore the files to the hashes in `baseline.json`, then rerun the reseal. |
+| Explicit user approval | The owner's chat instructions of 2026-11-11: "Drop the editor ... implement this" and "drop IDE". |
+
+### Stage applicability
+
+| Stage | DOC-GOV-009 execution |
+|---|---|
+| AUDITING | Doc 62 rows, cards and scenarios, the graph, the parser's contiguity rule and every reference to PX-077..081, WED-, DR-PX-2026-10-03-009 and MOD-EDIT-001 traced; baseline hashes recorded. |
+| IMPLEMENTING | The record, the doc edits, the builder and test changes, this entry |
+| WIRED | Graph and manifests regenerated through the real CLIs |
+| REAL_TESTING | `check_dossier --manifest` and the copied-package suite |
+| E2E_PROVEN | Pull request green on hosted CI |
+| COMPLETE | One-step ladder with evidence citing the landing commit; seal |
+| Product qualification | Non-applicable: no product behavior changes. |
+
+### Status and handoff
+
+- **Evidence:** the `../evidence/dossier-gov-009/` bundle (baseline, tests.log, validation.json).
+- **Resolved by this record:** DOC-PX-009, which was waiting on a ratification that is now a rejection (it moves forward through the ladder with the landing evidence).
+- **Remaining product work:** none from this record. DOC-PX-011 and DOC-PX-012 stay proposed.
+- **Next safe action:** land the change, then seal DOC-GOV-009 and DOC-PX-009 from the CI run.
