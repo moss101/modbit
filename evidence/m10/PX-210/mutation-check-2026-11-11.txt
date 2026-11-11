@@ -1,0 +1,35 @@
+PX-210 mutation check, 2026-11-11, macOS arm64, branch wip/desktop-2-core-header-suggest (Core mutations at c7dc463d,
+desktop mutations at a94b2049).
+Each line: the product code was changed as described, the named test was run on that build and FAILED at the quoted
+assertion, and the change was reverted (git checkout). After the Core mutations the sources were touched, every binary
+was rebuilt and the tests passed again; after the desktop mutations the bundle was rebuilt and the spec passed again.
+
+Core: cargo test -p modbit-core --test px_210_next_prompt <test>
+
+1. The usage record is appended with the task's lineage, so it lands on the task's log (suggest.rs: task_id: Some).
+   qual_px_210_a_suggestion... FAILED: the Core itself refused with TASK_MOVED ("the task moved on while the
+   suggestion was being made"), its own check that the task's log is where it was.
+2. The same, with that check also removed.
+   qual_px_210_a_suggestion... FAILED: the task's offset, left 47, right 46 (the first of the test's own checks that the
+   task's log did not move; the digest comparison follows it).
+3. A queued input is ignored (suggest.rs task gate: queued > 99).
+   qual_px_210_the_core_refuses... FAILED: "a suggestion was made" where INPUT_QUEUED was expected.
+4. A running turn is ignored (suggest.rs task gate: the running check removed).
+   qual_px_210_the_core_refuses... FAILED: left "NO_FINISHED_TURN", right "TURN_RUNNING".
+5. The cost cap is ignored when it is reached (suggest.rs budget_gate: spent >= cap never true).
+   qual_px_210_a_suggestion... FAILED: left "BUDGET_WOULD_EXCEED", right "BUDGET_EXHAUSTED".
+6. The charge is not counted by the task's cost cap (runtime.rs rebuild: observe_off_log removed).
+   qual_px_210_a_suggestion... FAILED: "a suggestion was made" where BUDGET_EXHAUSTED was expected at the cap.
+7. The Core's switch is ignored (suggest.rs: enabled() not consulted).
+   qual_px_210_with_the_setting_off... FAILED: "a suggestion was made" where SUGGESTIONS_OFF was expected.
+
+Desktop: pnpm --filter @modbit/desktop exec playwright test -c e2e/playwright.config.ts px-210-suggestion -g <test>
+
+8. The person's setting is ignored (composer/model.ts suggestionDue: `enabled` dropped).
+   "with the setting off..." FAILED at expect(await settledOrder()).toEqual(["turn", "suggestion", "turn"]): the
+   model received a suggestion request for a turn that ended with the setting off.
+9. Tab also sends the suggestion (composer.tsx: Tab queues the text and starts the task).
+   "after a turn..." FAILED at expect(await userMessages(page, taskId)).toEqual(["Say what notes.txt holds"]): a
+   message was sent without the person.
+10. Typing does not dismiss the suggestion (composer.tsx: onChange no longer clears it).
+   "after a turn..." FAILED at the placeholder check of expectNoSuggestion: the suggestion was still shown.

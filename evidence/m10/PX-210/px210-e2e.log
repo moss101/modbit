@@ -1,0 +1,16 @@
+
+Running 3 tests using 1 worker
+
+[electron] Debugger ending on ws://127.0.0.1:61075/26d23885-06d5-43bc-a7c6-e136438d7362
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  1 e2e/px-210-suggestion.spec.ts:70:1 › PX-210: after a turn the Core's suggestion is the composer's placeholder; Tab puts it in the box and nothing is sent; typing dismisses it; a turn that ends with a message queued gets none (5.5s)
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 7ms
+[electron] Debugger ending on ws://127.0.0.1:61131/9cf60ca7-bb68-496d-8826-036966d1e654
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  2 e2e/px-210-suggestion.spec.ts:170:1 › PX-210: with the setting off the model receives no extra request, the setting survives a reload, and turning it on again brings the suggestion back (9.7s)
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+[electron] Debugger ending on ws://127.0.0.1:61383/089a120d-d83c-4de8-b894-cc9d2bf62509
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  3 e2e/px-210-suggestion.spec.ts:236:1 › PX-210: with the Core's switch off (as the rest of this suite runs) a finished turn makes no extra request and the composer shows no suggestion (3.3s)
+
+  3 passed (18.8s)

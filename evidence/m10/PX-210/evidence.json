@@ -1,0 +1,111 @@
+{
+  "task": "PX-210",
+  "requirements": [
+    "REQ-PX-210",
+    "QUAL-PX-210",
+    "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-210"
+  ],
+  "scenarios": [
+    "QUAL-PX-210 / PX-E2E-210"
+  ],
+  "decision_record": "DR-PX-2026-11-11-021 (MWS-16)",
+  "tier": "release-critical",
+  "branch": "wip/desktop-2-core-header-suggest",
+  "status": "built and proven locally on macOS arm64; not sealed (graph.py was not run: sealing is not this task's, and the prerequisite PX-200 is not COMPLETE)",
+  "audit": {
+    "side_question": "PRODUCTION-WORKING end to end (AskSideQuestion -> side.rs -> ProviderGateway::stream); appends nothing; NOT charged (usage.rs: its invoice rows are NOT_IN_LOG by design; every cost reader counts ModelUsageRecorded on the task's log only)",
+    "next_prompt_suggestion": "NOT-FOUND in the protocol, the Core, the client, main, the preload and the renderer",
+    "first_missing_link": "no protocol message asks for one; behind it, no way to charge a call that writes nothing to the task's log, because the ledger is the log"
+  },
+  "protocol": {
+    "added": [
+      "modbit.v1.SuggestNextPrompt { Id task_id = 1 }",
+      "modbit.v1.NextPromptSuggestion { text = 1, task_offset = 2, input_tokens = 3, output_tokens = 4, cost_known = 5, cost_minor = 6, endpoint = 7, model = 8, snapshot_messages = 9, usage_offset = 10 }",
+      "modbit.v1.TaskEconomicsView.suggestion_calls = 450, suggestion_cost_minor = 451",
+      "command type SuggestNextPrompt (capability task.author, the session's lease)"
+    ],
+    "canonical_log": [
+      "SessionEvent::SuggestionUsageRecorded { task_id, input_tokens, output_tokens, cached_input_tokens, reported, route } on the session's aggregate, no task lineage"
+    ],
+    "fixtures": [
+      "tests/fixtures/protocol/v1/rust/suggest_next_prompt.{bin,json}",
+      "tests/fixtures/protocol/v1/rust/next_prompt_suggestion.{bin,json}",
+      "tests/fixtures/protocol/v1/ts/suggest_next_prompt.bin",
+      "tests/fixtures/protocol/v1/ts/next_prompt_suggestion.bin"
+    ]
+  },
+  "charge": "one SuggestionUsageRecorded per call, recorded before the suggestion is delivered; usage::calls makes it a row of the task's ledger (GetTaskEconomics, ReconcileInvoice), SpendScan::observe_off_log counts it against the task's cost cap (runtime::rebuild, spawn.rs); it is inside no run",
+  "tests": [
+    "services/modbit-core/tests/px_210_next_prompt.rs",
+    "services/modbit-core/src/suggest.rs (unit)",
+    "apps/desktop/e2e/px-210-suggestion.spec.ts",
+    "apps/desktop/src/renderer/composer/model.test.ts",
+    "apps/desktop/src/main/composer-ipc.test.ts",
+    "apps/desktop/e2e/composer.spec.ts",
+    "apps/desktop/e2e/conversation.spec.ts",
+    "apps/desktop/e2e/workers.spec.ts"
+  ],
+  "commands": {
+    "core": "cargo test -p modbit-core --test px_210_next_prompt  -> 3 passed (px210-core.log)",
+    "core_unit": "cargo test -p modbit-core --bin modbit-core suggest  -> 5 passed",
+    "desktop_e2e": "pnpm --filter @modbit/desktop exec playwright test -c e2e/playwright.config.ts px-210-suggestion  -> 3 passed (px210-e2e.log); with --repeat-each 4 -> 12 passed",
+    "desktop_specs": "playwright test composer.spec conversation.spec workers.spec keyboard.spec approvals.spec  -> 27 passed, 1 skipped (live-approvals, a real provider) (e2e-composer-conversation.log)",
+    "desktop_unit": "pnpm --filter @modbit/desktop test  -> 354 passed",
+    "workspace_ts": "pnpm typecheck (exit 0); pnpm test (exit 0: design-tokens 10, surface-protocol 53, ui 11, ide-adapter-core 7 of 10 with 3 skipped, vscode-adapter 1 of 2 with 1 skipped, desktop 354)",
+    "fixtures": "cargo run -p protocol-fixtures -- --check (exit 0); pnpm --filter @modbit/surface-protocol test -> 53 passed; cargo test -p protocol-fixtures -> 2 passed",
+    "lints": "cargo fmt --all -- --check; cargo clippy --workspace --all-targets --locked (0 warnings); tools/lint_policy.sh; architecture-lint (dependencies, spawns, credentials, modules): all exit 0"
+  },
+  "core_suite": {
+    "command": "cargo test -p modbit-core --locked --no-fail-fast",
+    "revision": "28da0141b8252db6ba13dfed75194fc86cba18bb",
+    "started": "2026-11-11T12:54:25Z",
+    "ended": "2026-11-11T13:08:29Z",
+    "exit": "exit=0",
+    "log": "core-suite.log",
+    "passed": 684,
+    "failed": 0,
+    "ignored": 8,
+    "test_and_doc_test_runs": 46
+  },
+  "core_suite_earlier": {
+    "revision": "bcb6f06cb511346b835f8e884a2dad3e1bd8f7ca",
+    "started": "2026-11-11T08:38:24Z",
+    "ended": "2026-11-11T08:52:21Z",
+    "exit": "exit=0",
+    "note": "the first run, before the task gate was made a pure function and the subagent refusal was added",
+    "passed": 682,
+    "failed": 0,
+    "ignored": 8,
+    "test_and_doc_test_runs": 46
+  },
+  "workspace_suite": {
+    "command": "cargo test --workspace --locked --no-fail-fast",
+    "revision": "c7dc463db7690bbc34bae199356d855cfa750572",
+    "started": "2026-11-11T08:57:55Z",
+    "ended": "2026-11-11T09:27:15Z",
+    "exit": "exit=0",
+    "note": "run before the task gate was made a pure function (suggest.rs) and before origin/main was merged; the Core's own suite was rerun after both",
+    "passed": 1863,
+    "failed": 0,
+    "ignored": 27,
+    "test_and_doc_test_runs": 285
+  },
+  "ignored_tests": "a release benchmark, and macOS real-helper tests that need Accessibility and Screen Recording for the test process; the same set is ignored on main",
+  "mutation_check": "mutation-check-2026-11-11.txt (10 mutations, all detected)",
+  "environment": "macOS 27.0.1 arm64, rustc 1.97.1, node 26.11.1, Electron 44.3.0, Playwright 1.63.0; scripted model; real modbit-core binary, real SQLite event store, real Electron main, preload and renderer",
+  "for_review": [
+    "One usage record per suggestion lands on the session's log (not the task's): the session's cursor moves by one. DR section 9 says the call 'writes nothing'; the charge the same rule requires is this record.",
+    "apps/desktop/src/preload/preload.ts gained one channel; the pin in hardening-guard.test.ts was updated with a note.",
+    "The desktop e2e suite runs with MODBIT_NEXT_PROMPT_SUGGESTIONS=off by default (both Playwright configs); px-210-suggestion.spec.ts turns it on."
+  ],
+  "limitations": [
+    "The side question is still not charged; this change does not alter it.",
+    "Request accounting (GetRequestOutcome) does not list suggestion calls; the economics, the ledger, invoice reconciliation and the cost cap do.",
+    "The suggestion uses the model the task last ran on.",
+    "A subagent's task gets no suggestion (CHILD_TASK); proven by a unit test of the gate, not on a real Core.",
+    "The composer asks only when it sees a turn end by itself; not on opening a conversation, and not after the person stopped the turn.",
+    "The person's setting is the desktop's; the Core's switch is the operator's.",
+    "PX-E2E-210's 'budget at its cap' leg is proven on the Core, not from the desktop (a priced registry cannot be activated through the bridge).",
+    "macOS only so far; Linux and Windows are CI's."
+  ]
+}

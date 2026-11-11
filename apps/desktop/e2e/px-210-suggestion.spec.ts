@@ -141,7 +141,10 @@ test("PX-210: after a turn the Core's suggestion is the composer's placeholder; 
     await expect(page.getByTestId("composer-stop")).toBeVisible({ timeout: 60_000 });
     await typeAndPress(page, "the queued one", "Enter");
     await expect(page.getByTestId("queue-header")).toHaveText("1 queued");
-    if (await page.getByTestId("education-keep").isVisible()) await page.getByTestId("education-keep").click();
+    // The first message that queues behind a turn shows the send-behaviour note once; it is acknowledged like any person would.
+    await expect(page.getByTestId("education-tray")).toBeVisible();
+    await page.getByTestId("education-keep").click();
+    await expect(page.getByTestId("education-tray")).toHaveCount(0);
     await expectNoSuggestion(page, /Enter queues it/);
     gate.open();
     await expectTurnEnded(page, taskId);
