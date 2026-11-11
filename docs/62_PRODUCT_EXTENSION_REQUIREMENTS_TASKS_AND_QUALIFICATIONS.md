@@ -20,6 +20,8 @@ Rows REQ-PX-192..194 are additionally authorized by DR-PX-2026-11-03-019 (the ag
 
 Rows REQ-PX-195..197 are additionally authorized by DR-PX-2026-11-04-020 (the desktop's screens rebuilt to the mockup the owner approved, the Fleet board removed), accepted on 2026-11-04 on the owner's chat instruction. They are scheduled in M10 for RELEASE_ZERO, list DOC-PX-019 as a prerequisite, name the existing owner `desktop` (no subsystem is added), change no protocol, persistence, policy or preload behaviour, keep the clean-room posture of doc 65 section 2, and leave AFW-A12, A13 and A14 unrelaxed.
 
+Rows REQ-PX-198..219 are additionally authorized by DR-PX-2026-11-11-021 (the measured workspace for the desktop renderer: the shell's geometry and density taken from measurement, a details rail, a pane dock, split view and the pages in one language, with the capabilities that had no row), accepted on 2026-11-11 on the owner's chat instruction. Rows PX-198..218 are scheduled in M10 for RELEASE_ZERO and list DOC-PX-020 as a prerequisite. PX-198..209 and PX-216 name the existing owner `desktop`, PX-210, PX-212 and PX-218 `core-runtime`, PX-211 `workspace-git`, PX-213 `external-tools`, PX-214 `verification`, PX-215 `browser` and PX-217 `durability` (no subsystem is added). PX-198 is iteration tier and the others are release-critical. PX-198..209 and PX-216 change no protocol message; PX-210..215, PX-217 and PX-218 add protocol messages and fields. REQ-PX-219 (an SSH execution environment) is deferred to POST_ZERO. The record supersedes DR-PX-2026-11-03-019 and DR-PX-2026-11-04-020 in the scope its front matter names; AFW-A12, A13, A14 and the clean-room posture are unchanged.
+
 ## Ledger
 
 | Requirement | Title | Task | Qualification | Owner | Milestone | Release | Disposition | After |
@@ -225,6 +227,28 @@ Rows REQ-PX-195..197 are additionally authorized by DR-PX-2026-11-04-020 (the de
 | REQ-PX-195 | Agent workspace home: one composer where send creates, starts and opens the task, the Fleet board removed | PX-195 | QUAL-PX-195 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-194,DOC-PX-019 |
 | REQ-PX-196 | Agent workspace chrome: the agent list's head, navigation, repositories and person's row, the top bar, the task's details and the Settings view | PX-196 | QUAL-PX-196 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-195,DOC-PX-019 |
 | REQ-PX-197 | Agent workspace conversation, composer and apps panel: steps that say what they did, one approval card, the two-row composer, the rebuilt Changes panel | PX-197 | QUAL-PX-197 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-196,DOC-PX-019 |
+| REQ-PX-198 | Measured workspace shell: the list, bars, rows, column and rail at the measured sizes, the conversation on the lightest surface, and a density setting | PX-198 | QUAL-PX-198 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-197,DOC-PX-020 |
+| REQ-PX-199 | Measured task list: navigation, project groups, one-line rows with the state at the right, child rows, the preview card and the person's row | PX-199 | QUAL-PX-199 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-198,DOC-PX-020 |
+| REQ-PX-200 | Measured task view: pane toggles in the title bar, the plan as a card of steps from the Core's work graph, the status line, the one-line composer with its controls under it and the regrouped approval card | PX-200 | QUAL-PX-200 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-199,DOC-PX-020 |
+| REQ-PX-201 | Details rail: environment, approvals, context, tool servers, changes, evidence, background tasks and cost beside the conversation | PX-201 | QUAL-PX-201 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-200,DOC-PX-020 |
+| REQ-PX-202 | Pane dock: several panes open together in a grid, with Activity, Background tasks and Pull request panes | PX-202 | QUAL-PX-202 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-201,DOC-PX-020 |
+| REQ-PX-203 | Pane pop-out: a pane in a window of its own under the same preload and content security policy | PX-203 | QUAL-PX-203 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-202,DOC-PX-020 |
+| REQ-PX-204 | Split view: two tasks side by side, each with its own title bar, transcript, composer and approval card | PX-204 | QUAL-PX-204 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-202,DOC-PX-020 |
+| REQ-PX-205 | Measured home: the composer in a tray with where the task runs attached, what is waiting on the person, and the first-run steps | PX-205 | QUAL-PX-205 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-199,DOC-PX-020 |
+| REQ-PX-206 | Inbox: every approval, proposal and question across tasks, and a persisted record of updates with a read state | PX-206 | QUAL-PX-206 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-199,DOC-PX-020 |
+| REQ-PX-207 | Automations and Customize in the page shape: a details rail for an automation, one search across Customize, and Rules as a read-only section | PX-207 | QUAL-PX-207 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-199,DOC-PX-020 |
+| REQ-PX-208 | Review and Settings in the page shape: pull requests and local changes with their findings, list options under Appearance, and a Shortcuts section that lists the real bindings | PX-208 | QUAL-PX-208 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-199,DOC-PX-020 |
+| REQ-PX-209 | One search: tasks, conversation text, files and commands in the palette | PX-209 | QUAL-PX-209 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-199,DOC-PX-020 |
+| REQ-PX-210 | Next-prompt suggestion: one suggested next message after a turn, accepted with Tab and never sent by itself | PX-210 | QUAL-PX-210 | core-runtime | M10 | RELEASE_ZERO | ADOPT | PX-200,DOC-PX-020 |
+| REQ-PX-211 | Task pull-request state: the Core records the request a task opened, refreshes its state and checks through the forge adapter, and the header carries it | PX-211 | QUAL-PX-211 | workspace-git | M10 | RELEASE_ZERO | ADOPT | PX-125,PX-202,DOC-PX-020 |
+| REQ-PX-212 | Auto-fix: a failing check or a comment addressed to the agent queues a repair turn inside the task's run mode and budgets | PX-212 | QUAL-PX-212 | core-runtime | M10 | RELEASE_ZERO | ADOPT | PX-211,DOC-PX-020 |
+| REQ-PX-213 | Merge when ready: a forge merge effect that is approval-bound and asked once the checks pass | PX-213 | QUAL-PX-213 | external-tools | M10 | RELEASE_ZERO | ADOPT | PX-211,DOC-PX-020 |
+| REQ-PX-214 | Reviewer findings one by one in the review bundle, with a command to fix one | PX-214 | QUAL-PX-214 | verification | M10 | RELEASE_ZERO | ADOPT | PX-208,DOC-PX-020 |
+| REQ-PX-215 | Standing computer access per application: view only, click, full or never, held by the Core and only ever narrowing a grant | PX-215 | QUAL-PX-215 | browser | M10 | RELEASE_ZERO | ADOPT | PX-208,PX-069,DOC-PX-020 |
+| REQ-PX-216 | Browser pane site decisions: allow once and deny beside always allow, kept by the desktop's browser policy | PX-216 | QUAL-PX-216 | desktop | M10 | RELEASE_ZERO | ADOPT | PX-202,DOC-PX-020 |
+| REQ-PX-217 | Compact now: a person asks for a compaction of the open task | PX-217 | QUAL-PX-217 | durability | M10 | RELEASE_ZERO | ADOPT | PX-201,PX-109,DOC-PX-020 |
+| REQ-PX-218 | The task header carries the last line the assistant wrote | PX-218 | QUAL-PX-218 | core-runtime | M10 | RELEASE_ZERO | ADOPT | PX-199,DOC-PX-020 |
+| REQ-PX-219 | An SSH execution environment for tasks | — | QUAL-PX-219 | sandbox-cloud | — | POST_ZERO | DEFERRED | — |
 
 ## Qualifications
 
@@ -425,6 +449,28 @@ Rows REQ-PX-195..197 are additionally authorized by DR-PX-2026-11-04-020 (the de
 | QUAL-PX-192 | REQ-PX-192 | desktop | The real Electron app built from the tree, in light, dark and high contrast: the emitted `--mb-color-*` and `--color-*` variables, resolved by the browser to canonical sRGB, equal the section 5.1 tables of the record in light and dark and the unchanged high-contrast palette; the token unit test pins the same tables; the computed contrast test covers every pair in all three themes at 4.5:1 for text and 3:1 for control edges and icons; chrome text computes to 13 px on 18 px and conversation body to 14 px on 22 px; the retired ZCode parity specs are absent and no ZCode name is in the bundle. | A token that differs from the table, a pair under its ratio, a muted text step under 4.5:1 on any surface, or a high-contrast value that moved fails the spec; the retained mutation that restores one ZDL value must fail it. |
 | QUAL-PX-193 | REQ-PX-193 | desktop | Playwright on the real app and a real Core at 1280 x 800, 1000 x 700 and 900 x 600 in light and dark: agent list 260 px within 2 px (210 to 400 kept), top bar 40 px, panes with no radius and no gap and a 1 px divider, navigation rows 30 px in the agent list carrying New task, Search, Fleet board, Worktrees, Automations, Customize and Dashboard with their existing test ids, a bare button and each `Button` variant computing to the recipes of section 5.2, pill tabs, the centre keeping 424 pt with the panel open; the desktop e2e suite passes with only the assertions section 10 names changed; axe passes on every region in three themes. | A framed pane, a bare button with the accent or black fill, a top bar other than 40 px, a navigation entry that lost its test id, or a layout that pushes the centre under 424 pt fails the spec; the mutation that restores the 48 px bar must fail it. |
 | QUAL-PX-194 | REQ-PX-194 | desktop | The real app, a real Core and a scripted model running a task with tool steps, an edit, a terminal and an approval, in light and dark: the user message is an editor-surface bubble, a step group is one line with no box, the turn footer is transparent until hover or keyboard focus and stays in the tab order and the accessibility tree, the composer has radius 12, the status row is one line at any window width with its full text in the accessible name, the language and support-claim banners are one caption line, the Changes app's explanatory text is caption and muted, and headings are sentence case; the whole desktop suite and axe pass. | A status row that wraps, a turn footer that is removed from the tab order or the accessibility tree, a banner whose full text is lost, an uppercase heading, or a state shown by colour alone fails the spec. |
+| QUAL-PX-198 | REQ-PX-198 | desktop | The real app against a real Core at 1280, 1000 and 900 wide, in light, dark and high contrast and in both densities: the measured widths and heights equal section 5.1 and 5.2, the computed variables equal the token source, a stored list width inside the new range is kept and the density survives a restart. | Retained mutations fail the gate: the list at 260, a bar at 40, the column at 640, a size written inside a component. The contrast test fails on a lowered token. Compact and comfortable differ through tokens only. |
+| QUAL-PX-199 | REQ-PX-199 | desktop | The real app, a real Core and a scripted model with tasks in every status class, a child task and two projects: the list reads in the order of MWS-04 at three widths; a row that needs approval shows its reason; grouping by status, environment and date regroups without a reload; the keyboard alone reaches every row, pins, archives with undo and opens the card. | A quiet row with a second line by default fails the gate; a missing reason on a row that needs the person fails; the card makes no transcript read (asserted on the bridge log); an archive from the row is undone by its toast; the removed ids are absent. |
+| QUAL-PX-200 | REQ-PX-200 | desktop | The real app, a real Core and a scripted model running a task that plans, reads, edits, runs a command and asks: the plan card's states follow the work graph as steps finish; the composer's controls open the menus they opened before; the card decides by mouse and by keys; Escape on a confirmation does not skip the card behind it; an irreversible effect asks twice; a reload restores the card and the plan. | A plan card fed from transcript text fails (the graph changes with no plan line and the card must follow); an intent hash missing from the accessibility tree fails; a decision control in the transcript fails; two selects in the card fail the gate; a denied command is never shown as run. |
+| QUAL-PX-201 | REQ-PX-201 | desktop | The real app, a real Core and a scripted model: each section shows the Core's facts for the open task; after a reload the phase and agent counts equal the Core's; Stop on a background terminal stops it; Review opens the changes; restore from a checkpoint asks as it does today; at 800 px the rail is absent and More holds its facts. | A default phase after a reload fails; a value in the rail with no Core read behind it fails (asserted on the bridge log); the popover still present fails; a rail that covers the composer at the centre's minimum width fails. |
+| QUAL-PX-202 | REQ-PX-202 | desktop | The real app, a real Core and a scripted model: Changes, Terminal and Evidence open together and tile; the set and the sizes persist per task across a reload; a minimized terminal keeps its session; Activity lists events in order, filters by kind and finds text; Background tasks stops a child task and a terminal; the Pull request pane opens a request through the existing approval and shows the check evidence and the comments it read. | One app at a time fails the gate; a minimized terminal that loses its session fails; an Activity pane that reads more than the delivered events and transcript fails; a pull-request state that was not read is never shown. |
+| QUAL-PX-203 | REQ-PX-203 | desktop | The real app and a real Core: Terminal and Changes each pop out and keep working; closing returns each to the dock with its state; the hardening guard passes for the new window (no node integration, the same CSP, navigation and new windows refused); the quit prompt counts work in pane windows. | A window created with other web preferences fails the hardening guard; a pane shown in both places fails; an approval decided from a pane window fails. |
+| QUAL-PX-204 | REQ-PX-204 | desktop | The real app, a real Core and a scripted model with one task waiting on approval and one running: Enter and the approve and deny keys decide only in the focused task; each composer queues to its own task; Alt+click on a row and the preview card open split view; a reload restores it. | A key that decides the unfocused task's approval fails; a queued message that reaches the other task fails; a third task accepted fails. |
+| QUAL-PX-205 | REQ-PX-205 | desktop | The real app, a real Core and a scripted model: send creates, starts and opens the task; Alt+Enter creates it without starting; the first model request is on the mode and model chosen on home; the location selector shows cloud disabled with its reason; a protected write is decided from the waiting list and a destructive effect opens its task. | A destructive effect allowed from home fails; cloud enabled while PX-128 is not COMPLETE fails; a first model request off the chosen pin fails; a control that does nothing fails the gate. |
+| QUAL-PX-206 | REQ-PX-206 | desktop | The real app, a real Core and a scripted model with an approval, a mode proposal and a task ready for review: Needs you decides the first two; Updates shows the third with its time; opening it marks it read; the record survives a restart; the notification's click handler opens its task; the cap holds. | A destructive effect allowed from Inbox fails; an update that holds transcript text fails (the record's shape is asserted); a count taken from the store instead of the Core fails. |
+| QUAL-PX-207 | REQ-PX-207 | desktop | The real app and a real Core: enable, pause, run now and kill behave as before on the new layout; the search finds a skill, a hook and a rule by text; Rules lists the layers the Core loaded for the folder with their sources and Open source opens the file; a skill that is not trusted still cannot be enabled without review. | A rule shown that the Core did not load fails; a rule editable in place fails; a search result that opens the wrong section fails. |
+| QUAL-PX-208 | REQ-PX-208 | desktop | The real app, a real Core and a scripted model: Review shows a task's change set and its findings and a hunk decision still works; each Appearance option takes effect at once and persists; the Shortcuts section equals the registry and the key map, binding for binding. | A listed shortcut that is not bound fails; a setting that belongs to one task shown as global fails; a density change that needs a reload fails. |
+| QUAL-PX-209 | REQ-PX-209 | desktop | The real app and a real Core: a task is found by its title, a conversation by text inside it, a file by name and a command by its label; each opens the right place; the keyboard alone drives it. | A file outside the open task's folder fails; search text sent anywhere but the Core's search and file reads fails (asserted on the bridge log). |
+| QUAL-PX-210 | REQ-PX-210 | core-runtime | A real Core and a scripted model: after a turn ends with nothing queued a suggestion arrives and the composer shows it; Tab fills the box and nothing is sent; the task's log is byte-identical before and after the call; the cost appears in the task's economics; with the setting off no call is made; with the budget at its cap no call is made. | A suggestion written to the log or the transcript fails; a suggestion sent without Enter fails; a call made during a turn or with a queued input fails; a call over budget fails. |
+| QUAL-PX-211 | REQ-PX-211 | workspace-git | A real Core against the forge test server: a request opened through its approval is recorded; refresh reads open, checks failing, checks passing and merged in turn; the header shows it after a restart; with the preference on, a merged task is archived and the undo restores it. | A state that was not read is never shown; a refresh that goes around the forge adapter's policy fails; an archive without the preference fails; a stale read says when it was read. |
+| QUAL-PX-212 | REQ-PX-212 | core-runtime | A real Core against the forge test server: with the switch on a failing check queues one input naming the check; the agent's push asks under Supervised; the loop stops at the attempt cap with a notice; with the switch off nothing is queued. | Auto-fix that raises the run mode fails; a push without the approval a manual push needs fails; a loop past its cap fails; a comment from an author who is not allowed is ignored. |
+| QUAL-PX-213 | REQ-PX-213 | external-tools | A real Core against the forge test server: merge when ready waits while a check is pending, asks when the checks pass, merges the approved head revision and records its receipt; a head moved before approval voids the ask. | A merge without approval fails; a merge of a head revision other than the approved one fails; a merge while a check fails or is pending is refused with its reason; an allow rule does not cover the merge effect. |
+| QUAL-PX-214 | REQ-PX-214 | verification | A real Core with a scripted reviewer that returns three findings: the bundle lists each; Review shows them; Fix this one queues an input naming that finding only; the next review re-evaluates it; a dismissal is recorded. | A finding that failed the tree check is not shown as verified; a fix command for an unknown finding is refused; findings from a result whose digest does not match are not shown. |
+| QUAL-PX-215 | REQ-PX-215 | browser | A real Core and the actuator fixture: with an application at view only a click and a type are refused with their reason; at click a type is refused; at never the session is refused; with no level set the grant alone decides; a change mid-session applies to the next action. | A level that widens what the task's grant allows fails; a refusal without a reason on the card fails; a level change that is not in the audit trail fails. |
+| QUAL-PX-216 | REQ-PX-216 | desktop | The real app and a real Core with a local test site on two origins: Allow once permits one navigation and the next asks again; Always allow persists across a restart; Deny refuses with its reason and persists; removing an entry in Settings makes the origin ask again. | An allow once that persists fails; a deny overridden by a retry fails; a decision recorded for an origin other than the one shown fails; a target the navigation policy forbids is refused before any ask. |
+| QUAL-PX-217 | REQ-PX-217 | durability | A real Core and a scripted model: Compact now on an idle task with a long transcript produces an epoch whose source is the person and lowers the context in use; during a turn it is refused; a failed summary falls back as the automatic path does; the telemetry names the source. | A compaction through a second summary path fails (the same function is asserted); a compaction during streaming fails; a transcript that is no longer searchable fails. |
+| QUAL-PX-218 | REQ-PX-218 | core-runtime | A real Core and a scripted model: after a turn the header's line equals the end of the assistant's message; it survives a restart; a secret the transcript redacts is redacted in the header; a long line is cut at a character boundary. | A redacted value in the open fails; a line from an unfinished message fails; a header that changes for an archived task fails. |
+| QUAL-PX-219 | REQ-PX-219 | sandbox-cloud | Deferred proof, entry condition and not a current proof: a task runs on a machine reached over SSH under the same tool, event and approval semantics as a local task, with host keys verified and the key held by the credential broker. | A task that runs with weaker approvals than a local one, a host key accepted without verification, or a private key readable by the agent. |
 
 ## Task cards
 
@@ -3002,6 +3048,321 @@ Rows REQ-PX-195..197 are additionally authorized by DR-PX-2026-11-04-020 (the de
 - **Evidence:** build digest, renderer revision, Playwright traces and screenshots beside the approved mockup, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
 - **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
 
+<a id="px-198"></a>
+
+## PX-198 — Measured workspace shell: the list, bars, rows, column and rail at the measured sizes, the conversation on the lightest surface, and a density setting
+
+- **Requirement:** REQ-PX-198; **related preserved requirements:** none restated.
+- **Owner / milestone / release:** desktop / M10 / RELEASE_ZERO; **prerequisites:** PX-197, DOC-PX-020.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-11-021; measured workspace goal; iteration (sizes and one surface mapping move; no effect, canonical persistence, policy, protocol, preload or security boundary changes, and the layout preference gains one field read with a default).
+- **Specification requirements (DR-PX-2026-11-11-021 section 5, with basis):** MWS-01 [DECIDED], MWS-02 [DECIDED], MWS-03 [DECIDED]; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** The geometry and scale tokens carry section 5.1 and 5.2: the list at 288 (200 to 420), bars at 45, navigation and task rows at 32, the column at 768 with its text at 736, the composer's radius at 14; the conversation, top bar and panel sit on `editor`; a density setting with compact at 13 px text, rows of 30 and bars of 40; every pin on the superseded numbers is moved and none is deleted; no component sets a size of its own.
+- **Production wiring:** `packages/design-tokens` (scale, css and the role map), `packages/ui` styles, `apps/desktop/src/renderer` (styles, workspace css, the shell's layout and preferences, the virtual list's row heights, Settings appearance); no preload, protocol or CSP change.
+- **Real qualification:** QUAL-PX-198 / PX-E2E-198.
+- **Failure and negative proof:** as in QUAL-PX-198.
+- **Evidence:** build digest, renderer revision, Playwright traces and screenshots beside the approved board, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-199"></a>
+
+## PX-199 — Measured task list: navigation, project groups, one-line rows with the state at the right, child rows, the preview card and the person's row
+
+- **Requirement:** REQ-PX-199; **related preserved requirements:** REQ-EV-0037, REQ-EV-0143.
+- **Owner / milestone / release:** desktop / M10 / RELEASE_ZERO; **prerequisites:** PX-198, DOC-PX-020.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-11-021; measured workspace goal; release-critical (archive and pin act on tasks from a new place and the rule for when a row shows its reason changes; the full desktop suite against a real Core on macOS, Linux and Windows is the proof of record, doc 83).
+- **Specification requirements (DR-PX-2026-11-11-021 section 5, with basis):** MWS-04 [DECIDED]; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** Navigation rows New task, Inbox with its count, Automations, Review and Customize; the Tasks head with search, list options and more; the state views unchanged; projects as the default grouping; one-line rows with the glyph, the changed-file count and the unread dot at the right; a second line only for a task that needs the person or failed, with Row details to change that; child rows indented; pin and archive on hover and on focus; a preview card on rest and on Space; the Repositories section and the Search row removed, their test ids listed in the evidence.
+- **Production wiring:** `apps/desktop/src/renderer/agents`, `renderer/shell/agent-region`, the virtual list's row heights; no preload or protocol change (the card reads the header and the task facts already delivered).
+- **Real qualification:** QUAL-PX-199 / PX-E2E-199.
+- **Failure and negative proof:** as in QUAL-PX-199.
+- **Evidence:** build digest, renderer revision, Playwright traces and screenshots beside the approved board, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-200"></a>
+
+## PX-200 — Measured task view: pane toggles in the title bar, the plan as a card of steps from the Core's work graph, the status line, the one-line composer with its controls under it and the regrouped approval card
+
+- **Requirement:** REQ-PX-200; **related preserved requirements:** REQ-EV-0037, REQ-EV-0143.
+- **Owner / milestone / release:** desktop / M10 / RELEASE_ZERO; **prerequisites:** PX-199, DOC-PX-020.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-11-021; measured workspace goal; release-critical (the approval's controls are regrouped, the model and run mode are reached from a new place, and the preload gains two read methods).
+- **Specification requirements (DR-PX-2026-11-11-021 section 5, with basis):** MWS-05 [DECIDED], MWS-06 [DECIDED], MWS-07 [DECIDED], MWS-08 [DECIDED]; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** The title opens the task's menu; one toggle per pane with its state; the plan card lists the work graph's steps with their state and replaces repeated plan lines; the status line says what runs, for how long and the tokens used; the composer is one box with the model, run mode and context ring under it and the queue tray above it; the approval card has words, the exact command, the reason, Skip, Always allow with prefix and scope in one menu, Allow once, and one disclosure for the intent and arguments; Enter, Escape and the confirmation rule are unchanged.
+- **Production wiring:** `apps/desktop/src/renderer` (conversation, composer, approvals, shell top bar); `apps/desktop/src/preload` and `src/main` gain `workGraph` and `plan` over the Core's existing `GetWorkGraph` and `GetPlan`; `packages/ide-adapter-core` client; no protocol or CSP change.
+- **Real qualification:** QUAL-PX-200 / PX-E2E-200.
+- **Failure and negative proof:** as in QUAL-PX-200.
+- **Evidence:** build digest, renderer revision, Playwright traces and screenshots beside the approved board, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-201"></a>
+
+## PX-201 — Details rail: environment, approvals, context, tool servers, changes, evidence, background tasks and cost beside the conversation
+
+- **Requirement:** REQ-PX-201; **related preserved requirements:** REQ-EV-0037, REQ-EV-0143.
+- **Owner / milestone / release:** desktop / M10 / RELEASE_ZERO; **prerequisites:** PX-200, DOC-PX-020.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-11-021; measured workspace goal; release-critical (cancel, restore, stop and review are reached from the rail and the popover that held them is removed).
+- **Specification requirements (DR-PX-2026-11-11-021 section 5, with basis):** MWS-09 [DECIDED]; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** The rail of section 5.5 with its eight sections read from the Core; Details in its head for state, phase, agents, generation, attachments, risk, security and next action; hidden at a task area of 800 px or narrower with its facts under More; it gives way while panes are open; the details popover is removed and its test ids move to the rail.
+- **Production wiring:** `apps/desktop/src/renderer` (conversation task details, shell frame and layout, context ring, checkpoints, economics); no preload or protocol change.
+- **Real qualification:** QUAL-PX-201 / PX-E2E-201.
+- **Failure and negative proof:** as in QUAL-PX-201.
+- **Evidence:** build digest, renderer revision, Playwright traces and screenshots beside the approved board, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-202"></a>
+
+## PX-202 — Pane dock: several panes open together in a grid, with Activity, Background tasks and Pull request panes
+
+- **Requirement:** REQ-PX-202; **related preserved requirements:** none restated.
+- **Owner / milestone / release:** desktop / M10 / RELEASE_ZERO; **prerequisites:** PX-201, DOC-PX-020.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-11-021; measured workspace goal; release-critical (opening a pull request and stopping tasks move into panes and the open panes are stored per task).
+- **Specification requirements (DR-PX-2026-11-11-021 section 5, with basis):** MWS-10 [DECIDED]; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** Any of the task's panes open together, tiled in at most two columns with 45 px heads; Minimize and Close on each; the set and the sizes remembered per task; the rail gives way; Activity lists the task's events in order with search and a filter by kind; Background tasks lists child tasks and terminals with Stop; Pull request shows the request, its checks after a refresh and people's comments; the one-app tab strip is removed.
+- **Production wiring:** `apps/desktop/src/renderer` (shell apps panel, layout and preferences, apps); the existing bridge methods for pull requests, CI results, review comments, terminals, cancel and the event stream; no preload or protocol change.
+- **Real qualification:** QUAL-PX-202 / PX-E2E-202.
+- **Failure and negative proof:** as in QUAL-PX-202.
+- **Evidence:** build digest, renderer revision, Playwright traces and screenshots beside the approved board, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-203"></a>
+
+## PX-203 — Pane pop-out: a pane in a window of its own under the same preload and content security policy
+
+- **Requirement:** REQ-PX-203; **related preserved requirements:** none restated.
+- **Owner / milestone / release:** desktop / M10 / RELEASE_ZERO; **prerequisites:** PX-202, DOC-PX-020.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-11-021; measured workspace goal; release-critical (the main process gains a second window).
+- **Specification requirements (DR-PX-2026-11-11-021 section 5, with basis):** MWS-10 [DECIDED]; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** Pop out moves a pane to its own window; closing that window returns the pane to the dock; quitting closes every pane window; a pane is in one place at a time; no approval can be decided from a pane window.
+- **Production wiring:** `apps/desktop/src/main` (a second window with the same preload, web preferences and CSP), `apps/desktop/src/renderer` (a single-pane entry); no protocol change.
+- **Real qualification:** QUAL-PX-203 / PX-E2E-203.
+- **Failure and negative proof:** as in QUAL-PX-203.
+- **Evidence:** build digest, renderer revision, Playwright traces and screenshots beside the approved board, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-204"></a>
+
+## PX-204 — Split view: two tasks side by side, each with its own title bar, transcript, composer and approval card
+
+- **Requirement:** REQ-PX-204; **related preserved requirements:** none restated.
+- **Owner / milestone / release:** desktop / M10 / RELEASE_ZERO; **prerequisites:** PX-202, DOC-PX-020.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-11-021; measured workspace goal; release-critical (two approval surfaces can be on screen and the keys must act on the focused task only).
+- **Specification requirements (DR-PX-2026-11-11-021 section 5, with basis):** MWS-11 [DECIDED]; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** Two tasks in the centre with a visible focus; the keyboard acts on the focused one; each composer queues to its own task; closing one returns to a single task; a third is refused; below the width two columns need, split view is refused with its reason.
+- **Production wiring:** `apps/desktop/src/renderer` (shell frame, layout, conversation mounting, key scopes); no preload or protocol change.
+- **Real qualification:** QUAL-PX-204 / PX-E2E-204.
+- **Failure and negative proof:** as in QUAL-PX-204.
+- **Evidence:** build digest, renderer revision, Playwright traces and screenshots beside the approved board, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-205"></a>
+
+## PX-205 — Measured home: the composer in a tray with where the task runs attached, what is waiting on the person, and the first-run steps
+
+- **Requirement:** REQ-PX-205; **related preserved requirements:** REQ-EV-0037, REQ-EV-0143.
+- **Owner / milestone / release:** desktop / M10 / RELEASE_ZERO; **prerequisites:** PX-199, DOC-PX-020.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-11-021; measured workspace goal; release-critical (send starts a run and approvals become decidable on home).
+- **Specification requirements (DR-PX-2026-11-11-021 section 5, with basis):** MWS-12 [DECIDED]; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** The tray of section 5.7: text, a bar with add context, mode, model and send, and under it location, folder, branch, own worktree and run mode; an issue URL from add context; the waiting list with decisions in place, except that a destructive effect opens its task; the provider and trust steps while incomplete and starter tasks after; send, Alt+Enter and the refusal rule unchanged.
+- **Production wiring:** `apps/desktop/src/renderer` (home, welcome, composer parts, approvals); no preload or protocol change.
+- **Real qualification:** QUAL-PX-205 / PX-E2E-205.
+- **Failure and negative proof:** as in QUAL-PX-205.
+- **Evidence:** build digest, renderer revision, Playwright traces and screenshots beside the approved board, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-206"></a>
+
+## PX-206 — Inbox: every approval, proposal and question across tasks, and a persisted record of updates with a read state
+
+- **Requirement:** REQ-PX-206; **related preserved requirements:** REQ-EV-0037, REQ-EV-0143.
+- **Owner / milestone / release:** desktop / M10 / RELEASE_ZERO; **prerequisites:** PX-199, DOC-PX-020.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-11-021; measured workspace goal; release-critical (approvals are decided away from their task and the main process gains a store).
+- **Specification requirements (DR-PX-2026-11-11-021 section 5, with basis):** MWS-13 [DECIDED]; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** Needs you lists pending approvals as the card of MWS-08, mode proposals and questions; Updates lists ready for review, a finished child task, an automation's run and a failure with time, read state and a link to the task; the record is kept by the main process, capped and cleared by the person; an operating-system notification opens the same link; the list's count stays the Core's attention count.
+- **Production wiring:** `apps/desktop/src/renderer` (approvals inbox, notifications), `apps/desktop/src/main` (a capped record under the data directory, list, mark read, clear and open handlers), `src/preload`; no protocol change.
+- **Real qualification:** QUAL-PX-206 / PX-E2E-206.
+- **Failure and negative proof:** as in QUAL-PX-206.
+- **Evidence:** build digest, renderer revision, Playwright traces and screenshots beside the approved board, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-207"></a>
+
+## PX-207 — Automations and Customize in the page shape: a details rail for an automation, one search across Customize, and Rules as a read-only section
+
+- **Requirement:** REQ-PX-207; **related preserved requirements:** none restated.
+- **Owner / milestone / release:** desktop / M10 / RELEASE_ZERO; **prerequisites:** PX-199, DOC-PX-020.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-11-021; measured workspace goal; release-critical (the preload passes the Core's instruction layers through and automations are enabled and run from a new layout).
+- **Specification requirements (DR-PX-2026-11-11-021 section 5, with basis):** MWS-14 [DECIDED]; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** Both pages in the shape of section 5.9; Automations with its list and a rail for the chosen one (trigger, where it runs, limits, recent runs, Run now); Customize with one search across its sections and Rules listing the instruction layers the Core loaded, each with Open source; nothing is offered that its owning row does not provide.
+- **Production wiring:** `apps/desktop/src/renderer` (automations, customize), `apps/desktop/src/preload` and `src/main` (the context inspector passes `instructions`; open source accepts a rule); no protocol change.
+- **Real qualification:** QUAL-PX-207 / PX-E2E-207.
+- **Failure and negative proof:** as in QUAL-PX-207.
+- **Evidence:** build digest, renderer revision, Playwright traces and screenshots beside the approved board, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-208"></a>
+
+## PX-208 — Review and Settings in the page shape: pull requests and local changes with their findings, list options under Appearance, and a Shortcuts section that lists the real bindings
+
+- **Requirement:** REQ-PX-208; **related preserved requirements:** none restated.
+- **Owner / milestone / release:** desktop / M10 / RELEASE_ZERO; **prerequisites:** PX-199, DOC-PX-020.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-11-021; measured workspace goal; release-critical (review decisions and run-mode rules are reached from a new layout).
+- **Specification requirements (DR-PX-2026-11-11-021 section 5, with basis):** MWS-14 [DECIDED]; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** Review lists the tasks' pull requests and the local changes not yet in one, and beside them the findings and people's comments for the chosen one; Settings keeps the sections of DR-PX-2026-11-04-020 section 5.7 and gains density, task rows and grouping under Appearance and a Shortcuts section generated from the command registry and the key map.
+- **Production wiring:** `apps/desktop/src/renderer` (review, settings, keyboard, shell commands); no preload or protocol change.
+- **Real qualification:** QUAL-PX-208 / PX-E2E-208.
+- **Failure and negative proof:** as in QUAL-PX-208.
+- **Evidence:** build digest, renderer revision, Playwright traces and screenshots beside the approved board, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-209"></a>
+
+## PX-209 — One search: tasks, conversation text, files and commands in the palette
+
+- **Requirement:** REQ-PX-209; **related preserved requirements:** none restated.
+- **Owner / milestone / release:** desktop / M10 / RELEASE_ZERO; **prerequisites:** PX-199, DOC-PX-020.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-11-021; measured workspace goal; release-critical (the palette starts tasks and runs commands, and it gains file and conversation results).
+- **Specification requirements (DR-PX-2026-11-11-021 section 5, with basis):** MWS-15 [DECIDED]; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** The palette lists tasks, conversation matches, files of the open task's folder and commands under a heading each; Enter opens the result; the empty state says what was searched.
+- **Production wiring:** `apps/desktop/src/renderer` (shell palette, agents search), the existing conversation search and workspace file bridge methods; no preload or protocol change.
+- **Real qualification:** QUAL-PX-209 / PX-E2E-209.
+- **Failure and negative proof:** as in QUAL-PX-209.
+- **Evidence:** build digest, renderer revision, Playwright traces and screenshots beside the approved board, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-210"></a>
+
+## PX-210 — Next-prompt suggestion: one suggested next message after a turn, accepted with Tab and never sent by itself
+
+- **Requirement:** REQ-PX-210; **related preserved requirements:** none restated.
+- **Owner / milestone / release:** core-runtime / M10 / RELEASE_ZERO; **prerequisites:** PX-200, DOC-PX-020.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-11-021; measured workspace goal; release-critical (a new protocol message, a model call and a charge to the task's budget).
+- **Specification requirements (DR-PX-2026-11-11-021 section 5, with basis):** MWS-16 [DECIDED]; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** When a turn ends and nothing is queued the Core may make one bounded model call over a snapshot and deliver a suggested next message; the call writes nothing to the task's log; the composer shows it as placeholder text and Tab puts it in the box; nothing is sent without the person; the call is charged to the task, respects its budget and limits, and a setting turns it off.
+- **Production wiring:** `crates/protocol` (an additive message), `services/modbit-core` (beside the side question's bounded call), `packages/ide-adapter-core`, `apps/desktop/src/preload` and `src/main`, `apps/desktop/src/renderer/composer`.
+- **Real qualification:** QUAL-PX-210 / PX-E2E-210.
+- **Failure and negative proof:** as in QUAL-PX-210.
+- **Evidence:** build digest, Core and renderer revisions, the Core suite's run ids, protocol fixture digests, Playwright traces, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-211"></a>
+
+## PX-211 — Task pull-request state: the Core records the request a task opened, refreshes its state and checks through the forge adapter, and the header carries it
+
+- **Requirement:** REQ-PX-211; **related preserved requirements:** none restated.
+- **Owner / milestone / release:** workspace-git / M10 / RELEASE_ZERO; **prerequisites:** PX-125, PX-202, DOC-PX-020.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-11-021; measured workspace goal; release-critical (the Core records and refreshes a pull request and a projection gains fields).
+- **Specification requirements (DR-PX-2026-11-11-021 section 5, with basis):** MWS-17 [DECIDED]; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** The Core keeps the number, address and state of the request a task opened, refreshes state and checks on request and on a schedule while the task is open, and puts the number and state in the task's header; the Pull request pane, the row and the preview card show what was read and when; archive after merge is a preference with undo.
+- **Production wiring:** `crates/protocol` (additive view, fields and a refresh command), `services/modbit-core` (pull request and CI evidence), the forge adapter's read path, `apps/desktop` bridge and renderer.
+- **Real qualification:** QUAL-PX-211 / PX-E2E-211.
+- **Failure and negative proof:** as in QUAL-PX-211.
+- **Evidence:** build digest, Core and renderer revisions, the Core suite's run ids, protocol fixture digests, Playwright traces, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-212"></a>
+
+## PX-212 — Auto-fix: a failing check or a comment addressed to the agent queues a repair turn inside the task's run mode and budgets
+
+- **Requirement:** REQ-PX-212; **related preserved requirements:** none restated.
+- **Owner / milestone / release:** core-runtime / M10 / RELEASE_ZERO; **prerequisites:** PX-211, DOC-PX-020.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-11-021; measured workspace goal; release-critical (the Core queues work for a task without the person typing it).
+- **Specification requirements (DR-PX-2026-11-11-021 section 5, with basis):** MWS-17 [DECIDED]; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** A switch per task, off by default; with it on, a failing check read by PX-211 or a comment that the existing ingestion accepts queues one repair input naming its cause; the turn runs under the task's run mode and budgets and its pushes ask as a person's would; an attempt cap stops the loop and says so.
+- **Production wiring:** `crates/protocol` (an additive setting and notice), `services/modbit-core` (queueing from CI evidence and review comments), `apps/desktop` bridge and the Pull request pane.
+- **Real qualification:** QUAL-PX-212 / PX-E2E-212.
+- **Failure and negative proof:** as in QUAL-PX-212.
+- **Evidence:** build digest, Core and renderer revisions, the Core suite's run ids, protocol fixture digests, Playwright traces, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-213"></a>
+
+## PX-213 — Merge when ready: a forge merge effect that is approval-bound and asked once the checks pass
+
+- **Requirement:** REQ-PX-213; **related preserved requirements:** none restated.
+- **Owner / milestone / release:** external-tools / M10 / RELEASE_ZERO; **prerequisites:** PX-211, DOC-PX-020.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-11-021; measured workspace goal; release-critical (a new external effect that changes a remote repository).
+- **Specification requirements (DR-PX-2026-11-11-021 section 5, with basis):** MWS-17 [DECIDED]; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** The forge adapter gains a merge verb classed as an external side effect; a person asks for merge when ready on a task's request; once its checks pass the Core raises the approval with the exact intent (repository, number, head revision, method); approval merges that head revision only; a moved head voids the intent and it is asked again; the receipt is in the effect ledger.
+- **Production wiring:** `crates/tools` forge adapter, `services/modbit-core` (effect, approval and receipt), `crates/protocol` (additive), `apps/desktop` bridge and the Pull request pane.
+- **Real qualification:** QUAL-PX-213 / PX-E2E-213.
+- **Failure and negative proof:** as in QUAL-PX-213.
+- **Evidence:** build digest, Core and renderer revisions, the Core suite's run ids, protocol fixture digests, Playwright traces, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-214"></a>
+
+## PX-214 — Reviewer findings one by one in the review bundle, with a command to fix one
+
+- **Requirement:** REQ-PX-214; **related preserved requirements:** none restated.
+- **Owner / milestone / release:** verification / M10 / RELEASE_ZERO; **prerequisites:** PX-208, DOC-PX-020.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-11-021; measured workspace goal; release-critical (the review bundle's schema grows and a command queues work from a finding).
+- **Specification requirements (DR-PX-2026-11-11-021 section 5, with basis):** MWS-18 [DECIDED]; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** The review bundle carries each finding of the isolated reviewer with its severity, path, line, claim, suggested action and whether it was verified against the tree; a command queues an input that names one finding; a dismissal records who and why; Review shows them with Walk through, Fix this one and Dismiss.
+- **Production wiring:** `crates/protocol` (additive finding view and command), `services/modbit-core` (the reviewer's recorded result), `apps/desktop` bridge and Review.
+- **Real qualification:** QUAL-PX-214 / PX-E2E-214.
+- **Failure and negative proof:** as in QUAL-PX-214.
+- **Evidence:** build digest, Core and renderer revisions, the Core suite's run ids, protocol fixture digests, Playwright traces, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-215"></a>
+
+## PX-215 — Standing computer access per application: view only, click, full or never, held by the Core and only ever narrowing a grant
+
+- **Requirement:** REQ-PX-215; **related preserved requirements:** none restated.
+- **Owner / milestone / release:** browser / M10 / RELEASE_ZERO; **prerequisites:** PX-208, PX-069, DOC-PX-020.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-11-021; measured workspace goal; release-critical (a standing policy record that the computer runtime enforces).
+- **Specification requirements (DR-PX-2026-11-11-021 section 5, with basis):** MWS-19 [DECIDED]; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** A level per application held by the Core; the computer runtime refuses an action above the level with a typed refusal the action card shows; never refuses the session; no level is set by default and behaviour is unchanged until the person sets one; a change is an audited event and applies from the next action.
+- **Production wiring:** `crates/protocol` (additive policy messages), `services/modbit-core` and `crates/browser` (enforcement beside the grant), `apps/desktop` bridge and Settings.
+- **Real qualification:** QUAL-PX-215 / PX-E2E-215.
+- **Failure and negative proof:** as in QUAL-PX-215.
+- **Evidence:** build digest, Core and renderer revisions, the Core suite's run ids, protocol fixture digests, Playwright traces, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-216"></a>
+
+## PX-216 — Browser pane site decisions: allow once and deny beside always allow, kept by the desktop's browser policy
+
+- **Requirement:** REQ-PX-216; **related preserved requirements:** none restated.
+- **Owner / milestone / release:** desktop / M10 / RELEASE_ZERO; **prerequisites:** PX-202, DOC-PX-020.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-11-021; measured workspace goal; release-critical (the browser pane's policy store gains decision kinds that gate navigation).
+- **Specification requirements (DR-PX-2026-11-11-021 section 5, with basis):** MWS-19 [DECIDED]; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** A navigation by the agent to an origin with no decision asks in the pane; Allow once permits that navigation only; Always allow and Deny persist; Settings lists the entries and removes them; the navigation target policy still applies first.
+- **Production wiring:** `apps/desktop/src/main` (browser policy and its store), `src/preload`, `apps/desktop/src/renderer` (browser pane, Settings); no protocol change.
+- **Real qualification:** QUAL-PX-216 / PX-E2E-216.
+- **Failure and negative proof:** as in QUAL-PX-216.
+- **Evidence:** build digest, renderer revision, Playwright traces and screenshots beside the approved board, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-217"></a>
+
+## PX-217 — Compact now: a person asks for a compaction of the open task
+
+- **Requirement:** REQ-PX-217; **related preserved requirements:** none restated.
+- **Owner / milestone / release:** durability / M10 / RELEASE_ZERO; **prerequisites:** PX-201, PX-109, DOC-PX-020.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-11-021; measured workspace goal; release-critical (a new command starts a compaction).
+- **Specification requirements (DR-PX-2026-11-11-021 section 5, with basis):** MWS-20 [DECIDED]; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** A command runs the same compaction the threshold path runs and records its epoch with the person as its source; while a turn runs it is refused with its reason; the rail's Context shows use before and after; the transcript stays searchable.
+- **Production wiring:** `crates/protocol` (an additive command), `services/modbit-core` and `crates/compaction`, `apps/desktop` bridge and the rail.
+- **Real qualification:** QUAL-PX-217 / PX-E2E-217.
+- **Failure and negative proof:** as in QUAL-PX-217.
+- **Evidence:** build digest, Core and renderer revisions, the Core suite's run ids, protocol fixture digests, Playwright traces, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
+<a id="px-218"></a>
+
+## PX-218 — The task header carries the last line the assistant wrote
+
+- **Requirement:** REQ-PX-218; **related preserved requirements:** none restated.
+- **Owner / milestone / release:** core-runtime / M10 / RELEASE_ZERO; **prerequisites:** PX-199, DOC-PX-020.
+- **Decision Record, phase and evidence tier:** DR-PX-2026-11-11-021; measured workspace goal; release-critical (a projection the list reads gains a field).
+- **Specification requirements (DR-PX-2026-11-11-021 section 5, with basis):** MWS-20 [DECIDED]; AFW-A12, AFW-A13, AFW-A14 unchanged.
+- **Scope and acceptance:** The header carries the last line of the assistant's latest finished message, capped in length and redacted as the transcript is; the preview card shows it; a task that has not answered carries none.
+- **Production wiring:** `crates/protocol` (an additive field), `services/modbit-core` (the transcript projection), `apps/desktop` bridge and the preview card.
+- **Real qualification:** QUAL-PX-218 / PX-E2E-218.
+- **Failure and negative proof:** as in QUAL-PX-218.
+- **Evidence:** build digest, Core and renderer revisions, the Core suite's run ids, protocol fixture digests, Playwright traces, run ids, artifact digests and the declared evidence tier under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
 ## Real-system scenarios
 
 ### PX-E2E-000 — Headless CLI task lifecycle
@@ -4059,3 +4420,129 @@ Rows REQ-PX-195..197 are additionally authorized by DR-PX-2026-11-04-020 (the de
 **Setup:** the packaged app, a real Core and a scripted model, in light and dark.  
 **Action:** the real app, a real Core and a scripted model running a task with reads, edits, a terminal and an approval, in light and dark, against the record: one column, one decision surface with the exact intent and no decision control in the transcript, an irreversible effect still asks twice, Escape on a confirmation does not skip the card behind it, the bar under the text with a round send, the commit bar at the panel's foot; the gate's retained mutations fail; the whole desktop suite and axe pass; real screenshots beside the mockup are in the evidence.  
 **Pass:** the screens match DR-PX-2026-11-04-020 section 5, no removed surface is present, axe is clean, the suite is green on the three operating systems.
+
+### PX-E2E-198 — Measured workspace shell: the list, bars, rows, column and rail at the measured sizes, the conversation on the lightest surface, and a density setting
+
+**Setup:** the packaged app and a real Core, in light and dark and in both densities.  
+**Action:** open home and a task at 1280, 1000 and 900 wide; read the measured sizes and the computed variables; switch density and theme; restart and read them again.  
+**Pass:** the sizes equal DR-PX-2026-11-11-021 section 5.1 and 5.2 in both densities, the setting survives a restart, axe and the contrast test are clean, and each retained mutation fails.
+
+### PX-E2E-199 — Measured task list: navigation, project groups, one-line rows with the state at the right, child rows, the preview card and the person's row
+
+**Setup:** the packaged app, a real Core and a scripted model, two projects, tasks in every status class and one child task.  
+**Action:** read the list top to bottom at three widths; change the grouping; pin, archive and undo from a row with the keyboard; rest on a row and open its card; open a task from the card.  
+**Pass:** the list matches DR-PX-2026-11-11-021 section 5.3, the reasons are on the rows that need them, the card reads only the header, the removed ids are absent, axe is clean and the suite is green on the three operating systems.
+
+### PX-E2E-200 — Measured task view: pane toggles in the title bar, the plan as a card of steps from the Core's work graph, the status line, the one-line composer with its controls under it and the regrouped approval card
+
+**Setup:** the packaged app, a real Core and a scripted model, in light and dark.  
+**Action:** run a task that plans, reads, edits, runs a command and asks for a protected write and then an irreversible effect; decide by keys and by mouse; reload mid-approval.  
+**Pass:** the view matches DR-PX-2026-11-11-021 section 5.4, the plan follows the work graph, one decision surface exists with the exact intent reachable, the keys behave as DR-PX-2026-11-04-020 fixed them, axe is clean and the suite is green on the three operating systems.
+
+### PX-E2E-201 — Details rail: environment, approvals, context, tool servers, changes, evidence, background tasks and cost beside the conversation
+
+**Setup:** the packaged app, a real Core and a scripted model with a task that has a child task, a background terminal, two checkpoints and a budget.  
+**Action:** read each section; stop the terminal; open Review; preview a restore; reload; narrow the window to 800 px and below.  
+**Pass:** the rail matches DR-PX-2026-11-11-021 section 5.5, every value comes from a Core read, the popover is gone, axe is clean and the suite is green on the three operating systems.
+
+### PX-E2E-202 — Pane dock: several panes open together in a grid, with Activity, Background tasks and Pull request panes
+
+**Setup:** the packaged app, a real Core, a scripted model and the forge test server.  
+**Action:** open three panes; resize and reload; minimize the terminal and restore it; search and filter Activity; stop a child task; open a pull request and refresh its checks.  
+**Pass:** the dock matches DR-PX-2026-11-11-021 section 5.6, panes persist per task, nothing is shown that was not read, the tab strip is gone, axe is clean and the suite is green on the three operating systems.
+
+### PX-E2E-203 — Pane pop-out: a pane in a window of its own under the same preload and content security policy
+
+**Setup:** the packaged app, a real Core and a scripted model.  
+**Action:** pop out the terminal and the changes; type in the terminal; close one window; quit with one still open.  
+**Pass:** each pane runs in one place under the same preload and CSP, state survives the move, the guard passes and the suite is green on the three operating systems.
+
+### PX-E2E-204 — Split view: two tasks side by side, each with its own title bar, transcript, composer and approval card
+
+**Setup:** the packaged app, a real Core and a scripted model with two tasks, one asking for a protected write.  
+**Action:** open both side by side; move focus; press the approve key in each; queue a message in each; close one; reload.  
+**Pass:** every key and message reaches the focused task only, split view matches DR-PX-2026-11-11-021 section 5.6, axe is clean and the suite is green on the three operating systems.
+
+### PX-E2E-205 — Measured home: the composer in a tray with where the task runs attached, what is waiting on the person, and the first-run steps
+
+**Setup:** the packaged app, a real Core and a scripted model, first with no provider and no trusted folder, then with both and two tasks waiting.  
+**Action:** complete the first-run steps; send a task; create one with Alt+Enter; decide a protected write from the list; try the destructive one.  
+**Pass:** home matches DR-PX-2026-11-11-021 section 5.7, the rules of DR-PX-2026-11-04-020 section 5.9 still hold, axe is clean and the suite is green on the three operating systems.
+
+### PX-E2E-206 — Inbox: every approval, proposal and question across tasks, and a persisted record of updates with a read state
+
+**Setup:** the packaged app, a real Core and a scripted model with three tasks as in the qualification.  
+**Action:** decide from Needs you; open an update; restart; trigger the notification's open handler; fill the record past its cap.  
+**Pass:** Inbox matches DR-PX-2026-11-11-021 section 5.8, the record holds ids and titles only, axe is clean and the suite is green on the three operating systems.
+
+### PX-E2E-207 — Automations and Customize in the page shape: a details rail for an automation, one search across Customize, and Rules as a read-only section
+
+**Setup:** the packaged app and a real Core with two automations, skills, a hook and a folder that has rules files.  
+**Action:** run and pause an automation from its rail; search Customize for three kinds of thing; open a rule's source.  
+**Pass:** both pages match DR-PX-2026-11-11-021 section 5.9, Rules equals the Core's instruction layers, axe is clean and the suite is green on the three operating systems.
+
+### PX-E2E-208 — Review and Settings in the page shape: pull requests and local changes with their findings, list options under Appearance, and a Shortcuts section that lists the real bindings
+
+**Setup:** the packaged app, a real Core and a scripted model with one task ready for review.  
+**Action:** decide a hunk from Review; change density, rows and grouping; compare the Shortcuts section with the registry.  
+**Pass:** both pages match DR-PX-2026-11-11-021 section 5.9, the shortcut list is generated and complete, axe is clean and the suite is green on the three operating systems.
+
+### PX-E2E-209 — One search: tasks, conversation text, files and commands in the palette
+
+**Setup:** the packaged app and a real Core with several tasks whose conversations hold known text.  
+**Action:** open the palette; search for a title, a phrase, a file name and a command; open each result.  
+**Pass:** the palette matches DR-PX-2026-11-11-021 section 5.9, results come only from the Core's reads, axe is clean and the suite is green on the three operating systems.
+
+### PX-E2E-210 — Next-prompt suggestion: one suggested next message after a turn, accepted with Tab and never sent by itself
+
+**Setup:** a real Core, the packaged app and a scripted model that answers the suggestion call.  
+**Action:** finish a turn; accept the suggestion with Tab; finish another with an input queued; turn the setting off; set the budget to its cap.  
+**Pass:** one suggestion per finished turn under the rules of DR-PX-2026-11-11-021 MWS-16, an unchanged log, a visible charge, and green Core and desktop suites on the three operating systems.
+
+### PX-E2E-211 — Task pull-request state: the Core records the request a task opened, refreshes its state and checks through the forge adapter, and the header carries it
+
+**Setup:** a real Core, the packaged app and the forge test server.  
+**Action:** open a request from a task; move it through failing checks, passing checks and merged on the server, refreshing each time; restart; turn on archive after merge.  
+**Pass:** the recorded state equals the server's at each refresh under DR-PX-2026-11-11-021 MWS-17, and the Core and desktop suites are green on the three operating systems.
+
+### PX-E2E-212 — Auto-fix: a failing check or a comment addressed to the agent queues a repair turn inside the task's run mode and budgets
+
+**Setup:** a real Core, the packaged app, a scripted model and the forge test server with a failing check.  
+**Action:** turn auto-fix on; let one repair run and approve its push; keep the check failing to the cap; turn it off.  
+**Pass:** repairs are queued and bounded as DR-PX-2026-11-11-021 MWS-17 says, no approval is skipped, and the Core and desktop suites are green on the three operating systems.
+
+### PX-E2E-213 — Merge when ready: a forge merge effect that is approval-bound and asked once the checks pass
+
+**Setup:** a real Core, the packaged app and the forge test server with a request whose checks can be driven.  
+**Action:** ask for merge when ready; pass the checks; move the head and pass them again; approve.  
+**Pass:** the merge happens only on the approved head revision with its receipt in the ledger under DR-PX-2026-11-11-021 MWS-17, and the Core and desktop suites are green on the three operating systems.
+
+### PX-E2E-214 — Reviewer findings one by one in the review bundle, with a command to fix one
+
+**Setup:** a real Core, the packaged app and a scripted reviewer and model.  
+**Action:** run a review that returns three findings; walk through one; fix one; dismiss one; review again.  
+**Pass:** the findings in Review equal the reviewer's recorded result under DR-PX-2026-11-11-021 MWS-18, and the Core and desktop suites are green on the three operating systems.
+
+### PX-E2E-215 — Standing computer access per application: view only, click, full or never, held by the Core and only ever narrowing a grant
+
+**Setup:** a real Core, the packaged app and the actuator fixture application.  
+**Action:** set the fixture to view only, then click, then never, driving the same three actions each time; clear the level.  
+**Pass:** each action is allowed or refused as DR-PX-2026-11-11-021 MWS-19 says, with the reason shown, and the Core and desktop suites are green on the three operating systems.
+
+### PX-E2E-216 — Browser pane site decisions: allow once and deny beside always allow, kept by the desktop's browser policy
+
+**Setup:** the packaged app, a real Core, a scripted model and two local origins.  
+**Action:** let the agent navigate to each origin; choose Allow once, then Always allow, then Deny; restart; remove an entry.  
+**Pass:** each decision behaves as DR-PX-2026-11-11-021 MWS-19 says, axe is clean and the suite is green on the three operating systems.
+
+### PX-E2E-217 — Compact now: a person asks for a compaction of the open task
+
+**Setup:** a real Core, the packaged app and a scripted model with a task whose transcript is long.  
+**Action:** ask for a compaction while idle; ask during a turn; force the summary to fail once.  
+**Pass:** one compaction path with the person recorded as its source under DR-PX-2026-11-11-021 MWS-20, and the Core and desktop suites are green on the three operating systems.
+
+### PX-E2E-218 — The task header carries the last line the assistant wrote
+
+**Setup:** a real Core, the packaged app and a scripted model whose answer ends with a known line and holds a secret.  
+**Action:** finish a turn; read the header and the card; restart; read them again.  
+**Pass:** the header's line follows DR-PX-2026-11-11-021 MWS-20, and the Core and desktop suites are green on the three operating systems.

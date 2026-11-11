@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Automations</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="modbit.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="mb app rail-on" style="grid-template-columns:288px minmax(0,1fr) 372px">
+  <aside class="side">
+    <div class="sbar"><button class="ibtn" aria-label="Hide sidebar"><span class="ms" aria-hidden="true">view_sidebar</span></button><span class="grow"></span><button class="ibtn" aria-label="Back"><span class="ms" aria-hidden="true">arrow_back</span></button><button class="ibtn" aria-label="Forward"><span class="ms" aria-hidden="true">arrow_forward</span></button></div>
+    <nav class="snav" aria-label="Main">
+      <button class="nv"><span class="ms" aria-hidden="true">add</span>New task<span class="kbd">⌘N</span></button>
+      <button class="nv"><span class="ms" aria-hidden="true">inbox</span>Inbox<span class="badge warn">2</span></button>
+      <button class="nv on"><span class="ms" aria-hidden="true">schedule</span>Automations</button>
+      <button class="nv"><span class="ms" aria-hidden="true">rate_review</span>Review</button>
+      <button class="nv"><span class="ms" aria-hidden="true">tune</span>Customize</button>
+    </nav>
+    <div class="shd">Tasks<span class="grow"></span><button class="ibtn" aria-label="Search tasks"><span class="ms" aria-hidden="true">search</span></button><button class="ibtn" aria-label="Group, sort and filter"><span class="ms" aria-hidden="true">filter_list</span></button><button class="ibtn" aria-label="More"><span class="ms" aria-hidden="true">more_horiz</span></button></div>
+    <div class="slist">
+      <button class="grp">modbit<span class="ms" aria-hidden="true">expand_more</span></button>
+      <button class="srow"><span class="t">Wire the updater signing step into the release pipeline</span><span class="ms fill c-warn s16" role="img" aria-label="Needs you">error</span></button>
+      <button class="srow"><span class="t">Clean the build output</span><span class="ms fill c-warn s16" role="img" aria-label="Needs you">error</span></button>
+      <button class="srow"><span class="t">Add glm-5.3-flash to the price catalog</span><span class="ms c-acc s16 spin" role="img" aria-label="Working">progress_activity</span></button>
+      <button class="srow"><span class="t">Fix accounting reconciliation in the px133 rerun</span><span class="ms c-ok s16" role="img" aria-label="Ready to review">merge</span><span class="n">5</span><span class="udot"></span></button>
+      <button class="srow"><span class="t">Nightly dependency audit</span><span class="ms s16 c-dim" role="img" aria-label="Started by an automation">schedule</span></button>
+      <button class="grp">dossier<span class="ms" aria-hidden="true">expand_more</span></button>
+      <button class="srow"><span class="t">Draft the SBOM decision record</span><span class="udot idle"></span></button>
+      <button class="grp">Archived · 14<span class="ms" aria-hidden="true">chevron_right</span></button>
+    </div>
+    <div class="sfoot"><span class="avatar">M</span><span>mohsin</span><span class="live"><i></i>Core</span><span class="grow"></span><button class="ibtn" aria-label="Help"><span class="ms" aria-hidden="true">help</span></button><button class="ibtn" aria-label="Settings"><span class="ms" aria-hidden="true">settings</span></button></div>
+  </aside>
+
+  <main class="card main">
+    <header class="pagehead"><h2>Automations</h2><span class="grow"></span><button class="btn pri sm"><span class="ms s16" aria-hidden="true">add</span>New automation</button></header>
+    <div class="pagebody">
+      <p class="h1p">Automations</p>
+      <p class="subp">Run a task on a schedule or when something happens in a repository. Every run is an ordinary task, with the same approvals, evidence and budget.</p>
+      <div class="list-card">
+        <div class="hrow" style="background:var(--hover)"><span class="ms" aria-hidden="true">schedule</span><div class="tt"><b>Nightly dependency audit</b><span>Reads only · Cloud</span></div><span class="c-dim" style="width:190px">Every day at 02:00</span><span class="c-dim" style="width:150px">6h ago · no changes</span><span class="switch on" role="img" aria-label="On"></span></div>
+        <div class="hrow"><span class="ms" aria-hidden="true">commit</span><div class="tt"><b>Reseal check after dossier edits</b><span>Writes in its own worktree · This Mac</span></div><span class="c-dim" style="width:190px">When docs/ or graph/ changes</span><span class="c-dim" style="width:150px">Yesterday · passed</span><span class="switch on" role="img" aria-label="On"></span></div>
+        <div class="hrow"><span class="ms" aria-hidden="true">schedule</span><div class="tt"><b>Weekly flaky-test sweep</b><span>Writes in its own worktree · Cloud</span></div><span class="c-dim" style="width:190px">Mondays at 09:00</span><span class="c-dim" style="width:150px">3d ago · opened #166</span><span class="switch on" role="img" aria-label="On"></span></div>
+        <div class="hrow"><span class="ms" aria-hidden="true">schedule</span><div class="tt"><b>Price catalog drift</b><span>Reads only · Cloud</span></div><span class="c-dim" style="width:190px">Every 6 hours</span><span class="c-dim" style="width:150px">Paused</span><span class="switch" role="img" aria-label="Off"></span></div>
+        <div class="hrow"><span class="ms" aria-hidden="true">play_arrow</span><div class="tt"><b>Drift report</b><span>Reads only · This Mac</span></div><span class="c-dim" style="width:190px">Manual</span><span class="c-dim" style="width:150px">Never run</span><span class="switch on" role="img" aria-label="On"></span></div>
+      </div>
+    </div>
+  </main>
+
+  <aside class="rail2" aria-label="Automation details">
+    <div class="rsec">
+      <h4>Nightly dependency audit<span class="r"><button class="ibtn" aria-label="Close details"><span class="ms" aria-hidden="true">close</span></button></span></h4>
+      <p class="c-dim" style="font-size:13px;line-height:1.5">Check for outdated or vulnerable dependencies and report what you find. Do not change anything.</p>
+      <div style="display:flex;gap:8px;margin-top:10px"><button class="btn soft sm">Run now</button><button class="btn ghost sm">Edit prompt</button></div>
+    </div>
+    <div class="rsec">
+      <h4>Trigger</h4>
+      <div class="segctl" style="margin-bottom:6px"><button class="on">Schedule</button><button>Event</button><button>Manual</button></div>
+      <div class="rrow"><span class="ms" aria-hidden="true">schedule</span><span class="x">Every day at 02:00</span><span class="r">next in 7h</span></div>
+    </div>
+    <div class="rsec">
+      <h4>Runs in</h4>
+      <div class="rrow"><span class="ms" aria-hidden="true">cloud</span><span class="x">Cloud</span><span class="r">own worktree</span></div>
+      <div class="rrow"><span class="ms" aria-hidden="true">folder_open</span><span class="x">modbit</span><span class="r">main</span></div>
+    </div>
+    <div class="rsec">
+      <h4>Limits</h4>
+      <div class="rrow"><span class="ms" aria-hidden="true">shield</span><span class="x">May do</span><span class="r">Reads only</span></div>
+      <div class="rrow"><span class="ms" aria-hidden="true">payments</span><span class="x">Budget</span><span class="r">$0.25 a run</span></div>
+      <div class="rrow"><span class="ms" aria-hidden="true">notifications</span><span class="x">Tell me</span><span class="r">only when it finds something</span></div>
+    </div>
+    <div class="rsec">
+      <h4>Recent runs</h4>
+      <div class="rrow"><span class="ms fill c-ok" aria-hidden="true">check_circle</span><span class="x">Today 02:00</span><span class="r">no changes · 1m 48s</span></div>
+      <div class="rrow"><span class="ms fill c-ok" aria-hidden="true">check_circle</span><span class="x">Yesterday 02:00</span><span class="r">2 advisories</span></div>
+      <div class="rrow"><span class="ms fill c-bad" aria-hidden="true">cancel</span><span class="x">Sunday 02:00</span><span class="r">provider refused</span></div>
+    </div>
+  </aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
