@@ -237,6 +237,26 @@ pub enum SessionEvent {
         /// Of those, the ones whose cost is not fully known.
         tasks_with_unknown_usage: u32,
     },
+    /// `SuggestionUsageRecorded` (REQ-PX-210, DR-PX-2026-11-11-021 MWS-16):
+    /// what one next-prompt suggestion call used. The call reads a snapshot of
+    /// a task and adds nothing to that task's log, so its usage is recorded
+    /// here, on the session's aggregate, naming the task it is charged to;
+    /// the task's economics and its cost cap count it from this record. It
+    /// never carries the suggested text. No state change.
+    SuggestionUsageRecorded {
+        /// The task the call was made for and is charged to.
+        task_id: TaskId,
+        /// Input tokens the provider reported.
+        input_tokens: u64,
+        /// Output tokens the provider reported.
+        output_tokens: u64,
+        /// The cached subset of the input tokens.
+        cached_input_tokens: u64,
+        /// Whether the provider reported usage at all (unknown is never zero).
+        reported: bool,
+        /// The route the call took, as a turn's `ModelUsageRecorded` records it.
+        route: serde_json::Value,
+    },
 }
 
 impl SessionEvent {
@@ -259,6 +279,7 @@ impl SessionEvent {
             Self::ExtensionTrusted { .. } => "ExtensionTrusted",
             Self::SessionEnding { .. } => "SessionEnding",
             Self::SessionBranched { .. } => "SessionBranched",
+            Self::SuggestionUsageRecorded { .. } => "SuggestionUsageRecorded",
         }
     }
 }
@@ -321,6 +342,7 @@ impl Session {
             | SessionEvent::ExtensionLoaded { .. }
             | SessionEvent::ExtensionUnloaded { .. }
             | SessionEvent::ExtensionTrusted { .. }
+            | SessionEvent::SuggestionUsageRecorded { .. }
             | SessionEvent::SessionEnding { .. } => {
                 if self.state.is_terminal() {
                     return Err(crate::InvalidTransition {

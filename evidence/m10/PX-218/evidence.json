@@ -1,0 +1,56 @@
+{
+  "task": "PX-218",
+  "requirements": [
+    "REQ-PX-218",
+    "QUAL-PX-218",
+    "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-218"
+  ],
+  "scenarios": [
+    "QUAL-PX-218 / PX-E2E-218"
+  ],
+  "decision_record": "DR-PX-2026-11-11-021 (MWS-20)",
+  "tier": "release-critical",
+  "branch": "wip/desktop-2-core-header-suggest",
+  "status": "built and proven locally on macOS arm64; not sealed (graph.py was not run: sealing is not this task's, and the prerequisite PX-199 is not COMPLETE)",
+  "audit": {
+    "classification": "NOT-FOUND on a PRODUCTION-WORKING projection",
+    "first_missing_link": "nothing on the log a grouped header read can take the line from: a finished message's text exists only as a content-addressed object, and the header read may not open objects",
+    "traced": "useAgents -> window.modbit.agentHeaders -> agents:headers (conversation-ipc.ts headerView) -> CoreClient.getAgentHeaders -> GetAgentHeaders (server.rs) -> transcript::headers -> EventStore::task_digests (digest.rs)"
+  },
+  "protocol": {
+    "added": [
+      "modbit.v1.AgentHeader.last_line = 460 (string)"
+    ],
+    "canonical_log": [
+      "AssistantMessageCompleted.last_line (optional string, absent on records written before it)"
+    ],
+    "fixtures": [
+      "tests/fixtures/protocol/v1/rust/agent_headers.{bin,json}",
+      "tests/fixtures/protocol/v1/ts/agent_headers.bin"
+    ]
+  },
+  "tests": [
+    "services/modbit-core/tests/stream_transcript.rs::qual_px_218_the_header_carries_the_last_line_of_the_latest_finished_message",
+    "crates/event-store/tests/last_message_digest.rs",
+    "crates/domain/src/stream.rs (unit: the_last_line_is_the_last_non_empty_one_and_is_cut_at_a_character_boundary, a_completion_records_a_bounded_single_last_line_and_old_records_still_read)",
+    "services/modbit-core/src/transcript.rs (unit: the_last_line_of_a_record_older_than_the_field_is_read_from_its_object_once)",
+    "apps/desktop/e2e/px-210-suggestion.spec.ts (the bridge returns lastLine after a real turn)"
+  ],
+  "commands": {
+    "core": "cargo test -p modbit-core --test stream_transcript qual_px_218  -> 1 passed (px218-core.log)",
+    "store": "cargo test -p modbit-event-store --test last_message_digest  -> 3 passed (px218-digest.log)",
+    "domain": "cargo test -p modbit-domain --lib stream  -> 5 passed",
+    "unit": "cargo test -p modbit-core --bin modbit-core the_last_line_of_a_record  -> 1 passed",
+    "fixtures": "cargo run -p protocol-fixtures -- --check (exit 0); pnpm --filter @modbit/surface-protocol test -> 53 passed; cargo test -p protocol-fixtures -> 2 passed"
+  },
+  "mutation_check": "mutation-check-2026-11-11.txt (2 mutations, both detected)",
+  "full_suites": "see ../PX-210/evidence.json (one run of the Core's suite and of the workspace covers both rows)",
+  "environment": "macOS 27.0.1 arm64, rustc 1.97.1, node 26.11.1; scripted model; real modbit-core binary, real SQLite event store and object store",
+  "limitations": [
+    "The preview card (PX-199) is not in this change: PX-E2E-218 is proven for the header, not for the card.",
+    "The line is the message's last non-empty line as written; nothing is summarised.",
+    "A message finished before this build has no line on its record; the header reads it from the text object once per Core process per message (proven on a real store by a unit test, not on a real Core).",
+    "For an archived task the line is read as of the archive.",
+    "macOS only so far; Linux and Windows are CI's."
+  ]
+}

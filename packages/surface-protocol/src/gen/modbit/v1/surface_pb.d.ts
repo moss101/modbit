@@ -1712,6 +1712,120 @@ export declare type SideAnswer = Message<"modbit.v1.SideAnswer"> & {
 export declare const SideAnswerSchema: GenMessage<SideAnswer>;
 
 /**
+ * REQ-PX-210 (DR-PX-2026-11-11-021 MWS-16): one suggested next message for a
+ * task whose turn has ended with nothing queued. The Core makes one bounded
+ * model call over a snapshot of the task (goal, plan, the end of the
+ * transcript) with no tools. Nothing is appended to the task's log and the
+ * suggested text is stored nowhere; nothing is ever sent for the person.
+ *
+ * The call is charged to the task: its usage is one `SuggestionUsageRecorded`
+ * on the session's own aggregate, outside the task's log, which names the
+ * task and never carries the text. `GetTaskEconomics` and the task's cost cap
+ * count it.
+ *
+ * The command spends the task's budget, so it presents the session's lease
+ * like any mutation. Refused with a typed code and no model call:
+ * SUGGESTIONS_OFF (the Core runs with MODBIT_NEXT_PROMPT_SUGGESTIONS=off),
+ * TASK_ENDED, CHILD_TASK (a subagent's budget is its parent's slice),
+ * TURN_RUNNING, NO_FINISHED_TURN, INPUT_QUEUED, ALREADY_ANSWERED (the command
+ * id was answered before: a suggestion is kept nowhere, so it is not replayed
+ * and not charged twice), SUGGESTION_IN_FLIGHT, BUDGET_EXHAUSTED (the cost or
+ * wall-clock cap is reached), BUDGET_WOULD_EXCEED (the call's worst case does
+ * not fit under the cost cap), COST_UNMETERED (a capped task whose call cannot
+ * be priced), MODEL_NOT_ALLOWED, NO_PROVIDER, NO_MODEL, ROUTE_REFUSED. A
+ * provider failure is refused with the provider's code and nothing is
+ * charged. Refused after the call, with its charge recorded: TASK_MOVED (the
+ * task's log moved while the model answered) and EMPTY_SUGGESTION.
+ *
+ * @generated from message modbit.v1.SuggestNextPrompt
+ */
+export declare type SuggestNextPrompt = Message<"modbit.v1.SuggestNextPrompt"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.SuggestNextPrompt.
+ * Use `create(SuggestNextPromptSchema)` to create a new message.
+ */
+export declare const SuggestNextPromptSchema: GenMessage<SuggestNextPrompt>;
+
+/**
+ * @generated from message modbit.v1.NextPromptSuggestion
+ */
+export declare type NextPromptSuggestion = Message<"modbit.v1.NextPromptSuggestion"> & {
+  /**
+   * one line, at most 200 characters, redacted as model text is
+   *
+   * @generated from field: string text = 1;
+   */
+  text: string;
+
+  /**
+   * the task's last log offset: the same before and after the call
+   *
+   * @generated from field: uint64 task_offset = 2;
+   */
+  taskOffset: bigint;
+
+  /**
+   * @generated from field: uint64 input_tokens = 3;
+   */
+  inputTokens: bigint;
+
+  /**
+   * @generated from field: uint64 output_tokens = 4;
+   */
+  outputTokens: bigint;
+
+  /**
+   * the registry priced the call
+   *
+   * @generated from field: bool cost_known = 5;
+   */
+  costKnown: boolean;
+
+  /**
+   * what the task was charged, when cost_known
+   *
+   * @generated from field: uint64 cost_minor = 6;
+   */
+  costMinor: bigint;
+
+  /**
+   * @generated from field: string endpoint = 7;
+   */
+  endpoint: string;
+
+  /**
+   * @generated from field: string model = 8;
+   */
+  model: string;
+
+  /**
+   * how many transcript messages the snapshot carried
+   *
+   * @generated from field: uint32 snapshot_messages = 9;
+   */
+  snapshotMessages: number;
+
+  /**
+   * the session log offset of the usage record
+   *
+   * @generated from field: uint64 usage_offset = 10;
+   */
+  usageOffset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.NextPromptSuggestion.
+ * Use `create(NextPromptSuggestionSchema)` to create a new message.
+ */
+export declare const NextPromptSuggestionSchema: GenMessage<NextPromptSuggestion>;
+
+/**
  * REQ-EV-0222 / PX-000: typed questions. The run suspends on `user.ask`;
  * RespondToQuestion records the answer (StartTask then resumes the run).
  *
@@ -3571,6 +3685,23 @@ export declare type TaskEconomicsView = Message<"modbit.v1.TaskEconomicsView"> &
    * @generated from field: uint64 cost_remaining_minor = 246;
    */
   costRemainingMinor: bigint;
+
+  /**
+   * REQ-PX-210 (field block 450-459): the next-prompt suggestion calls charged
+   * to the task. They are part of model_calls, the token counts, cost_minor
+   * and the priced / unpriced / unreported counts above; they belong to no run,
+   * so `runs` does not list them.
+   *
+   * @generated from field: uint32 suggestion_calls = 450;
+   */
+  suggestionCalls: number;
+
+  /**
+   * of cost_minor, what those calls cost (the priced ones)
+   *
+   * @generated from field: uint64 suggestion_cost_minor = 451;
+   */
+  suggestionCostMinor: bigint;
 };
 
 /**

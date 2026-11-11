@@ -274,9 +274,11 @@ export interface ComposerStore {
   history: Record<string, string[]>;
   /** The send-behaviour education tray was acknowledged (AFW-E04). */
   educationAck: boolean;
+  /** Next-prompt suggestions are on (REQ-PX-210, the default): after a turn the composer may ask the Core for one. Off: it never asks. */
+  suggestions: boolean;
 }
 
-export const EMPTY_STORE: ComposerStore = { drafts: {}, history: {}, educationAck: false };
+export const EMPTY_STORE: ComposerStore = { drafts: {}, history: {}, educationAck: false, suggestions: true };
 
 const isStringArray = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === "string");
 
@@ -294,7 +296,8 @@ export function parseStore(raw: string | null): ComposerStore {
     }
     const history: Record<string, string[]> = {};
     for (const [id, h] of Object.entries((v.history ?? {}) as Record<string, unknown>)) if (isStringArray(h)) history[id] = h.slice(-MAX_HISTORY);
-    return { drafts, history, educationAck: v.educationAck === true };
+    // On unless the person turned it off: a store written before the setting existed has none, which is the default.
+    return { drafts, history, educationAck: v.educationAck === true, suggestions: v.suggestions !== false };
   } catch {
     return EMPTY_STORE;
   }
@@ -354,6 +357,49 @@ export function walkHistory(list: readonly string[], cur: HistoryCursor, dir: "o
   if (cur.index >= list.length - 1) return { cursor: HISTORY_START, text: cur.stash };
   return { cursor: { index: cur.index + 1, stash: cur.stash }, text: list[cur.index + 1]! };
 }
+
+// ------------------------------------------- the next-prompt suggestion
+
+/** What the composer knows when a turn has just been seen to end (REQ-PX-210). */
+export interface SuggestionContext {
+  /** The person's setting (the composer's preferences). */
+  enabled: boolean;
+  connected: boolean;
+  hasSession: boolean;
+  /** The task takes no more messages (completed, failed or cancelled). */
+  ended: boolean;
+  /** A turn is running now. */
+  running: boolean;
+  /** Messages waiting in the queue. */
+  queued: number;
+  /** What is in the message box. */
+  text: string;
+  /** The person stopped the turn, or the model was refused: what comes next is theirs to say, and the composer is showing them why. */
+  interrupted: boolean;
+}
+
+/**
+ * Whether the composer asks the Core for a suggested next message (DR-PX-2026-11-11-021 MWS-16). It asks once, when it sees a turn end
+ * by itself with nothing queued and nothing typed; with the setting off it never asks, so no model call is made for it. The Core decides again on
+ * its own facts (a turn it knows is running, a queued input, the task's budget) and its refusal simply means no suggestion.
+ */
+export function suggestionDue(c: SuggestionContext): boolean {
+  return c.enabled && c.connected && c.hasSession && !c.ended && !c.running && !c.interrupted && c.queued === 0 && c.text.trim() === "";
+}
+
+/** Whether a suggestion that came back may still be shown: the same facts, judged again when the Core answers. */
+export function suggestionShows(c: SuggestionContext, suggestion: string): boolean {
+  return suggestion.trim() !== "" && suggestionDue(c);
+}
+
+/** Tab puts the suggestion in the box only when it is the plain key and the box is empty: Shift+Tab stays the mode cycle and a draft is never overwritten. */
+export function tabTakesSuggestion(e: Pick<KeyLike, "key" | "shiftKey" | "altKey" | "ctrlKey" | "metaKey">, suggestion: string | null, text: string): boolean {
+  return e.key === "Tab" && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey && !!suggestion && text === "";
+}
+
+/** How many times the composer asks again when the Core still counts the turn as running, and how long it waits between: the run's last record can reach the client a moment before the run has let go. */
+export const SUGGEST_ATTEMPTS = 3;
+export const SUGGEST_RETRY_MS = 400;
 
 // ------------------------------------------------------- the queue tray
 

@@ -14,7 +14,8 @@
 //!   chunks never leaks in halves;
 //! * **provenance-tagged** — it is model output, data, never an instruction;
 //! * **closed exactly once** — `AssistantMessageCompleted` with the full
-//!   redacted text as an object and its digest, or `AssistantMessageAborted`
+//!   redacted text as an object, its digest and its last line (PX-218: what
+//!   a task header shows of it), or `AssistantMessageAborted`
 //!   with a typed source. A stream that fails, is cancelled or loses its
 //!   provider is never presented as a finished message, and a Core restart
 //!   closes any stream it finds open as aborted by recovery
@@ -232,6 +233,10 @@ impl Sink {
                     byte_length: bytes.len() as u64,
                 },
                 content_hash: hex::encode(sha2::Sha256::digest(bytes)),
+                // PX-218: how the message ended, from the redacted text the
+                // record points at, so a task header shows the same words
+                // the transcript does without reading the object.
+                last_line: Some(stream::last_line(&lane.published)),
             };
             if close(&self.lineage, &self.actor, core, lane, &event).await
                 && lane.kind == StreamKind::Text

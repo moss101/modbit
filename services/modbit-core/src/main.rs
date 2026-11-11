@@ -106,6 +106,7 @@ mod spawn;
 mod statistics;
 mod stream;
 mod subagent;
+mod suggest;
 mod tasking;
 mod telemetry;
 mod terminal_stream;

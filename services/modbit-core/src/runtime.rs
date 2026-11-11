@@ -1735,6 +1735,18 @@ pub(crate) async fn rebuild(
     // its runs have used (first to last event of each run).
     let registry = core.gateway.registry();
     let mut spend = crate::usage::SpendScan::new(registry.as_ref());
+    // REQ-PX-210: the next-prompt suggestion calls made for the task are
+    // charged to it from records kept off its log; they count against its
+    // cost cap like its own calls.
+    for ev in events
+        .iter()
+        .filter(|e| e.envelope.event_type == crate::usage::SUGGESTION_USAGE)
+    {
+        let payload = store.payload(&ev.envelope).unwrap_or_default();
+        if crate::usage::off_log_task(&ev.envelope.event_type, &payload) == Some(task.task_id) {
+            spend.observe_off_log(&payload);
+        }
+    }
     for ev in events
         .iter()
         .filter(|e| e.envelope.task_id == Some(task.task_id))
