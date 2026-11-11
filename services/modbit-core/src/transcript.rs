@@ -16,7 +16,9 @@
 //!   recomputes it. It loads no event of any transcript: the figures come
 //!   from the task projection and grouped aggregates over the session's
 //!   events (`EventStore::task_digests`); the only events it reads are those
-//!   `attention` derives the needs-attention class from.
+//!   `attention` derives the needs-attention class from. The last line of
+//!   the latest finished message (PX-218) is the completion record's own
+//!   field, read by the same aggregates.
 
 use std::collections::HashMap;
 
@@ -1541,6 +1543,54 @@ pub(crate) fn title_of(t: &Task) -> String {
     bounded(t.goal_text.lines().next().unwrap_or_default().trim(), 120).0
 }
 
+/// The lines of messages finished before the completion record carried one
+/// (PX-218), by the hash of the message's text object. The object is
+/// content-addressed, so a line read once is that object's line for good;
+/// this only saves reading the same object again on every header read.
+static OLD_RECORD_LINES: std::sync::OnceLock<std::sync::Mutex<HashMap<String, String>>> =
+    std::sync::OnceLock::new();
+/// Lines kept at most; past it the map starts again.
+const OLD_RECORD_LINES_MAX: usize = 4096;
+
+/// The last non-empty line of the task's latest finished assistant message
+/// (PX-218, DR-PX-2026-11-11-021 MWS-20), "" when it has not answered.
+///
+/// The line is the completion record's own, written from the redacted text
+/// when the message finished, so the header shows what the transcript shows
+/// and reads no object. A record written before the field existed has the
+/// line only in its text object: that object is read, once per Core process.
+/// Either way the result is held to the bound here, whatever wrote the log.
+fn last_line_of(store: &EventStore, digest: &modbit_event_store::digest::TaskDigest) -> String {
+    let Some(message) = &digest.last_message else {
+        return String::new();
+    };
+    if let Some(line) = &message.last_line {
+        return modbit_domain::stream::last_line(line);
+    }
+    if message.text_hash.is_empty() {
+        return String::new();
+    }
+    let lines = OLD_RECORD_LINES.get_or_init(Default::default);
+    if let Some(line) = lines
+        .lock()
+        .ok()
+        .and_then(|l| l.get(&message.text_hash).cloned())
+    {
+        return line;
+    }
+    let Ok(bytes) = store.objects().get(&message.text_hash) else {
+        return String::new();
+    };
+    let line = modbit_domain::stream::last_line(&String::from_utf8_lossy(&bytes));
+    if let Ok(mut l) = lines.lock() {
+        if l.len() >= OLD_RECORD_LINES_MAX {
+            l.clear();
+        }
+        l.insert(message.text_hash.clone(), line.clone());
+    }
+    line
+}
+
 fn subtitle_of(root: &str) -> String {
     std::path::Path::new(root)
         .file_name()
@@ -1667,6 +1717,7 @@ pub(crate) fn headers(
                 .as_deref()
                 .and_then(checkout_of)
                 .unwrap_or_default(),
+            last_line: last_line_of(store, d),
         });
     }
     out.sort_by(|a, b| {

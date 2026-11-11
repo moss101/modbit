@@ -14,6 +14,13 @@
 //! and settled with `ReconcileUsage`, and a row nobody recorded is named, not
 //! absorbed. A side question appends nothing to the log (QUAL-EV-0261), so
 //! its invoice rows are `NOT_IN_LOG` by design.
+//!
+//! A next-prompt suggestion (REQ-PX-210) appends nothing to its task's log
+//! either, and is charged all the same: its usage is one
+//! `SuggestionUsageRecorded` on the session's aggregate that names the task.
+//! It is a row of this ledger, priced like any other, counted by the task's
+//! cost cap ([`SpendScan::observe_off_log`]) and by its economics; it
+//! belongs to no run, so the per-run attribution does not list it.
 
 use std::collections::{BTreeMap, HashMap};
 
@@ -26,9 +33,25 @@ use sha2::Digest;
 /// The invoice schema this reconciles.
 const INVOICE_SCHEMA: &str = "modbit.invoice-sample/1";
 
+/// The usage record of a next-prompt suggestion call (REQ-PX-210): on the
+/// session's aggregate, outside the log of the task it is charged to.
+pub(crate) const SUGGESTION_USAGE: &str = "SuggestionUsageRecorded";
+
+/// The task a usage record kept off a task's log is charged to (REQ-PX-210):
+/// `Some` only for such a record, whose payload names the task.
+pub(crate) fn off_log_task(event_type: &str, payload: &Value) -> Option<TaskId> {
+    if event_type != SUGGESTION_USAGE {
+        return None;
+    }
+    serde_json::from_value(payload["task_id"].clone()).ok()
+}
+
 /// One model invocation as the log recorded it.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Call {
+    /// A next-prompt suggestion call (REQ-PX-210): charged to `task_id`,
+    /// recorded off its log and inside no run.
+    pub suggestion: bool,
     pub task_id: Option<TaskId>,
     pub run_id: String,
     pub turn_id: String,
@@ -177,6 +200,8 @@ pub(crate) struct SpendScan<'a> {
     tool_calls: u64,
     cost_minor: u64,
     unmetered_turns: std::collections::HashSet<modbit_domain::TurnId>,
+    /// Completed calls made outside any turn (REQ-PX-210) whose cost is unknown.
+    unmetered_off_log: u32,
     run_span: HashMap<modbit_domain::RunId, (i64, i64)>,
     /// PX-156: per run, an approval wait still open and the parked total.
     parked: HashMap<modbit_domain::RunId, (Option<i64>, u64)>,
@@ -217,8 +242,28 @@ impl<'a> SpendScan<'a> {
             tool_calls: 0,
             cost_minor: 0,
             unmetered_turns: std::collections::HashSet::new(),
+            unmetered_off_log: 0,
             run_span: HashMap::new(),
             parked: HashMap::new(),
+        }
+    }
+
+    /// One usage record charged to the task from outside its log (REQ-PX-210,
+    /// see [`off_log_task`]): its cost counts against the task's cap exactly
+    /// as a turn's does, and a completed call nobody can price is an
+    /// unmetered call. It is inside no run, so it moves no wall clock.
+    pub(crate) fn observe_off_log(&mut self, payload: &Value) {
+        match call_cost(
+            self.registry,
+            &payload["route"],
+            &usage_of(payload),
+            payload["reported"].as_bool().unwrap_or(false),
+        ) {
+            CallCost::Priced(m) => self.cost_minor = self.cost_minor.saturating_add(m),
+            CallCost::Unmetered => {
+                self.unmetered_off_log = self.unmetered_off_log.saturating_add(1);
+            }
+            CallCost::NoRequest => {}
         }
     }
 
@@ -290,7 +335,9 @@ impl<'a> SpendScan<'a> {
             turns: self.turns,
             tool_calls: self.tool_calls,
             cost_minor: self.cost_minor,
-            unmetered_calls: u32::try_from(self.unmetered_turns.len()).unwrap_or(u32::MAX),
+            unmetered_calls: u32::try_from(self.unmetered_turns.len())
+                .unwrap_or(u32::MAX)
+                .saturating_add(self.unmetered_off_log),
             wall_ms: self
                 .run_span
                 .values()
@@ -314,11 +361,22 @@ pub(crate) fn calls(
         .read_session(session, 0, usize::MAX)
         .unwrap_or_default()
     {
-        if e.envelope.event_type != "ModelUsageRecorded" {
+        let suggestion = e.envelope.event_type == SUGGESTION_USAGE;
+        if e.envelope.event_type != "ModelUsageRecorded" && !suggestion {
             continue;
         }
         let Ok(p) = store.payload(&e.envelope) else {
             continue;
+        };
+        // A suggestion's record names the task it is charged to (REQ-PX-210);
+        // one that names none is charged to nobody and is not a row.
+        let task_id = if suggestion {
+            let Some(t) = off_log_task(&e.envelope.event_type, &p) else {
+                continue;
+            };
+            Some(t)
+        } else {
+            e.envelope.task_id
         };
         let route = &p["route"];
         let endpoint = text(&route["endpoint"]);
@@ -345,7 +403,8 @@ pub(crate) fn calls(
             pricing.generation.clone_from(&pr.registry_generation);
         }
         out.push(Call {
-            task_id: e.envelope.task_id,
+            suggestion,
+            task_id,
             run_id: e.envelope.run_id.map(|r| r.to_string()).unwrap_or_default(),
             turn_id: e
                 .envelope
@@ -396,7 +455,12 @@ pub(crate) fn attribution(
 ) -> Vec<wire::RunUsageView> {
     let mut runs: Runs = BTreeMap::new();
     let mut order = 0u64;
-    for c in calls.iter().filter(|c| c.task_id == Some(task.task_id)) {
+    // A suggestion call (REQ-PX-210) is inside no run: it is in the task's
+    // totals and not in any run's steps.
+    for c in calls
+        .iter()
+        .filter(|c| c.task_id == Some(task.task_id) && !c.suggestion)
+    {
         let s = step_of(&mut runs, &mut order, &c.run_id, &c.turn_id);
         let first_call = s.model_calls == 0;
         s.model_calls += 1;

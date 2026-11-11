@@ -1,0 +1,15 @@
+{
+  "expected": {
+    "costKnown": true,
+    "costMinor": "2",
+    "endpoint": "openai",
+    "inputTokens": "412",
+    "model": "gpt-5-mini",
+    "outputTokens": "9",
+    "snapshotMessages": 8,
+    "taskOffset": "9007199254740993",
+    "text": "Add a test for the empty case",
+    "usageOffset": "9007199254740995"
+  },
+  "type": "modbit.v1.NextPromptSuggestion"
+}

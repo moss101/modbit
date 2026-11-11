@@ -3189,3 +3189,224 @@ async fn perf_px_041_delta_latency_from_the_models_piece_to_the_client_is_a_reco
         );
     }
 }
+
+// ------------------------------------------------------------- PX-218
+
+/// `text` in pieces of about `size` bytes, never inside a character: a
+/// provider's chunks, cutting lines and credentials wherever they fall.
+fn pieces(text: &str, size: usize) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut at = 0;
+    while at < text.len() {
+        let mut end = (at + size).min(text.len());
+        while !text.is_char_boundary(end) {
+            end += 1;
+        }
+        out.push(text[at..end].to_owned());
+        at = end;
+    }
+    out
+}
+
+/// The last line of a message with anything on it, as a reader of the
+/// transcript sees it.
+fn end_of(text: &str) -> &str {
+    text.lines()
+        .rev()
+        .map(str::trim)
+        .find(|l| !l.is_empty())
+        .unwrap_or_default()
+}
+
+async fn set_archived(c: &mut Client, task: &Id, lease: u64, archived: bool) {
+    c.command(envelope_fenced(
+        fresh_id(),
+        "ArchiveTask",
+        ArchiveTask {
+            task_id: Some(task.clone()),
+            archived,
+        }
+        .encode_to_vec(),
+        Some(lease),
+    ))
+    .await
+    .unwrap();
+}
+
+/// The assistant messages of a task's transcript, in order.
+async fn said(c: &mut Client, task: &Id) -> Vec<TranscriptRow> {
+    whole_transcript(c, task, TranscriptDensity::Detailed)
+        .await
+        .rows
+        .into_iter()
+        .filter(|r| kind_of(r) == TranscriptRowKind::AssistantMessage)
+        .collect()
+}
+
+/// QUAL-PX-218 (DR-PX-2026-11-11-021 MWS-20) on the real Core, its real log
+/// and a scripted streaming model. A task that has not answered carries no
+/// line; a message that is still streaming contributes nothing; once it
+/// finishes the header's line is the end of the message the transcript shows,
+/// with the secret the transcript redacts redacted; a Core restart reads the
+/// same line back from the log; a line over the bound is cut at a character
+/// boundary; an archived task's header does not change when it answers again,
+/// and shows the new line once it is brought back. The header read still
+/// loads no object.
+#[tokio::test]
+async fn qual_px_218_the_header_carries_the_last_line_of_the_latest_finished_message() {
+    const KEY: &str = "sk-held-0123456789abcdefghijkl";
+    const SHAPED: &str = "ghp_abcdefghijklmnopqrstuvwxyz0123";
+    const LINE_MAX: usize = 200;
+    let first = format!(
+        "I read notes.txt.\n\nIt has two lines.\nThe key is {KEY} and the token {SHAPED} are in it.\n\n   \n"
+    );
+    // 360 characters of two and four bytes each: a cut by bytes would land
+    // inside one.
+    let long_line = "é😀 ".repeat(120);
+    let second = format!("Second answer.\n{long_line}\n");
+    let third = "Written while it was put away.\nBrought back, this is the line.";
+    let (gate1, gate2) = (Gate::new(), Gate::new());
+    let base = streaming_model(vec![
+        Step {
+            chunks: pieces(&first, 7),
+            pause: Some((4, gate1.clone())),
+            ..Step::default()
+        },
+        Step {
+            chunks: pieces(&second, 40),
+            pause: Some((3, gate2.clone())),
+            ..Step::default()
+        },
+        Step::text(pieces(third, 16), 0),
+    ])
+    .await;
+    let (_repo, root) = repo();
+    let dir = tempfile::tempdir().unwrap();
+    // The Core holds KEY as a provider credential.
+    let env = env_for(&base, KEY);
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, lease) = create_session(&mut c).await;
+    let task = create_task(&mut c, &session, lease, "read the notes", &root).await;
+    let quiet = create_task(&mut c, &session, lease, "never started", &root).await;
+
+    // A task that has not answered carries no line.
+    let h = get_headers(&mut c, &session, false).await;
+    assert_eq!(header_of(&h, &task).last_line, "");
+
+    // While the first message streams (its first pieces are on the log and
+    // the model is held mid-message) the header still carries none.
+    let _ = start_task(&mut c, &task, lease).await;
+    gate1.reached().await;
+    let _ = wait_for_events(
+        &core,
+        &session,
+        "the first message never started streaming",
+        |e| !of_kind(e, "AssistantTextDelta").is_empty(),
+    )
+    .await;
+    let h = get_headers(&mut c, &session, false).await;
+    assert_eq!(
+        header_of(&h, &task).last_line,
+        "",
+        "an unfinished message contributes nothing"
+    );
+    gate1.release();
+    let _ = wait_idle(&mut c, &task, 60).await;
+    tokio::time::sleep(SETTLE).await;
+
+    // Finished: the header's line is the end of the message the transcript
+    // shows, and the secret the transcript redacts is redacted in it.
+    let redacted = "The key is [redacted] and the token [redacted] are in it.";
+    let rows = said(&mut c, &task).await;
+    assert_eq!(rows.len(), 1);
+    assert_eq!(end_of(&rows[0].text), redacted);
+    let h = get_headers(&mut c, &session, false).await;
+    assert_eq!(header_of(&h, &task).last_line, redacted);
+    assert_eq!(header_of(&h, &task).last_line, end_of(&rows[0].text));
+    assert_eq!(header_of(&h, &quiet).last_line, "");
+    let shown = format!("{h:?}");
+    assert!(
+        !shown.contains("held-0123") && !shown.contains("abcdefghijklmnop"),
+        "a redacted value in the open: {shown}"
+    );
+    assert_eq!(h.objects_read, 0, "the header read loads no object");
+
+    // A Core restart: the line comes from the log, not from memory.
+    drop(c);
+    core.kill();
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let h = get_headers(&mut c, &session, false).await;
+    assert_eq!(header_of(&h, &task).last_line, redacted);
+    assert_eq!(h.objects_read, 0);
+
+    // A second message, held mid-stream: the header keeps the finished one's
+    // line until the new one finishes.
+    let _ = start_task(&mut c, &task, lease).await;
+    gate2.reached().await;
+    let _ = wait_for_events(
+        &core,
+        &session,
+        "the second message never started streaming",
+        |e| {
+            of_kind(e, "AssistantTextDelta").iter().any(|d| {
+                d.payload["text"]
+                    .as_str()
+                    .is_some_and(|t| t.contains("Second"))
+            })
+        },
+    )
+    .await;
+    let h = get_headers(&mut c, &session, false).await;
+    assert_eq!(
+        header_of(&h, &task).last_line,
+        redacted,
+        "a line from an unfinished message"
+    );
+    gate2.release();
+    let _ = wait_idle(&mut c, &task, 60).await;
+    tokio::time::sleep(SETTLE).await;
+
+    // The long line is cut at a character boundary, within the bound, and
+    // says so with an ellipsis; what is kept is the line's own beginning.
+    let rows = said(&mut c, &task).await;
+    assert_eq!(rows.len(), 2);
+    assert_eq!(end_of(&rows[1].text), long_line.trim());
+    let h = get_headers(&mut c, &session, false).await;
+    let cut = header_of(&h, &task).last_line.clone();
+    assert_eq!(cut.chars().count(), LINE_MAX, "{cut:?}");
+    assert!(cut.ends_with('\u{2026}'), "{cut:?}");
+    let kept = cut.trim_end_matches('\u{2026}');
+    assert!(long_line.starts_with(kept), "{cut:?}");
+    assert!(kept.chars().count() >= LINE_MAX - 2, "{cut:?}");
+
+    // Archived: the task leaves the default list, and its header is what it
+    // was. It answers again while it is put away: its header does not change.
+    set_archived(&mut c, &task, lease, true).await;
+    let h = get_headers(&mut c, &session, false).await;
+    assert!(h.headers.iter().all(|x| x.task_id.as_ref() != Some(&task)));
+    let h = get_headers(&mut c, &session, true).await;
+    assert!(header_of(&h, &task).archived);
+    assert_eq!(header_of(&h, &task).last_line, cut);
+    let _ = start_task(&mut c, &task, lease).await;
+    let _ = wait_idle(&mut c, &task, 60).await;
+    tokio::time::sleep(SETTLE).await;
+    let rows = said(&mut c, &task).await;
+    assert_eq!(rows.len(), 3, "the archived task did answer again");
+    assert_eq!(end_of(&rows[2].text), "Brought back, this is the line.");
+    let h = get_headers(&mut c, &session, true).await;
+    assert_eq!(
+        header_of(&h, &task).last_line,
+        cut,
+        "the header of an archived task changed"
+    );
+    // Brought back, it shows how its latest message ended.
+    set_archived(&mut c, &task, lease, false).await;
+    let h = get_headers(&mut c, &session, false).await;
+    assert_eq!(
+        header_of(&h, &task).last_line,
+        "Brought back, this is the line."
+    );
+    assert_eq!(h.objects_read, 0);
+}
