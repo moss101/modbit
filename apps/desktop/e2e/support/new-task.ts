@@ -90,5 +90,9 @@ export async function setDensity(page: Page, density: "comfortable" | "compact")
   if (!inSettings) {
     await page.getByTestId("nav-back").click();
     await expect(page.getByTestId("settings-nav")).toHaveCount(0);
+    // The list and an open conversation are mounted again on the way back from Settings: both have read the Core before anything is measured.
+    await expect(page.getByTestId("agents-loading")).toHaveCount(0);
+    const conversation = page.getByTestId("conversation");
+    if ((await conversation.count()) === 1) await expect(conversation).toHaveAttribute("data-loaded", "true", { timeout: 30_000 });
   }
 }
