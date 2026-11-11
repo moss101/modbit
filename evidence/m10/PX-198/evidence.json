@@ -35,5 +35,6 @@
   "core_binary": {
     "path": "research/desktop-2/bin/modbit-core (prebuilt from main's Rust; not in the repository)",
     "sha256": "9bae567201ee49c2910caa287a23af75a12254e435ed3ecea5bc21a1ec91cbea"
-  }
+  },
+  "ci_run_1": "Run 43030968493 on a8112ba1 (pull request 198): desktop E2E failed on windows-latest (193 passed, 1 failed, 6 skipped) and ubuntu-latest (197 passed, 1 failed, 2 skipped) on one test, this change's own e2e/task-list.spec.ts, which measured the rows' right inset from the list's outer edge where those systems draw a scrollbar that takes room (TASK_CARD.md of PX-199, Limitations). Every other desktop test passed on both, e2e/awl.spec.ts and e2e/shell.spec.ts included. Passed in that run before it was superseded: dossier integrity, locked architecture files, protocol round trip, supply chain, release supply chain, cloud, node on ubuntu and windows, packaged desktop on macOS, Ubuntu and Windows. The macOS desktop E2E, node on macOS and the three Rust jobs had not finished."
 }

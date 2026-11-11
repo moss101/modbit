@@ -135,6 +135,9 @@ interface RowFacts {
   h: number;
   openX: number;
   openRight: number;
+  /** The left and right edges of the area the rows are laid out in: the list's scroller without its scrollbar (Windows and Linux draw one that takes room; macOS overlays it). */
+  areaLeft: number;
+  areaRight: number;
   titleH: number;
   titleX: number;
   /** Where a child task's mark starts; null on a task of its own. */
@@ -161,6 +164,8 @@ async function rowsOf(page: Page): Promise<RowFacts[]> {
         const title = q("agent-title")!;
         const facts = q("agent-facts");
         // The heading above the row: the last group heading at or before it in the list's canvas.
+        const scroller = e.closest<HTMLElement>(".agents-scroll")!;
+        const areaLeft = scroller.getBoundingClientRect().left + scroller.clientLeft;
         const heads = [...e.parentElement!.querySelectorAll<HTMLElement>(".agents-group")].filter((g) => g.getBoundingClientRect().y <= r.y);
         const head = heads.sort((a, b) => b.getBoundingClientRect().y - a.getBoundingClientRect().y)[0];
         return {
@@ -174,6 +179,8 @@ async function rowsOf(page: Page): Promise<RowFacts[]> {
           h: r.height,
           openX: open.getBoundingClientRect().x,
           openRight: open.getBoundingClientRect().right,
+          areaLeft,
+          areaRight: areaLeft + scroller.clientWidth,
           titleH: title.getBoundingClientRect().height,
           titleX: title.getBoundingClientRect().x,
           markX: q("agent-child-mark")?.getBoundingClientRect().x ?? null,
@@ -212,7 +219,8 @@ async function listDrift(page: Page, density: Density = "comfortable"): Promise<
     const want = r.lines === 2 ? m.rowTwoLine : m.row;
     if (Math.abs(r.h - want) > 0.5) bad.push(`${what} is ${r.h} high, not ${want}`);
     if (r.radius !== `${GEOMETRY.rowRadius}px`) bad.push(`${what} radius ${r.radius}`);
-    if (Math.abs(r.openX - list.x - GEOMETRY.rowInset) > 0.5 || Math.abs(list.x + list.width - r.openRight - GEOMETRY.rowInset) > 1.5) bad.push(`${what} inset ${r.openX - list.x} and ${list.x + list.width - r.openRight}`);
+    // Inset 8 on both sides of the area the rows are laid out in; that area starts at the list's own edge.
+    if (Math.abs(r.areaLeft - list.x) > 0.5 || Math.abs(r.openX - r.areaLeft - GEOMETRY.rowInset) > 0.5 || Math.abs(r.areaRight - r.openRight - GEOMETRY.rowInset) > 0.5) bad.push(`${what} inset ${r.openX - r.areaLeft} and ${r.areaRight - r.openRight}`);
     // The title is one line and fades at its end instead of wrapping or being cut with dots.
     if (r.wrap !== "nowrap" || Math.abs(r.titleH - chrome.line) > 1 || !r.fade.includes("gradient")) bad.push(`${what} title ${JSON.stringify({ wrap: r.wrap, h: r.titleH, fade: r.fade.slice(0, 24) })}`);
     if (r.status === "") bad.push(`${what} has no status words`);
@@ -303,6 +311,13 @@ test("PX-199: the task list reads in the order of MWS-04 at three widths; rows a
       expect(await orderDrift(page), `the list's order at ${w} x ${h}`).toEqual([]);
       expect(await listDrift(page), `the rows at ${w} x ${h}`).toEqual([]);
     }
+    // Windows and Linux draw a scrollbar that takes room once the list overflows; macOS overlays it. The rows are then 8 from the
+    // area they are laid out in, and every other rule holds. The condition is made here on every platform: a short list and a bar 16 wide.
+    await mutate(page, ".agents-scroll { flex: none !important; height: 150px !important; } .agents-scroll::-webkit-scrollbar { width: 16px; } .agents-scroll::-webkit-scrollbar-thumb { background: var(--mb-color-border-control); }");
+    const barred = await page.getByTestId("agents-scroll").evaluate((e) => ({ overflows: e.scrollHeight > e.clientHeight, bar: (e as HTMLElement).offsetWidth - e.clientWidth }));
+    expect(barred, "the list overflows and its scrollbar takes room").toEqual({ overflows: true, bar: 16 });
+    expect(await listDrift(page), "the rows beside a scrollbar that takes room").toEqual([]);
+    await restore(page);
     await setContentSize(app, page, 1280, 800);
     // Inbox is the Approvals page under its new name: its count is the Core's attention count, and its row opens the same page.
     const sid = (await page.evaluate(() => window.modbit.localState())).sessionId!;

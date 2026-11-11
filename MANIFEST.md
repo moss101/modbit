@@ -757,8 +757,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-198/boards/board-Split-light.png` | retained evidence | 144509 | `cbd97c2ef233c5437abd65830105c571d958e9f14b0e829a4c5c49b80b31590e` |
 | `evidence/m10/PX-198/boards/board-Task-Working-light.png` | retained evidence | 170292 | `d104030cbd4e79e18f36d450c05fe009414d0f11fb69ae40932dc7363dfc623c` |
 | `evidence/m10/PX-198/desktop-e2e-full-results.txt` | retained evidence | 36205 | `4238dce1df1178f9dde742305a231311184132ffaca3965ad00f7581fff28612` |
-| `evidence/m10/PX-198/evidence.json` | retained evidence | 4591 | `18a282fb38461bd53793187144aa8d41daba99fde4862ed238e8355c6cd17403` |
-| `evidence/m10/PX-199/TASK_CARD.md` | retained evidence | 15781 | `1d24126db7cfc204eafab527d8a478b230a0fafced308e56c407874dd850e34f` |
+| `evidence/m10/PX-198/evidence.json` | retained evidence | 5387 | `b82fbdc11ddac0213484cc8d493de28ba062755cbcbf327e8986a52ffefaf01d` |
+| `evidence/m10/PX-199/TASK_CARD.md` | retained evidence | 16628 | `08d7a8519bc792e1c1e12b9a3d95ac5bec659cd18740ddb6a0f5c5041424d26c` |
 | `evidence/m10/PX-199/after/fixture-gallery-list-every-class-incl-failed-dark.png` | retained evidence | 76356 | `093719e9d7ffa1afb9bbd9c5f65ae1b103e7da7251f697aabc5eb39130f7429a` |
 | `evidence/m10/PX-199/after/fixture-gallery-list-every-class-incl-failed-light.png` | retained evidence | 75879 | `2acbe23418c92e2f9ab66a895ec7dcf050100631e286514caa991b7d9d1e2839` |
 | `evidence/m10/PX-199/after/fixture-gallery-preview-card-with-context-use-light.png` | retained evidence | 77711 | `b89010dd196fcdcbaf28f81aa49d81f6721810cd206a9f6bb57cb1e098297208` |
@@ -782,7 +782,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-199/after/row-details-never-light-comfortable.png` | retained evidence | 58743 | `349fd195f77c1faa9c1acfd3239e3d20867633b38e13c856a61d6412454b7c65` |
 | `evidence/m10/PX-199/after/row-hover-pin-archive-light-comfortable.png` | retained evidence | 62288 | `e49acdd549cd5a52f60451397ab8e85579b18015e0a9c4526f35b07cadaebab1` |
 | `evidence/m10/PX-199/after/tasks-head-more-menu-light-comfortable.png` | retained evidence | 64870 | `6ed34a5af706cc6ced4bae0ec22bb406a4ec6a4607241719efd1da55487d55bc` |
-| `evidence/m10/PX-199/evidence.json` | retained evidence | 5487 | `873815237ac5f0bfec6d3656f2533eaec1d5ed2cb3cf17699261629fd00057a4` |
+| `evidence/m10/PX-199/evidence.json` | retained evidence | 6283 | `a25213955afe0034cc1c3eb56504a333efcb2e9e17965d29ca2202f612c71c68` |
 | `evidence/m10/graph-audit-2026-11-07/AUDIT.md` | retained evidence | 4357 | `d04a78f9769d8b7dccff0dad31b91c222c7e9e35e343901a1d084582b66d0c88` |
 | `evidence/m10/graph-audit-2026-11-07/reports/group-A-list-conversation.md` | retained evidence | 15696 | `99638cf1bc36e2112a89a175021d8b3f70f5bfc48d0ec51b8aca6b44ea532c61` |
 | `evidence/m10/graph-audit-2026-11-07/reports/group-B-composer-approvals.md` | retained evidence | 14694 | `88800064b6aa6740fdd82183ee600b584d1af7295edc162b15567d3a24374ee1` |
