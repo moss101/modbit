@@ -65,8 +65,10 @@ export type ColorRole = (typeof COLOR_ROLES)[number];
 export type ColorRoles = Record<ColorRole, string>;
 
 /**
- * The one role map (AWL-01..03): light and dark share it, so their key sets and meanings cannot drift apart. `panel` is the
- * conversation surface (chrome), `raised` the editor surface (apps panel, cards, composer, menus), `bg` the window root.
+ * The one role map (AWL-01..03): light and dark share it, so their key sets and meanings cannot drift apart. `panel` and `bg` are
+ * the chrome input, `raised` the editor input. DR-PX-2026-11-11-021 MWS-02 leaves every value here as it is and changes only which
+ * role a region reads (`--mb-surface-*` in css.ts): the conversation, the top bar and the panes read the editor surface, and
+ * chrome is the fill of the person's message, chips and sunken fields.
  */
 function rolesFrom(i: AwlInputs): ColorRoles {
   const panel = i.chrome;

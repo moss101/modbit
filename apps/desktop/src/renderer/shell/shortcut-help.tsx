@@ -1,12 +1,13 @@
 import { Button, Dialog, Kbd } from "@modbit/ui";
 import type { CommandRegistry } from "@modbit/ui/logic";
-import { SHORTCUTS } from "../keyboard.ts";
+import { LIST_KEYS, SHORTCUTS } from "../keyboard.ts";
 import type { ShellActions } from "./commands.ts";
 
 /**
  * The visible shortcut list (AFW-A16): the registry's chords grouped as the
- * palette groups them, then the PX-024 context keys. Both come from data (the
- * registry and `SHORTCUTS`), so the help cannot drift from the bindings.
+ * palette groups them, then the PX-024 context keys and the keys a task in the
+ * list takes. All come from data (the registry, `SHORTCUTS` and `LIST_KEYS`), so
+ * the help cannot drift from the bindings.
  */
 export function ShortcutHelp({ open, onClose, registry }: { open: boolean; onClose: () => void; registry: CommandRegistry<ShellActions> }) {
   const bound = registry.all().filter((d) => (d.keys?.length ?? 0) > 0);
@@ -37,6 +38,12 @@ export function ShortcutHelp({ open, onClose, registry }: { open: boolean; onClo
         <ul className="help-list">
           {SHORTCUTS.map((s) => (
             <li key={s.command + s.keys}>
+              <span>{s.what}</span>
+              <Kbd>{s.keys}</Kbd>
+            </li>
+          ))}
+          {LIST_KEYS.map((s) => (
+            <li key={`list:${s.keys}`} data-testid="help-list-key">
               <span>{s.what}</span>
               <Kbd>{s.keys}</Kbd>
             </li>

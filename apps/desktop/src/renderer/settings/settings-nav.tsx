@@ -20,7 +20,7 @@ export function SettingsNav({ query, onQuery, active, onPick, onBack, foot }: Se
     <div className="agent-region settings-nav" data-testid="settings-nav">
       <div className="agent-region-head settings-nav-head">
         <button type="button" className="agent-nav-row settings-back" onClick={onBack} data-testid="nav-back">
-          <Icon name="arrow-left" size={14} />
+          <Icon name="arrow-left" />
           <span className="agent-nav-label">Back</span>
         </button>
       </div>
@@ -30,14 +30,14 @@ export function SettingsNav({ query, onQuery, active, onPick, onBack, foot }: Se
       <nav className="settings-nav-list" aria-label="Settings sections">
         {groups.map((g) => (
           <div key={g} className="settings-nav-group">
-            <h2 className="agents-section-label agent-repos-head">{g}</h2>
+            <h2 className="agent-nav-heading">{g}</h2>
             <ul className="agent-nav">
               {shown
                 .filter((e) => e.group === g)
                 .map((e) => (
                   <li key={e.id}>
                     <button type="button" className="agent-nav-row" aria-current={active === e.id ? "true" : undefined} data-testid={`settings-nav-${e.id}`} onClick={() => onPick(e.id)}>
-                      <Icon name={e.icon} size={14} />
+                      <Icon name={e.icon} />
                       <span className="agent-nav-label">{e.label}</span>
                     </button>
                   </li>

@@ -13,7 +13,7 @@ export interface TopBarProps {
   onTogglePanel: () => void;
 }
 
-/** The centre's 40 px top bar: the title, the open conversation's controls and, while the apps panel is closed, its toggle (it moves into the panel when open). */
+/** The centre's top bar (45 px, 40 in Compact: `--mb-top-bar`): the title, the open conversation's controls and, while the apps panel is closed, its toggle (it moves into the panel when open). */
 export function TopBar(p: TopBarProps) {
   return (
     <header className="topbar" data-testid="top-bar">

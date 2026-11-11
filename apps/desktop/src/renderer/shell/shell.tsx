@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TrayHost, chordMatches, isMacPlatform, useEscapeLayers, useKeyDispatch, useKeyScope, type MenuItem } from "@modbit/ui";
 import type { KeyScope } from "@modbit/ui/logic";
-import { GEOMETRY, THEME_LABEL, THEME_PREFERENCES, type ThemePreference } from "@modbit/design-tokens";
+import { GEOMETRY, THEME_LABEL, THEME_PREFERENCES, type Density, type ThemePreference } from "@modbit/design-tokens";
 import type { AppState } from "../state/use-app.ts";
 import { AgentList } from "../agents/agent-list.tsx";
 import { ProjectDetail } from "../projects/project-detail.tsx";
@@ -64,6 +64,13 @@ function applyTheme(theme: ThemePreference): void {
   const root = document.documentElement;
   if (theme === "system") delete root.dataset.theme;
   else root.dataset.theme = theme;
+}
+
+/** Comfortable is the token stylesheet's own block; Compact is its override block, chosen by this attribute (MWS-03). */
+function applyDensity(density: Density): void {
+  const root = document.documentElement;
+  if (density === "comfortable") delete root.dataset.density;
+  else root.dataset.density = density;
 }
 
 export function Shell({ app }: { app: AppState }) {
@@ -153,6 +160,7 @@ export function Shell({ app }: { app: AppState }) {
 
   useEffect(() => saveUiPrefs(prefs), [prefs]);
   useEffect(() => applyTheme(prefs.theme), [prefs.theme]);
+  useEffect(() => applyDensity(prefs.density), [prefs.density]);
   useEffect(() => {
     document.documentElement.style.zoom = prefs.zoom === 1 ? "" : String(prefs.zoom);
   }, [prefs.zoom]);
@@ -412,8 +420,7 @@ export function Shell({ app }: { app: AppState }) {
 
   const overlayTitle = reviewing ? model.tasks.get(reviewing)?.goalText : browsing ? model.tasks.get(browsing.taskId)?.goalText : conversation ? model.tasks.get(conversation.taskId)?.goalText : undefined;
   const openedProject = projectPage ? projects.projects.find((p) => p.projectId === projectPage) : undefined;
-  const title = settingsOpen ? "Settings" : customizeOpen ? "Customize" : inboxOpen ? "Approvals" : automationsOpen ? "Automations" : dashboardOpen ? "Dashboard" : reviewing || browsing ? (overlayTitle ?? "Task") : projectPage ? (openedProject?.name ?? "Project") : worktreesOpen ? "Worktrees" : (overlayTitle ?? "New task");
-  const repositories = useMemo(() => [...new Set(headers.filter((h) => !h.archived).map((h) => h.checkoutRoot || h.workspaceRoot).filter((r) => r !== ""))].slice(0, 5), [headers]);
+  const title = settingsOpen ? "Settings" : customizeOpen ? "Customize" : inboxOpen ? "Inbox" : automationsOpen ? "Automations" : dashboardOpen ? "Dashboard" : reviewing || browsing ? (overlayTitle ?? "Task") : projectPage ? (openedProject?.name ?? "Project") : worktreesOpen ? "Worktrees" : (overlayTitle ?? "New task");
   const openedHeader = conversation ? headers.find((h) => h.taskId === conversation.taskId) : undefined;
   const panelRefreshKey = useThrottled(`${panelTask?.state ?? ""}:${panelTask?.lastOffset ?? ""}`, 1200);
   const panelUnavailable = panelTaskId === null ? "no task has an artifact yet" : null;
@@ -474,7 +481,7 @@ export function Shell({ app }: { app: AppState }) {
               document.getElementById(`settings-${id}`)?.scrollIntoView({ block: "start" });
             }}
             onBack={() => setSettingsOpen(false)}
-            foot={<PersonRow userName={userName} coreLabel={coreLabel} coreStatus={coreStatus} menuItems={menuItems} settingsOpen onOpenSettings={() => setSettingsOpen(false)} />}
+            foot={<PersonRow userName={userName} coreLabel={coreLabel} coreStatus={coreStatus} menuItems={menuItems} settingsOpen onOpenSettings={() => setSettingsOpen(false)} onOpenHelp={() => setHelpOpen(true)} />}
           />
         ) : (
           <AgentRegion
@@ -491,7 +498,6 @@ export function Shell({ app }: { app: AppState }) {
             onForward={() => {
               if (leftConversation) openConversation(leftConversation);
             }}
-            onSearch={() => setPaletteOpen(true)}
             automationsOpen={automationsOpen}
             automationsDisabled={core.state !== "connected"}
             onToggleAutomations={() => (automationsOpen ? setAutomationsOpen(false) : actions.openAutomations())}
@@ -508,18 +514,38 @@ export function Shell({ app }: { app: AppState }) {
               closePages();
               setCustomizeOpen(open);
             }}
-            repositories={repositories}
-            onOpenRepository={(root) => {
-              setWorkspaceRoot(root);
-              actions.focusNewTask();
-            }}
             userName={userName}
             coreLabel={coreLabel}
             coreStatus={coreStatus}
             menuItems={menuItems}
             settingsOpen={settingsOpen}
             onOpenSettings={() => actions.openSettings()}
-            list={rail ? undefined : <AgentList sessionId={model.sessionId} connected={core.state === "connected"} selectedTaskId={conversation?.taskId ?? null} onSelect={openConversation} onHeaderList={setHeaders} facts={rowFacts} projects={projects} selectedProjectId={projectPage} onOpenProject={openProject} onProjectArchived={(id, archived) => { if (archived && projectPage === id) setProjectPage(null); }} />}
+            onOpenHelp={() => setHelpOpen(true)}
+            list={
+              rail ? undefined : (
+                <AgentList
+                  sessionId={model.sessionId}
+                  connected={core.state === "connected"}
+                  selectedTaskId={conversation?.taskId ?? null}
+                  onSelect={openConversation}
+                  onHeaderList={setHeaders}
+                  facts={rowFacts}
+                  projects={projects}
+                  selectedProjectId={projectPage}
+                  onOpenProject={openProject}
+                  onProjectArchived={(id, archived) => {
+                    if (archived && projectPage === id) setProjectPage(null);
+                  }}
+                  parents={model.parents}
+                  density={prefs.density}
+                  onSearch={() => setPaletteOpen(true)}
+                  onNewTaskIn={(root) => {
+                    setWorkspaceRoot(root);
+                    actions.focusNewTask();
+                  }}
+                />
+              )
+            }
           />
         )}
         banner={
@@ -561,6 +587,8 @@ export function Shell({ app }: { app: AppState }) {
               onTheme={(theme) => setPrefs((p) => ({ ...p, theme }))}
               zoom={prefs.zoom}
               onZoom={(delta) => actions.zoom(delta)}
+              density={prefs.density}
+              onDensity={(density) => setPrefs((p) => ({ ...p, density }))}
               onCustomize={() => {
                 closePages();
                 setCustomizeOpen(true);

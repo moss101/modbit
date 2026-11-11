@@ -4,21 +4,6 @@
  * is carried by colour alone (every state has its words and a glyph).
  */
 export const projectsCss = `
-.agents-project { position: absolute; left: 0; right: 0; box-sizing: border-box; display: flex; align-items: stretch; padding: 0 var(--mb-space-1); }
-.agents-project[data-drop="true"] { outline: 2px dashed var(--mb-color-accent); outline-offset: -2px; border-radius: var(--radius-lg); }
-.agents-project[data-archived="true"] .agents-title { font-style: italic; }
-.agents-project-toggle { flex: none; width: 24px; display: inline-flex; align-items: center; justify-content: center; font: inherit; border: 0; border-radius: var(--radius-lg); background: transparent; color: var(--mb-color-text-muted); padding: 0; }
-.agents-project-toggle:hover:not(:disabled), .agents-project-open:hover:not(:disabled) { background: var(--mb-color-hover); }
-.agents-project-open { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: var(--mb-space-2); font: inherit; text-align: left; padding: var(--mb-space-1) var(--mb-space-2); border: 0; border-radius: var(--radius-lg); background: transparent; color: var(--mb-color-text); }
-.agents-project[data-selected="true"] .agents-project-open { background: var(--mb-color-selected); }
-.agents-project:hover .agents-actions, .agents-project:focus-within .agents-actions { display: inline-flex; }
-.agents-project:hover .agents-dot, .agents-project:focus-within .agents-dot { visibility: hidden; }
-.agents-newproject { position: absolute; left: 0; right: 0; display: flex; align-items: center; padding: 0 var(--mb-space-3); box-sizing: border-box; }
-.agents-newproject-btn { font-size: var(--mb-type-chrome-size); }
-.agents-row[draggable="true"] { cursor: grab; }
-/* The row whose menu is open paints over the rows and headings that follow it (its actions form their own stacking context). */
-.agents-row:hover, .agents-row:focus-within, .agents-project:hover, .agents-project:focus-within { z-index: 3; }
-
 .proj-form, .wt-dialog { display: flex; flex-direction: column; gap: var(--mb-space-3); }
 .proj-field { display: flex; flex-direction: column; gap: var(--mb-space-1); font-size: var(--mb-type-chrome-size); }
 .proj-field input[type="text"], .proj-field select, .proj-field textarea { font: inherit; padding: var(--mb-space-1) var(--mb-space-2); border: 1px solid var(--mb-color-border-control); border-radius: var(--radius-md); background: var(--mb-color-sunken); color: var(--mb-color-text); }
