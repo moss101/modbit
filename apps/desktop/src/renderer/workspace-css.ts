@@ -72,7 +72,6 @@ export const workspaceCss = `
 .agents-glyph { display: inline-flex; justify-content: center; }
 .agents-count { font-variant-numeric: tabular-nums; }
 .agents-origin { display: inline-block; margin-right: var(--mb-space-1); padding: 0 var(--mb-space-1); font-size: var(--mb-type-caption-size); font-weight: 600; border: 1px solid var(--mb-color-border-control); border-radius: calc(infinity * 1px); color: var(--mb-color-text); background: var(--mb-color-sunken); vertical-align: baseline; }
-.agents-row[data-unread="true"] .agents-title { font-weight: 600; }
 .agents-dot { flex: none; width: 6px; height: 6px; border-radius: calc(infinity * 1px); display: inline-block; }
 .agents-dot[data-kind="unread"] { background: var(--mb-color-accent); }
 .agents-dot[data-kind="attention"] { background: var(--mb-color-warn); outline: 1px solid var(--mb-color-text); }

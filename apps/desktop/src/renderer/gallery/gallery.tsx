@@ -23,7 +23,7 @@ import { ControlsGallery } from "./controls-gallery.tsx";
 import { ComputerGallery } from "./computer-gallery.tsx";
 import { AutomationsGallery } from "./automations-gallery.tsx";
 import { ProjectsGallery } from "./projects-gallery.tsx";
-import { AGENT_HEADER_FIXTURES, CONVERSATION_ROW_FIXTURES, GALLERY_NOW } from "./workspace-fixtures.ts";
+import { AGENT_FACT_FIXTURES, AGENT_HEADER_FIXTURES, AGENT_PARENT_FIXTURES, CONVERSATION_ROW_FIXTURES, GALLERY_NOW } from "./workspace-fixtures.ts";
 import { APPROVAL_FIXTURE, EMPTY_FIXTURE, ERROR_FIXTURE, FIXTURE_ROWS, GENERATING_FIXTURE, OFFLINE_FIXTURE, type GalleryState } from "./fixtures.ts";
 
 const WIDTHS = [1280, 900, 600] as const;
@@ -181,10 +181,12 @@ export function Gallery() {
 
       <section aria-labelledby="g-agents" data-testid="gallery-agent-list">
         <h2 id="g-agents">Agent list</h2>
-        <p className="meta">One row of every status class the Core serves: glyph and words, an unread dot, an attention dot, a pin. Fixtures only.</p>
-        <div className="gallery-shell-box" style={{ width: 300, height: 520 }}>
+        <p className="meta">One row of every status class the Core serves: glyph and words, the changed files and the unread dot of a task ready for review, the mark and the reason of a task that needs the person, a child task under its parent, a pin. Fixtures only.</p>
+        <div className="gallery-shell-box gallery-list-box" style={{ width: 288, height: 800 }}>
           <AgentListView
             headers={AGENT_HEADER_FIXTURES}
+            parents={AGENT_PARENT_FIXTURES}
+            facts={AGENT_FACT_FIXTURES}
             loaded
             error={null}
             selectedId="fixture-task-5"

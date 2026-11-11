@@ -96,7 +96,7 @@ test("PX-046: classes show glyph and words from the Core; unread clears when the
     await expect(page.getByTestId("agent-row")).toHaveCount(3);
     await page.getByTestId("agents-filter-toggle").click();
     await page.getByTestId("agents-grouping").selectOption("status");
-    // The Projects heading is always the first section; the groupings are the sections after it.
+    // The groupings are the list's sections (the Tasks head above them is the list's own and is not one).
     const groups = page.locator('[data-testid="agents-section"]:not([data-section="projects"])');
     const sections = await groups.evaluateAll((els) => els.map((e) => e.getAttribute("data-section")));
     expect(sections).toEqual(["status:READY_FOR_REVIEW_SEEN", "status:DRAFT"]);
@@ -227,7 +227,7 @@ test("PX-046: a thousand tasks stay responsive: the list holds only the rows in 
     await scroller.evaluate((e) => (e.scrollTop = e.scrollHeight / 2));
     expect(await page.getByTestId("agent-row").count()).toBeLessThan(60);
     // Regrouping and filtering 1000 headers: measured in the page, with a bound that only a pathological implementation misses.
-    // The list's tools button sits in the Projects heading, which is the top of the list.
+    // The list's tools button sits in the Tasks head, above the rows.
     await scroller.evaluate((e) => (e.scrollTop = 0));
     await openListTools(page);
     const ms = await page.evaluate(async () => {

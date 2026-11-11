@@ -296,13 +296,13 @@ test("PX-044/045: the shell geometry in the gallery frame: 1280 with the panel, 
     const shell = page.getByTestId("gallery-shell").getByTestId("shell");
     const num = async (name: string) => Number(await shell.getAttribute(name));
     await page.getByTestId("shell-width-1280").click();
-    await expect.poll(() => num("data-list-px")).toBe(260);
-    expect(await num("data-center-px")).toBe(521);
+    await expect.poll(() => num("data-list-px")).toBe(288);
+    expect(await num("data-center-px")).toBe(493);
     expect(await num("data-panel-px")).toBe(499);
     await expect(shell).toHaveAttribute("data-stacked", "false");
     await page.getByTestId("shell-panel-toggle").click();
     await expect.poll(() => num("data-panel-px")).toBe(0);
-    await expect.poll(() => num("data-center-px")).toBe(1020);
+    await expect.poll(() => num("data-center-px")).toBe(992);
     await page.getByTestId("shell-panel-toggle").click();
     await page.getByTestId("shell-width-900").click();
     await expect(shell).toHaveAttribute("data-stacked", "true");
@@ -315,9 +315,9 @@ test("PX-044/045: the shell geometry in the gallery frame: 1280 with the panel, 
     await page.getByTestId("shell-width-1280").click();
     await page.getByTestId("gallery-shell").getByTestId("splitter-list").focus();
     await page.keyboard.press("End");
-    await expect.poll(() => num("data-list-px")).toBe(400);
+    await expect.poll(() => num("data-list-px")).toBe(420);
     await page.keyboard.press("Home");
-    await expect.poll(() => num("data-list-px")).toBe(210);
+    await expect.poll(() => num("data-list-px")).toBe(200);
     await page.getByTestId("gallery-shell").getByTestId("splitter-panel").focus();
     await page.keyboard.press("Home");
     await expect.poll(() => num("data-panel-px")).toBe(384);

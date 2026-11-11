@@ -248,10 +248,18 @@ export function AgentList({ sessionId, connected, selectedTaskId, onSelect, onHe
     return null;
   };
 
+  // A pin moves the row to another group: focus follows it there, so the keyboard is never left on a row that is gone.
+  const follow = (taskId: string) => setFocusRequest((f) => ({ taskId, n: (f?.n ?? 0) + 1 }));
   const onPin = (taskId: string) => {
     const r = pinTask(prefs.pins, taskId);
     setNote(r.message);
-    if (!r.message) update((p) => ({ ...p, pins: r.pins }));
+    if (r.message) return;
+    update((p) => ({ ...p, pins: r.pins }));
+    follow(taskId);
+  };
+  const onUnpin = (taskId: string) => {
+    update((p) => ({ ...p, pins: unpinTask(p.pins, taskId) }));
+    follow(taskId);
   };
 
   return (
@@ -277,7 +285,7 @@ export function AgentList({ sessionId, connected, selectedTaskId, onSelect, onHe
         onQuery={setQuery}
         onSelect={(id, rowId) => onSelect(id, rowId)}
         onPin={onPin}
-        onUnpin={(id) => update((p) => ({ ...p, pins: unpinTask(p.pins, id) }))}
+        onUnpin={onUnpin}
         onArchive={requestArchive}
         onToggleSection={(key) => update((p) => ({ ...p, collapsed: { ...p.collapsed, [p.grouping]: (p.collapsed[p.grouping] ?? []).includes(key) ? (p.collapsed[p.grouping] ?? []).filter((k) => k !== key) : [...(p.collapsed[p.grouping] ?? []), key] } }))}
         onGrouping={(g: Grouping) => update((p) => ({ ...p, grouping: g }))}

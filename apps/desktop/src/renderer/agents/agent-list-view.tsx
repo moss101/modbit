@@ -124,9 +124,13 @@ export function AgentListView(p: AgentListViewProps) {
   const visible = useMemo(() => p.headers.filter((h) => passes(h, p.filters)), [p.headers, p.filters]);
   const projects = p.projects ?? EMPTY_PROJECTS;
   const sort = p.sort ?? "recent";
+  // The layout needs one thing of the tasks' facts: which tasks have a reason (they keep a second line). A turn's events change
+  // the facts constantly; the list is laid out again only when that set changes.
+  const reasons = useMemo(() => [...(p.facts ?? [])].flatMap(([id, x]) => (x.next ? [id] : [])).sort().join("|"), [p.facts]);
   const items = useMemo(
     () => listItems({ headers: visible, projects, grouping: p.grouping, pins: p.pins, collapsed: p.collapsed, nowMs: p.nowMs, sort, showArchived: p.filters.showArchived, details: rowDetails, parents: p.parents, facts: p.facts }),
-    [visible, projects, p.grouping, p.pins, p.collapsed, p.nowMs, sort, p.filters.showArchived, rowDetails, p.parents, p.facts],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [visible, projects, p.grouping, p.pins, p.collapsed, p.nowMs, sort, p.filters.showArchived, rowDetails, p.parents, reasons],
   );
   const projectChoices = useMemo(() => visibleProjects(projects, p.filters.showArchived), [projects, p.filters.showArchived]);
   const now = { grouping: p.grouping, filters: p.filters, sort };
@@ -667,7 +671,7 @@ function ItemView({ item, top, p, metrics, pinned, selected, tabStop, titles, pr
             )}
             {h.title || "Untitled task"}
           </span>
-          {item.twoLine ? (
+          {item.twoLine && (
             <span className="agents-sub">
               <span className="agents-status" data-testid="agent-status">
                 {words}
@@ -675,15 +679,14 @@ function ItemView({ item, top, p, metrics, pinned, selected, tabStop, titles, pr
               {sub ? <span data-testid="agent-facts"> · {sub}</span> : null}
               {inProject && p.grouping !== "project" && item.sectionKey.startsWith("project:") === false ? ` · ${inProject.name}` : ""}
             </span>
-          ) : (
-            <span className="mb-sr-only" data-testid="agent-status">
-              {words}
-            </span>
           )}
         </span>
         <span className="agents-end">
-          <span className="agents-glyph" data-testid={attentionOnGlyph ? "agent-attention-dot" : "agent-glyph"} data-kind={attentionOnGlyph ? "attention" : undefined} aria-hidden="true">
-            <StatusDot status={meta.status} label="" />
+          {/* The state is never colour alone: its glyph carries the words as its text alternative, and on a one-line row those are the row's status words. */}
+          <span className="agents-glyph" data-testid={attentionOnGlyph ? "agent-attention-dot" : "agent-glyph"} data-kind={attentionOnGlyph ? "attention" : undefined}>
+            <span data-testid={item.twoLine ? undefined : "agent-status"}>
+              <StatusDot status={meta.status} label={words} />
+            </span>
           </span>
           {h.pendingApproval && !attentionOnGlyph && <span className="agents-dot" data-kind="attention" data-testid="agent-attention-dot" aria-hidden="true" />}
           {files > 0 && (

@@ -298,5 +298,6 @@ pre.codeview .add { background: var(--mb-color-ok-tint); color: var(--mb-color-t
 .gallery-card[data-tone="error"] { background: var(--mb-color-danger-tint); }
 .gallery-card[data-tone="warn"] { background: var(--mb-color-warn-tint); }
 .gallery-shell-box { height: 360px; border: 1px solid var(--mb-color-border-control); overflow: hidden; }
+.gallery-list-box { display: flex; flex-direction: column; background: var(--mb-surface-list); }
 html:has(.gallery), html:has(.gallery) body, html:has(.gallery) #root { height: auto; }
 `;
