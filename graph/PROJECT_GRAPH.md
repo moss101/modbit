@@ -388,7 +388,7 @@ flowchart LR
 - `DOC-PX-017`: COMPLETE; Product extension stage: Upgrade program from Codex, MAI-UI and Qwen-Planner-Agent, PX-147..191; evidence: artifact:evidence/dossier-px-017/tests.log, artifact:evidence/dossier-px-017/validation.json, commit:f337daa9
 - `DOC-PX-018`: COMPLETE; Product extension stage: Agent workspace language for the desktop renderer, PX-192..194; evidence: artifact:evidence/dossier-px-018/tests.log, commit:b7ce15e88d18a1e9daaac5d27536db4d496f5f21, artifact:evidence/dossier-px-018/validation.json
 - `DOC-PX-019`: COMPLETE; Product extension stage: Agent workspace screens, PX-195..197; evidence: artifact:evidence/dossier-px-019/tests.log, commit:d35b956c6f6fb5b5aa48fc062e620d0667d2033a, artifact:evidence/dossier-px-019/validation.json
-- `DOC-PX-020`: NOT_STARTED; Product extension stage: The measured workspace, PX-198..219; evidence: none
+- `DOC-PX-020`: COMPLETE; Product extension stage: The measured workspace, PX-198..219; evidence: artifact:evidence/dossier-px-020/tests.log, artifact:evidence/dossier-px-020/validation.json, commit:5b6ecdfe9f47103417344fa73d75e876550f6a2d
 - `DOC-GOV-008`: COMPLETE; Bind crates/core-runtime/src/trajectory.rs to the PX-189 production wiring; evidence: artifact:evidence/dossier-gov-008/validation.json, artifact:evidence/dossier-gov-008/tests.log, run:gha-41561897083, commit:0d8e2d7c0bc32c1e6df5ac3afc98978ba2973230
 
 ## Milestone tasks in execution order
