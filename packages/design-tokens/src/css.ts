@@ -4,10 +4,12 @@
  * properties, and `tokensCss()` is the stylesheet the app links: light by
  * default, dark through `prefers-color-scheme`, high contrast through
  * `prefers-contrast: more`, each overridable by `data-theme` on the root, and
- * every duration collapsed under `prefers-reduced-motion` (AFW-A14).
+ * every duration collapsed under `prefers-reduced-motion` (AFW-A14). The Compact
+ * density is one more block of overrides, chosen by `data-density` on the root
+ * (DR-PX-2026-11-11-021 MWS-03).
  */
 import { PALETTES, type ColorRole, type ColorRoles, type ThemeName } from "./palette.ts";
-import { CONTROL, ELEVATION, FONT, GEOMETRY, MOTION, PRESS_SCALE, RADIUS, SPACE, TYPE, UI_FONT_SIZE, UI_TEXT, Z, ZRADIUS, ZSHADOW } from "./scale.ts";
+import { COMPACT, CONTROL, ELEVATION, FONT, GEOMETRY, MOTION, PRESS_SCALE, RADIUS, SPACE, TYPE, UI_FONT_SIZE, UI_TEXT, Z, ZRADIUS, ZSHADOW, type Density } from "./scale.ts";
 import { type ZdlColors, type ZdlToken } from "./design-language.ts";
 import { AWL_COLORS_DARK, AWL_COLORS_LIGHT } from "./workspace-language.ts";
 
@@ -70,7 +72,10 @@ export function themeVariables(theme: ThemeName): Record<string, string> {
   return out;
 }
 
-/** The theme-independent variables. */
+/** The line of a type role as a multiple of its size, so a Text size or zoom change keeps the pitch. */
+const lineOf = (v: { ui: string; size: number; line: number }): string => `calc(var(--text-ui-${v.ui}) * ${+(v.line / v.size).toFixed(4)})`;
+
+/** The theme-independent variables, in the Comfortable density (the default). */
 export function sharedVariables(): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(SPACE)) out[`--mb-space-${step(k)}`] = `${v}px`;
@@ -85,14 +90,46 @@ export function sharedVariables(): Record<string, string> {
   for (const [k, offset] of Object.entries(UI_TEXT)) out[`--text-ui-${k}`] = offset === 0 ? "var(--ui-font-size)" : `calc(var(--ui-font-size) ${offset < 0 ? "-" : "+"} ${Math.abs(offset)}px)`;
   for (const [k, v] of Object.entries(TYPE)) {
     out[`--mb-type-${k}-size`] = `var(--text-ui-${v.ui})`;
-    out[`--mb-type-${k}-line`] = `calc(var(--text-ui-${v.ui}) * ${+(v.line / v.size).toFixed(4)})`;
+    out[`--mb-type-${k}-line`] = lineOf(v);
   }
   for (const [k, v] of Object.entries(ZRADIUS)) out[`--radius-${k}`] = `${v}px`;
   for (const [k, v] of Object.entries(ZSHADOW)) out[`--shadow-${k}`] = v;
   for (const [k, v] of Object.entries(MOTION)) out[`--mb-motion-${k}`] = `${v}ms`;
   out["--mb-press-scale"] = String(PRESS_SCALE);
   for (const [k, v] of Object.entries(Z)) out[`--mb-z-${k}`] = String(v);
+  // The one surface mapping (MWS-02): which role each region reads. The roles' values are AWL's and do not change: the conversation,
+  // the top bar and the panes sit on `editor`, the task list on `sidebar`, and `chrome` fills the person's message, chips and sunken fields.
+  out["--mb-surface-conversation"] = "var(--color-panel)";
+  out["--mb-surface-list"] = "var(--color-sidebar)";
+  out["--mb-surface-fill"] = "var(--color-background)";
+  // The measured shell (MWS-01): every bar, row and column size a surface uses is one of these.
   out["--mb-top-bar"] = `${GEOMETRY.topBar}px`;
+  out["--mb-row"] = `${GEOMETRY.row}px`;
+  out["--mb-row-gap"] = `${GEOMETRY.rowGap}px`;
+  out["--mb-row-radius"] = `${GEOMETRY.rowRadius}px`;
+  out["--mb-row-inset"] = `${GEOMETRY.rowInset}px`;
+  out["--mb-row-two-line"] = `${GEOMETRY.rowTwoLine}px`;
+  out["--mb-group-head"] = `${GEOMETRY.groupHead}px`;
+  out["--mb-list-foot"] = `${GEOMETRY.listFoot}px`;
+  out["--mb-rail"] = `${GEOMETRY.rail}px`;
+  out["--mb-column"] = `${GEOMETRY.column}px`;
+  out["--mb-column-text"] = `${GEOMETRY.columnText}px`;
+  out["--mb-composer-radius"] = `${GEOMETRY.composerRadius}px`;
+  return out;
+}
+
+/**
+ * What a density overrides (MWS-03). Comfortable is the shared block itself, so it overrides nothing; Compact changes the chrome
+ * size, every role's line, the bars and the rows. A density is these variables and nothing else.
+ */
+export function densityVariables(density: Density): Record<string, string> {
+  if (density === "comfortable") return {};
+  const out: Record<string, string> = { "--ui-font-size": `${COMPACT.uiFontSize}px` };
+  for (const [k, v] of Object.entries(COMPACT.type)) out[`--mb-type-${k}-line`] = lineOf(v);
+  out["--mb-top-bar"] = `${COMPACT.topBar}px`;
+  out["--mb-row"] = `${COMPACT.row}px`;
+  out["--mb-row-two-line"] = `${COMPACT.rowTwoLine}px`;
+  out["--mb-group-head"] = `${COMPACT.groupHead}px`;
   return out;
 }
 
@@ -133,6 +170,9 @@ ${block(themeVariables("dark"), "  ")}
 :root[data-theme="high-contrast"] {
   color-scheme: dark;
 ${block(themeVariables("high-contrast"), "  ")}
+}
+:root[data-density="compact"] {
+${block(densityVariables("compact"), "  ")}
 }
 @media (prefers-reduced-motion: reduce) {
   :root {

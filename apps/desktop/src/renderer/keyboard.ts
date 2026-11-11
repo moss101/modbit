@@ -132,7 +132,7 @@ export function isActivatable(el: Element | null): boolean {
 export const SHORTCUTS: { keys: string; command: Command; what: string }[] = [
   { keys: "⌘/Ctrl+N", command: "newTask", what: "New task (focus the goal)" },
   { keys: "/", command: "search", what: "Search: opens the command palette (so does ⌘/Ctrl+K), which finds tasks too" },
-  { keys: "a", command: "jumpAttention", what: "Open Approvals on the first item" },
+  { keys: "a", command: "jumpAttention", what: "Open Inbox on the first item" },
   { keys: "r", command: "jumpRunning", what: "Go to a running task in the list" },
   { keys: "y", command: "approve", what: "Approve the open task's pending effect (Enter confirms an irreversible one)" },
   { keys: "x", command: "deny", what: "Deny the open task's pending effect" },
@@ -144,4 +144,11 @@ export const SHORTCUTS: { keys: string; command: Command; what: string }[] = [
   { keys: "u", command: "toggleSplit", what: "Review: unified / split" },
   { keys: "f", command: "jumpFailing", what: "Review: jump to the failing check" },
   { keys: "?", command: "help", what: "This list" },
+];
+
+/** The keys a focused task in the list takes itself (the list handles them, not `commandFor`): shown in the help with the rest. */
+export const LIST_KEYS: { keys: string; what: string }[] = [
+  { keys: "Space", what: "On a task in the list: preview it (Enter opens it)" },
+  { keys: "p", what: "On a task in the list: pin or unpin it" },
+  { keys: "e", what: "On a task in the list: archive it (Undo restores it)" },
 ];

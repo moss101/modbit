@@ -1,12 +1,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { STATUS_CLASSES, type AgentHeaderView, type StatusClass } from "../../shared/conversation-types.ts";
-import { CLASS_META, FACT_FIELDS, MAX_VIEWS, NO_FILTERS, NO_PROJECT, PIN_CAP, PIN_CAP_MESSAGE, SECTION_HEIGHT, ROW_HEIGHT, classRank, deleteView, filterCount, flatten, groupHeaders, layoutOf, listItems, nearestSibling, passes, pin, relativeAge, saveView, rowLine, rowTitle, STATE_VIEWS, timeBucket, toggleView, unpin, viewCounts, viewMatches, visibleRange, visibleTaskIds, type ListItem, type StoredView, type OriginFilter, type RowFacts, type StateFilter } from "./list-model.ts";
+import { densityMetrics } from "@modbit/design-tokens";
+import { CLASS_META, FACT_FIELDS, GROUPINGS, MAX_VIEWS, NO_FILTERS, NO_PROJECT, PIN_CAP, PIN_CAP_MESSAGE, ROW_DETAILS, changeSize, changedFilesShown, classRank, deleteView, filterCount, flatten, groupHeaders, hasSecondLine, heightOf, layoutOf, listItems, nearestSibling, nestRows, passes, pin, previewReason, relativeAge, rowLabel, saveView, rowLine, rowTitle, STATE_VIEWS, timeBucket, toggleView, unpin, viewCounts, viewMatches, visibleRange, visibleTaskIds, type ListItem, type StoredView, type OriginFilter, type RowFacts, type StateFilter } from "./list-model.ts";
 import type { ProjectInfo } from "../../shared/project-types.ts";
 import { DEFAULT_LIST_PREFS, parseListPrefs, serializeListPrefs } from "./prefs.ts";
 import { highlightRuns } from "./snippets.ts";
 
 const NOW = new Date(2026, 9, 8, 15, 0, 0).getTime();
+/** The heights of the two densities, from the one token source the stylesheet reads. */
+const COMFORTABLE = densityMetrics("comfortable");
+const COMPACT = densityMetrics("compact");
 let n = 0;
 function h(over: Partial<AgentHeaderView> = {}): AgentHeaderView {
   n++;
@@ -121,9 +125,10 @@ test("collapsed sections hide their rows and the visible order follows", () => {
 test("a thousand rows window to the viewport: the slice is small, contiguous and follows the scroll", () => {
   const rows = Array.from({ length: 1000 }, (_, i) => h({ workspaceRoot: `/w/r${i % 10}`, subtitle: `r${i % 10}` }));
   const items = flatten(groupHeaders(rows, "repository", [], NOW), new Set());
-  const layout = layoutOf(items);
+  const layout = layoutOf(items, COMFORTABLE);
   assert.equal(items.length, 1010);
-  assert.equal(layout.total, 10 * SECTION_HEIGHT + 1000 * ROW_HEIGHT);
+  // MWS-01: a group's heading, then one-line rows of 32 that sit 2 apart.
+  assert.equal(layout.total, 10 * COMFORTABLE.groupHead + 1000 * (32 + 2));
   const top = visibleRange(layout, items.length, 0, 600);
   assert.equal(top.start, 0);
   assert.ok(top.end - top.start < 30);
@@ -171,16 +176,17 @@ test("search snippets highlight by UTF-8 byte ranges and drop ranges that are ou
 
 const proj = (id: string, name: string, over: Partial<ProjectInfo> = {}): ProjectInfo => ({ projectId: id, name, color: "accent", icon: "folder", workspaceRoot: "/w/alpha", archived: false, createdAtMs: 1, updatedAtMs: 1, createdOffset: "1", lastOffset: "1", rollup: { members: 0, byStatus: [], attentionTasks: 0, attentionItems: 0, pendingApprovals: 0, unread: 0, pullRequests: 0, ciPassing: 0, ciFailing: 0, ciPending: 0 }, members: [], ...over });
 const items = (over: Partial<Parameters<typeof listItems>[0]> & { headers: ReturnType<typeof h>[] }) => listItems({ projects: [], grouping: "repository", pins: [], collapsed: new Set(), nowMs: NOW, sort: "recent", showArchived: false, ...over });
-const kinds = (xs: ListItem[]) => xs.map((i) => (i.kind === "row" ? `row:${i.header.taskId}` : i.kind === "section" ? `section:${i.label}` : i.kind === "project" ? `project:${i.project.name}` : i.kind));
+const kinds = (xs: ListItem[]) => xs.map((i) => (i.kind === "row" ? `row:${i.header.taskId}` : i.kind === "section" ? `section:${i.label}` : `project:${i.project.name}`));
 
-test("without a project the list is the repositories under an empty Projects heading (its + makes the first one)", () => {
+test("without a project the list is the repository groups and nothing else: the Tasks head is the list's own, not an item", () => {
   const rows = [h(), h()];
   const before = flatten(groupHeaders(rows, "repository", [], NOW), new Set());
-  assert.deepEqual(items({ headers: rows }).slice(1), before);
-  assert.equal(items({ headers: rows })[0]?.kind, "projects-head");
+  assert.deepEqual(items({ headers: rows }), before);
+  assert.equal(items({ headers: rows })[0]?.kind, "section");
+  assert.deepEqual(items({ headers: [] }), [], "no task and no project: no item at all");
 });
 
-test("the Projects group sits after the pins and before the repositories; a member is shown under its project and nowhere else", () => {
+test("the projects sit after the pins and before the repositories; a member is shown under its project and nowhere else", () => {
   const a = proj("pa", "Alpha");
   const b = proj("pb", "Beta");
   const m1 = h({ projectId: "pa" });
@@ -188,7 +194,7 @@ test("the Projects group sits after the pins and before the repositories; a memb
   const free = h();
   const pinned = h({ projectId: "pb" });
   const out = items({ headers: [m1, m2, free, pinned], projects: [a, b], pins: [pinned.taskId] });
-  assert.deepEqual(kinds(out), ["section:Pinned", `row:${pinned.taskId}`, "projects-head", "project:Alpha", `row:${m1.taskId}`, `row:${m2.taskId}`, "project:Beta", "section:alpha", `row:${free.taskId}`]);
+  assert.deepEqual(kinds(out), ["section:Pinned", `row:${pinned.taskId}`, "project:Alpha", `row:${m1.taskId}`, `row:${m2.taskId}`, "project:Beta", "section:alpha", `row:${free.taskId}`]);
   // Each task appears once; the pinned member stays pinned and does not appear under its project.
   const rowIds = out.flatMap((i) => (i.kind === "row" ? [i.header.taskId] : []));
   assert.equal(new Set(rowIds).size, rowIds.length);
@@ -196,20 +202,21 @@ test("the Projects group sits after the pins and before the repositories; a memb
   assert.equal(proj_b?.kind === "project" ? proj_b.shown : -1, 0);
 });
 
-test("collapsing a project hides its tasks and collapsing the group hides the projects, each by its own key", () => {
+test("collapsing a project hides its tasks by its own key; the Projects heading is gone, so its stored key closes nothing", () => {
   const a = proj("pa", "Alpha");
   const m = h({ projectId: "pa" });
-  assert.deepEqual(kinds(items({ headers: [m], projects: [a], collapsed: new Set(["project:pa"]) })), ["projects-head", "project:Alpha"]);
-  assert.deepEqual(kinds(items({ headers: [m], projects: [a], collapsed: new Set(["projects"]) })), ["projects-head"], "the group is closed and the member is not listed a second time");
+  assert.deepEqual(kinds(items({ headers: [m], projects: [a], collapsed: new Set(["project:pa"]) })), ["project:Alpha"]);
+  // A profile that had closed the old Projects heading still shows the projects: nothing on the list could open them again.
+  assert.deepEqual(kinds(items({ headers: [m], projects: [a], collapsed: new Set(["projects"]) })), ["project:Alpha", `row:${m.taskId}`]);
 });
 
 test("an archived project is not a parent unless archived items are asked for; its tasks stay listed where they were", () => {
   const old = proj("pa", "Old", { archived: true });
   const m = h({ projectId: "pa" });
   const hidden = items({ headers: [m], projects: [old] });
-  assert.deepEqual(kinds(hidden), ["projects-head", "section:alpha", `row:${m.taskId}`]);
+  assert.deepEqual(kinds(hidden), ["section:alpha", `row:${m.taskId}`]);
   const shown = items({ headers: [m], projects: [old], showArchived: true });
-  assert.deepEqual(kinds(shown), ["projects-head", "project:Old", `row:${m.taskId}`]);
+  assert.deepEqual(kinds(shown), ["project:Old", `row:${m.taskId}`]);
 });
 
 test("the Project grouping makes the projects the sections, empty ones included, and tasks of no project last", () => {
@@ -218,9 +225,9 @@ test("the Project grouping makes the projects the sections, empty ones included,
   const m = h({ projectId: "pa" });
   const free = h();
   const out = items({ headers: [free, m], projects: [a, b], grouping: "project" });
-  assert.deepEqual(kinds(out), ["projects-head", "section:Alpha", `row:${m.taskId}`, "section:Beta", "section:No project", `row:${free.taskId}`]);
+  assert.deepEqual(kinds(out), ["section:Alpha", `row:${m.taskId}`, "section:Beta", "section:No project", `row:${free.taskId}`]);
   // A task whose project the list does not show is in no project here.
-  assert.deepEqual(kinds(items({ headers: [m], projects: [], grouping: "project" })), ["projects-head", "section:No project", `row:${m.taskId}`]);
+  assert.deepEqual(kinds(items({ headers: [m], projects: [], grouping: "project" })), ["section:No project", `row:${m.taskId}`]);
 });
 
 test("project chips filter by the Core's map; 'no project' is its own chip and a chip never matches by name", () => {
@@ -328,4 +335,172 @@ test("a row says what is needed before where it is, and each fact can be turned 
   const title = rowTitle(row, { ...facts, risk: "LOW" }, "This Mac", NOW);
   for (const part of ["Runs on: This Mac", "Phase: verifying", "Agents: 2 active of 3", "Risk: low", "Evidence: acceptance gate REJECT", "Next: cargo test exited 101"]) assert.ok(title.includes(part), part);
   assert.ok(rowTitle({ ...row, executionLocation: "cloud" }, undefined, "This Mac", NOW).includes("Runs on: isolated cloud"));
+});
+
+// ------------------------------------------------------------ DR-PX-2026-11-11-021 MWS-04: the measured task list
+
+test("MWS-04: groups are projects by default; status, environment and date are list options and no stored id changed", () => {
+  assert.equal(DEFAULT_LIST_PREFS.grouping, "repository");
+  const label = (id: string) => GROUPINGS.find((g) => g.id === id)?.label;
+  assert.equal(label("repository"), "Project");
+  assert.equal(label("status"), "Status");
+  assert.equal(label("location"), "Environment");
+  assert.equal(label("time"), "Date");
+  // The ids are what preferences and stored views hold: every one that existed is still read.
+  assert.deepEqual(GROUPINGS.map((g) => g.id).sort(), ["location", "project", "repository", "status", "time", "workspace"]);
+  assert.equal(new Set(GROUPINGS.map((g) => g.label)).size, GROUPINGS.length, "no two options share their words");
+  // The default shape: the Core's projects as parents, then each repository as a group of its own.
+  const a = proj("pa", "Alpha");
+  const member = h({ projectId: "pa" });
+  const free = h({ workspaceRoot: "/w/beta", subtitle: "beta" });
+  assert.deepEqual(kinds(items({ headers: [member, free], projects: [a] })), ["project:Alpha", `row:${member.taskId}`, "section:beta", `row:${free.taskId}`]);
+});
+
+test("MWS-04: a group that is a place carries its folder, so its own menu can start a task there; a status or a day carries none", () => {
+  const a = h({ workspaceRoot: "/w/alpha", subtitle: "alpha" });
+  const wt = h({ workspaceRoot: "/w/alpha.modbit-worktrees/t1", checkoutRoot: "/w/alpha", subtitle: "t1" });
+  const repo = groupHeaders([a, wt], "repository", [], NOW);
+  assert.deepEqual(repo.map((s) => [s.label, s.root]), [["alpha", "/w/alpha"]], "a worktree task belongs to the checkout it came from");
+  assert.equal(groupHeaders([a], "workspace", [], NOW)[0]!.root, "/w/alpha");
+  assert.equal(groupHeaders([a], "status", [], NOW)[0]!.root, undefined);
+  assert.equal(groupHeaders([a], "time", [], NOW)[0]!.root, undefined);
+  assert.equal(groupHeaders([a], "location", [], NOW)[0]!.root, undefined);
+  const p = proj("pa", "Alpha", { workspaceRoot: "/w/proj" });
+  const byProject = groupHeaders([h({ projectId: "pa" }), h()], "project", [], NOW, { projects: [p] });
+  assert.deepEqual(byProject.map((s) => [s.label, s.root]), [["Alpha", "/w/proj"], ["No project", undefined]]);
+  // A group of no repository is not a place either.
+  assert.equal(groupHeaders([h({ workspaceRoot: "", subtitle: "" })], "repository", [], NOW)[0]!.root, undefined);
+  const flat = flatten(repo, new Set());
+  assert.equal(flat[0]!.kind === "section" ? flat[0]!.root : "", "/w/alpha");
+  // The pinned section is the person's own and is not a place.
+  assert.equal(groupHeaders([a], "repository", [a.taskId], NOW)[0]!.root, undefined);
+});
+
+test("MWS-04: a row is one line; a task that needs the person or failed keeps its second line; Row details turns it on for all or off", () => {
+  assert.deepEqual(ROW_DETAILS.map((d) => d.id), ["auto", "always", "never"]);
+  assert.equal(DEFAULT_LIST_PREFS.rowDetails, "auto");
+  const quiet: StatusClass[] = ["READY_FOR_REVIEW_UNSEEN", "READY_FOR_REVIEW_SEEN", "RUNNING", "WAITING", "COMPLETED", "DRAFT", "ARCHIVED"];
+  for (const c of quiet) assert.equal(hasSecondLine(h({ statusClass: c }), "auto"), false, `${c} is one line`);
+  assert.equal(hasSecondLine(h({ statusClass: "NEEDS_ATTENTION" }), "auto"), true);
+  assert.equal(hasSecondLine(h({ statusClass: "FAILED" }), "auto"), true);
+  // The Core's reason for a task that waits on the person keeps the line whatever the class has moved to.
+  assert.equal(hasSecondLine(h({ statusClass: "WAITING" }), "auto", "Waiting for capacity: tokens 0/1"), true);
+  for (const c of STATUS_CLASSES) {
+    assert.equal(hasSecondLine(h({ statusClass: c }), "always"), true, c);
+    assert.equal(hasSecondLine(h({ statusClass: c }), "never", "a reason"), false, c);
+  }
+  // The class that decides is the Core's, never the other fields (single source).
+  assert.equal(hasSecondLine(h({ statusClass: "COMPLETED", pendingApproval: true, attentionItems: 3, taskState: "Failed" }), "auto"), false);
+  const rows = [h({ statusClass: "RUNNING" }), h({ statusClass: "NEEDS_ATTENTION" }), h({ statusClass: "FAILED" }), h({ statusClass: "DRAFT" })];
+  const lines = (details: "auto" | "always" | "never", facts?: Map<string, RowFacts>) => items({ headers: rows, grouping: "status", details, facts }).flatMap((i) => (i.kind === "row" ? [[i.header.statusClass, i.twoLine] as const] : []));
+  assert.deepEqual(lines("auto"), [["NEEDS_ATTENTION", true], ["FAILED", true], ["RUNNING", false], ["DRAFT", false]]);
+  assert.ok(lines("always").every(([, two]) => two));
+  assert.ok(lines("never").every(([, two]) => !two));
+  const reason: RowFacts = { next: "A child agent needs attention (failed): tests", phase: "", activeAgents: 0, totalAgents: 0, risk: "", evidence: "" };
+  assert.deepEqual(lines("auto", new Map([[rows[0]!.taskId, reason]])).find(([c]) => c === "RUNNING"), ["RUNNING", true]);
+  // A phase alone is not a reason: a running task that says "verifying" stays one line.
+  assert.deepEqual(lines("auto", new Map([[rows[0]!.taskId, { ...reason, next: "", phase: "verifying" }]])).find(([c]) => c === "RUNNING"), ["RUNNING", false]);
+});
+
+test("MWS-01/03: the virtual list lays out the two row heights of each density from the token source, and the window follows them", () => {
+  assert.deepEqual([COMFORTABLE.row, COMFORTABLE.rowTwoLine, COMFORTABLE.rowGap], [32, 46, 2]);
+  assert.deepEqual([COMPACT.row, COMPACT.rowTwoLine, COMPACT.rowGap], [30, 44, 2]);
+  const rows = [h({ statusClass: "NEEDS_ATTENTION" }), h({ statusClass: "RUNNING" }), h({ statusClass: "FAILED" }), h({ statusClass: "RUNNING" })];
+  const list = items({ headers: rows, grouping: "time" });
+  assert.deepEqual(list.map((i) => i.kind), ["section", "row", "row", "row", "row"]);
+  for (const m of [COMFORTABLE, COMPACT]) {
+    const two = m.rowTwoLine + m.rowGap;
+    const one = m.row + m.rowGap;
+    assert.deepEqual(list.map((i) => heightOf(i, m)), [m.groupHead, two, one, two, one]);
+    const layout = layoutOf(list, m);
+    assert.deepEqual(layout.offsets, [0, m.groupHead, m.groupHead + two, m.groupHead + two + one, m.groupHead + 2 * two + one]);
+    assert.equal(layout.total, m.groupHead + 2 * two + 2 * one);
+    // No two items overlap and none leaves a hole.
+    for (let i = 1; i < list.length; i++) assert.equal(layout.offsets[i], layout.offsets[i - 1]! + heightOf(list[i - 1]!, m));
+  }
+  // A project parent is a group's heading too.
+  const parent = items({ headers: [], projects: [proj("pa", "Alpha")] })[0]!;
+  assert.equal(parent.kind, "project");
+  assert.equal(heightOf(parent, COMFORTABLE), COMFORTABLE.groupHead);
+  // A thousand rows of both heights: the window at any scroll position holds the rows that intersect it and no others.
+  const many = Array.from({ length: 1000 }, (_, i) => h({ statusClass: i % 3 === 0 ? "FAILED" : "RUNNING" }));
+  const all = items({ headers: many, grouping: "location" });
+  const layout = layoutOf(all, COMFORTABLE);
+  assert.equal(layout.total, COMFORTABLE.groupHead + 334 * 48 + 666 * 34);
+  for (const scrollTop of [0, 777, layout.total / 2, layout.total - 600]) {
+    const r = visibleRange(layout, all.length, scrollTop, 600, 0);
+    const bottom = (i: number) => layout.offsets[i]! + heightOf(all[i]!, COMFORTABLE);
+    assert.ok(layout.offsets[r.start]! <= scrollTop && bottom(r.start) > scrollTop, `the first item covers ${scrollTop}`);
+    assert.ok(r.end === all.length || layout.offsets[r.end]! >= scrollTop + 600, "the last item reaches the bottom of the viewport");
+    assert.ok(r.end - r.start <= Math.ceil(600 / 34) + 1, "only the rows in view");
+  }
+});
+
+test("MWS-04: a child task is listed directly under its parent at depth 1, whatever the order; elsewhere it stays a row of its own", () => {
+  const parent = h({ title: "Parent", updatedAtMs: NOW - 50 });
+  const other = h({ title: "Other", updatedAtMs: NOW - 10 });
+  const kid1 = h({ title: "Kid 1", subagent: true, updatedAtMs: NOW - 1 });
+  const kid2 = h({ title: "Kid 2", subagent: true, updatedAtMs: NOW - 5 });
+  const grandkid = h({ title: "Grandkid", subagent: true, updatedAtMs: NOW - 2 });
+  const parents = new Map([[kid1.taskId, parent.taskId], [kid2.taskId, parent.taskId], [grandkid.taskId, kid2.taskId]]);
+  const shape = (xs: ListItem[]) => xs.flatMap((i) => (i.kind === "row" ? [`${i.header.title}@${i.depth}`] : []));
+  // Newest first would put the children above their parent: they follow it instead, in their own order.
+  assert.deepEqual(shape(items({ headers: [parent, other, kid1, kid2, grandkid], parents })), ["Other@0", "Parent@0", "Kid 1@1", "Kid 2@1", "Grandkid@2"]);
+  // Without the map (a view with no session model) the order is the list's own.
+  assert.deepEqual(shape(items({ headers: [parent, other, kid1, kid2, grandkid] })), ["Kid 1@0", "Grandkid@0", "Kid 2@0", "Other@0", "Parent@0"]);
+  // A child whose parent is in another group stays where its own group puts it, not indented.
+  const split = items({ headers: [{ ...parent, statusClass: "COMPLETED" }, kid1], grouping: "status", parents });
+  assert.deepEqual(shape(split), ["Kid 1@0", "Parent@0"]);
+  // A child whose parent was filtered out or archived is still listed.
+  assert.deepEqual(shape(items({ headers: [kid1, other], parents })), ["Kid 1@0", "Other@0"]);
+  // Pinned rows keep the person's order.
+  assert.deepEqual(shape(items({ headers: [parent, kid1], pins: [kid1.taskId, parent.taskId], parents })), ["Kid 1@0", "Parent@0"]);
+  // Under a project parent the children nest as well.
+  const a = proj("pa", "Alpha");
+  const inA = (x: AgentHeaderView) => ({ ...x, projectId: "pa" });
+  assert.deepEqual(shape(items({ headers: [inA(parent), inA(kid1)], projects: [a], parents })), ["Parent@0", "Kid 1@1"]);
+  // Every task is listed exactly once, even if the map were wrong about who is whose parent.
+  const loop = new Map([[parent.taskId, kid1.taskId], [kid1.taskId, parent.taskId]]);
+  const looped = nestRows([parent, kid1, other], loop).map((r) => r.header.taskId);
+  assert.deepEqual([...looped].sort(), [parent.taskId, kid1.taskId, other.taskId].sort());
+  assert.deepEqual(nestRows([parent], new Map([[parent.taskId, parent.taskId]])), [{ header: parent, depth: 0 }]);
+  // The visible order (for the keyboard and for the sibling an archive hands the selection to) is the nested one.
+  assert.deepEqual(visibleTaskIds(items({ headers: [parent, other, kid1], parents })), [other.taskId, parent.taskId, kid1.taskId]);
+});
+
+test("MWS-04: the row's mark beside the state is the files a task ready for review changed, and its name says what the row marks", () => {
+  const ready = h({ title: "Fix it", statusClass: "READY_FOR_REVIEW_UNSEEN", statusLabel: "Ready for review", filesChanged: 5, linesAdded: 61, linesRemoved: 18, unread: true });
+  assert.equal(changedFilesShown(ready), 5);
+  assert.equal(changedFilesShown({ ...ready, statusClass: "READY_FOR_REVIEW_SEEN" }), 5);
+  assert.equal(changedFilesShown({ ...ready, statusClass: "RUNNING" }), 0, "a running task shows no count");
+  assert.equal(changedFilesShown({ ...ready, filesChanged: 0 }), 0);
+  assert.equal(rowLabel(ready, false), "Fix it, Ready for review, 5 files changed, unread");
+  assert.equal(rowLabel({ ...ready, filesChanged: 1, unread: false }, true), "Fix it, Ready for review, 1 file changed, pinned");
+  const kid = h({ title: "Re-run", statusClass: "RUNNING", statusLabel: "Running", subagent: true });
+  assert.equal(rowLabel(kid, false, undefined, "Fix it"), "Re-run, Running, child task of Fix it");
+  // What the task needs stays in the name whatever the row shows (AWS-10 item 2).
+  const facts: RowFacts = { next: "asks for a Destructive effect", phase: "", activeAgents: 0, totalAgents: 0, risk: "", evidence: "" };
+  assert.match(rowLabel(h({ title: "T", statusClass: "NEEDS_ATTENTION", statusLabel: "Needs attention", pendingApproval: true }), false, facts), /^T, Needs attention, waiting on your approval, asks for a Destructive effect$/);
+});
+
+test("MWS-04: the preview card says the Core's reason or next action, the size of the change and nothing it would have to read for", () => {
+  const facts: RowFacts = { next: "cargo test exited 101", phase: "verifying", activeAgents: 1, totalAgents: 1, risk: "", evidence: "" };
+  assert.equal(previewReason(facts), "cargo test exited 101");
+  assert.equal(previewReason({ ...facts, next: "" }), "verifying");
+  assert.equal(previewReason({ ...facts, next: "", phase: "" }), "");
+  assert.equal(previewReason(undefined), "");
+  assert.deepEqual(changeSize(h({ filesChanged: 2, linesAdded: 20, linesRemoved: 1 })), { files: "2 files", added: 20, removed: 1 });
+  assert.deepEqual(changeSize(h({ filesChanged: 1, linesAdded: 4, linesRemoved: 0 })), { files: "1 file", added: 4, removed: 0 });
+  assert.equal(changeSize(h()), null);
+});
+
+test("MWS-04: Row details is a stored preference: a hostile value falls back to when needed and a valid one round-trips", () => {
+  assert.equal(parseListPrefs(JSON.stringify({ rowDetails: "always" })).rowDetails, "always");
+  assert.equal(parseListPrefs(JSON.stringify({ rowDetails: "never" })).rowDetails, "never");
+  assert.equal(parseListPrefs(JSON.stringify({ rowDetails: "sometimes" })).rowDetails, "auto");
+  assert.equal(parseListPrefs(JSON.stringify({ rowDetails: 2 })).rowDetails, "auto");
+  // A profile saved before the setting existed.
+  assert.equal(parseListPrefs(JSON.stringify({ grouping: "status" })).rowDetails, "auto");
+  const p = parseListPrefs(JSON.stringify({ rowDetails: "always", grouping: "time" }));
+  assert.deepEqual(parseListPrefs(serializeListPrefs(p)), p);
 });

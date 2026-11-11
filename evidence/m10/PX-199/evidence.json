@@ -1,0 +1,52 @@
+{
+  "task": "PX-199",
+  "requirements": [
+    "REQ-PX-199",
+    "QUAL-PX-199",
+    "REQ-EV-0037",
+    "REQ-EV-0143",
+    "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-199"
+  ],
+  "scenarios": [
+    "QUAL-PX-199 / PX-E2E-199"
+  ],
+  "decision_record": "DR-PX-2026-11-11-021",
+  "tier": "release-critical",
+  "tests": [
+    "apps/desktop/src/renderer/agents/list-model.test.ts",
+    "apps/desktop/e2e/task-list.spec.ts",
+    "apps/desktop/e2e/agents.spec.ts",
+    "apps/desktop/e2e/supervision.spec.ts",
+    "apps/desktop/e2e/keyboard.spec.ts",
+    "apps/desktop/e2e/projects.spec.ts",
+    "apps/desktop/e2e/attention.spec.ts",
+    "apps/desktop/e2e/fleet-agents.spec.ts",
+    "apps/desktop/e2e/awl.spec.ts",
+    "apps/desktop/e2e/gallery.spec.ts",
+    "apps/desktop/e2e/gallery-projects.spec.ts"
+  ],
+  "unit": "@modbit/desktop 363 of 363 (agents/ 41 of 41); pnpm typecheck clean.",
+  "proof": "Whole desktop e2e suite, local, macOS arm64, real Core (the prebuilt modbit-core, modbit-execd, modbit-cli and modbit-actuator-fixture of research/desktop-2/bin, built from main's Rust; this change has no Rust), scripted models, three runs. Run 1 on 33016b75 (before origin/main was merged): 198 passed, 0 failed, 2 skipped in 20.2m. Run 2 on f3f36179 (origin/main at ca8fe7f8 merged, and a wait added to the density helper): 197 passed, 1 failed, 2 skipped in 21.3m; the failure was this change's own new spec, e2e/task-list.spec.ts, reading a row's reason before the Core's attention view had been re-read (TASK_CARD.md of PX-199, Limitations). Run 3 on f56d062b (that spec waiting for the Core's words; the renderer and the tokens identical to run 2): 198 passed, 0 failed, 2 skipped in 17.7m. The two skipped are the live-provider specs. Results of run 3 by test: evidence/m10/PX-198/desktop-e2e-full-results.txt. Later commits on the branch change no file under apps/ or packages/ (the merge of origin/main at ddd010c9 brought dossier files only). On untouched origin/main (cafa01ff) with the same binaries the whole suite was 195 passed, 1 failed, 2 skipped in 17.1m: the failure, shell.spec.ts 'the command palette and the shortcut registry by keyboard alone', passed when shell.spec.ts was run by itself on that tree and did not fail in any run of this branch. CI on macOS, Linux and Windows (the proof of record for a release-critical row, doc 83) and the owner's review of the screenshots beside the boards are not in yet. The row is not COMPLETE and no graph status was set.",
+  "retained_mutations": "Asserted to fail in e2e/task-list.spec.ts: a quiet row with a second line (Row details always: five rows), a row that needs the person on one line (never), a missing reason, the old 50 px row, a wrapped title without the fade, the unread dot before the glyph, a child that is not indented, rows flush with the list's edge. The card's no-read claim has a positive control: opening the task from the card logs conversation:transcript.",
+  "removed_test_ids": [
+    "agent-repositories",
+    "agent-repository",
+    "agents-section[data-section=projects] (the Projects heading; agents-section stays on every group)"
+  ],
+  "moved_test_ids": "agents-search-open (navigation row to the Tasks head), agents-tools-toggle (Projects heading to the Tasks head), agents-new-project (a button to an item of the Tasks head's More menu), agent-status (on a one-line row it is the state glyph's text alternative), agent-attention-dot (the state's glyph while the class is Needs attention).",
+  "removed_checks": "Deleted because their surface was removed on purpose: list-model.test.ts 'collapsing the group hides the projects' (the Projects heading's collapse; a stored 'projects' key is now asserted to hide nothing) and items(...)[0].kind === 'projects-head' (the first item is now asserted to be a group, and an empty list to have no item). Moved, not deleted: projects.spec.ts and gallery-projects.spec.ts assert the Tasks head and New project inside More where they asserted the Projects heading and its button; four item lists in list-model.test.ts lose their projects-head entry; the thousand-row total is computed from the density's heights.",
+  "not_proven_here": "The Failed class cannot be reached from the real Core (nothing emits TaskFailed): its row, and the Waiting, Completed and Archived rows, are seen in the fixture gallery only (gallery.spec.ts, after/fixture-gallery-*.png), which is not proof against a Core. The card's Context line needs a context share the scripted model never produces: unit and gallery only.",
+  "screenshots": "after/*.png: the running app against a real Core at 1440 by 900, except the files named fixture-gallery-*, which are the model-free gallery. The boards for the comparison are in ../PX-198/boards/.",
+  "full_suite_results": "evidence/m10/PX-198/desktop-e2e-full-results.txt",
+  "renderer_revision": "f56d062b3893d9b2c69b3027aad7a00d216b2a42",
+  "build_digest": {
+    "dist/renderer/index.js": "sha256:8e2a80b3aaebba3fc8b04bd25f0d76ae99053738c855a5a5184cf225be878a03",
+    "dist/renderer/app.css": "sha256:a8120d0bff3ba142fa6440ee8a44e23c10d984fb13cfde0600784be51c8644d2",
+    "note": "the build the third whole-suite run and the screenshots used (node build.mjs at this revision's renderer and tokens)"
+  },
+  "core_binary": {
+    "path": "research/desktop-2/bin/modbit-core (prebuilt from main's Rust; not in the repository)",
+    "sha256": "9bae567201ee49c2910caa287a23af75a12254e435ed3ecea5bc21a1ec91cbea"
+  },
+  "ci_run_1": "Run 43030968493 on a8112ba1 (pull request 198): desktop E2E failed on windows-latest (193 passed, 1 failed, 6 skipped) and ubuntu-latest (197 passed, 1 failed, 2 skipped) on one test, this change's own e2e/task-list.spec.ts, which measured the rows' right inset from the list's outer edge where those systems draw a scrollbar that takes room (TASK_CARD.md of PX-199, Limitations). Every other desktop test passed on both, e2e/awl.spec.ts and e2e/shell.spec.ts included. Passed in that run before it was superseded: dossier integrity, locked architecture files, protocol round trip, supply chain, release supply chain, cloud, node on ubuntu and windows, packaged desktop on macOS, Ubuntu and Windows. The macOS desktop E2E, node on macOS and the three Rust jobs had not finished."
+}

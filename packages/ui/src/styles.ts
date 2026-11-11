@@ -130,7 +130,7 @@ input[type="checkbox"]:disabled, input[type="radio"]:disabled { opacity: 0.5; }
 .mb-dialog-title { margin: 0; font-size: var(--text-ui-base); font-weight: 500; line-height: 1.625; }
 .mb-dialog[role="alertdialog"] .mb-dialog-title { font-size: var(--text-ui-lg); font-weight: 600; }
 .mb-dialog-description { margin: 0; color: var(--mb-color-text-muted); }
-.mb-dialog[role="alertdialog"] .mb-dialog-description { padding-top: 2px; line-height: 24px; }
+.mb-dialog[role="alertdialog"] .mb-dialog-description { padding-top: 2px; line-height: var(--mb-type-heading-line); }
 
 /* Tabs (AWL-05): pill tabs; the selected one takes the 8 % fill and full text, never colour alone (it also reads aria-selected). */
 .mb-tabs { display: flex; flex-direction: column; }

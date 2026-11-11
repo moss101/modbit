@@ -1,5 +1,5 @@
 /**
- * The Approvals page: what needs the person across every task, as the Core's
+ * Inbox (the Approvals page, renamed by DR-PX-2026-11-11-021 MWS-04): what needs the person across every task, as the Core's
  * attention items and the notifications derived from them. Opening a row goes
  * to the task, where the decision is made with its exact intent; nothing is
  * decided from this list.
@@ -14,7 +14,7 @@ export function Inbox({ app, onOpenTask }: { app: AppState; onOpenTask: (taskId:
   return (
     <div className="page" data-testid="inbox">
       <div className="page-col">
-        <h2 className="page-title">Approvals</h2>
+        <h2 className="page-title">Inbox</h2>
         {empty && (
           <p className="meta" data-testid="inbox-empty">
             Nothing needs you right now.

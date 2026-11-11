@@ -18,6 +18,8 @@ export interface MenuItem {
   separatorBefore?: boolean | undefined;
   /** "destructive" draws the item in the destructive colour (an action that deletes or discards). */
   tone?: "destructive" | undefined;
+  /** The item's test id when a control keeps the one it had before it moved into a menu; `menu-item-<id>` otherwise. */
+  testId?: string | undefined;
   onSelect: () => void;
 }
 
@@ -124,7 +126,7 @@ export function Menu({ label, trigger, items, placement = "down", align = "start
                 tabIndex={i === active ? 0 : -1}
                 className="mb-menu-item"
                 data-tone={item.tone}
-                data-testid={`menu-item-${item.id}`}
+                data-testid={item.testId ?? `menu-item-${item.id}`}
                 onClick={() => select(item)}
                 onMouseMove={() => !item.disabled && setActive(i)}
                 onKeyDown={(e) => {
