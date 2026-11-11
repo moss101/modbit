@@ -9,7 +9,7 @@ export const controlsCss = `
 /* The one tray host sits directly above the composer in the conversation; a tall approval deck scrolls inside it instead of squeezing the transcript out. */
 .conv > .mb-tray-host { flex: none; max-height: 45%; overflow-y: auto; padding-top: var(--mb-space-1); }
 /* The docked approval: one card the width of the composer, on the editor surface, with the 3:1 edge, its command in mono. */
-.conv > .mb-tray-host { width: calc(100% - 2 * var(--mb-space-5)); max-width: 640px; margin-inline: auto; padding: 0; box-sizing: border-box; flex: none; }
+.conv > .mb-tray-host { width: calc(100% - 2 * var(--mb-space-5)); max-width: var(--mb-column); margin-inline: auto; padding: 0; box-sizing: border-box; flex: none; }
 .mb-tray[data-tray-id="approvals"] { background: var(--color-panel); border-color: var(--mb-color-border-control); padding: 0; overflow: hidden; }
 .mb-tray[data-tray-id="approvals"] .mb-tray-head { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .mb-tray[data-tray-id="approvals"] .mb-tray-body { margin: 0; }
@@ -41,14 +41,14 @@ export const controlsCss = `
 .appr-intent { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--mb-space-0_5) var(--mb-space-3); font-size: var(--mb-type-chrome-size); }
 .appr-intent dt { color: var(--mb-color-text-muted); }
 .appr-intent dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
-.appr-command { display: block; padding: var(--mb-space-1) var(--mb-space-2); background: var(--mb-color-sunken); border: 1px solid var(--mb-color-border); border-radius: var(--radius-md); font: var(--mb-type-mono-size)/var(--mb-type-mono-line) var(--mb-font-mono); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 9em; overflow: auto; }
-.appr-args pre { margin: var(--mb-space-1) 0 0; padding: var(--mb-space-1) var(--mb-space-2); background: var(--mb-color-sunken); border: 1px solid var(--mb-color-border); border-radius: var(--radius-md); font: var(--mb-type-mono-size)/var(--mb-type-mono-line) var(--mb-font-mono); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 10em; overflow: auto; }
+.appr-command { display: block; padding: var(--mb-space-1) var(--mb-space-2); background: var(--mb-surface-fill); border: 1px solid var(--mb-color-border); border-radius: var(--radius-md); font: var(--mb-type-mono-size)/var(--mb-type-mono-line) var(--mb-font-mono); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 9em; overflow: auto; }
+.appr-args pre { margin: var(--mb-space-1) 0 0; padding: var(--mb-space-1) var(--mb-space-2); background: var(--mb-surface-fill); border: 1px solid var(--mb-color-border); border-radius: var(--radius-md); font: var(--mb-type-mono-size)/var(--mb-type-mono-line) var(--mb-font-mono); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 10em; overflow: auto; }
 .appr-why { margin: 0; font-size: var(--mb-type-chrome-size); }
 .appr-fine { margin: 0; font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); }
 .appr-fine code { font: var(--mb-type-mono-size)/var(--mb-type-mono-line) var(--mb-font-mono); }
 .appr-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--mb-space-2); }
 .appr-foot .appr-spacer { flex: 1 1 auto; }
-.appr-prefix { font: inherit; font-size: var(--mb-type-chrome-size); max-width: 26ch; padding: var(--mb-space-0_5) var(--mb-space-1); border: 1px solid var(--mb-color-border-control); border-radius: var(--radius-md); background: var(--mb-color-sunken); color: var(--mb-color-text); }
+.appr-prefix { font: inherit; font-size: var(--mb-type-chrome-size); max-width: 26ch; padding: var(--mb-space-0_5) var(--mb-space-1); border: 1px solid var(--mb-color-border-control); border-radius: var(--radius-md); background: var(--mb-surface-fill); color: var(--mb-color-text); }
 .appr-warn { margin: 0; font-size: var(--mb-type-chrome-size); font-weight: 600; }
 .appr-note { margin: 0; font-size: var(--mb-type-chrome-size); }
 
@@ -96,7 +96,7 @@ export const controlsCss = `
 .ckpt-actions { display: flex; flex-wrap: wrap; gap: var(--mb-space-1); align-items: center; }
 .conv-user .ckpt-actions { margin-top: var(--mb-space-1); justify-content: flex-end; }
 /* AWL-07: a message's hover-only actions overlay the bubble's corner instead of reserving a line. */
-.conv-user .ckpt-actions[data-hover-only="true"] { position: absolute; right: var(--mb-space-2); bottom: var(--mb-space-1); margin: 0; background: var(--color-panel); border-radius: var(--radius-md); }
+.conv-user .ckpt-actions[data-hover-only="true"] { position: absolute; right: var(--mb-space-2); bottom: var(--mb-space-1); margin: 0; background: var(--mb-surface-fill); border-radius: var(--radius-md); }
 .conv-user:not(:hover):not(:focus-within) .ckpt-actions[data-hover-only="true"] { opacity: 0; }
 .ckpt-redo { display: flex; align-items: center; gap: var(--mb-space-2); font-size: var(--mb-type-chrome-size); padding: var(--mb-space-1) var(--mb-space-3); border: 1px dashed var(--mb-color-border-control); border-radius: var(--radius-md); }
 .ckpt-dialog { display: flex; flex-direction: column; gap: var(--mb-space-2); max-height: 65vh; overflow: auto; }

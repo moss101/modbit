@@ -217,10 +217,10 @@ test("PX-054: Shift+Tab walks the modes with the right chip and placeholder, the
     const corePosture = () => page.evaluate((t) => window.modbit.composerPosture(t).then((p) => p.mode), taskId);
     await expect(page.getByTestId("mode-label")).toHaveText("Agent");
     await expect(page.getByTestId("mode-clear")).toHaveCount(0);
-    // DR-PX-2026-11-04-020 at 1280 x 800: the in-conversation composer is two rows (the text, then the bar), about 96 px high (within 8 percent), and never wider than the 640 px column.
+    // DR-PX-2026-11-04-020 at 1280 x 800: the in-conversation composer is two rows (the text, then the bar), about 96 px high (within 8 percent); DR-PX-2026-11-11-021 MWS-01: it is never wider than the 768 px column, and at this width it fills it.
     const geometry = await box(page, "composer");
-    expect(geometry.width).toBeLessThanOrEqual(640.5);
-    expect(geometry.width).toBeGreaterThan(560);
+    expect(geometry.width).toBeLessThanOrEqual(768.5);
+    expect(geometry.width).toBeGreaterThan(688);
     expect(Math.abs(geometry.height - 96) / 96).toBeLessThanOrEqual(0.08);
     const placeholders = new Set<string>([(await input.getAttribute("placeholder")) ?? ""]);
     await input.focus();

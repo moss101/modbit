@@ -9,11 +9,11 @@ import { ZDL_TOKENS, type ZdlColors, type ZdlToken } from "./design-language.ts"
 
 /** The inputs of one theme: three achromatic surfaces, one base, the accent and the status and mode hues (AWL-01, AWL-03). */
 export interface AwlInputs {
-  /** The window root, the top bars and the conversation. */
+  /** The window root and, since DR-PX-2026-11-11-021 MWS-02, the fill of the person's message, chips and sunken fields. */
   chrome: string;
-  /** The agent list. */
+  /** The task list. */
   sidebar: string;
-  /** The apps panel, cards, the composer, menus, popovers and dialogs. */
+  /** The conversation, the top bar and the panes (MWS-02), cards, the composer, menus, popovers and dialogs. */
   editor: string;
   /** Every neutral derives from it (AWL-02). */
   base: string;

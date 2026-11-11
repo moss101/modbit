@@ -1,0 +1,203 @@
+Whole desktop e2e suite (playwright -c e2e/playwright.config.ts), local, macOS arm64, real Core, scripted models, on f56d062b.
+198 passed, 0 failed, 2 skipped (the live-provider specs), 17.7m. Durations are left out; ✓ passed, - skipped.
+
+✓    1 e2e/agent-workspace.spec.ts:32:1 › the agent list, the conversation and the apps panel work together on one running task, and quitting with it running asks first
+✓    2 e2e/agents.spec.ts:26:1 › PX-046: classes show glyph and words from the Core; unread clears when the conversation is seen; a search finds a tool result and opens its row; pins, filters, grouping, archive with undo, keyboard and axe
+✓    3 e2e/agents.spec.ts:162:1 › PX-046: archiving a running task asks first; stopping is the Core's recorded cancellation, and keeping it running changes nothing
+✓    4 e2e/agents.spec.ts:200:1 › PX-046: a thousand tasks stay responsive: the list holds only the rows in view, scrolls to the end, filters and groups within a generous bound, and a Core event reaches it
+✓    5 e2e/approvals.spec.ts:42:1 › PX-058: a pending effect docks a card with the exact intent and the Core's reason; a stale hash is refused; it survives a reload and a Core kill; Run executes it once
+✓    6 e2e/approvals.spec.ts:104:1 › PX-058: three pending approvals form a deck, oldest first, each decided on its own; a bare key never decides another agent's card; Skip is a typed user decision
+✓    7 e2e/approvals.spec.ts:201:1 › PX-058: an effect that cannot be undone asks twice, and a key typed into a text field never decides; Always is not offered for it; the file is only deleted after the second confirmation
+✓    8 e2e/approvals.spec.ts:246:1 › PX-057/058: Allowlist plus Always on a card makes a durable rule through the Core; the same kind of command then runs silently and its receipt names the rule; the rule can be revoked
+✓    9 e2e/approvals.spec.ts:314:1 › PX-057: the widest preset needs its warning and still asks for the always-ask classes; everything else in the envelope runs without asking
+✓   10 e2e/approvals.spec.ts:364:1 › PX-057/058: the main process rejects invalid arguments before the Core sees them
+✓   11 e2e/apps-browser.spec.ts:17:1 › Browser tab: the lease badge follows the Core, Take control moves the lease and blocks the agent's input, Return control lets the agent act
+✓   12 e2e/apps-panel-state.spec.ts:33:1 › the panel keeps its own tab for each task, by the task's id, across selection and a restart of the app
+✓   13 e2e/apps-panel.spec.ts:92:1 › the panel is absent until the task runs; then Changes shows the live diff while the task is still Running
+✓   14 e2e/apps-panel.spec.ts:113:1 › Terminal: owners and states are listed, an exited terminal shows its code, typing reaches the PTY and the output comes back
+✓   15 e2e/apps-panel.spec.ts:153:1 › the person's input lease: held while typing, the agent's shell.input is refused meanwhile, released on blur
+✓   16 e2e/apps-panel.spec.ts:178:1 › replay: a reload shows the same bytes; two attaches from the start read identical bytes (byte-exact)
+✓   17 e2e/apps-panel.spec.ts:219:1 › resize: the viewer's size reaches the PTY and the child prints it
+✓   18 e2e/apps-panel.spec.ts:243:1 › slow consumer at the IPC level: the Core sends no more than the window beyond the last acknowledgement
+✓   19 e2e/apps-panel.spec.ts:293:1 › a stopped terminal: Stop warns that a running process ends, and the list shows it stopped
+✓   20 e2e/apps-panel.spec.ts:305:1 › Files: the workspace is browsable read-only; binary, oversized, protected and outside paths are refused in the Core's terms
+✓   21 e2e/apps-panel.spec.ts:356:1 › Evidence: the task's receipts, checks and context accounting are shown read-only
+✓   22 e2e/apps-panel.spec.ts:394:1 › the apps are keyboard reachable: tabs by arrows, Shift+Escape leaves the terminal, and the terminal keeps the keys it is typed into
+✓   23 e2e/apps-panel.spec.ts:410:1 › invalid arguments to the new calls are rejected by main
+✓   24 e2e/attention.spec.ts:67:1 › attention: a start refused for capacity is an item from the Core and clears when the task starts
+✓   25 e2e/automations.spec.ts:75:1 › PX-086: the editor shows the Core's typed issues with path and code, will not save an invalid definition, and previews the next due time; a saved write-capable definition needs the exact, listed approval
+✓   26 e2e/automations.spec.ts:231:1 › PX-086: a repository definition is data until its exact bytes are approved; a changed byte on disk shows content_changed, and a reload raises SOURCE_CHANGED and needs a new approval
+✓   27 e2e/automations.spec.ts:328:1 › PX-086: a manual run, a dry test run and a schedule slot on a controlled clock leave history rows; the run's task wears the automation badge; pause, global pause and a missing approval are recorded with their typed reasons
+✓   28 e2e/automations.spec.ts:450:1 › PX-086: Kill asks first, cancels the run in progress and reports the Core's counts; the history keeps the typed reason
+✓   29 e2e/autonomy.spec.ts:51:1 › PX-144/145: Autonomous is chosen in the run-mode dialog; a broken TypeScript build is verified by the Core after the edit and the task completes with no approval
+✓   30 e2e/autonomy.spec.ts:101:1 › PX-145: a first fix that does not build is a repair attempt the Core records, concludes from its own verification, and the Evidence app shows
+✓   31 e2e/awl.spec.ts:248:1 › PX-192..194, PX-198: the agent workspace language on the real app: tokens, the measured geometry in both densities, the surface mapping, navigation, recipes and the approved home, and the gate fails on each superseded value
+✓   32 e2e/awl.spec.ts:452:1 › PX-194, PX-198: a scripted task with tool steps, an edit, a terminal and an approval shows the approved workspace in light and dark and in both densities, keeps the footer reachable, and the gate fails on a restored value
+✓   33 e2e/browser-feedback.spec.ts:18:1 › console, network, viewport, scroll and wait read a real page; secrets are redacted and a hostile console line is marked; a click that kills the page's process latches UNKNOWN until the page is read again
+✓   34 e2e/browser-feedback.spec.ts:135:1 › the occlusion hint now recommends scroll, because the tool exists
+✓   35 e2e/browser-hardening.spec.ts:55:1 › PX-120: a destination on this machine or its network is refused unless the policy names it - by address, by a name that resolves privately, at a redirect hop, in a sub-frame, in a sub-resource - and nothing reaches the refused server
+✓   36 e2e/browser-hardening.spec.ts:173:1 › PX-120: a link that points straight at a local or private target is refused when clicked, the page stays where it was, and the server behind it is never reached
+✓   37 e2e/browser-hardening.spec.ts:247:1 › PX-073: every call looks at the page's origin - a client-side redirect after an allowed navigation, file: and an unknown origin are all refused, and the refusal lists what is allowed
+✓   38 e2e/browser-hardening.spec.ts:336:1 › PX-073: a certificate error waits for the person - Reject fails the request, Trust is remembered per workspace, listed, and cleared
+✓   39 e2e/browser-hardening.spec.ts:429:1 › PX-073: the page's permissions are denied and named, signing out wipes the partition, and the session gives the page no download
+✓   40 e2e/browser-hardening.spec.ts:531:1 › PX-073: a task lists and selects only the views it owns; hidden views are reclaimed least recently used - never one the person holds - and the reset is stated
+✓   41 e2e/browser-observer.spec.ts:41:1 › a page's own update is journaled as a delta with no model call; since_fingerprint answers exactly the changes since, an unknown fingerprint the full page with the reason; frames are read and acted in with their origin
+✓   42 e2e/browser-observer.spec.ts:133:1 › a page that mutates thousands of nodes a second, and tries to take the observer away, is reported at a bounded rate
+✓   43 e2e/browser-observer.spec.ts:185:1 › an element keeps its reference when the page re-renders it under a new name, so the model's reference still acts on it
+✓   44 e2e/browser-semantic.spec.ts:71:1 › pages are classified, forms grouped, a form is filled in the order it needs with a credential handle and verified; links to another origin and destructive dialog buttons ask for the stricter approval; page text is data
+✓   45 e2e/browser-semantic.spec.ts:169:1 › page kinds are classified correctly on a labelled set of real pages, and a derived action whose result cannot be read back is reported unverified, never success
+✓   46 e2e/browser.spec.ts:147:1 › browser session: a sandboxed WebContentsView in the app, attached to the Core, driven by the agent through the CDP bridge; the page is untrusted, file: is refused, nothing privileged is reachable
+✓   47 e2e/browser.spec.ts:358:1 › browser takeover: the person takes control of the same session and types; the agent's input is blocked at once while it can still observe; returning control moves the lease and the agent acts again
+✓   48 e2e/browser.spec.ts:470:1 › prompt injection: hostile page and README are marked data; the key never leaves; the forbidden tool stays unavailable
+✓   49 e2e/browser.spec.ts:574:1 › credential handle fill: the agent fills a bound credential by handle, never sees the value, and the site receives it in the approved sign-in
+✓   50 e2e/browser.spec.ts:693:1 › human activity preemption: a real key from the person takes control; the agent's input is refused until control is returned
+✓   51 e2e/browser.spec.ts:782:1 › human activity preemption: a mouse press or a scroll from the person takes control; a hover does not
+✓   52 e2e/browser.spec.ts:862:1 › fault taxonomy, clipboard guard and emergency stop on a real page
+✓   53 e2e/changes-app.spec.ts:98:1 › the Changes tab shows the finished task's change set with its index, branch and remote
+✓   54 e2e/changes-app.spec.ts:121:1 › reverting one hunk goes through the Core, leaves the other, and a checkpoint undoes it
+✓   55 e2e/changes-app.spec.ts:139:1 › a revert of a file edited since the view was read is refused as stale and writes nothing
+✓   56 e2e/changes-app.spec.ts:156:1 › staging moves the real git index; a staged path cannot be reverted under it
+✓   57 e2e/changes-app.spec.ts:176:1 › Commit and push asks for an approval that shows the exact intent, and runs only after it
+✓   58 e2e/changes-app.spec.ts:223:1 › a denied approval commits and pushes nothing
+✓   59 e2e/changes-app.spec.ts:239:1 › a protected path is refused by the Core, not hidden by the app
+✓   60 e2e/changes-app.spec.ts:263:1 › the Core killed in the middle of a push: the effect is shown as in doubt after the restart, and the retry converges
+✓   61 e2e/checkpoints.spec.ts:46:1 › PX-062: Restore puts the bytes of a turn's checkpoint back (Cancel changes nothing), Redo restores the exact state, Undo all needs a second click; all by hash on disk and by keyboard
+✓   62 e2e/checkpoints.spec.ts:123:1 › PX-062: a file the person edited needs their own choice and is kept; a renderer killed with the dialog open leaves the workspace unchanged; a restore is refused while the agent works
+✓   63 e2e/checkpoints.spec.ts:180:1 › PX-062: Fork from a turn opens the child task with that turn's files and leaves the parent alone
+✓   64 e2e/checkpoints.spec.ts:228:1 › PX-062: Restore checkpoint on a message makes it editable in place; editing an older message asks Revert or Keep; Redo returns the files
+✓   65 e2e/composer.spec.ts:22:1 › PX-055: messages sent during a turn queue in the Core, can be edited, reordered and deleted, survive a reload, and drain in order as their own turns
+✓   66 e2e/composer.spec.ts:133:1 › PX-055: Send now cuts the live stream as a user interrupt, keeps the partial text marked partial, and the new turn starts from the sent message
+✓   67 e2e/composer.spec.ts:169:1 › PX-055: Stop ends the turn as a user interrupt, leaves the message editable and re-sends nothing; Continue resumes only when the person says so
+✓   68 e2e/composer.spec.ts:204:1 › PX-054: Shift+Tab walks the modes with the right chip and placeholder, the Core's mode field is authoritative, and a write in Plan is refused at the kernel
+✓   69 e2e/composer.spec.ts:281:1 › PX-054: the slash menu lists the Core's inventory in its order with a divider, shows an untrusted skill disabled with the Core's reason, treats a planted description as text, and runs a trusted skill
+✓   70 e2e/composer.spec.ts:334:1 › PX-054: an attachment is validated and ingested by the Core, an image shows a thumbnail and reaches the model, and what is not allowed is refused with its reason
+✓   71 e2e/composer.spec.ts:388:1 › PX-056: the picker lists the Core's variants, records the objective and a pin, shows a policy-blocked model with the Core's reason and keeps the prompt, and the choice reaches the model request and survives a reload
+✓   72 e2e/composer.spec.ts:480:1 › PX-056: a model the policy blocks at the run (the task's default) fails before any token; the prompt is restored and the tray names the typed cause
+✓   73 e2e/composer.spec.ts:510:1 › PX-054: the @ menu lists the Core's sources and a protected path cannot be attached; a draft and its chips survive navigation and a reload and are never sent; Alt+Up and Alt+Down walk the history
+✓   74 e2e/composer.spec.ts:609:1 › PX-055: the background-terminals tray lists a live terminal with its timer, opens it in the Terminal tab, kills it after a confirm and wakes the agent once; a side question is answered without entering the main context
+✓   75 e2e/composer.spec.ts:669:1 › PX-054: a message to a task waiting for review is queued for its next run and says so; the same send replayed sends once
+✓   76 e2e/composer.spec.ts:712:1 › PX-055: the queue is the Core's: it survives the Core being killed mid-stream, and the interrupted stream shows as stopped by a restart, not by the person
+✓   77 e2e/computer-surface.spec.ts:44:1 › PX-074: the permission window shows checking, allow and ready from the Core's actuator; the deep link only opens a pane; a grant is noticed; it is keyboard-operable and accessible
+✓   78 e2e/computer-surface.spec.ts:96:1 › PX-074: Stop halts an in-flight input, is sticky for the turn, and presence and the cards say so
+✓   79 e2e/computer-surface.spec.ts:177:1 › PX-074: action cards for success, a typed refusal and an unknown outcome; the latch is resolved by the person and the surface returns to the Core's truth
+✓   80 e2e/computer-surface.spec.ts:242:1 › PX-074: a screenshot card shows the masked frame through the artifact path; secure fields are blacked out and counted; a frame the task did not take cannot be read
+✓   81 e2e/computer-surface.spec.ts:289:1 › PX-074: every call is approved on its own exact card; no mode, rule or Always covers native control; a stale intent is refused; Skip is typed; the keyboard operates the card
+✓   82 e2e/computer-surface.spec.ts:353:1 › PX-074: a Core killed with control active leaves the surface showing only what the restarted Core says
+✓   83 e2e/computer-surface.spec.ts:392:1 › PX-074: Stop is one chord away and keyboard-only, even behind a modal dialog
+✓   84 e2e/computer-surface.spec.ts:421:1 › PX-074: a call blocked by a missing permission routes the permission window once; closing it keeps it closed; a grant is noticed
+✓   85 e2e/computer-surface.spec.ts:451:1 › PX-074: the renderer is killed while the agent holds the machine; the replacement window shows the Core's presence, the typed Stop still reaches the actuator and the stopped state stands
+✓   86 e2e/context.spec.ts:45:1 › PX-060: the ring shows the Core's usage; its tray lists the nine categories that sum to the total; it updates after a turn; the usage summary and the budget caps appear as set
+✓   87 e2e/context.spec.ts:133:1 › PX-060: BUDGET_EXHAUSTED docks a limit tray naming what ran out; raising the cap resumes the run with its work kept
+✓   88 e2e/context.spec.ts:223:1 › PX-060: a raise above the organisation's ceiling is refused with the Core's typed reason and changes nothing, also after the Core is killed; a raise within it resumes the run
+✓   89 e2e/context.spec.ts:263:1 › PX-060: a raise that policy sends for approval waits in the approval stack with its exact caps, applies once approved and asked again, and survives a Core kill
+✓   90 e2e/context.spec.ts:306:1 › PX-060: a Core that goes away docks an offline tray while it is gone, keeps the conversation readable, and takes the tray away when it is back
+✓   91 e2e/context.spec.ts:341:1 › PX-060: when policy blocks the model the turn fails before any token and a tray names the cause in the Core's words
+✓   92 e2e/conversation.spec.ts:24:1 › PX-047: a streamed answer appears incrementally, is never shown as final while open, only grows, and is final when the stream completes
+✓   93 e2e/conversation.spec.ts:71:1 › PX-047: a reload in the middle of a stream resumes it: the partial text comes back and the rest follows
+✓   94 e2e/conversation.spec.ts:103:1 › PX-047: killing the Core mid-stream shows the response as stopped, with its cause, never as an answer
+✓   95 e2e/conversation.spec.ts:132:1 › PX-047: scrolling up freezes follow, the pill counts later messages, the jump returns to the tail; planted markup and instructions render as inert text
+✓   96 e2e/conversation.spec.ts:190:1 › PX-047: tool steps fold by density without changing the rows; a question is answered inline and an approval on the docked card with the exact intent, neither folded away; both survive a reload and a Core restart
+✓   97 e2e/dashboard.spec.ts:74:1 › the operations dashboard shows the Core's own aggregation of its log, the same numbers the CLI reads
+✓   98 e2e/fleet-agents.spec.ts:80:1 › M6.6: a delegating parent shows its phase, agents and the nested child; the child is never a primary task
+✓   99 e2e/fleet.spec.ts:33:1 › new task renders from Core ids, the list reduces Core events, and survives Core kill and app restart
+✓  100 e2e/fleet.spec.ts:109:1 › renderer messages with invalid arguments are rejected by main (REQ-EV-0103)
+✓  101 e2e/forge-evidence.spec.ts:130:1 › review shows the forge's CI runs as external evidence and the pull request's comments as untrusted text, survives a restart, and CI never accepts the task
+✓  102 e2e/gallery-automations.spec.ts:26:1 › PX-086: every automations state is on the gallery with its words, and accessible in every theme: the empty list, every definition state and attention kind, the editor's issues, the approval of a write-capable definition, repository definitions, every typed reason in the history, a dry run's report and the kill confirmation
+✓  103 e2e/gallery-computer.spec.ts:23:1 › PX-074: every state of the native-control surface is accessible in every theme, says its state in words, and offers no Always on a computer card
+✓  104 e2e/gallery-controls.spec.ts:23:1 › PX-058/057/060/062: every new state is accessible in every theme: approval cards, the run-mode and warning dialogs, the ring and its trays, the restore, redo and Revert-or-Keep dialogs, the edit box and the Redo bar
+✓  105 e2e/gallery-projects.spec.ts:25:1 › PX-063/064/068: the project, worktree and apply-back states render from fixtures with no Core, with words beside every state, and are accessible in every theme
+✓  106 e2e/gallery.spec.ts:42:1 › PX-044: the production bundle contains no gallery; the gallery build is separate
+✓  107 e2e/gallery.spec.ts:48:1 › PX-044: approvals, generating, error, empty and offline render from fixtures with no Core; axe passes on every state in light, dark and high contrast
+✓  108 e2e/gallery.spec.ts:83:1 › PX-044: the tray host keeps one active tray, and the scoped keys move with it
+✓  109 e2e/gallery.spec.ts:131:1 › PX-054..056: the composer's menus, trays, chips and picker render from fixtures with no Core; axe passes on each in light, dark and high contrast
+✓  110 e2e/gallery.spec.ts:164:1 › PX-044: every primitive operates by keyboard alone with its ARIA contract
+✓  111 e2e/gallery.spec.ts:271:1 › PX-044: with prefers-reduced-motion no transition or animation runs
+✓  112 e2e/gallery.spec.ts:293:1 › PX-044/045: the shell geometry in the gallery frame: 1280 with the panel, 900 stacked, 600 as a rail
+✓  113 e2e/gallery.spec.ts:331:1 › PX-046/047: the agent list shows every status class with a glyph and words, and the conversation rows (streaming, stopped, approval, failure) pass axe in light, dark and high contrast
+✓  114 e2e/issue-intake.spec.ts:93:1 › issue intake: New Task from an issue URL and `modbit-cli task from-issue` create tasks named after the issue with its text as untrusted context; an unreadable issue is an error and no task
+✓  115 e2e/keyboard.spec.ts:80:1 › keyboard: every screen by keyboard only — shortcuts, list and review navigation, confirmed approval and cancellation, focus retained across Core events, live announcements, the accessibility suite on each screen
+✓  116 e2e/lifecycle.spec.ts:32:1 › PX-049: the window opens at 1280 x 800 and cannot be made smaller than 900 x 600
+✓  117 e2e/lifecycle.spec.ts:66:1 › PX-049: quitting with nothing running does not ask
+✓  118 e2e/lifecycle.spec.ts:77:1 › PX-049: quitting or closing the window with a task running asks first, says what quitting does, and keeps the app open on the default answer
+✓  119 e2e/lifecycle.spec.ts:133:1 › PX-049: a restart after a quit with a task running shows the Core's recovery counts, and the task is there to resume
+-  120 e2e/live-approvals.spec.ts:34:1 › live: the approval deck with a real model: a card for a command no rule covers, Always makes a rule that applies, the run continues
+-  121 e2e/live-autonomy.spec.ts:31:1 › live: 'Fix my broken application.' on the real desktop, a real model, a real tsc and npm, in Autonomous mode under a cost cap
+✓  122 e2e/onboarding.spec.ts:136:1 › onboarding: a fresh profile reaches a first reviewed change through provider setup, repository trust and a starter task, within five minutes at the median
+✓  123 e2e/onboarding.spec.ts:152:1 › onboarding: an invalid key, an unreachable endpoint and a missing repository each name their cause; a profile without a provider cannot start a task
+✓  124 e2e/perf-budgets.spec.ts:55:1 › PERF PX-041/PX-047: a streamed delta renders within 100 ms of its event timestamp at p95, every delta and the first of each message
+✓  125 e2e/perf-budgets.spec.ts:199:1 › PERF PX-046: the agent list reflects a Core event within 150 ms at p95 with a 200-task list
+✓  126 e2e/perf-budgets.spec.ts:293:1 › PERF PX-047: a long transcript scrolls; the frame distribution is recorded (the dossier names no frame budget; 1,000 rows need MODBIT_PERF_STEERS)
+✓  127 e2e/projects.spec.ts:92:1 › PX-063/064: a project is created, filled by menu, drag and keyboard, refuses each forbidden move with the Core's reason, shows the Core's rollup, archives with an undo that leaves its tasks alone, and groups, filters and stores views
+✓  128 e2e/projects.spec.ts:307:1 › PX-063: the main process rejects invalid project arguments before the Core sees them, and a lease-less or foreign command is the Core's refusal
+✓  129 e2e/px-104-live-review.spec.ts:104:1 › the Changes tab is open while the task is Running; each hunk's chip names the call the Core attributed it to
+✓  130 e2e/px-104-live-review.spec.ts:123:1 › the chip opens the producing call in the conversation
+✓  131 e2e/px-104-live-review.spec.ts:134:1 › rejecting one hunk by keyboard while the run is live reverts exactly that hunk, and the agent continues and is told why
+✓  132 e2e/px-104-live-review.spec.ts:156:1 › with the task waiting for the person, a decision on a file that moved is refused with the Core's code, and a refresh works
+✓  133 e2e/px-104-live-review.spec.ts:172:1 › a write by no tool call is shown unattributed, blocks automatic acceptance, and only the person accepts it
+✓  134 e2e/px-104-live-review.spec.ts:185:1 › the renderer's process is killed and the replacement view shows the same decisions, read from the Core
+✓  135 e2e/px-106-customize.spec.ts:129:1 › each list shows the Core's scope, trust and provenance, and the first task's hook run is in the journal
+✓  136 e2e/px-106-customize.spec.ts:157:1 › the view offers no catalog, no install from the network and no update flow
+✓  137 e2e/px-106-customize.spec.ts:170:1 › trusting a skill by the hash it shows is the Core's record, reaches the next request, and revoking removes it
+✓  138 e2e/px-106-customize.spec.ts:200:1 › a skill that changed under the view is refused with the Core's code, and trust is bound to the new hash
+✓  139 e2e/px-106-customize.spec.ts:216:1 › an administrator's hook cannot be switched off; the person's can, and it does not fire on the next event
+✓  140 e2e/px-106-customize.spec.ts:240:1 › another agent's configuration imports quarantined; its skill is absent until the exact manifest is trusted, then still untrusted until trusted by hash
+✓  141 e2e/px-106-customize.spec.ts:274:1 › open source shows the folder the Core listed; every control works by keyboard
+✓  142 e2e/px-188-memory.spec.ts:86:1 › a private note is listed with its scope and source, and sharing stores the redacted copy
+✓  143 e2e/px-188-memory.spec.ts:108:1 › only the redacted copy reaches the next real request, and deleting the original removes it everywhere
+✓  144 e2e/qual-gaps.spec.ts:18:1 › PX-054: in Ask a write the model asks for is refused by the Core and nothing is written
+✓  145 e2e/qual-gaps.spec.ts:45:1 › PX-054: a mode the Core has not acknowledged is drawn unconfirmed and never as active; the Core's acknowledgement confirms it
+✓  146 e2e/qual-gaps.spec.ts:77:1 › PX-055: the send-behaviour education is shown once and its acknowledgement persists across a reload
+✓  147 e2e/qual-gaps.spec.ts:105:1 › PX-062: a checkpoint of another task is refused and nothing changes; a Continue replayed with its command id restores once
+✓  148 e2e/qual-gaps.spec.ts:154:1 › PX-056: a pin sent from a session that does not own the task is refused by the Core and the task's preference is unchanged
+✓  149 e2e/qual-gaps.spec.ts:173:1 › PX-060: after a compaction the ring and the tray still equal the Core's accounting, and the Core recorded the epoch
+✓  150 e2e/qual-gaps.spec.ts:202:1 › PX-060: the ring shows the Core's figure for the task's own model across a model switch and never the other model's numbers
+✓  151 e2e/qual-gaps.spec.ts:254:1 › PX-060: a provider failure shows the Core's cause with Retry; Retry (even double-clicked) starts one new run that goes on from the log
+✓  152 e2e/qual-gaps.spec.ts:303:1 › PX-062: once the agent has worked on after a restore, no redo is offered and the Core refuses the stale redo
+✓  153 e2e/qual-gaps.spec.ts:340:1 › PX-060: a budget change the Core does not allow is refused with its typed reason and the caps stay as they were
+✓  154 e2e/qual-gaps.spec.ts:376:1 › PX-058: an approval nobody answers expires by the Core and shows as expired; it can no longer be approved; the agent is told and asks again
+✓  155 e2e/qual-gaps.spec.ts:445:1 › PX-055: the agent's mode proposal is a card; nothing changes until Switch; Switch moves the mode through the Core and the card says so
+✓  156 e2e/qual-gaps.spec.ts:494:1 › PX-055: a proposal left unanswered shows skipped after 15 s, the mode unchanged; Core-side, the late answer is refused
+✓  157 e2e/qual-gaps.spec.ts:531:1 › PX-055: a Core killed with a proposal pending comes back with it skipped, never accepted
+✓  158 e2e/review.spec.ts:66:1 › review surface: per-hunk decision commits exactly the user's choice and survives an app restart
+✓  159 e2e/secrets.spec.ts:66:1 › keychain custody: ciphertext only at rest and restored after a restart, or nothing kept where the OS has no keychain
+✓  160 e2e/session-end.spec.ts:117:1 › PX-049: a session-end hook that takes 2 s completes before the app exits, and what it said is journaled
+✓  161 e2e/session-end.spec.ts:141:1 › PX-049: a session-end hook that fails is shown to the person and journaled
+✓  162 e2e/session-end.spec.ts:166:1 › PX-049: choosing resume at the quit records it in the Core, and the next start recovers the run, shows the counts and continues it
+✓  163 e2e/session-end.spec.ts:203:1 › PX-049: quitting and leaving the run suspended keeps it recoverable, and nothing continues on the next start
+✓  164 e2e/session-end.spec.ts:230:1 › PX-049: killing the Core while the session-end hook runs fails visibly and leaves the task recoverable (the unrecorded choice does not resume it)
+✓  165 e2e/shell.spec.ts:25:1 › DR-PX-2026-11-04-020: started the way `pnpm start` starts it, the app finds the Core with no override
+✓  166 e2e/shell.spec.ts:36:1 › AFW-A10: Settings replaces the left column with its own navigation, holds doc 10's list, says plainly what the desktop cannot do yet, and Back returns
+✓  167 e2e/shell.spec.ts:90:1 › PX-045, PX-198: geometry at 1280 x 800, keyboard-resizable splits inside 200..420, the layout and the density persisted across a restart
+✓  168 e2e/shell.spec.ts:170:1 › PX-045: below a 448 centre the shell is single-pane with the 40 px rail; the list can also be collapsed
+✓  169 e2e/shell.spec.ts:198:1 › PX-045: at 1000 x 700 and 900 x 600 the list keeps 288, the top bar 45 and the centre stays above the single-pane threshold with nothing overflowing
+✓  170 e2e/shell.spec.ts:217:1 › PX-045: opening Settings with a running task neither stops nor alters the task
+✓  171 e2e/shell.spec.ts:242:1 › PX-045: the command palette and the shortcut registry by keyboard alone; Escape closes the innermost layer; focus returns
+✓  172 e2e/shell.spec.ts:359:1 › PX-044/045: themes, high contrast and reduced motion; the send button meets AA; axe on every region in every theme
+✓  173 e2e/shell.spec.ts:413:1 › PX-045: the apps panel appears for a task with an artifact, within the geometry; per-task state and width persist; it stacks when it cannot fit
+✓  174 e2e/states.spec.ts:135:1 › screen states: provider down, human continuation, review gate and a denied then opened pull request; notifications coalesce, deep-link and honour opt-in and quiet hours
+✓  175 e2e/states.spec.ts:285:1 › screen states: a Core that dies before committing a tool outcome comes back reconciling — degraded, recovery, then the task's unknown outcome with its evidence; the restart notifies
+✓  176 e2e/states.spec.ts:365:1 › task workspace: awaiting your answer (the agent's typed question) and awaiting approval with the exact intent, decided in the conversation; the reasons notify and coalesce
+✓  177 e2e/supervision.spec.ts:33:1 › home: the mode and the pin reach the Core before the first model call; a blocked model is not held; the next task starts from the defaults
+✓  178 e2e/supervision.spec.ts:102:1 › home: a mode the Core refuses leaves the task created, unstarted and saying why; no model call is made
+✓  179 e2e/supervision.spec.ts:135:1 › home: the location is a selector that names this machine and says why cloud cannot be chosen; the shortcut help names no board
+✓  180 e2e/supervision.spec.ts:171:1 › a stopped task says what is wrong and what to do on its row and in its conversation, with nothing opened
+✓  181 e2e/supervision.spec.ts:203:1 › a state nothing else on the screen says stands above the composer: a Core that dies while a task is open
+✓  182 e2e/supervision.spec.ts:234:1 › MOD-UX-001: each state a task can be in is a first-class view, holding the Core's class, one click away
+✓  183 e2e/supervision.spec.ts:302:1 › PX-196/197: Escape with the details open closes them, not the card; a confirmation keeps its keys from a card docking after it; a denied call is never told as run
+✓  184 e2e/supervision.spec.ts:352:1 › PX-196: after a reload the details show the facts the Core folded from the log, not defaults; failed calls are told as failed
+✓  185 e2e/task-list.spec.ts:295:1 › PX-199: the task list reads in the order of MWS-04 at three widths; rows are one line with the state at the right and keep a reason only where the task needs the person; status, environment and date regroup in place; both densities; the gate fails on each mutation
+✓  186 e2e/task-list.spec.ts:477:1 › PX-199: the keyboard alone reaches every row, pins, archives with undo and opens the preview card; the card opens on rest too, reads only what the list holds, and opens its task
+✓  187 e2e/terminal-history.spec.ts:94:1 › a build streams live into the Terminal tab: output arrives while the process runs, on one attachment, and the exit is shown when it ends
+✓  188 e2e/terminal-history.spec.ts:120:1 › scrolling above the view reads the older output as OutputRef ranges: in order, once, from the Core's retained start to the view
+✓  189 e2e/terminal-history.spec.ts:244:1 › a build that is still running has no sealed output: the Core refuses a history read, and the view offers none
+✓  190 e2e/terminal-history.spec.ts:277:1 › input policy: a finished terminal takes no keystroke; a write without the input lease is refused by the Core and reaches nothing
+✓  191 e2e/terminal-renderer-restart.spec.ts:18:1 › a background terminal survives a crashed renderer: same handle, same Core, replayed screen, live input
+✓  192 e2e/user-patch.spec.ts:65:1 › inline patch: a one-hunk user edit lands through the Core's change transaction; stale and protected attempts are refused; no buffer survives
+✓  193 e2e/wave4.spec.ts:55:1 › Wave 4: compose with an @ chip and an attachment, queue-edit-send-now, decide two approvals on the docked card, read the receipts in Evidence, open the context ring, restore and redo a checkpoint
+✓  194 e2e/workers.spec.ts:141:1 › renderer compromise (REQ-EV-0075): the app's renderer holds no secret, no Node, no socket; the bridge is typed requests only; the Core refuses what the renderer cannot vouch for; a foreign window with the same bridge is refused by main and audited
+✓  195 e2e/workers.spec.ts:245:1 › renderer killed (REQ-EV-0076): the renderer's process dies mid-session; main keeps the Core, the lease and the stream; the renderer comes back from the Core's snapshot and cursor with the session's truth unchanged and its typed requests answered
+✓  196 e2e/workers.spec.ts:364:1 › browser view killed (REQ-EV-0081): the view's process dies under the agent's session; the host restarts the view at its page and attaches it again to the same session; the Core, its log and the task are untouched, and the agent's next observation reads the restarted page
+✓  197 e2e/worktrees.spec.ts:64:1 › PX-068: the list shows real worktrees with the Core's states; a running or unapplied one is refused removal with the Core's typed explanation and nothing is touched; a clean one is removed after the Core says what is lost; the reaper's attention and a discard are the Core's
+✓  198 e2e/worktrees.spec.ts:211:1 › PX-068: a real apply-back conflict through the modal - Cancel is the default and changes nothing, an overwrite needs its files typed (and the Core refuses it otherwise), the pre-apply bytes come back exactly with Undo, and only a non-destructive choice is remembered
+✓  199 e2e/worktrees.spec.ts:355:1 › PX-068: the main process rejects invalid worktree arguments before the Core sees them
+✓  200 e2e/worktrees.spec.ts:378:1 › PX-068: a scheduled cleanup that finds a preview holding the lease is recorded and shown as Skipped, never as completed, and the preview itself is not kept as a run

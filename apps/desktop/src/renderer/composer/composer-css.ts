@@ -6,13 +6,13 @@
  */
 export const composerCss = `
 .cmp { flex: none; display: flex; flex-direction: column; gap: var(--mb-space-2); padding: var(--mb-space-1) var(--mb-space-5) var(--mb-space-2); background: transparent; }
-.cmp > * { width: 100%; max-width: 640px; margin-inline: auto; box-sizing: border-box; }
+.cmp > * { width: 100%; max-width: var(--mb-column); margin-inline: auto; box-sizing: border-box; }
 .cmp-dock { display: flex; flex-direction: column; gap: var(--mb-space-1_5); }
 .cmp-dock:empty { display: none; }
 .cmp-chips { display: flex; flex-wrap: wrap; gap: var(--mb-space-1_5); align-items: center; }
 .cmp-chips:empty { display: none; }
-/* AWL-08: the composer is a 12 px editor-surface box with the 3:1 control edge (ZDX-03) and a 1 px shadow. */
-.cmp-box { position: relative; border: 1px solid var(--mb-color-border-control); border-radius: var(--radius-xl); background: var(--color-panel); box-shadow: 0 1px 2px rgb(0 0 0 / 0.05); padding: 10px 12px 8px; display: flex; flex-direction: column; gap: var(--mb-space-1); }
+/* AWL-08 with the radius of MWS-01: the composer is a 14 px editor-surface box with the 3:1 control edge (ZDX-03) and a 1 px shadow. */
+.cmp-box { position: relative; border: 1px solid var(--mb-color-border-control); border-radius: var(--mb-composer-radius); background: var(--color-panel); box-shadow: 0 1px 2px rgb(0 0 0 / 0.05); padding: 10px 12px 8px; display: flex; flex-direction: column; gap: var(--mb-space-1); }
 .cmp-box:focus-within { border-color: var(--mb-color-focus); }
 .cmp-box[data-tint="ask"] { border-color: var(--mb-color-mode-ask); }
 .cmp-box[data-tint="plan"] { border-color: var(--mb-color-mode-plan); }
@@ -60,7 +60,7 @@ export const composerCss = `
 .cmp-send.cmp-send:disabled { opacity: 0.35; }
 .cmp-send.cmp-send[data-tint="ask"] { background: var(--mb-color-mode-ask); }
 .cmp-attach-row { display: flex; flex-wrap: wrap; gap: var(--mb-space-1); }
-.cmp-token { display: inline-flex; align-items: center; gap: var(--mb-space-1); font-size: var(--mb-type-caption-size); border: 1px solid var(--mb-color-border-control); border-radius: calc(infinity * 1px); padding: 1px var(--mb-space-2); background: var(--mb-color-sunken); max-width: 100%; }
+.cmp-token { display: inline-flex; align-items: center; gap: var(--mb-space-1); font-size: var(--mb-type-caption-size); border: 1px solid var(--mb-color-border-control); border-radius: calc(infinity * 1px); padding: 1px var(--mb-space-2); background: var(--mb-surface-fill); max-width: 100%; }
 .cmp-token img { border-radius: var(--radius-sm); object-fit: cover; }
 .cmp-token button { font: inherit; padding: 0 var(--mb-space-1); border: 0; background: transparent; color: var(--mb-color-text); cursor: pointer; }
 .cmp-token button:hover:not(:disabled) { background: var(--mb-color-hover); }

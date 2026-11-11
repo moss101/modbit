@@ -1,12 +1,13 @@
 /**
- * The agent list's per-viewer preferences (AFW-B05..B07): grouping, filter
- * chips, pins, collapsed sections per grouping and the row-subtitle fields.
+ * The agent list's per-viewer preferences (AFW-B05..B07, MWS-04): grouping, filter
+ * chips, pins, collapsed sections per grouping, when a row keeps its second line
+ * and which facts that line shows.
  * Renderer-local like the shell's other preferences: never task state, never
  * authoritative (the Core has no pin command in PX-042, so pins are a
  * convenience of this viewer and the cap is enforced here). Everything read
  * back is validated; a missing or hostile entry falls back to the default.
  */
-import { FACT_FIELDS, GROUPINGS, LOCATION_FILTERS, MAX_VIEWS, MAX_VIEW_NAME, NO_FILTERS, ORIGIN_FILTERS, PIN_CAP, SORTS, STATE_FILTERS, SUBTITLE_FIELDS, type FactField, type Filters, type Grouping, type SortKey, type StoredView, type SubtitleField } from "./list-model.ts";
+import { FACT_FIELDS, GROUPINGS, LOCATION_FILTERS, MAX_VIEWS, MAX_VIEW_NAME, NO_FILTERS, ORIGIN_FILTERS, PIN_CAP, ROW_DETAILS, SORTS, STATE_FILTERS, SUBTITLE_FIELDS, type FactField, type Filters, type Grouping, type RowDetails, type SortKey, type StoredView, type SubtitleField } from "./list-model.ts";
 
 export interface ListPrefs {
   grouping: Grouping;
@@ -21,10 +22,12 @@ export interface ListPrefs {
   sort: SortKey;
   /** The stored views: saved queries of this viewer (grouping, filter chips, sort). */
   views: StoredView[];
+  /** When a row keeps its second line (MWS-04); absent from a profile saved before it existed, so it defaults to when needed. */
+  rowDetails: RowDetails;
 }
 
 export const LIST_PREFS_KEY = "modbit.agents.v1";
-export const DEFAULT_LIST_PREFS: ListPrefs = { grouping: "repository", filters: NO_FILTERS, pins: [], collapsed: {}, subtitle: ["repository", "changes", "location", "origin"], facts: FACT_FIELDS.map((f) => f.id), sort: "recent", views: [] };
+export const DEFAULT_LIST_PREFS: ListPrefs = { grouping: "repository", filters: NO_FILTERS, pins: [], collapsed: {}, subtitle: ["repository", "changes", "location", "origin"], facts: FACT_FIELDS.map((f) => f.id), sort: "recent", views: [], rowDetails: "auto" };
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const strings = (v: unknown, max: number): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x.length > 0 && x.length < 512).slice(0, max) : []);
@@ -76,7 +79,8 @@ export function parseListPrefs(raw: string | null): ListPrefs {
   // A stored list longer than the cap (an older cap, a hand edit) is cut, never trusted.
   const pins = [...new Set(strings(v.pins, PIN_CAP))];
   const sort = SORTS.find((s) => s.id === v.sort)?.id ?? DEFAULT_LIST_PREFS.sort;
-  return { grouping, filters, pins, collapsed, subtitle, facts, sort, views: parseViews(v.views) };
+  const rowDetails = ROW_DETAILS.find((d) => d.id === v.rowDetails)?.id ?? DEFAULT_LIST_PREFS.rowDetails;
+  return { grouping, filters, pins, collapsed, subtitle, facts, sort, views: parseViews(v.views), rowDetails };
 }
 
 export function serializeListPrefs(p: ListPrefs): string {

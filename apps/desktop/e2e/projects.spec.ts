@@ -15,7 +15,7 @@ import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { accessible, closeApp, launch, makeRepo, setContentSize } from "./support/ui-harness.ts";
 import { streamingModel } from "./support/stream-model.ts";
-import { openListTools, queueTask } from "./support/new-task.ts";
+import { openListMore, openListTools, queueTask } from "./support/new-task.ts";
 
 const hex32 = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), (x) => x.toString(16).padStart(2, "0")).join("");
 
@@ -73,6 +73,8 @@ async function dragOnto(page: Page, source: Locator, target: Locator): Promise<v
 }
 
 async function newProject(page: Page, name: string, repo: string, color: string, icon: string): Promise<string> {
+  // DR-PX-2026-11-11-021 MWS-04: New project is in the Tasks head's More menu.
+  await openListMore(page);
   await page.getByTestId("agents-new-project").click();
   const dialog = page.getByTestId("project-new-dialog");
   await expect(dialog).toBeVisible();
@@ -115,6 +117,7 @@ test("PX-063/064: a project is created, filled by menu, drag and keyboard, refus
     expect((await coreProjects(page)).projects).toEqual([]);
 
     // ---- Create: name, workspace, palette colour and icon; the page opens on the Core's record.
+    await openListMore(page);
     await page.getByTestId("agents-new-project").click();
     await accessible(page, "the new project dialog", '[data-testid="project-new-dialog"]');
     await page.keyboard.press("Escape");
@@ -129,12 +132,15 @@ test("PX-063/064: a project is created, filled by menu, drag and keyboard, refus
     expect(core0).toHaveLength(1);
     expect(core0[0]!.name).toBe("Release");
     expect(core0[0]!.workspaceRoot.endsWith(basename(repoA))).toBe(true);
-    // The Projects group is separate from the repositories and has its New Project row.
+    // The project is a group of its own, apart from the repositories; the Tasks head holds New project (in More) whether or not a project exists.
     await expect(projectRow(page, pid)).toBeVisible();
-    await expect(page.locator('[data-testid="agents-section"][data-section="projects"]')).toBeVisible();
+    await expect(page.getByTestId("agents-head")).toBeVisible();
+    await openListMore(page);
     await expect(page.getByTestId("agents-new-project")).toBeVisible();
+    await page.keyboard.press("Escape");
     await expect(projectRow(page, pid).getByTestId("project-rollup")).toHaveText("0 tasks");
     // A name taken in the workspace is refused by the Core, in the dialog, and the typed text stays.
+    await openListMore(page);
     await page.getByTestId("agents-new-project").click();
     await page.getByTestId("project-name").fill("release");
     await page.getByTestId("project-new-create").click();

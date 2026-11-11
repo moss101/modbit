@@ -16,14 +16,25 @@ const header = (i: number, statusClass: StatusClass, statusLabel: string, over: 
 export const AGENT_HEADER_FIXTURES: AgentHeaderView[] = [
   header(1, "NEEDS_ATTENTION", "Needs attention", { title: "Close the stale worktree", pendingApproval: true, attentionItems: 1, taskState: "Waiting" }),
   header(2, "FAILED", "Failed", { title: "Migrate the parser", taskState: "Failed" }),
-  header(3, "READY_FOR_REVIEW_UNSEEN", "Ready for review", { title: "Add the export command", unread: true, filesChanged: 3, linesAdded: 42, linesRemoved: 7, taskState: "ReadyForReview" }),
+  header(3, "READY_FOR_REVIEW_UNSEEN", "Ready for review", { title: "Add the export command", unread: true, filesChanged: 3, linesAdded: 42, linesRemoved: 7, contextPercent: 38, taskState: "ReadyForReview" }),
   header(4, "READY_FOR_REVIEW_SEEN", "Ready for review (seen)", { title: "Update the changelog", filesChanged: 1, linesAdded: 4, taskState: "ReadyForReview" }),
   header(5, "RUNNING", "Running", { title: "Fix the flaky parser test" }),
   header(6, "WAITING", "Waiting", { title: "Refactor the loader", taskState: "Waiting" }),
   header(7, "COMPLETED", "Completed", { title: "Rename the config key", taskState: "Completed", origin: "cli" }),
   header(8, "DRAFT", "Draft", { title: "Plan the release notes", taskState: "Queued" }),
   header(9, "ARCHIVED", "Archived", { title: "An old experiment", archived: true, taskState: "Completed" }),
+  // A child task of fixture 5: listed under it, indented (MWS-04).
+  header(10, "RUNNING", "Running", { title: "Re-run the parser suite", subagent: true, origin: "subagent" }),
 ];
+
+/** Child task to parent task, as the session model holds it. */
+export const AGENT_PARENT_FIXTURES: ReadonlyMap<string, string> = new Map([["fixture-task-10", "fixture-task-5"]]);
+
+/** What the tasks that need the person say (the Core's reason), for the rows that keep a second line. */
+export const AGENT_FACT_FIXTURES: ReadonlyMap<string, { next: string; phase: string; activeAgents: number; totalAgents: number; risk: string; evidence: string }> = new Map([
+  ["fixture-task-1", { next: "git.worktree.close asks for a Destructive effect", phase: "", activeAgents: 0, totalAgents: 1, risk: "", evidence: "" }],
+  ["fixture-task-2", { next: "cargo test exited 101", phase: "", activeAgents: 0, totalAgents: 1, risk: "", evidence: "acceptance gate REJECT" }],
+]);
 
 const baseHints = { renderable: true, groupable: false, hasReasoning: false, durationMs: 0, shortText: "", linesAdded: 0, linesRemoved: 0, status: "" };
 const baseRow = { ordinal: 0, offset: "1", lastOffset: "1", atMs: GALLERY_NOW - 60_000, turnId: "turn-1", text: "", textTruncated: false, textRef: "", children: [] as TranscriptRowView[], facts: { type: "none" } as TranscriptRowView["facts"] };
