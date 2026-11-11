@@ -46589,8 +46589,22 @@
    "subsystem": "governance",
    "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
    "acceptance": "Decision Record, its rows, specification, supersession entries and change record added; implementation audit recorded; full integrity gate passes; the record is accepted by the owner and its status and approval are recorded; no product proof",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/dossier-px-020/tests.log",
+    "artifact:evidence/dossier-px-020/validation.json",
+    "commit:5b6ecdfe9f47103417344fa73d75e876550f6a2d"
+   ],
+   "notes": [
+    {
+     "at": "2026-11-11T12:52:54Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "DR-PX-2026-11-11-021 and rows PX-198..219 landed on main as 5b6ecdfe (PR 196, 19 checks green); product rows stay NOT_STARTED"
+    }
+   ],
+   "owner_agent": "claude-fable-5.2",
+   "status_changed_on": "2026-11-11T12:52:54Z"
   },
   {
    "id": "DR-GOV-2026-10-30-008",
