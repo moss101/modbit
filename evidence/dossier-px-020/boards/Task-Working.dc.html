@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Task: working</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="modbit.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="mb app rail-on">
+  <aside class="side">
+    <div class="sbar"><button class="ibtn" aria-label="Hide sidebar"><span class="ms" aria-hidden="true">view_sidebar</span></button><span class="grow"></span><button class="ibtn" aria-label="Back"><span class="ms" aria-hidden="true">arrow_back</span></button><button class="ibtn" aria-label="Forward"><span class="ms" aria-hidden="true">arrow_forward</span></button></div>
+    <nav class="snav" aria-label="Main">
+      <button class="nv"><span class="ms" aria-hidden="true">add</span>New task<span class="kbd">⌘N</span></button>
+      <button class="nv"><span class="ms" aria-hidden="true">inbox</span>Inbox<span class="badge warn">2</span></button>
+      <button class="nv"><span class="ms" aria-hidden="true">schedule</span>Automations</button>
+      <button class="nv"><span class="ms" aria-hidden="true">rate_review</span>Review</button>
+      <button class="nv"><span class="ms" aria-hidden="true">tune</span>Customize</button>
+    </nav>
+    <div class="shd">Tasks<span class="grow"></span><button class="ibtn" aria-label="Search tasks"><span class="ms" aria-hidden="true">search</span></button><button class="ibtn" aria-label="Group, sort and filter"><span class="ms" aria-hidden="true">filter_list</span></button><button class="ibtn" aria-label="More"><span class="ms" aria-hidden="true">more_horiz</span></button></div>
+    <div class="slist">
+      <button class="grp">modbit<span class="ms" aria-hidden="true">expand_more</span></button>
+      <button class="srow"><span class="t">Wire the updater signing step into the release pipeline</span><span class="ms fill c-warn s16" role="img" aria-label="Needs you">error</span></button>
+      <button class="srow"><span class="t">Clean the build output</span><span class="ms fill c-warn s16" role="img" aria-label="Needs you">error</span></button>
+      <button class="srow on"><span class="t">Add glm-5.3-flash to the price catalog</span><span class="ms c-acc s16 spin" role="img" aria-label="Working">progress_activity</span></button>
+      <button class="srow kid"><span class="ms tree" aria-hidden="true">subdirectory_arrow_right</span><span class="t">Re-run the px135 summary</span><span class="ms c-acc s16 spin" role="img" aria-label="Working">progress_activity</span></button>
+      <button class="srow"><span class="t">Fix accounting reconciliation in the px133 rerun</span><span class="ms c-ok s16" role="img" aria-label="Ready to review">merge</span><span class="n">5</span><span class="udot"></span></button>
+      <button class="srow"><span class="t">Stabilise ax_fixture on macOS GUI sessions</span><span class="ms c-ok s16" role="img" aria-label="Ready to review">merge</span><span class="n">2</span></button>
+      <button class="grp">dossier<span class="ms" aria-hidden="true">expand_more</span></button>
+      <button class="srow"><span class="t">Draft the SBOM decision record</span><span class="udot idle"></span></button>
+      <button class="srow"><span class="t">Gate threshold profile review</span><span class="ms c-pur s16" role="img" aria-label="On a branch">call_split</span></button>
+      <button class="grp">Archived · 14<span class="ms" aria-hidden="true">chevron_right</span></button>
+    </div>
+    <div class="sfoot"><span class="avatar">M</span><span>mohsin</span><span class="live"><i></i>Core</span><span class="grow"></span><button class="ibtn" aria-label="Help"><span class="ms" aria-hidden="true">help</span></button><button class="ibtn" aria-label="Settings"><span class="ms" aria-hidden="true">settings</span></button></div>
+  </aside>
+
+  <main class="card main">
+    <header class="top">
+      <h2 class="title">Add glm-5.3-flash to the price catalog</h2>
+      <button class="ibtn" aria-label="Rename, pin, archive, move to cloud"><span class="ms s16" aria-hidden="true">expand_more</span></button>
+      <span class="grow"></span>
+      <button class="ibtn on" aria-label="Details"><span class="ms" aria-hidden="true">checklist</span></button>
+      <button class="ibtn" aria-label="Terminal"><span class="ms" aria-hidden="true">terminal</span></button>
+      <button class="ibtn" aria-label="Changes"><span class="ms" aria-hidden="true">difference</span></button>
+      <button class="ibtn" aria-label="Browser"><span class="ms" aria-hidden="true">language</span></button>
+      <button class="ibtn" aria-label="Files"><span class="ms" aria-hidden="true">folder</span></button>
+      <button class="ibtn" aria-label="Evidence"><span class="ms" aria-hidden="true">verified_user</span></button>
+      <button class="ibtn" aria-label="More: activity, checkpoints, split view"><span class="ms" aria-hidden="true">more_horiz</span></button>
+    </header>
+
+    <div class="scroll">
+      <div class="col stack">
+        <div class="msg-user">px135 had five runs with unknown cost because glm-5.3-flash isn't in the price catalog. Add it, and make the summary stop marking those runs unknown.</div>
+        <p class="prose">Found the gap. The catalog only lists models from an earlier release, so glm-5.3-flash falls through to “unknown cost”. I’ll add an entry with a test that pins it, then re-run the px135 summary to confirm the five runs price out.</p>
+        <button class="tline">Explored 4 files, ran 2 searches<span class="ms" aria-hidden="true">chevron_right</span></button>
+        <button class="tline">Edited <b>catalog.rs</b><span class="num"><span class="add">+6</span><span class="del">−1</span></span><span class="ms" aria-hidden="true">chevron_right</span></button>
+        <p class="chap">Pin the price with a test</p>
+        <p class="prose">The entry is in. A test now fails if a model the gateway sells has no price, so this gap can’t reopen quietly.</p>
+        <button class="tline">Edited <b>catalog_tests.rs</b><span class="num"><span class="add">+14</span><span class="del">−0</span></span><span class="ms" aria-hidden="true">chevron_right</span></button>
+        <button class="tline">Started a child task: <b>Re-run the px135 summary</b><span class="ms" aria-hidden="true">chevron_right</span></button>
+        <div class="tasks">
+          <div class="tk"><span class="ms fill" aria-hidden="true">check_circle</span>Read the catalog and find unpriced models</div>
+          <div class="tk"><span class="ms fill" aria-hidden="true">check_circle</span>Add the missing entry</div>
+          <div class="tk now"><span class="ms spin c-acc" aria-hidden="true">progress_activity</span>Pin it with a test</div>
+          <div class="tk"><span class="ms" aria-hidden="true">radio_button_unchecked</span>Re-run the px135 summary</div>
+        </div>
+        <div class="statusline"><span class="ms spin c-acc s16" aria-hidden="true">progress_activity</span><span>Running cargo test</span><span>3m 12s · 18.4k tokens</span><span class="ms s16" aria-hidden="true">chevron_right</span></div>
+      </div>
+    </div>
+
+    <div class="dock">
+      <div class="col">
+        <div class="queue">
+          <span class="ms s16" aria-hidden="true">schedule_send</span>
+          <span class="txt">Also check that px133 prices from the same catalog</span>
+          <button class="btn ghost sm">Send now</button>
+          <button class="ibtn" aria-label="Remove queued message"><span class="ms" aria-hidden="true">close</span></button>
+        </div>
+        <div class="composer line">
+          <button class="ibtn" aria-label="Attach files, folders or connectors"><span class="ms" aria-hidden="true">add</span></button>
+          <label class="sr" for="followup">Add to this task</label>
+          <textarea id="followup" rows="1" placeholder="↵ to send, ⌘↵ to queue for later"></textarea>
+          <button class="send stop" aria-label="Stop the task"><span class="ms fill" aria-hidden="true">stop</span></button>
+        </div>
+        <div class="cfoot">
+          <button><span>Auto balance</span></button>
+          <button><span class="ms s16" aria-hidden="true">shield</span>Supervised</button>
+          <span class="ring" style="--p:38" role="img" aria-label="Context 38 percent used"></span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <aside class="rail2" aria-label="Task details">
+    <div class="rsec">
+      <h4>Environment</h4>
+      <div class="rrow"><span class="ms" aria-hidden="true">laptop_mac</span><span class="x">This Mac</span><button class="ibtn" aria-label="Move to cloud"><span class="ms" aria-hidden="true">cloud_upload</span></button></div>
+      <div class="rrow"><span class="ms" aria-hidden="true">folder_open</span><span class="x">modbit <span class="c-dim">· ~/projects</span></span></div>
+      <div class="rrow"><span class="ms" aria-hidden="true">call_split</span><span class="x">task/price-catalog</span><span class="r">own worktree</span></div>
+      <div class="rrow"><span class="ms" aria-hidden="true">shield</span><span class="x">Supervised</span><span class="r">asks before writes</span></div>
+    </div>
+    <div class="rsec">
+      <h4>Context<span class="ms s16 c-dim" aria-hidden="true">chevron_right</span><span class="r">38%<span class="bar2"><i style="width:38%"></i></span></span></h4>
+    </div>
+    <div class="rsec">
+      <h4>Tool servers<span class="ms s16 c-dim" aria-hidden="true">chevron_right</span><span class="r">2 connected</span></h4>
+    </div>
+    <div class="rsec">
+      <h4>Changes</h4>
+      <div class="rrow"><span class="ms" aria-hidden="true">difference</span><span class="x mono" style="font-size:13px"><span class="add">+20</span> <span class="del">−1</span> <span class="c-dim">· 2 files</span></span><button class="btn soft sm">Review</button></div>
+    </div>
+    <div class="rsec">
+      <h4>Evidence</h4>
+      <div class="rrow"><span class="ms" aria-hidden="true">verified_user</span><span class="x">Targeted checks</span><span class="r">running</span></div>
+      <div class="rrow"><span class="ms" aria-hidden="true">history</span><span class="x">3 checkpoints</span><span class="r">restore</span></div>
+    </div>
+    <div class="rsec">
+      <h4>Background tasks</h4>
+      <div class="rrow"><span class="ms" aria-hidden="true">account_tree</span><span class="x">Re-run the px135 summary</span><span class="r">42s</span><button class="stopb" aria-label="Stop"></button></div>
+      <div class="rrow"><span class="ms" aria-hidden="true">terminal</span><span class="x">cargo test -p modbit-providers</span><span class="r">12s</span><button class="stopb" aria-label="Stop"></button></div>
+      <div class="rrow"><span class="ms" aria-hidden="true">task_alt</span><span class="x c-dim">1 finished</span></div>
+    </div>
+    <div class="rsec">
+      <h4>Cost<span class="r">$0.02 of $0.50</span></h4>
+      <div class="rrow"><span class="ms" aria-hidden="true">payments</span><span class="x">9 model calls</span><span class="r">Auto balance</span></div>
+    </div>
+  </aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
