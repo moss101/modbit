@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Customize</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="modbit.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="mb app">
+  <aside class="side">
+    <div class="sbar"><button class="ibtn" aria-label="Hide sidebar"><span class="ms" aria-hidden="true">view_sidebar</span></button><span class="grow"></span><button class="ibtn" aria-label="Back"><span class="ms" aria-hidden="true">arrow_back</span></button><button class="ibtn" aria-label="Forward"><span class="ms" aria-hidden="true">arrow_forward</span></button></div>
+    <nav class="snav" aria-label="Main">
+      <button class="nv"><span class="ms" aria-hidden="true">add</span>New task<span class="kbd">⌘N</span></button>
+      <button class="nv"><span class="ms" aria-hidden="true">inbox</span>Inbox<span class="badge warn">2</span></button>
+      <button class="nv"><span class="ms" aria-hidden="true">schedule</span>Automations</button>
+      <button class="nv"><span class="ms" aria-hidden="true">rate_review</span>Review</button>
+      <button class="nv on"><span class="ms" aria-hidden="true">tune</span>Customize</button>
+    </nav>
+    <div class="shd">Tasks<span class="grow"></span><button class="ibtn" aria-label="Search tasks"><span class="ms" aria-hidden="true">search</span></button><button class="ibtn" aria-label="Group, sort and filter"><span class="ms" aria-hidden="true">filter_list</span></button><button class="ibtn" aria-label="More"><span class="ms" aria-hidden="true">more_horiz</span></button></div>
+    <div class="slist">
+      <button class="grp">modbit<span class="ms" aria-hidden="true">expand_more</span></button>
+      <button class="srow"><span class="t">Wire the updater signing step into the release pipeline</span><span class="ms fill c-warn s16" role="img" aria-label="Needs you">error</span></button>
+      <button class="srow"><span class="t">Clean the build output</span><span class="ms fill c-warn s16" role="img" aria-label="Needs you">error</span></button>
+      <button class="srow"><span class="t">Add glm-5.3-flash to the price catalog</span><span class="ms c-acc s16 spin" role="img" aria-label="Working">progress_activity</span></button>
+      <button class="srow"><span class="t">Fix accounting reconciliation in the px133 rerun</span><span class="ms c-ok s16" role="img" aria-label="Ready to review">merge</span><span class="n">5</span><span class="udot"></span></button>
+      <button class="grp">dossier<span class="ms" aria-hidden="true">expand_more</span></button>
+      <button class="srow"><span class="t">Draft the SBOM decision record</span><span class="udot idle"></span></button>
+      <button class="grp">Archived · 14<span class="ms" aria-hidden="true">chevron_right</span></button>
+    </div>
+    <div class="sfoot"><span class="avatar">M</span><span>mohsin</span><span class="live"><i></i>Core</span><span class="grow"></span><button class="ibtn" aria-label="Help"><span class="ms" aria-hidden="true">help</span></button><button class="ibtn" aria-label="Settings"><span class="ms" aria-hidden="true">settings</span></button></div>
+  </aside>
+
+  <main class="card main">
+    <header class="pagehead"><h2>Customize</h2><span class="grow"></span><div class="search" style="width:340px;height:30px"><span class="ms" aria-hidden="true">search</span><input aria-label="Search customizations" placeholder="Search skills, rules, hooks and tool servers"></div><button class="btn pri sm"><span class="ms s16" aria-hidden="true">add</span>Add</button></header>
+    <div style="display:flex;flex:1;min-height:0">
+      <nav class="subnav" aria-label="Customize sections">
+        <span class="cap">What the agent can use</span>
+        <button class="on"><span class="ms" aria-hidden="true">bolt</span>Skills<span class="badge" style="margin-left:auto">12</span></button>
+        <button><span class="ms" aria-hidden="true">rule</span>Rules<span class="badge" style="margin-left:auto">4</span></button>
+        <button><span class="ms" aria-hidden="true">webhook</span>Hooks<span class="badge" style="margin-left:auto">3</span></button>
+        <button><span class="ms" aria-hidden="true">hub</span>Tool servers<span class="badge warn" style="margin-left:auto">1</span></button>
+        <button><span class="ms" aria-hidden="true">extension</span>Extensions<span class="badge" style="margin-left:auto">1</span></button>
+        <button><span class="ms" aria-hidden="true">psychology</span>Memory<span class="badge" style="margin-left:auto">18</span></button>
+        <span class="cap">Applies to</span>
+        <button><span class="ms" aria-hidden="true">folder_open</span>modbit</button>
+        <button><span class="ms" aria-hidden="true">person</span>All my projects</button>
+      </nav>
+      <div class="pagebody">
+        <p class="h1p">Skills</p>
+        <p class="subp">Instructions the agent loads when a task calls for them, or when you type / in the composer. A skill that is not trusted never runs.</p>
+        <div class="list-card">
+          <div class="hrow"><span class="ms" aria-hidden="true">bolt</span><div class="tt"><b class="mono" style="font-size:13px">/review</b><span>Review the current change set for correctness · project</span></div><span class="tagx ok">Trusted</span><span class="switch on" role="img" aria-label="On"></span></div>
+          <div class="hrow"><span class="ms" aria-hidden="true">bolt</span><div class="tt"><b class="mono" style="font-size:13px">/reseal</b><span>Run the five-step dossier reseal in order · project</span></div><span class="tagx ok">Trusted</span><span class="switch on" role="img" aria-label="On"></span></div>
+          <div class="hrow"><span class="ms" aria-hidden="true">bolt</span><div class="tt"><b class="mono" style="font-size:13px">/release-notes</b><span>Draft release notes from merged pull requests · personal</span></div><span class="tagx ok">Trusted</span><span class="switch on" role="img" aria-label="On"></span></div>
+          <div class="hrow"><span class="ms" aria-hidden="true">bolt</span><div class="tt"><b class="mono" style="font-size:13px">/triage-flaky</b><span>Reproduce and classify a flaky test · from the test-tools extension</span></div><span class="tagx warn">Not trusted</span><button class="btn soft sm">Review and trust</button></div>
+          <div class="hrow"><span class="ms" aria-hidden="true">bolt</span><div class="tt"><b class="mono" style="font-size:13px">/px-row</b><span>Open a PX row with its task card · project</span></div><span class="tagx ok">Trusted</span><span class="switch" role="img" aria-label="Off"></span></div>
+        </div>
+
+        <p class="label" style="margin:26px 0 8px 2px">Tool servers</p>
+        <div class="list-card">
+          <div class="hrow"><span class="ms" aria-hidden="true">hub</span><div class="tt"><b>github</b><span>14 tools · runs on this Mac</span></div><span class="tagx ok">Connected</span><span class="switch on" role="img" aria-label="On"></span></div>
+          <div class="hrow"><span class="ms" aria-hidden="true">hub</span><div class="tt"><b>linear</b><span>Signed out since yesterday</span></div><span class="tagx warn">Needs sign-in</span><button class="btn soft sm">Reconnect</button></div>
+        </div>
+
+        <p class="label" style="margin:26px 0 8px 2px">Hooks</p>
+        <div class="list-card">
+          <div class="hrow"><span class="ms" aria-hidden="true">webhook</span><div class="tt"><b>Format after edit</b><span>After every file edit · runs cargo fmt</span></div><span class="switch on" role="img" aria-label="On"></span></div>
+          <div class="hrow"><span class="ms" aria-hidden="true">webhook</span><div class="tt"><b>Block writes to MANIFEST.md</b><span>Before every file edit · project rule</span></div><span class="switch on" role="img" aria-label="On"></span></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

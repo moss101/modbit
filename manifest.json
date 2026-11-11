@@ -2,13 +2,13 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-11-09",
+  "generated_on": "2026-11-11",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2075,
-    "docs_bytes": 2339419
+    "root_and_tooling": 2097,
+    "docs_bytes": 2408434
   },
   "sections": [
     {
@@ -77,8 +77,8 @@
       "section": "authority",
       "section_title": "Authority and orientation",
       "title": "Authority, Decision Register, and Conflict Resolution",
-      "bytes": 33270,
-      "sha256": "55523c6c81e2aad51a94c005d54240e5877e77f7788c9308e2b80e04be54b0e5"
+      "bytes": 34320,
+      "sha256": "17f4424fa095dc80d00a86b31ea2668983066455bb71e9f7622a0eecf587c739"
     },
     {
       "path": "docs/03_ARCHITECTURAL_CONFLICTS_AND_SUPERSESSIONS.md",
@@ -599,8 +599,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Product extension requirements, tasks and qualifications",
-      "bytes": 654723,
-      "sha256": "db81113d3b3e12473efe2f5382a99f5cd0b4a21e6ae5460c6ad49b1d54aa28c7"
+      "bytes": 720067,
+      "sha256": "f044d5ab56cd16c1aca764338ceb1841c3a2d2007ef0f650fb922de42b41cf4a"
     },
     {
       "path": "docs/63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
@@ -626,8 +626,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Agent-first workspace specification (clean-room)",
-      "bytes": 88529,
-      "sha256": "a6d515aba3f734f2a64789effd48ce6d1ceb57bc4bb64db61a860d1b1cbf08a7"
+      "bytes": 89236,
+      "sha256": "3f1170c9d0622dd25b0f1e383d216d1b1aeffa7a0708d07a6281f19c32b320cb"
     },
     {
       "path": "docs/66_NATIVE_COMPUTER_CONTROL_SPECIFICATION.md",
@@ -914,8 +914,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Dossier maintenance log",
-      "bytes": 146097,
-      "sha256": "52641648eeaf99f90409046fc1d2229cf4e742cf5da1bce95201c5e623a8f3c0"
+      "bytes": 148011,
+      "sha256": "950c17b384d76135fc682742293a3982ad0974874c6ae283d31fc05fd0a7edf8"
     },
     {
       "path": "docs/98_BUILD_MANIFEST.md",
@@ -1124,9 +1124,14 @@
       "sha256": "5c464105969bf7e764cd677fcb2545cf9132978c60e28fef4c1c80ad5ffcacdc"
     },
     {
+      "path": "docs/decisions/DR-PX-2026-11-11-021-measured-workspace.md",
+      "bytes": 22670,
+      "sha256": "185c80be6a3ce75062a9414952e773154180c0c8b68724f6e239f1a664cc76ad"
+    },
+    {
       "path": "docs/decisions/README.md",
-      "bytes": 10488,
-      "sha256": "063ce1263209688a7948246a7bc1fecaf4f5f1a1b01b6e1f64f461fa0800c117"
+      "bytes": 11335,
+      "sha256": "6000d8aea12959fbef30f0935ccf01cff063f8b40a72e60b8b10cca8f85ee3e0"
     },
     {
       "path": "evidence/dossier-epr-v1.1/baseline.json",
@@ -1492,6 +1497,111 @@
       "path": "evidence/dossier-px-019/validation.json",
       "bytes": 1141,
       "sha256": "8c12bb42524adc9a7b0d0ee3684754c9b2706b0c13e33d334798d2294b98c615"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Automations.dc.html",
+      "bytes": 8572,
+      "sha256": "04774c485a9e5a2937475b009d251d891eb72749347a6aac8eaf011ef1c89e99"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Before.dc.html",
+      "bytes": 4225,
+      "sha256": "28da6ef32798acf3631d509b5eab8d63297ddc6bba5ea87e5ad1c00caf27ab64"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Components.dc.html",
+      "bytes": 17290,
+      "sha256": "102a854c70672016207e54af0c3d411dd21dadc0cd7f290afc901e9a8acf4f8e"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Coverage.dc.html",
+      "bytes": 15880,
+      "sha256": "98ae253c4e298ba967280e53964e4f8a6440e8c8e9b0085875898cc94d664e1d"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Customize.dc.html",
+      "bytes": 8398,
+      "sha256": "a8d49995197f298c21633f263d17cf8e377e4e89d82c2ba405c292c1d231169d"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Inbox.dc.html",
+      "bytes": 7496,
+      "sha256": "3970646f9a83b8e80783c8e7b231ec0d098f72131e0c53b8cdbdab993878aef8"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Main.dc.html",
+      "bytes": 8147,
+      "sha256": "734372bba64b8cf4dad8f1c76eb0ed0578480c2ed65ae063d770c3618d01f45b"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Panes-More.dc.html",
+      "bytes": 13338,
+      "sha256": "df8c7e9ffee13a15f8ae3d986b1c2214460491305bbf4e112944f705736a3841"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Review.dc.html",
+      "bytes": 8660,
+      "sha256": "516eb45aa74150755f865845a10e1359d1a0da7d73a9fd1cb4deab69cb7a2052"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Search.dc.html",
+      "bytes": 7289,
+      "sha256": "4d4306c33cd49de1ebc29a3974712d1104940bdfa02fe9ffe938711ff2a8e6d7"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Settings-Control.dc.html",
+      "bytes": 7699,
+      "sha256": "944f3bc05c3f8a22e4a29d837b5800bf7a289bc50aa626c05e4887431eb9661c"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Settings.dc.html",
+      "bytes": 5872,
+      "sha256": "4535ec897e54da6d54304ecdd55747367b7da92d154dd9d45dd024eb74ea8150"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Split.dc.html",
+      "bytes": 10140,
+      "sha256": "cbdff12400ed9d4b64ad031bb8f37dd9a846def79abfd2b5323b24a38bca343e"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Task-NeedsYou.dc.html",
+      "bytes": 13308,
+      "sha256": "adf25fdfda103689c4b78a2e9dc895a7e4c18f51f1184952d504b6b60b7decd1"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Task-Ready.dc.html",
+      "bytes": 13851,
+      "sha256": "a2a89b7950395b0081ace8cbc65c13829970641f29e19c0e3f34ead9b093c5f7"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Task-Working.dc.html",
+      "bytes": 11542,
+      "sha256": "f7bff9de8cef1b98cc8d757b1d8e790e0fc1e00658ab78b456d4dcdecbddf581"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/canvas.json",
+      "bytes": 4145,
+      "sha256": "eb06d290b6ed4ff083de01a44984256febcd336e00872dba8e823ce1f5136648"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/modbit.css",
+      "bytes": 53645,
+      "sha256": "d9b59bfa4f97ed7ed43f47d50d450066a26a58473817570be27cd1b84bb4e8a9"
+    },
+    {
+      "path": "evidence/dossier-px-020/coverage-2026-11-11.pdf",
+      "bytes": 1136381,
+      "sha256": "03669866958c62f655e2a986d54eb814e407140920cc6257f48917da2f71af66"
+    },
+    {
+      "path": "evidence/dossier-px-020/tests.log",
+      "bytes": 7775,
+      "sha256": "4aa8cb10282e75afa4028832ac6012bd6b2177073bf7c567cd901bf7e40932e9"
+    },
+    {
+      "path": "evidence/dossier-px-020/validation.json",
+      "bytes": 1400,
+      "sha256": "dc1c7e70660cb76f0c395f80c2dfd7dabe62f93b50ed8b8d2a828fe44ab35fa1"
     },
     {
       "path": "evidence/m0/IMP-EV-0208/TASK_CARD.md",
@@ -11240,18 +11350,18 @@
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 47139,
-      "sha256": "391072136bc50325b5d52b34dfa8a822d86d09c915597e2204926e64f3694de9"
+      "bytes": 47635,
+      "sha256": "225d1c55bdcd95ae801acde6371887bf6e61215f6da6f52b3ddc7b4138e34cc0"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2552710,
-      "sha256": "39998aac62bf92e2be481656446e2427a6888a9239c3f8981458b0df380c0841"
+      "bytes": 2649656,
+      "sha256": "860b8fa8688291ef36b798f385b4dce158265d691657a0d6c2b0326a46d48a3d"
     },
     {
       "path": "tools/build_graph.py",
-      "bytes": 66687,
-      "sha256": "3df787bdd1053b447b28e905d9d859d4c4f440e8a2761649b122e0c1983b04b0"
+      "bytes": 67211,
+      "sha256": "9d101fa8395609092e6a2134a32210fb214a94a0765a13e66b58cbf790267b9d"
     },
     {
       "path": "tools/build_manifest.py",
@@ -11300,8 +11410,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 87037,
-      "sha256": "c2c66987337777856d41eb10236756d173f2dccf9440b37effd7363259cc6af8"
+      "bytes": 90307,
+      "sha256": "fa65834e8dcfdd9b59fdaf7da0de08a1e9d37441b802385ea3952afb342c067f"
     }
   ],
   "renames_v3_to_v3_1": {

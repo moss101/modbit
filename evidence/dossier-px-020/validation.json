@@ -1,0 +1,30 @@
+{
+ "task": "DOC-PX-020",
+ "change_record": "DR-PX-2026-11-11-021",
+ "change_record_status": "APPROVED",
+ "edition": "V3.3 EPR v1.1",
+ "scope": "Decision Record DR-PX-2026-11-11-021 (accepted by the owner's chat instruction of 2026-11-11): rows PX-198..219 in doc 62 (M10, RELEASE_ZERO, PX-198 iteration tier and PX-199..218 release-critical, owners desktop, core-runtime, workspace-git, external-tools, verification, browser and durability, REQ-PX-219 deferred), graph change record and dossier task, pinned surface 220 rows, 197 ADOPT tasks and 23 DEFERRED; the sources of the sixteen approved boards and the owner's export of the comparison are retained beside this file",
+ "recorded_at_utc": "2026-11-11T07:58:56.228914+00:00",
+ "git": {
+  "baseline_commit": "cafa01ff",
+  "branch": "dossier/desktop-2-measured-workspace"
+ },
+ "tests": {
+  "command": [
+   "python3",
+   "tools/test_dossier.py"
+  ],
+  "exit_code": 0,
+  "output_ref": "evidence/dossier-px-020/tests.log",
+  "sha256": "4aa8cb10282e75afa4028832ac6012bd6b2177073bf7c567cd901bf7e40932e9",
+  "result_line": "Ran 90 tests in 105.946s OK"
+ },
+ "integrity": {
+  "command": [
+   "python3",
+   "tools/check_dossier.py"
+  ],
+  "exit_code": 0,
+  "output": "OK: 97 docs; base 291 REQ-EV/265 IMP-EV/291 QUAL-EV + EPR 20 + PX 220 (197 ADOPT tasks) = 531 requirements effective; 18 ADR-R, 7 gates, 3 releases; graph and references consistent"
+ }
+}

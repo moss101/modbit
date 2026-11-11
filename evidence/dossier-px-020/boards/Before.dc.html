@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Today: what makes it heavy</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="modbit.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Source+Serif+4:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="mb" style="width:1920px;height:1000px;padding:48px 48px 40px;display:flex;flex-direction:column;gap:32px">
+  <div>
+    <p style="font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);margin-bottom:10px">Today, from the current build (PX-195 to PX-197)</p>
+    <h1 style="font-family:var(--serif);font-weight:500;font-size:40px;line-height:1.1;letter-spacing:-.01em">Why it feels complex and rigid</h1>
+  </div>
+
+  <div style="display:flex;gap:32px;align-items:flex-start">
+    <figure class="shot" style="margin:0">
+      <img src="/_blob/2d8644bc5044e660eb4654013c370fe2" alt="Current task screen: a fixed three-pane layout with an approval form above the composer">
+      <span class="pin" style="left:226px;top:297px">1</span>
+      <span class="pin" style="left:115px;top:282px">2</span>
+      <span class="pin" style="left:232px;top:91px">3</span>
+      <span class="pin" style="left:464px;top:174px">4</span>
+      <span class="pin" style="left:46px;top:336px">5</span>
+      <span class="pin" style="left:302px;top:350px">7</span>
+      <figcaption>Task with an approval pending</figcaption>
+    </figure>
+    <figure class="shot" style="margin:0">
+      <img src="/_blob/d7753678696c6d2cdb75462c1b2308f1" alt="Current task details popover listing state, phase, generation, attachments, evidence and economics">
+      <span class="pin" style="left:258px;top:120px">2</span>
+      <figcaption>Task details popover</figcaption>
+    </figure>
+    <figure class="shot" style="margin:0">
+      <img src="/_blob/8ba49cda4db5a496c03577715645312d" alt="Current new-task screen: a bare composer with a repository path box and a checkbox">
+      <span class="pin" style="left:330px;top:194px">6</span>
+      <figcaption>New task</figcaption>
+    </figure>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 48px;max-width:1500px">
+    <div class="finding"><span class="pin">1</span><div><b>Approval is a five-control form</b><span class="d">Two native dropdowns, then Skip, Always and Run in three different styles. The decision is buried in the controls.</span></div></div>
+    <div class="finding"><span class="pin">2</span><div><b>Internals leak into the screen</b><span class="d">Intent hashes, shell.exec, “Generation 9”, “prompt prefix reused 4 of 6”. True, but not what someone deciding needs first.</span></div></div>
+    <div class="finding"><span class="pin">3</span><div><b>One size, one weight</b><span class="d">Thread text, rows, labels and buttons all sit near 14px. Nothing leads the eye, so everything reads as equally important.</span></div></div>
+    <div class="finding"><span class="pin">4</span><div><b>A fixed panel with five tabs</b><span class="d">The right side is always there, with Changes, Terminal, Browser, Files and Evidence, even when most are empty.</span></div></div>
+    <div class="finding"><span class="pin">5</span><div><b>Two lists for one thing</b><span class="d">Projects and Repositories sit in the same sidebar, and approvals live both on a page and in the thread.</span></div></div>
+    <div class="finding"><span class="pin">6</span><div><b>Home is a form</b><span class="d">A path box, a checkbox and a “GitHub issue URL” link. No recents, no starters, nothing that needs you.</span></div></div>
+    <div class="finding"><span class="pin">7</span><div><b>Controls scatter</b><span class="d">Mode and model inside the box, location and run mode below it, then send, stop and a ring on the right.</span></div></div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1920,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
