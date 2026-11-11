@@ -1,0 +1,52 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-11-11T12:00:00Z" },
+  "title": "Modbit Desktop Redesign — Draft for Approval",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Before.dc.html": { "x": 0, "y": 0, "w": 1920, "h": 1000, "title": "0 · Today: what makes it heavy" },
+    "Main.dc.html": { "x": 0, "y": 1360, "w": 1440, "h": 900, "title": "A1 · Home", "expand": "fill" },
+    "Task-Working.dc.html": { "x": 1520, "y": 1360, "w": 1440, "h": 900, "title": "A2 · Task, working", "expand": "fill" },
+    "Task-NeedsYou.dc.html": { "x": 3040, "y": 1360, "w": 1440, "h": 900, "title": "A3 · Task, needs you (try it)", "expand": "fill", "is_interactive": true },
+    "Task-Ready.dc.html": { "x": 4560, "y": 1360, "w": 1440, "h": 900, "title": "A4 · Task, ready: panes and pull request", "expand": "fill" },
+    "Inbox.dc.html": { "x": 0, "y": 2720, "w": 1440, "h": 900, "title": "B1 · Inbox, dark", "expand": "fill" },
+    "Automations.dc.html": { "x": 1520, "y": 2720, "w": 1440, "h": 900, "title": "B2 · Automations", "expand": "fill" },
+    "Customize.dc.html": { "x": 3040, "y": 2720, "w": 1440, "h": 900, "title": "B3 · Customize", "expand": "fill" },
+    "Settings.dc.html": { "x": 4560, "y": 2720, "w": 1440, "h": 900, "title": "B4 · Settings: run modes, appearance", "expand": "fill" },
+    "Panes-More.dc.html": { "x": 0, "y": 4080, "w": 1440, "h": 900, "title": "C1 · Panes: browser, files, activity, background tasks", "expand": "fill" },
+    "Split.dc.html": { "x": 1520, "y": 4080, "w": 1440, "h": 900, "title": "C2 · Split view, compact, grouped by status", "expand": "fill" },
+    "Search.dc.html": { "x": 3040, "y": 4080, "w": 1440, "h": 900, "title": "C3 · Search", "expand": "fill" },
+    "Review.dc.html": { "x": 4560, "y": 4080, "w": 1440, "h": 900, "title": "C4 · Review: pull requests and findings", "expand": "fill" },
+    "Settings-Control.dc.html": { "x": 6080, "y": 4080, "w": 1440, "h": 900, "title": "C5 · Settings: computer use, sites, shortcuts", "expand": "fill" },
+    "Components.dc.html": { "x": 0, "y": 5440, "w": 1440, "h": 2600, "title": "D1 · Design system", "expand": "fill" },
+    "Coverage.dc.html": { "x": 1520, "y": 5440, "w": 1440, "h": 2300, "title": "D2 · Feature coverage", "expand": "fill" }
+  },
+  "order": [
+    "Before.dc.html",
+    "Main.dc.html",
+    "Task-Working.dc.html",
+    "Task-NeedsYou.dc.html",
+    "Task-Ready.dc.html",
+    "Inbox.dc.html",
+    "Automations.dc.html",
+    "Customize.dc.html",
+    "Settings.dc.html",
+    "Panes-More.dc.html",
+    "Split.dc.html",
+    "Search.dc.html",
+    "Review.dc.html",
+    "Settings-Control.dc.html",
+    "Components.dc.html",
+    "Coverage.dc.html"
+  ],
+  "notes": {
+    "t0": { "x": 0, "y": -300, "text": "Modbit desktop redesign — v2, rebuilt on the measured shell", "kind": "title1", "maxW": 7520 },
+    "tA": { "x": 0, "y": 1060, "text": "A · Core screens: home and three task states", "kind": "title1", "maxW": 7520 },
+    "tB": { "x": 0, "y": 2420, "text": "B · The rest of the app: inbox, automations, customize, settings", "kind": "title1", "maxW": 7520 },
+    "tC": { "x": 0, "y": 3780, "text": "C · More of the workspace: panes, split view, search, review, computer use", "kind": "title1", "maxW": 7520 },
+    "tD": { "x": 0, "y": 5140, "text": "D · The system: components and feature coverage", "kind": "title1", "maxW": 7520 },
+    "n-decide": { "x": 2000, "y": 0, "w": 640, "size": "m", "fill": "orange", "text": "V2: WHERE IT STANDS\nStructure approved on 2026-11-11.\nSizes come from captures and a static read of Claude desktop 4.23118.1 and Devin 3.12.43. Comfortable density follows Claude, Compact follows Devin (board C2).\nModbit's own: its grey and blue tokens, its wording, and what the others lack (approvals with saved rules, evidence, checkpoints, cost).\nTo reconcile before building: shortcuts on C5 are proposals, not the app's current map. Computer-use access levels on C5 need checking against the Core. Side chat and next-prompt suggestion need Core work.\nNot captured: Devin's session view.\nSample content is illustrative." }
+  },
+  "designSystems": []
+}

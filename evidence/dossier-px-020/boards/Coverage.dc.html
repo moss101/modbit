@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Feature coverage</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="modbit.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Source+Serif+4:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="mb sys">
+  <header>
+    <p style="font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);margin-bottom:12px">D2 · Feature coverage</p>
+    <h1>What Claude desktop and Devin ship, and where Modbit stands</h1>
+    <p class="lede">Claude desktop 4.23118.1, Devin 3.12.43 and Cursor 3.25.6 are installed here. Their columns come from public documentation and release notes read on 2026-11-11 (Claude Code desktop docs, Devin release notes to 2026-11-09, Cursor 3.23 teardown), not from the app bundles. The Modbit columns come from tracing each feature through the protocol, the Core, the desktop bridge and the renderer on 2026-11-11.</p>
+  </header>
+
+  <section>
+    <div class="grid3">
+      <div class="pcard"><b>The Core is ahead</b><p>Almost every row below is already in the protocol: checkpoints, worktrees, automations, skills, knowledge, forge comments, computer use, queue and steer, evidence, budgets.</p></div>
+      <div class="pcard"><b>The UI is behind</b><p>Where the Core says Yes and the UI says Part or a dash, the work is design and wiring: the pane dock, the activity pane, the plan’s steps, project rules, the hover preview, split view and cloud tasks from the desktop.</p></div>
+      <div class="pcard"><b>A few gaps are in the Core too</b><p>Next-prompt suggestion, pull-request state with auto-fix and merge, a persisted inbox and per-app computer access have no Core support yet. Side chat already works.</p></div>
+    </div>
+    <div class="rowwrap" style="margin-top:18px">
+      <span class="cell yes">Yes</span><span class="meta">has it</span>
+      <span class="cell part">Part</span><span class="meta">partly, or behind a flag</span>
+      <span class="cell no">—</span><span class="meta">not found in what I read, not proof it is absent</span>
+      <span class="cell no">?</span><span class="meta">unclear from the sources</span>
+      <span class="cell gap">Gap</span><span class="meta">missing in the Core, needs new protocol</span>
+      <span class="cell no">Needs Core</span><span class="meta">not drawn until the Core supports it</span>
+    </div>
+  </section>
+
+  <section>
+    <table class="mx">
+      <thead><tr><th>Capability</th><th>Claude desktop</th><th>Devin</th><th>Cursor</th><th>Modbit UI today</th><th>Modbit Core</th><th>Draft screen</th></tr></thead>
+      <tbody>
+        <tr class="grp"><td colspan="7">Sessions and navigation</td></tr>
+        <tr><td>Task list grouped by status</td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td>A1 to A4, C2</td></tr>
+        <tr><td>View menu: group, sort, filter</td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell no">n/a</i></td><td>B4, C2</td></tr>
+        <tr><td>Pinned tasks</td><td><i class="cell yes">Yes</i></td><td><i class="cell no">?</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell no">n/a</i></td><td>D1</td></tr>
+        <tr><td>Archive, and auto-archive on merge</td><td><i class="cell yes">Yes</i></td><td><i class="cell no">?</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell part">Part</i></td><td><i class="cell part">Part</i></td><td>D1</td></tr>
+        <tr><td>Split view, side by side</td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell no">?</i></td><td><i class="cell no">—</i></td><td><i class="cell no">n/a</i></td><td>C2</td></tr>
+        <tr><td>Child tasks and a task tree</td><td><i class="cell part">Part</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td>A2, C1</td></tr>
+        <tr><td>Hover preview card on a row</td><td><i class="cell no">—</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell no">?</i></td><td><i class="cell part">Part</i></td><td><i class="cell part">Part</i></td><td>C2</td></tr>
+        <tr><td>Notification inbox and OS alerts</td><td><i class="cell part">Part</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell no">?</i></td><td><i class="cell part">Part</i></td><td><i class="cell gap">Gap</i></td><td>B1</td></tr>
+        <tr><td>Search across tasks (⌘K)</td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td>C3</td></tr>
+        <tr><td>Move a task between local and cloud</td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell no">—</i></td><td><i class="cell yes">Yes</i></td><td>A2</td></tr>
+
+        <tr class="grp"><td colspan="7">Composer</td></tr>
+        <tr><td>Queue or steer while running</td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td>A2</td></tr>
+        <tr><td>Side chat that does not derail the run</td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td>In the composer today</td></tr>
+        <tr><td>@mention files</td><td><i class="cell yes">Yes</i></td><td><i class="cell no">?</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td>A1, D1</td></tr>
+        <tr><td>Slash commands and skills</td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td>D1</td></tr>
+        <tr><td>Attach files, images, folders</td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td>A1</td></tr>
+        <tr><td>Model and effort picker</td><td><i class="cell yes">Yes</i></td><td><i class="cell part">Part</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td>A1, A2</td></tr>
+        <tr><td>Run modes (permission levels)</td><td><i class="cell yes">Yes</i></td><td><i class="cell no">?</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td>A1, B4</td></tr>
+        <tr><td>Agent proposes a mode change</td><td><i class="cell no">—</i></td><td><i class="cell no">—</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td>B1</td></tr>
+        <tr><td>Next-prompt suggestion (Tab to accept)</td><td><i class="cell yes">Yes</i></td><td><i class="cell no">?</i></td><td><i class="cell no">?</i></td><td><i class="cell no">—</i></td><td><i class="cell gap">Gap</i></td><td><i class="cell no">Needs Core</i></td></tr>
+        <tr><td>Context ring and compact</td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell no">?</i></td><td><i class="cell part">Part</i></td><td><i class="cell part">Part</i></td><td>A2</td></tr>
+
+        <tr class="grp"><td colspan="7">Workspace panes</td></tr>
+        <tr><td>Diff pane with line comments</td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell part">Part</i></td><td><i class="cell yes">Yes</i></td><td>A4</td></tr>
+        <tr><td>Terminal pane with tabs</td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td>A4</td></tr>
+        <tr><td>Browser pane with element select</td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell part">Part</i></td><td><i class="cell yes">Yes</i></td><td>C1</td></tr>
+        <tr><td>Files pane, view and edit</td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell part">Part</i></td><td><i class="cell yes">Yes</i></td><td>C1</td></tr>
+        <tr><td>Searchable activity stream</td><td><i class="cell part">Part</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell part">Part</i></td><td><i class="cell no">—</i></td><td><i class="cell yes">Yes</i></td><td>C1</td></tr>
+        <tr><td>Plan and live task list</td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell part">Part</i></td><td><i class="cell yes">Yes</i></td><td>A2, A3</td></tr>
+        <tr><td>Background tasks and subagents</td><td><i class="cell yes">Yes</i></td><td><i class="cell part">Part</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell part">Part</i></td><td><i class="cell yes">Yes</i></td><td>A2, C1</td></tr>
+        <tr><td>Checkpoints and restore</td><td><i class="cell no">?</i></td><td><i class="cell no">?</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td>A2, A4</td></tr>
+        <tr><td>Evidence and verification</td><td><i class="cell part">Part</i></td><td><i class="cell part">Part</i></td><td><i class="cell no">—</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td>A2, A4</td></tr>
+        <tr><td>Pane layout: drag, minimize, pop out</td><td><i class="cell yes">Yes</i></td><td><i class="cell part">Part</i></td><td><i class="cell part">Part</i></td><td><i class="cell part">Part</i></td><td><i class="cell no">n/a</i></td><td>A4, C1</td></tr>
+        <tr><td>Computer use with app access tiers</td><td><i class="cell yes">Yes</i></td><td><i class="cell no">?</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell part">Part</i></td><td><i class="cell part">Part</i></td><td>C5</td></tr>
+
+        <tr class="grp"><td colspan="7">Review and pull requests</td></tr>
+        <tr><td>PR card with CI status</td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell part">Part</i></td><td><i class="cell part">Part</i></td><td><i class="cell part">Part</i></td><td>A4, C4</td></tr>
+        <tr><td>Auto-fix failing checks and comments</td><td><i class="cell yes">Yes</i></td><td><i class="cell no">?</i></td><td><i class="cell no">?</i></td><td><i class="cell no">—</i></td><td><i class="cell gap">Gap</i></td><td>A4, C4</td></tr>
+        <tr><td>Merge when ready</td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell no">—</i></td><td><i class="cell no">—</i></td><td><i class="cell gap">Gap</i></td><td>A4</td></tr>
+        <tr><td>Review findings with fix actions</td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell no">?</i></td><td><i class="cell part">Part</i></td><td><i class="cell part">Part</i></td><td>C4</td></tr>
+        <tr><td>Forge review-comment threads</td><td><i class="cell part">Part</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell no">?</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td>A4, C4</td></tr>
+
+        <tr class="grp"><td colspan="7">Safety</td></tr>
+        <tr><td>Inline approval card with keyboard keys</td><td><i class="cell yes">Yes</i></td><td><i class="cell no">?</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td>A3, B1</td></tr>
+        <tr><td>Per-site browser approval</td><td><i class="cell yes">Yes</i></td><td><i class="cell no">?</i></td><td><i class="cell no">?</i></td><td><i class="cell part">Part</i></td><td><i class="cell part">Part</i></td><td>C1, C5</td></tr>
+
+        <tr class="grp"><td colspan="7">Automations and customize</td></tr>
+        <tr><td>Scheduled tasks</td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell part">Part</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td>B2</td></tr>
+        <tr><td>One Customize hub with search</td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell part">Part</i></td><td><i class="cell yes">Yes</i></td><td>B3</td></tr>
+        <tr><td>Skills with a trust state</td><td><i class="cell part">Part</i></td><td><i class="cell part">Part</i></td><td><i class="cell no">?</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td>B3</td></tr>
+        <tr><td>MCP servers and connectors</td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell part">Part</i></td><td><i class="cell part">Part</i></td><td>B3</td></tr>
+        <tr><td>Hooks</td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell no">?</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td>B3</td></tr>
+        <tr><td>Memory and knowledge</td><td><i class="cell part">Part</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell part">Part</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td>B3</td></tr>
+        <tr><td>Project rules</td><td><i class="cell yes">Yes</i></td><td><i class="cell no">?</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell no">—</i></td><td><i class="cell yes">Yes</i></td><td>B3</td></tr>
+
+        <tr class="grp"><td colspan="7">Environments and account</td></tr>
+        <tr><td>Local, SSH and cloud environments</td><td><i class="cell yes">Yes</i></td><td><i class="cell part">Part</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell part">Part</i></td><td><i class="cell part">Part</i></td><td>A1, A2</td></tr>
+        <tr><td>Isolated worktrees with apply</td><td><i class="cell yes">Yes</i></td><td><i class="cell no">?</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td>A1, A2</td></tr>
+        <tr><td>Projects</td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell part">Part</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td>A1</td></tr>
+        <tr><td>Cost, budgets and usage</td><td><i class="cell part">Part</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell part">Part</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td>A2, B2</td></tr>
+        <tr><td>Keyboard shortcut sheet</td><td><i class="cell yes">Yes</i></td><td><i class="cell no">?</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell yes">Yes</i></td><td><i class="cell no">n/a</i></td><td>C5</td></tr>
+      </tbody>
+    </table>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2300}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

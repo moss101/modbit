@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2079,
-    "docs_bytes": 2325531
+    "root_and_tooling": 2101,
+    "docs_bytes": 2394545
   },
   "sections": [
     {
@@ -77,8 +77,8 @@
       "section": "authority",
       "section_title": "Authority and orientation",
       "title": "Authority, Decision Register, and Conflict Resolution",
-      "bytes": 33322,
-      "sha256": "e4820abe6198d06fce295fd830b0766da220c3fb1ea051a7485e6bf7e737d1a9"
+      "bytes": 34372,
+      "sha256": "99766b0c7a181ae70a16c3c72d4445c72619c06cc0f460ae07064746c9bf7078"
     },
     {
       "path": "docs/03_ARCHITECTURAL_CONFLICTS_AND_SUPERSESSIONS.md",
@@ -599,8 +599,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Product extension requirements, tasks and qualifications",
-      "bytes": 636021,
-      "sha256": "88dbbfae3b041e3c6c2972413b435a012c4d87470e3b6ea30072cc4c55bf99a7"
+      "bytes": 701365,
+      "sha256": "b573adfda939c5ff35094ef6c75b591f24dae80f59ba220ca0d4b022219e9109"
     },
     {
       "path": "docs/63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
@@ -626,8 +626,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Agent-first workspace specification (clean-room)",
-      "bytes": 88649,
-      "sha256": "0849217491bc524c599031e8da9f58383ad4d0ea47148f50430cca1788963239"
+      "bytes": 89356,
+      "sha256": "76b45f3010326ac972823e68734d5e473e5cc0857fa760174cacd70c50225bf4"
     },
     {
       "path": "docs/66_NATIVE_COMPUTER_CONTROL_SPECIFICATION.md",
@@ -914,8 +914,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Dossier maintenance log",
-      "bytes": 150636,
-      "sha256": "03d8d40fde46d5128838479ea11c3dcccde6d640919a3902265d23f264643c84"
+      "bytes": 152549,
+      "sha256": "5cd2dd296de073e970ba496cbed8ea502ee8f39d86c15f22311e27870f3c0bf1"
     },
     {
       "path": "docs/98_BUILD_MANIFEST.md",
@@ -1129,9 +1129,14 @@
       "sha256": "5c464105969bf7e764cd677fcb2545cf9132978c60e28fef4c1c80ad5ffcacdc"
     },
     {
+      "path": "docs/decisions/DR-PX-2026-11-11-021-measured-workspace.md",
+      "bytes": 22670,
+      "sha256": "185c80be6a3ce75062a9414952e773154180c0c8b68724f6e239f1a664cc76ad"
+    },
+    {
       "path": "docs/decisions/README.md",
-      "bytes": 10976,
-      "sha256": "9f03b6156bc144ebbcc783c7f9195dab91ee0f41e67f2bd3d901e586d1c2c9b5"
+      "bytes": 11823,
+      "sha256": "d1a3c30789caf348cb5d7c3c8f95b1ec58d9ae34ab21ce2a9d67c88bccee237e"
     },
     {
       "path": "evidence/dossier-epr-v1.1/baseline.json",
@@ -1512,6 +1517,111 @@
       "path": "evidence/dossier-px-019/validation.json",
       "bytes": 1141,
       "sha256": "8c12bb42524adc9a7b0d0ee3684754c9b2706b0c13e33d334798d2294b98c615"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Automations.dc.html",
+      "bytes": 8572,
+      "sha256": "04774c485a9e5a2937475b009d251d891eb72749347a6aac8eaf011ef1c89e99"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Before.dc.html",
+      "bytes": 4225,
+      "sha256": "28da6ef32798acf3631d509b5eab8d63297ddc6bba5ea87e5ad1c00caf27ab64"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Components.dc.html",
+      "bytes": 17290,
+      "sha256": "102a854c70672016207e54af0c3d411dd21dadc0cd7f290afc901e9a8acf4f8e"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Coverage.dc.html",
+      "bytes": 15880,
+      "sha256": "98ae253c4e298ba967280e53964e4f8a6440e8c8e9b0085875898cc94d664e1d"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Customize.dc.html",
+      "bytes": 8398,
+      "sha256": "a8d49995197f298c21633f263d17cf8e377e4e89d82c2ba405c292c1d231169d"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Inbox.dc.html",
+      "bytes": 7496,
+      "sha256": "3970646f9a83b8e80783c8e7b231ec0d098f72131e0c53b8cdbdab993878aef8"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Main.dc.html",
+      "bytes": 8147,
+      "sha256": "734372bba64b8cf4dad8f1c76eb0ed0578480c2ed65ae063d770c3618d01f45b"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Panes-More.dc.html",
+      "bytes": 13338,
+      "sha256": "df8c7e9ffee13a15f8ae3d986b1c2214460491305bbf4e112944f705736a3841"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Review.dc.html",
+      "bytes": 8660,
+      "sha256": "516eb45aa74150755f865845a10e1359d1a0da7d73a9fd1cb4deab69cb7a2052"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Search.dc.html",
+      "bytes": 7289,
+      "sha256": "4d4306c33cd49de1ebc29a3974712d1104940bdfa02fe9ffe938711ff2a8e6d7"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Settings-Control.dc.html",
+      "bytes": 7699,
+      "sha256": "944f3bc05c3f8a22e4a29d837b5800bf7a289bc50aa626c05e4887431eb9661c"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Settings.dc.html",
+      "bytes": 5872,
+      "sha256": "4535ec897e54da6d54304ecdd55747367b7da92d154dd9d45dd024eb74ea8150"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Split.dc.html",
+      "bytes": 10140,
+      "sha256": "cbdff12400ed9d4b64ad031bb8f37dd9a846def79abfd2b5323b24a38bca343e"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Task-NeedsYou.dc.html",
+      "bytes": 13308,
+      "sha256": "adf25fdfda103689c4b78a2e9dc895a7e4c18f51f1184952d504b6b60b7decd1"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Task-Ready.dc.html",
+      "bytes": 13851,
+      "sha256": "a2a89b7950395b0081ace8cbc65c13829970641f29e19c0e3f34ead9b093c5f7"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/Task-Working.dc.html",
+      "bytes": 11542,
+      "sha256": "f7bff9de8cef1b98cc8d757b1d8e790e0fc1e00658ab78b456d4dcdecbddf581"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/canvas.json",
+      "bytes": 4145,
+      "sha256": "eb06d290b6ed4ff083de01a44984256febcd336e00872dba8e823ce1f5136648"
+    },
+    {
+      "path": "evidence/dossier-px-020/boards/modbit.css",
+      "bytes": 53645,
+      "sha256": "d9b59bfa4f97ed7ed43f47d50d450066a26a58473817570be27cd1b84bb4e8a9"
+    },
+    {
+      "path": "evidence/dossier-px-020/coverage-2026-11-11.pdf",
+      "bytes": 1136381,
+      "sha256": "03669866958c62f655e2a986d54eb814e407140920cc6257f48917da2f71af66"
+    },
+    {
+      "path": "evidence/dossier-px-020/tests.log",
+      "bytes": 7775,
+      "sha256": "4aa8cb10282e75afa4028832ac6012bd6b2177073bf7c567cd901bf7e40932e9"
+    },
+    {
+      "path": "evidence/dossier-px-020/validation.json",
+      "bytes": 1400,
+      "sha256": "dc1c7e70660cb76f0c395f80c2dfd7dabe62f93b50ed8b8d2a828fe44ab35fa1"
     },
     {
       "path": "evidence/m0/IMP-EV-0208/TASK_CARD.md",
@@ -11260,18 +11370,18 @@
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 47210,
-      "sha256": "2e6048af42fc1a9e36ca7b80d9512919b512be30fdd3e4c80596ea77053c59a2"
+      "bytes": 47706,
+      "sha256": "0f13c8353f2fd0bbb9eee1e05a880fd457eabbb74645e6f051d79069cdc77fe7"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2532794,
-      "sha256": "5d0d2e3cb0c0f6830eabb87430c511e650bb977265f4ebccf4963755095b590f"
+      "bytes": 2629740,
+      "sha256": "8439b554108a52b3c164ebe14d23eff2750370b2a8ba5894c411b7f20b5a21ab"
     },
     {
       "path": "tools/build_graph.py",
-      "bytes": 69027,
-      "sha256": "33013fadc1f4475cd01d3ab92f7c9f3a82ec79b1e906f4d4f4e124895f192a67"
+      "bytes": 69551,
+      "sha256": "75bcc309c03df0b898705f3bf58a8c289431dc60cbaf52e1c38f4c5d41d06dd7"
     },
     {
       "path": "tools/build_manifest.py",
@@ -11320,8 +11430,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 92072,
-      "sha256": "5ab280b07f11d9a9246dec68b53ca8bef1f0d5311476b9678c5d224ff3511235"
+      "bytes": 95339,
+      "sha256": "fcdb16a62c229bc4b51fd87d7c1db2f35d380998d24d252d1eb7139059ee1d72"
     }
   ],
   "renames_v3_to_v3_1": {

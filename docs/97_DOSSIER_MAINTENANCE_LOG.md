@@ -1261,6 +1261,16 @@ A bookkeeping change to the project graph on the owner's chat instruction of 202
 - **Unfinished behaviour:** every gap in the row notes. No row owns the desktop's rendering of the cloud browser stream. Rows whose specs pull request 169 rewrote still cite earlier runs. Non-desktop open rows were not audited.
 - **Next safe action:** fix the reload defect and the Escape and fold defects, then walk PX-196 and PX-197 forward with a new CI run. The owner decides PX-043 and who owns the stream's rendering.
 
+## DOC-PX-020 — The measured workspace: DR-PX-2026-11-11-021 and rows PX-198..219 (2026-11-11)
+
+Accepted on the owner's chat instruction of 2026-11-11 ("the design would be not same", then "capture screenshots and read app bundle", then "Structure is right", then "can you also close gaps as well that were found out and work autonomously to complete the build"). The record replaces the shell's geometry and structure with numbers taken from measurement and registers the capabilities a traced comparison found with no row.
+
+- **Record:** `docs/decisions/DR-PX-2026-11-11-021-measured-workspace.md` (new), the ledger row in `docs/decisions/README.md`, a register section in doc 02.
+- **Rows:** REQ-PX-198..219, QUAL-PX-198..219, task cards PX-198..218 and scenarios PX-E2E-198..218 in doc 62 (M10, RELEASE_ZERO, DOC-PX-020 a prerequisite of each; PX-198 iteration tier, the others release-critical; owners `desktop`, `core-runtime`, `workspace-git`, `external-tools`, `verification`, `browser` and `durability`); REQ-PX-219 deferred to POST_ZERO.
+- **Supersession, scoped:** DR-PX-2026-11-03-019 AWL-06's numbers for AFW-A03, A04, A05 and A07, its surface for the conversation, AWL-07's cap and AWL-08's chip and status rows; DR-PX-2026-11-04-020 AWS-01 to AWS-06 in the scope the record names (AWS-07 to AWS-10 stay); a note in doc 65.
+- **Tooling:** one entry in the parity table of `tools/build_graph.py` (creates the change record and DOC-PX-020); `tools/test_dossier.py` pins 220 PX rows, 197 ADOPT tasks and 23 DEFERRED and adds `test_dr_021_adopts_the_measured_workspace_inside_the_clean_room_posture`.
+- **Evidence:** `evidence/dossier-px-020/` holds the sources of the sixteen approved boards and the owner's export of the comparison.
+- **Not done here:** the product behaviour of PX-198..218. PX-211 to PX-213, PX-215 and PX-217 cannot leave NOT_STARTED until PX-125, PX-069 and PX-109 are COMPLETE.
 
 ## DOC-GOV-009 — Withdraw the Workspace Editor: DR-PX-2026-10-03-009 rejected, PX-077..081 withdrawn (2026-11-11)
 

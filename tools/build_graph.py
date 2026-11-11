@@ -106,6 +106,9 @@ PX_PARITY = [
     # The screens rebuilt to the approved mockup: the Fleet board removed, over the existing owner `desktop`.
     ("DR-PX-2026-11-04-020", "DOC-PX-019", 195, 197, "65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md", "Agent workspace screens, PX-195..197",
      "Proposed: PX-195..197, the desktop's screens rebuilt to the mockup the owner approved, with the Fleet board removed and every capability it offered given a home, AFW-A12, A13, A14 and the clean-room posture unchanged"),
+    # The measured workspace: geometry and structure from measurement, with rows for the capabilities that had none.
+    ("DR-PX-2026-11-11-021", "DOC-PX-020", 198, 219, "65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md", "The measured workspace, PX-198..219",
+     "Proposed: PX-198..219, the desktop's geometry, density and structure taken from measurement in Modbit's own tokens, a details rail, a pane dock and split view, with rows for the capabilities that had none, AFW-A12, A13, A14 and the clean-room posture unchanged"),
 ]
 
 

@@ -451,16 +451,16 @@ class DossierTests(unittest.TestCase):
 
     def test_parity_surface_counts_are_pinned_and_dr_013_is_traced(self):
         # The additive PX ledger pins nothing in tools/dossier_px.py (totals are computed); the parity-push surface is pinned here
-        # in the same reseal that adds a record: PX-000..197 (198 rows, 171 ADOPT tasks, 27 DEFERRED, of which PX-077..081 are withdrawn by DR-GOV-2026-11-11-009), eleven records of which
+        # in the same reseal that adds a record: PX-000..219 (220 rows, 192 ADOPT tasks, 28 DEFERRED, of which PX-077..081 are withdrawn by DR-GOV-2026-11-11-009), eleven records of which
         # 007, 008, 010 and 013 are accepted and 009 is rejected, and the 41 rows of DR-PX-2026-10-05-013 (39 release-critical, 2 iteration).
         self.rebuild()
         g = self.graph()
         nodes = {n["id"]: n for n in g["nodes"]}
         reqs = [n for n in g["nodes"] if re.match(r"^REQ-PX-\d{3}$", n["id"])]
         tasks = [n for n in g["nodes"] if re.match(r"^PX-\d{3}$", n["id"]) and n["type"] == "imp_task"]
-        self.assertEqual(len(reqs), 198)
-        self.assertEqual(len(tasks), 171)
-        self.assertEqual(sorted(n["id"] for n in reqs if n.get("disposition") == "DEFERRED"), sorted(["REQ-PX-003", "REQ-PX-012", "REQ-PX-013", "REQ-PX-140"] + ["REQ-PX-%03d" % i for i in self.WITHDRAWN_EDITOR_ROWS + self.DR_018_DEFERRED]))
+        self.assertEqual(len(reqs), 220)
+        self.assertEqual(len(tasks), 192)
+        self.assertEqual(sorted(n["id"] for n in reqs if n.get("disposition") == "DEFERRED"), sorted(["REQ-PX-003", "REQ-PX-012", "REQ-PX-013", "REQ-PX-140", "REQ-PX-219"] + ["REQ-PX-%03d" % i for i in self.WITHDRAWN_EDITOR_ROWS + self.DR_018_DEFERRED]))
         self.assertEqual(len([r for r in self.PARITY_RECORDS if r[4] == "accepted"]), 4)
         self.assertEqual(len(self.PARITY_RECORDS), 7)
         text = (self.root / "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md").read_text()
@@ -766,6 +766,53 @@ class DossierTests(unittest.TestCase):
         self.edit("docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md", '<a id="px-082"></a>',
                   '<a id="px-077"></a>\n\n## PX-077 — back\n\n<a id="px-082"></a>')
         self.run_tool("build_graph", ok=False, contains="PX-077")
+
+    def test_dr_021_adopts_the_measured_workspace_inside_the_clean_room_posture(self):
+        # DR-PX-2026-11-11-021 (accepted 2026-11-11 on the owner's chat instruction): rows PX-198..218 are scheduled in M10 for
+        # RELEASE_ZERO only and gated by DOC-PX-020; PX-198 is iteration tier and the other twenty release-critical; every owner is an
+        # existing subsystem; REQ-PX-219 is deferred; the record supersedes DR-019 and DR-020 in a named scope and keeps real
+        # screenshots beside the boards as an exit criterion.
+        self.rebuild()
+        g = self.graph()
+        nodes = {n["id"]: n for n in g["nodes"]}
+        after, auth, includes = self.edges(g)
+        dr = "DR-PX-2026-11-11-021"
+        self.assertEqual(nodes[dr]["status"], "APPROVED")
+        self.assertEqual(nodes["DOC-PX-020"]["type"], "dossier_task")
+        owners = {e["from"]: e["to"] for e in g["edges"] if e["type"] == "owned_by"}
+        expected = {210: "core-runtime", 211: "workspace-git", 212: "core-runtime", 213: "external-tools", 214: "verification",
+                    215: "browser", 217: "durability", 218: "core-runtime"}
+        for n in range(198, 219):
+            pid = "PX-%d" % n
+            self.assertEqual(nodes[pid]["milestone"], "M10", pid)
+            self.assertEqual(owners[pid], expected.get(n, "desktop"), pid)
+            self.assertIn((pid, dr), auth, pid)
+            self.assertIn("DOC-PX-020", after[pid], pid)
+            self.assertEqual(includes.get(pid), {"RELEASE_ZERO"}, pid)
+        self.assertIn("PX-197", after["PX-198"])
+        self.assertIn("PX-198", after["PX-199"])
+        self.assertIn("PX-199", after["PX-200"])
+        self.assertIn("PX-125", after["PX-211"])
+        self.assertIn("PX-069", after["PX-215"])
+        self.assertIn("PX-109", after["PX-217"])
+        self.assertNotIn("PX-219", nodes)
+        self.assertEqual(nodes["REQ-PX-219"].get("disposition"), "DEFERRED")
+        text = (self.root / "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md").read_text()
+        tiers = re.findall(r"\*\*Decision Record, phase and evidence tier:\*\* DR-PX-2026-11-11-021; [^;]+; (release-critical|iteration) \(", text)
+        self.assertEqual(tiers, ["iteration"] + ["release-critical"] * 20)
+        record = (self.root / "docs/decisions/DR-PX-2026-11-11-021-measured-workspace.md").read_text()
+        head = record.split("---")[1]
+        self.assertIn("status: accepted", head)
+        self.assertIn("approved_by: owner, chat instruction of 2026-11-11", head)
+        self.assertIn("supersedes: scoped — DR-PX-2026-11-03-019", head)
+        for mws in range(1, 21):
+            self.assertIn("MWS-%02d" % mws, record)
+        self.assertIn("does **not** cover any relaxation of AFW-A12 (WCAG 2.2 AA), AFW-A13 (themes) or AFW-A14", record)
+        self.assertIn("never a reference product's colours, theme file, icons, fonts, logo, brand colour or strings", record)
+        self.assertIn("Nothing is drawn that does nothing", record)
+        self.assertIn("Screenshots of the running app beside the boards", record)
+        spec = (self.root / "docs/65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md").read_text()
+        self.assertIn("Scoped supersession (DR-PX-2026-11-11-021", spec)
 
     def test_decision_record_status_and_approval_match_the_graph(self):
         # An accepted record names who approved it; a proposed one says it is pending; the graph change record follows the file.

@@ -30242,6 +30242,13 @@
    "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md"
   },
   {
+   "id": "DR-PX-2026-11-11-021",
+   "type": "change_record",
+   "title": "Approved: PX-198..219, the desktop's geometry, density and structure taken from measurement in Modbit's own tokens, a details rail, a pane dock and split view, with rows for the capabilities that had none, AFW-A12, A13, A14 and the clean-room posture unchanged",
+   "status": "APPROVED",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md"
+  },
+  {
    "id": "REQ-PX-000",
    "type": "requirement",
    "title": "Headless CLI thin client for the task lifecycle",
@@ -32814,6 +32821,292 @@
    "release": "RELEASE_ZERO",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
    "mandatory_behavior": "The real app, a real Core and a scripted model running a task with reads, edits, a terminal and an approval, in light and dark, against the record: one column, one decision surface with the exact intent and no decision control in the transcript, an irreversible effect still asks twice, Escape on a confirmation does not skip the card behind it, the bar under the text with a round send, the commit bar at the panel's foot; the gate's retained mutations fail; the whole desktop suite and axe pass; real screenshots beside the mockup are in the evidence. A step is in the past tense only once it happened, and a task's state that nothing else says stands above the composer with its cause, next action and evidence."
+  },
+  {
+   "id": "REQ-PX-198",
+   "type": "requirement",
+   "title": "Measured workspace shell: the list, bars, rows, column and rail at the measured sizes, the conversation on the lightest surface, and a density setting",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-198",
+   "qual": "QUAL-PX-198",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real app against a real Core at 1280, 1000 and 900 wide, in light, dark and high contrast and in both densities: the measured widths and heights equal section 5.1 and 5.2, the computed variables equal the token source, a stored list width inside the new range is kept and the density survives a restart."
+  },
+  {
+   "id": "REQ-PX-199",
+   "type": "requirement",
+   "title": "Measured task list: navigation, project groups, one-line rows with the state at the right, child rows, the preview card and the person's row",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-199",
+   "qual": "QUAL-PX-199",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real app, a real Core and a scripted model with tasks in every status class, a child task and two projects: the list reads in the order of MWS-04 at three widths; a row that needs approval shows its reason; grouping by status, environment and date regroups without a reload; the keyboard alone reaches every row, pins, archives with undo and opens the card."
+  },
+  {
+   "id": "REQ-PX-200",
+   "type": "requirement",
+   "title": "Measured task view: pane toggles in the title bar, the plan as a card of steps from the Core's work graph, the status line, the one-line composer with its controls under it and the regrouped approval card",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-200",
+   "qual": "QUAL-PX-200",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real app, a real Core and a scripted model running a task that plans, reads, edits, runs a command and asks: the plan card's states follow the work graph as steps finish; the composer's controls open the menus they opened before; the card decides by mouse and by keys; Escape on a confirmation does not skip the card behind it; an irreversible effect asks twice; a reload restores the card and the plan."
+  },
+  {
+   "id": "REQ-PX-201",
+   "type": "requirement",
+   "title": "Details rail: environment, approvals, context, tool servers, changes, evidence, background tasks and cost beside the conversation",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-201",
+   "qual": "QUAL-PX-201",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real app, a real Core and a scripted model: each section shows the Core's facts for the open task; after a reload the phase and agent counts equal the Core's; Stop on a background terminal stops it; Review opens the changes; restore from a checkpoint asks as it does today; at 800 px the rail is absent and More holds its facts."
+  },
+  {
+   "id": "REQ-PX-202",
+   "type": "requirement",
+   "title": "Pane dock: several panes open together in a grid, with Activity, Background tasks and Pull request panes",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-202",
+   "qual": "QUAL-PX-202",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real app, a real Core and a scripted model: Changes, Terminal and Evidence open together and tile; the set and the sizes persist per task across a reload; a minimized terminal keeps its session; Activity lists events in order, filters by kind and finds text; Background tasks stops a child task and a terminal; the Pull request pane opens a request through the existing approval and shows the check evidence and the comments it read."
+  },
+  {
+   "id": "REQ-PX-203",
+   "type": "requirement",
+   "title": "Pane pop-out: a pane in a window of its own under the same preload and content security policy",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-203",
+   "qual": "QUAL-PX-203",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real app and a real Core: Terminal and Changes each pop out and keep working; closing returns each to the dock with its state; the hardening guard passes for the new window (no node integration, the same CSP, navigation and new windows refused); the quit prompt counts work in pane windows."
+  },
+  {
+   "id": "REQ-PX-204",
+   "type": "requirement",
+   "title": "Split view: two tasks side by side, each with its own title bar, transcript, composer and approval card",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-204",
+   "qual": "QUAL-PX-204",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real app, a real Core and a scripted model with one task waiting on approval and one running: Enter and the approve and deny keys decide only in the focused task; each composer queues to its own task; Alt+click on a row and the preview card open split view; a reload restores it."
+  },
+  {
+   "id": "REQ-PX-205",
+   "type": "requirement",
+   "title": "Measured home: the composer in a tray with where the task runs attached, what is waiting on the person, and the first-run steps",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-205",
+   "qual": "QUAL-PX-205",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real app, a real Core and a scripted model: send creates, starts and opens the task; Alt+Enter creates it without starting; the first model request is on the mode and model chosen on home; the location selector shows cloud disabled with its reason; a protected write is decided from the waiting list and a destructive effect opens its task."
+  },
+  {
+   "id": "REQ-PX-206",
+   "type": "requirement",
+   "title": "Inbox: every approval, proposal and question across tasks, and a persisted record of updates with a read state",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-206",
+   "qual": "QUAL-PX-206",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real app, a real Core and a scripted model with an approval, a mode proposal and a task ready for review: Needs you decides the first two; Updates shows the third with its time; opening it marks it read; the record survives a restart; the notification's click handler opens its task; the cap holds."
+  },
+  {
+   "id": "REQ-PX-207",
+   "type": "requirement",
+   "title": "Automations and Customize in the page shape: a details rail for an automation, one search across Customize, and Rules as a read-only section",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-207",
+   "qual": "QUAL-PX-207",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real app and a real Core: enable, pause, run now and kill behave as before on the new layout; the search finds a skill, a hook and a rule by text; Rules lists the layers the Core loaded for the folder with their sources and Open source opens the file; a skill that is not trusted still cannot be enabled without review."
+  },
+  {
+   "id": "REQ-PX-208",
+   "type": "requirement",
+   "title": "Review and Settings in the page shape: pull requests and local changes with their findings, list options under Appearance, and a Shortcuts section that lists the real bindings",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-208",
+   "qual": "QUAL-PX-208",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real app, a real Core and a scripted model: Review shows a task's change set and its findings and a hunk decision still works; each Appearance option takes effect at once and persists; the Shortcuts section equals the registry and the key map, binding for binding."
+  },
+  {
+   "id": "REQ-PX-209",
+   "type": "requirement",
+   "title": "One search: tasks, conversation text, files and commands in the palette",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-209",
+   "qual": "QUAL-PX-209",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real app and a real Core: a task is found by its title, a conversation by text inside it, a file by name and a command by its label; each opens the right place; the keyboard alone drives it."
+  },
+  {
+   "id": "REQ-PX-210",
+   "type": "requirement",
+   "title": "Next-prompt suggestion: one suggested next message after a turn, accepted with Tab and never sent by itself",
+   "disposition": "ADOPT",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "imp": "PX-210",
+   "qual": "QUAL-PX-210",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "A real Core and a scripted model: after a turn ends with nothing queued a suggestion arrives and the composer shows it; Tab fills the box and nothing is sent; the task's log is byte-identical before and after the call; the cost appears in the task's economics; with the setting off no call is made; with the budget at its cap no call is made."
+  },
+  {
+   "id": "REQ-PX-211",
+   "type": "requirement",
+   "title": "Task pull-request state: the Core records the request a task opened, refreshes its state and checks through the forge adapter, and the header carries it",
+   "disposition": "ADOPT",
+   "subsystem": "workspace-git",
+   "owner_label": "workspace-git",
+   "imp": "PX-211",
+   "qual": "QUAL-PX-211",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "A real Core against the forge test server: a request opened through its approval is recorded; refresh reads open, checks failing, checks passing and merged in turn; the header shows it after a restart; with the preference on, a merged task is archived and the undo restores it."
+  },
+  {
+   "id": "REQ-PX-212",
+   "type": "requirement",
+   "title": "Auto-fix: a failing check or a comment addressed to the agent queues a repair turn inside the task's run mode and budgets",
+   "disposition": "ADOPT",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "imp": "PX-212",
+   "qual": "QUAL-PX-212",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "A real Core against the forge test server: with the switch on a failing check queues one input naming the check; the agent's push asks under Supervised; the loop stops at the attempt cap with a notice; with the switch off nothing is queued."
+  },
+  {
+   "id": "REQ-PX-213",
+   "type": "requirement",
+   "title": "Merge when ready: a forge merge effect that is approval-bound and asked once the checks pass",
+   "disposition": "ADOPT",
+   "subsystem": "external-tools",
+   "owner_label": "external-tools",
+   "imp": "PX-213",
+   "qual": "QUAL-PX-213",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "A real Core against the forge test server: merge when ready waits while a check is pending, asks when the checks pass, merges the approved head revision and records its receipt; a head moved before approval voids the ask."
+  },
+  {
+   "id": "REQ-PX-214",
+   "type": "requirement",
+   "title": "Reviewer findings one by one in the review bundle, with a command to fix one",
+   "disposition": "ADOPT",
+   "subsystem": "verification",
+   "owner_label": "verification",
+   "imp": "PX-214",
+   "qual": "QUAL-PX-214",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "A real Core with a scripted reviewer that returns three findings: the bundle lists each; Review shows them; Fix this one queues an input naming that finding only; the next review re-evaluates it; a dismissal is recorded."
+  },
+  {
+   "id": "REQ-PX-215",
+   "type": "requirement",
+   "title": "Standing computer access per application: view only, click, full or never, held by the Core and only ever narrowing a grant",
+   "disposition": "ADOPT",
+   "subsystem": "browser",
+   "owner_label": "browser",
+   "imp": "PX-215",
+   "qual": "QUAL-PX-215",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "A real Core and the actuator fixture: with an application at view only a click and a type are refused with their reason; at click a type is refused; at never the session is refused; with no level set the grant alone decides; a change mid-session applies to the next action."
+  },
+  {
+   "id": "REQ-PX-216",
+   "type": "requirement",
+   "title": "Browser pane site decisions: allow once and deny beside always allow, kept by the desktop's browser policy",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-216",
+   "qual": "QUAL-PX-216",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "The real app and a real Core with a local test site on two origins: Allow once permits one navigation and the next asks again; Always allow persists across a restart; Deny refuses with its reason and persists; removing an entry in Settings makes the origin ask again."
+  },
+  {
+   "id": "REQ-PX-217",
+   "type": "requirement",
+   "title": "Compact now: a person asks for a compaction of the open task",
+   "disposition": "ADOPT",
+   "subsystem": "durability",
+   "owner_label": "durability",
+   "imp": "PX-217",
+   "qual": "QUAL-PX-217",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "A real Core and a scripted model: Compact now on an idle task with a long transcript produces an epoch whose source is the person and lowers the context in use; during a turn it is refused; a failed summary falls back as the automatic path does; the telemetry names the source."
+  },
+  {
+   "id": "REQ-PX-218",
+   "type": "requirement",
+   "title": "The task header carries the last line the assistant wrote",
+   "disposition": "ADOPT",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "imp": "PX-218",
+   "qual": "QUAL-PX-218",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "A real Core and a scripted model: after a turn the header's line equals the end of the assistant's message; it survives a restart; a secret the transcript redacts is redacted in the header; a long line is cut at a character boundary."
+  },
+  {
+   "id": "REQ-PX-219",
+   "type": "requirement",
+   "title": "An SSH execution environment for tasks",
+   "disposition": "DEFERRED",
+   "subsystem": "sandbox-cloud",
+   "owner_label": "sandbox-cloud",
+   "imp": null,
+   "qual": "QUAL-PX-219",
+   "release": "POST_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Deferred proof, entry condition and not a current proof: a task runs on a machine reached over SSH under the same tool, event and approval semantics as a local task, with host keys verified and the key held by the credential broker."
   },
   {
    "id": "PX-000",
@@ -40624,6 +40917,507 @@
    "status_changed_on": "2026-11-07T15:53:43Z"
   },
   {
+   "id": "PX-198",
+   "type": "imp_task",
+   "title": "Measured workspace shell: the list, bars, rows, column and rail at the measured sizes, the conversation on the lightest surface, and a density setting",
+   "requirement": "REQ-PX-198",
+   "qual": "QUAL-PX-198",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real app against a real Core at 1280, 1000 and 900 wide, in light, dark and high contrast and in both densities: the measured widths and heights equal section 5.1 and 5.2, the computed variables equal the token source, a stored list width inside the new range is kept and the density survives a restart.",
+   "prerequisites": [
+    "PX-197",
+    "DOC-PX-020"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-198",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-199",
+   "type": "imp_task",
+   "title": "Measured task list: navigation, project groups, one-line rows with the state at the right, child rows, the preview card and the person's row",
+   "requirement": "REQ-PX-199",
+   "qual": "QUAL-PX-199",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real app, a real Core and a scripted model with tasks in every status class, a child task and two projects: the list reads in the order of MWS-04 at three widths; a row that needs approval shows its reason; grouping by status, environment and date regroups without a reload; the keyboard alone reaches every row, pins, archives with undo and opens the card.",
+   "prerequisites": [
+    "PX-198",
+    "DOC-PX-020"
+   ],
+   "related_requirements": [
+    "REQ-EV-0037",
+    "REQ-EV-0143"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-199",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-200",
+   "type": "imp_task",
+   "title": "Measured task view: pane toggles in the title bar, the plan as a card of steps from the Core's work graph, the status line, the one-line composer with its controls under it and the regrouped approval card",
+   "requirement": "REQ-PX-200",
+   "qual": "QUAL-PX-200",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real app, a real Core and a scripted model running a task that plans, reads, edits, runs a command and asks: the plan card's states follow the work graph as steps finish; the composer's controls open the menus they opened before; the card decides by mouse and by keys; Escape on a confirmation does not skip the card behind it; an irreversible effect asks twice; a reload restores the card and the plan.",
+   "prerequisites": [
+    "PX-199",
+    "DOC-PX-020"
+   ],
+   "related_requirements": [
+    "REQ-EV-0037",
+    "REQ-EV-0143"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-200",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-201",
+   "type": "imp_task",
+   "title": "Details rail: environment, approvals, context, tool servers, changes, evidence, background tasks and cost beside the conversation",
+   "requirement": "REQ-PX-201",
+   "qual": "QUAL-PX-201",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real app, a real Core and a scripted model: each section shows the Core's facts for the open task; after a reload the phase and agent counts equal the Core's; Stop on a background terminal stops it; Review opens the changes; restore from a checkpoint asks as it does today; at 800 px the rail is absent and More holds its facts.",
+   "prerequisites": [
+    "PX-200",
+    "DOC-PX-020"
+   ],
+   "related_requirements": [
+    "REQ-EV-0037",
+    "REQ-EV-0143"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-201",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-202",
+   "type": "imp_task",
+   "title": "Pane dock: several panes open together in a grid, with Activity, Background tasks and Pull request panes",
+   "requirement": "REQ-PX-202",
+   "qual": "QUAL-PX-202",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real app, a real Core and a scripted model: Changes, Terminal and Evidence open together and tile; the set and the sizes persist per task across a reload; a minimized terminal keeps its session; Activity lists events in order, filters by kind and finds text; Background tasks stops a child task and a terminal; the Pull request pane opens a request through the existing approval and shows the check evidence and the comments it read.",
+   "prerequisites": [
+    "PX-201",
+    "DOC-PX-020"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-202",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-203",
+   "type": "imp_task",
+   "title": "Pane pop-out: a pane in a window of its own under the same preload and content security policy",
+   "requirement": "REQ-PX-203",
+   "qual": "QUAL-PX-203",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real app and a real Core: Terminal and Changes each pop out and keep working; closing returns each to the dock with its state; the hardening guard passes for the new window (no node integration, the same CSP, navigation and new windows refused); the quit prompt counts work in pane windows.",
+   "prerequisites": [
+    "PX-202",
+    "DOC-PX-020"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-203",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-204",
+   "type": "imp_task",
+   "title": "Split view: two tasks side by side, each with its own title bar, transcript, composer and approval card",
+   "requirement": "REQ-PX-204",
+   "qual": "QUAL-PX-204",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real app, a real Core and a scripted model with one task waiting on approval and one running: Enter and the approve and deny keys decide only in the focused task; each composer queues to its own task; Alt+click on a row and the preview card open split view; a reload restores it.",
+   "prerequisites": [
+    "PX-202",
+    "DOC-PX-020"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-204",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-205",
+   "type": "imp_task",
+   "title": "Measured home: the composer in a tray with where the task runs attached, what is waiting on the person, and the first-run steps",
+   "requirement": "REQ-PX-205",
+   "qual": "QUAL-PX-205",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real app, a real Core and a scripted model: send creates, starts and opens the task; Alt+Enter creates it without starting; the first model request is on the mode and model chosen on home; the location selector shows cloud disabled with its reason; a protected write is decided from the waiting list and a destructive effect opens its task.",
+   "prerequisites": [
+    "PX-199",
+    "DOC-PX-020"
+   ],
+   "related_requirements": [
+    "REQ-EV-0037",
+    "REQ-EV-0143"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-205",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-206",
+   "type": "imp_task",
+   "title": "Inbox: every approval, proposal and question across tasks, and a persisted record of updates with a read state",
+   "requirement": "REQ-PX-206",
+   "qual": "QUAL-PX-206",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real app, a real Core and a scripted model with an approval, a mode proposal and a task ready for review: Needs you decides the first two; Updates shows the third with its time; opening it marks it read; the record survives a restart; the notification's click handler opens its task; the cap holds.",
+   "prerequisites": [
+    "PX-199",
+    "DOC-PX-020"
+   ],
+   "related_requirements": [
+    "REQ-EV-0037",
+    "REQ-EV-0143"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-206",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-207",
+   "type": "imp_task",
+   "title": "Automations and Customize in the page shape: a details rail for an automation, one search across Customize, and Rules as a read-only section",
+   "requirement": "REQ-PX-207",
+   "qual": "QUAL-PX-207",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real app and a real Core: enable, pause, run now and kill behave as before on the new layout; the search finds a skill, a hook and a rule by text; Rules lists the layers the Core loaded for the folder with their sources and Open source opens the file; a skill that is not trusted still cannot be enabled without review.",
+   "prerequisites": [
+    "PX-199",
+    "DOC-PX-020"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-207",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-208",
+   "type": "imp_task",
+   "title": "Review and Settings in the page shape: pull requests and local changes with their findings, list options under Appearance, and a Shortcuts section that lists the real bindings",
+   "requirement": "REQ-PX-208",
+   "qual": "QUAL-PX-208",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real app, a real Core and a scripted model: Review shows a task's change set and its findings and a hunk decision still works; each Appearance option takes effect at once and persists; the Shortcuts section equals the registry and the key map, binding for binding.",
+   "prerequisites": [
+    "PX-199",
+    "DOC-PX-020"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-208",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-209",
+   "type": "imp_task",
+   "title": "One search: tasks, conversation text, files and commands in the palette",
+   "requirement": "REQ-PX-209",
+   "qual": "QUAL-PX-209",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real app and a real Core: a task is found by its title, a conversation by text inside it, a file by name and a command by its label; each opens the right place; the keyboard alone drives it.",
+   "prerequisites": [
+    "PX-199",
+    "DOC-PX-020"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-209",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-210",
+   "type": "imp_task",
+   "title": "Next-prompt suggestion: one suggested next message after a turn, accepted with Tab and never sent by itself",
+   "requirement": "REQ-PX-210",
+   "qual": "QUAL-PX-210",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "A real Core and a scripted model: after a turn ends with nothing queued a suggestion arrives and the composer shows it; Tab fills the box and nothing is sent; the task's log is byte-identical before and after the call; the cost appears in the task's economics; with the setting off no call is made; with the budget at its cap no call is made.",
+   "prerequisites": [
+    "PX-200",
+    "DOC-PX-020"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-210",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-211",
+   "type": "imp_task",
+   "title": "Task pull-request state: the Core records the request a task opened, refreshes its state and checks through the forge adapter, and the header carries it",
+   "requirement": "REQ-PX-211",
+   "qual": "QUAL-PX-211",
+   "subsystem": "workspace-git",
+   "owner_label": "workspace-git",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "A real Core against the forge test server: a request opened through its approval is recorded; refresh reads open, checks failing, checks passing and merged in turn; the header shows it after a restart; with the preference on, a merged task is archived and the undo restores it.",
+   "prerequisites": [
+    "PX-125",
+    "PX-202",
+    "DOC-PX-020"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-211",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-212",
+   "type": "imp_task",
+   "title": "Auto-fix: a failing check or a comment addressed to the agent queues a repair turn inside the task's run mode and budgets",
+   "requirement": "REQ-PX-212",
+   "qual": "QUAL-PX-212",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "A real Core against the forge test server: with the switch on a failing check queues one input naming the check; the agent's push asks under Supervised; the loop stops at the attempt cap with a notice; with the switch off nothing is queued.",
+   "prerequisites": [
+    "PX-211",
+    "DOC-PX-020"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-212",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-213",
+   "type": "imp_task",
+   "title": "Merge when ready: a forge merge effect that is approval-bound and asked once the checks pass",
+   "requirement": "REQ-PX-213",
+   "qual": "QUAL-PX-213",
+   "subsystem": "external-tools",
+   "owner_label": "external-tools",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "A real Core against the forge test server: merge when ready waits while a check is pending, asks when the checks pass, merges the approved head revision and records its receipt; a head moved before approval voids the ask.",
+   "prerequisites": [
+    "PX-211",
+    "DOC-PX-020"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-213",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-214",
+   "type": "imp_task",
+   "title": "Reviewer findings one by one in the review bundle, with a command to fix one",
+   "requirement": "REQ-PX-214",
+   "qual": "QUAL-PX-214",
+   "subsystem": "verification",
+   "owner_label": "verification",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "A real Core with a scripted reviewer that returns three findings: the bundle lists each; Review shows them; Fix this one queues an input naming that finding only; the next review re-evaluates it; a dismissal is recorded.",
+   "prerequisites": [
+    "PX-208",
+    "DOC-PX-020"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-214",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-215",
+   "type": "imp_task",
+   "title": "Standing computer access per application: view only, click, full or never, held by the Core and only ever narrowing a grant",
+   "requirement": "REQ-PX-215",
+   "qual": "QUAL-PX-215",
+   "subsystem": "browser",
+   "owner_label": "browser",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "A real Core and the actuator fixture: with an application at view only a click and a type are refused with their reason; at click a type is refused; at never the session is refused; with no level set the grant alone decides; a change mid-session applies to the next action.",
+   "prerequisites": [
+    "PX-208",
+    "PX-069",
+    "DOC-PX-020"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-215",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-216",
+   "type": "imp_task",
+   "title": "Browser pane site decisions: allow once and deny beside always allow, kept by the desktop's browser policy",
+   "requirement": "REQ-PX-216",
+   "qual": "QUAL-PX-216",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "The real app and a real Core with a local test site on two origins: Allow once permits one navigation and the next asks again; Always allow persists across a restart; Deny refuses with its reason and persists; removing an entry in Settings makes the origin ask again.",
+   "prerequisites": [
+    "PX-202",
+    "DOC-PX-020"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-216",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-217",
+   "type": "imp_task",
+   "title": "Compact now: a person asks for a compaction of the open task",
+   "requirement": "REQ-PX-217",
+   "qual": "QUAL-PX-217",
+   "subsystem": "durability",
+   "owner_label": "durability",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "A real Core and a scripted model: Compact now on an idle task with a long transcript produces an epoch whose source is the person and lowers the context in use; during a turn it is refused; a failed summary falls back as the automatic path does; the telemetry names the source.",
+   "prerequisites": [
+    "PX-201",
+    "PX-109",
+    "DOC-PX-020"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-217",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-218",
+   "type": "imp_task",
+   "title": "The task header carries the last line the assistant wrote",
+   "requirement": "REQ-PX-218",
+   "qual": "QUAL-PX-218",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "A real Core and a scripted model: after a turn the header's line equals the end of the assistant's message; it survives a restart; a secret the transcript redacts is redacted in the header; a long line is cut at a character boundary.",
+   "prerequisites": [
+    "PX-199",
+    "DOC-PX-020"
+   ],
+   "related_requirements": [],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-218",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
    "id": "QUAL-PX-000",
    "type": "qual_test",
    "requirement": "REQ-PX-000",
@@ -42604,6 +43398,226 @@
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
   {
+   "id": "QUAL-PX-198",
+   "type": "qual_test",
+   "requirement": "REQ-PX-198",
+   "owner_label": "desktop",
+   "title": "The real app against a real Core at 1280, 1000 and 900 wide, in light, dark and high contrast and in both densities: the measured widths and heights equal section 5.1 and 5.2, the computed variables equal the token source, a stored list width inside the new range is kept and the density survives a restart.",
+   "failure_proof": "Retained mutations fail the gate: the list at 260, a bar at 40, the column at 640, a size written inside a component. The contrast test fails on a lowered token. Compact and comfortable differ through tokens only.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-199",
+   "type": "qual_test",
+   "requirement": "REQ-PX-199",
+   "owner_label": "desktop",
+   "title": "The real app, a real Core and a scripted model with tasks in every status class, a child task and two projects: the list reads in the order of MWS-04 at three widths; a row that needs approval shows its reason; grouping by status, environment and date regroups without a reload; the keyboard alone reaches every row, pins, archives with undo and opens the card.",
+   "failure_proof": "A quiet row with a second line by default fails the gate; a missing reason on a row that needs the person fails; the card makes no transcript read (asserted on the bridge log); an archive from the row is undone by its toast; the removed ids are absent.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-200",
+   "type": "qual_test",
+   "requirement": "REQ-PX-200",
+   "owner_label": "desktop",
+   "title": "The real app, a real Core and a scripted model running a task that plans, reads, edits, runs a command and asks: the plan card's states follow the work graph as steps finish; the composer's controls open the menus they opened before; the card decides by mouse and by keys; Escape on a confirmation does not skip the card behind it; an irreversible effect asks twice; a reload restores the card and the plan.",
+   "failure_proof": "A plan card fed from transcript text fails (the graph changes with no plan line and the card must follow); an intent hash missing from the accessibility tree fails; a decision control in the transcript fails; two selects in the card fail the gate; a denied command is never shown as run.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-201",
+   "type": "qual_test",
+   "requirement": "REQ-PX-201",
+   "owner_label": "desktop",
+   "title": "The real app, a real Core and a scripted model: each section shows the Core's facts for the open task; after a reload the phase and agent counts equal the Core's; Stop on a background terminal stops it; Review opens the changes; restore from a checkpoint asks as it does today; at 800 px the rail is absent and More holds its facts.",
+   "failure_proof": "A default phase after a reload fails; a value in the rail with no Core read behind it fails (asserted on the bridge log); the popover still present fails; a rail that covers the composer at the centre's minimum width fails.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-202",
+   "type": "qual_test",
+   "requirement": "REQ-PX-202",
+   "owner_label": "desktop",
+   "title": "The real app, a real Core and a scripted model: Changes, Terminal and Evidence open together and tile; the set and the sizes persist per task across a reload; a minimized terminal keeps its session; Activity lists events in order, filters by kind and finds text; Background tasks stops a child task and a terminal; the Pull request pane opens a request through the existing approval and shows the check evidence and the comments it read.",
+   "failure_proof": "One app at a time fails the gate; a minimized terminal that loses its session fails; an Activity pane that reads more than the delivered events and transcript fails; a pull-request state that was not read is never shown.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-203",
+   "type": "qual_test",
+   "requirement": "REQ-PX-203",
+   "owner_label": "desktop",
+   "title": "The real app and a real Core: Terminal and Changes each pop out and keep working; closing returns each to the dock with its state; the hardening guard passes for the new window (no node integration, the same CSP, navigation and new windows refused); the quit prompt counts work in pane windows.",
+   "failure_proof": "A window created with other web preferences fails the hardening guard; a pane shown in both places fails; an approval decided from a pane window fails.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-204",
+   "type": "qual_test",
+   "requirement": "REQ-PX-204",
+   "owner_label": "desktop",
+   "title": "The real app, a real Core and a scripted model with one task waiting on approval and one running: Enter and the approve and deny keys decide only in the focused task; each composer queues to its own task; Alt+click on a row and the preview card open split view; a reload restores it.",
+   "failure_proof": "A key that decides the unfocused task's approval fails; a queued message that reaches the other task fails; a third task accepted fails.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-205",
+   "type": "qual_test",
+   "requirement": "REQ-PX-205",
+   "owner_label": "desktop",
+   "title": "The real app, a real Core and a scripted model: send creates, starts and opens the task; Alt+Enter creates it without starting; the first model request is on the mode and model chosen on home; the location selector shows cloud disabled with its reason; a protected write is decided from the waiting list and a destructive effect opens its task.",
+   "failure_proof": "A destructive effect allowed from home fails; cloud enabled while PX-128 is not COMPLETE fails; a first model request off the chosen pin fails; a control that does nothing fails the gate.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-206",
+   "type": "qual_test",
+   "requirement": "REQ-PX-206",
+   "owner_label": "desktop",
+   "title": "The real app, a real Core and a scripted model with an approval, a mode proposal and a task ready for review: Needs you decides the first two; Updates shows the third with its time; opening it marks it read; the record survives a restart; the notification's click handler opens its task; the cap holds.",
+   "failure_proof": "A destructive effect allowed from Inbox fails; an update that holds transcript text fails (the record's shape is asserted); a count taken from the store instead of the Core fails.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-207",
+   "type": "qual_test",
+   "requirement": "REQ-PX-207",
+   "owner_label": "desktop",
+   "title": "The real app and a real Core: enable, pause, run now and kill behave as before on the new layout; the search finds a skill, a hook and a rule by text; Rules lists the layers the Core loaded for the folder with their sources and Open source opens the file; a skill that is not trusted still cannot be enabled without review.",
+   "failure_proof": "A rule shown that the Core did not load fails; a rule editable in place fails; a search result that opens the wrong section fails.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-208",
+   "type": "qual_test",
+   "requirement": "REQ-PX-208",
+   "owner_label": "desktop",
+   "title": "The real app, a real Core and a scripted model: Review shows a task's change set and its findings and a hunk decision still works; each Appearance option takes effect at once and persists; the Shortcuts section equals the registry and the key map, binding for binding.",
+   "failure_proof": "A listed shortcut that is not bound fails; a setting that belongs to one task shown as global fails; a density change that needs a reload fails.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-209",
+   "type": "qual_test",
+   "requirement": "REQ-PX-209",
+   "owner_label": "desktop",
+   "title": "The real app and a real Core: a task is found by its title, a conversation by text inside it, a file by name and a command by its label; each opens the right place; the keyboard alone drives it.",
+   "failure_proof": "A file outside the open task's folder fails; search text sent anywhere but the Core's search and file reads fails (asserted on the bridge log).",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-210",
+   "type": "qual_test",
+   "requirement": "REQ-PX-210",
+   "owner_label": "core-runtime",
+   "title": "A real Core and a scripted model: after a turn ends with nothing queued a suggestion arrives and the composer shows it; Tab fills the box and nothing is sent; the task's log is byte-identical before and after the call; the cost appears in the task's economics; with the setting off no call is made; with the budget at its cap no call is made.",
+   "failure_proof": "A suggestion written to the log or the transcript fails; a suggestion sent without Enter fails; a call made during a turn or with a queued input fails; a call over budget fails.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-211",
+   "type": "qual_test",
+   "requirement": "REQ-PX-211",
+   "owner_label": "workspace-git",
+   "title": "A real Core against the forge test server: a request opened through its approval is recorded; refresh reads open, checks failing, checks passing and merged in turn; the header shows it after a restart; with the preference on, a merged task is archived and the undo restores it.",
+   "failure_proof": "A state that was not read is never shown; a refresh that goes around the forge adapter's policy fails; an archive without the preference fails; a stale read says when it was read.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-212",
+   "type": "qual_test",
+   "requirement": "REQ-PX-212",
+   "owner_label": "core-runtime",
+   "title": "A real Core against the forge test server: with the switch on a failing check queues one input naming the check; the agent's push asks under Supervised; the loop stops at the attempt cap with a notice; with the switch off nothing is queued.",
+   "failure_proof": "Auto-fix that raises the run mode fails; a push without the approval a manual push needs fails; a loop past its cap fails; a comment from an author who is not allowed is ignored.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-213",
+   "type": "qual_test",
+   "requirement": "REQ-PX-213",
+   "owner_label": "external-tools",
+   "title": "A real Core against the forge test server: merge when ready waits while a check is pending, asks when the checks pass, merges the approved head revision and records its receipt; a head moved before approval voids the ask.",
+   "failure_proof": "A merge without approval fails; a merge of a head revision other than the approved one fails; a merge while a check fails or is pending is refused with its reason; an allow rule does not cover the merge effect.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-214",
+   "type": "qual_test",
+   "requirement": "REQ-PX-214",
+   "owner_label": "verification",
+   "title": "A real Core with a scripted reviewer that returns three findings: the bundle lists each; Review shows them; Fix this one queues an input naming that finding only; the next review re-evaluates it; a dismissal is recorded.",
+   "failure_proof": "A finding that failed the tree check is not shown as verified; a fix command for an unknown finding is refused; findings from a result whose digest does not match are not shown.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-215",
+   "type": "qual_test",
+   "requirement": "REQ-PX-215",
+   "owner_label": "browser",
+   "title": "A real Core and the actuator fixture: with an application at view only a click and a type are refused with their reason; at click a type is refused; at never the session is refused; with no level set the grant alone decides; a change mid-session applies to the next action.",
+   "failure_proof": "A level that widens what the task's grant allows fails; a refusal without a reason on the card fails; a level change that is not in the audit trail fails.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-216",
+   "type": "qual_test",
+   "requirement": "REQ-PX-216",
+   "owner_label": "desktop",
+   "title": "The real app and a real Core with a local test site on two origins: Allow once permits one navigation and the next asks again; Always allow persists across a restart; Deny refuses with its reason and persists; removing an entry in Settings makes the origin ask again.",
+   "failure_proof": "An allow once that persists fails; a deny overridden by a retry fails; a decision recorded for an origin other than the one shown fails; a target the navigation policy forbids is refused before any ask.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-217",
+   "type": "qual_test",
+   "requirement": "REQ-PX-217",
+   "owner_label": "durability",
+   "title": "A real Core and a scripted model: Compact now on an idle task with a long transcript produces an epoch whose source is the person and lowers the context in use; during a turn it is refused; a failed summary falls back as the automatic path does; the telemetry names the source.",
+   "failure_proof": "A compaction through a second summary path fails (the same function is asserted); a compaction during streaming fails; a transcript that is no longer searchable fails.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-218",
+   "type": "qual_test",
+   "requirement": "REQ-PX-218",
+   "owner_label": "core-runtime",
+   "title": "A real Core and a scripted model: after a turn the header's line equals the end of the assistant's message; it survives a restart; a secret the transcript redacts is redacted in the header; a long line is cut at a character boundary.",
+   "failure_proof": "A redacted value in the open fails; a line from an unfinished message fails; a header that changes for an archived task fails.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-219",
+   "type": "qual_test",
+   "requirement": "REQ-PX-219",
+   "owner_label": "sandbox-cloud",
+   "title": "Deferred proof, entry condition and not a current proof: a task runs on a machine reached over SSH under the same tool, event and approval semantics as a local task, with host keys verified and the key held by the credential broker.",
+   "failure_proof": "A task that runs with weaker approvals than a local one, a host key accepted without verification, or a private key readable by the agent.",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
    "id": "PX-E2E-000",
    "type": "scenario",
    "kind": "px-e2e",
@@ -43798,6 +44812,153 @@
    "type": "scenario",
    "kind": "px-e2e",
    "title": "Agent workspace conversation, composer and apps panel: steps that say what they did, one approval card, the two-row composer, the rebuilt Changes panel",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-198",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Measured workspace shell: the list, bars, rows, column and rail at the measured sizes, the conversation on the lightest surface, and a density setting",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-199",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Measured task list: navigation, project groups, one-line rows with the state at the right, child rows, the preview card and the person's row",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-200",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Measured task view: pane toggles in the title bar, the plan as a card of steps from the Core's work graph, the status line, the one-line composer with its controls under it and the regrouped approval card",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-201",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Details rail: environment, approvals, context, tool servers, changes, evidence, background tasks and cost beside the conversation",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-202",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Pane dock: several panes open together in a grid, with Activity, Background tasks and Pull request panes",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-203",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Pane pop-out: a pane in a window of its own under the same preload and content security policy",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-204",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Split view: two tasks side by side, each with its own title bar, transcript, composer and approval card",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-205",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Measured home: the composer in a tray with where the task runs attached, what is waiting on the person, and the first-run steps",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-206",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Inbox: every approval, proposal and question across tasks, and a persisted record of updates with a read state",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-207",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Automations and Customize in the page shape: a details rail for an automation, one search across Customize, and Rules as a read-only section",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-208",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Review and Settings in the page shape: pull requests and local changes with their findings, list options under Appearance, and a Shortcuts section that lists the real bindings",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-209",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "One search: tasks, conversation text, files and commands in the palette",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-210",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Next-prompt suggestion: one suggested next message after a turn, accepted with Tab and never sent by itself",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-211",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Task pull-request state: the Core records the request a task opened, refreshes its state and checks through the forge adapter, and the header carries it",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-212",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Auto-fix: a failing check or a comment addressed to the agent queues a repair turn inside the task's run mode and budgets",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-213",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Merge when ready: a forge merge effect that is approval-bound and asked once the checks pass",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-214",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Reviewer findings one by one in the review bundle, with a command to fix one",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-215",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Standing computer access per application: view only, click, full or never, held by the Core and only ever narrowing a grant",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-216",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Browser pane site decisions: allow once and deny beside always allow, kept by the desktop's browser policy",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-217",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Compact now: a person asks for a compaction of the open task",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-218",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "The task header carries the last line the assistant wrote",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
   {
@@ -45225,6 +46386,30 @@
     "artifact:evidence/dossier-px-019/validation.json"
    ],
    "status_changed_on": "2026-11-04T09:09:30Z"
+  },
+  {
+   "id": "DOC-PX-020",
+   "type": "dossier_task",
+   "title": "Product extension stage: The measured workspace, PX-198..219",
+   "subsystem": "governance",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
+   "acceptance": "Decision Record, its rows, specification, supersession entries and change record added; implementation audit recorded; full integrity gate passes; the record is accepted by the owner and its status and approval are recorded; no product proof",
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/dossier-px-020/tests.log",
+    "artifact:evidence/dossier-px-020/validation.json",
+    "commit:5b6ecdfe9f47103417344fa73d75e876550f6a2d"
+   ],
+   "notes": [
+    {
+     "at": "2026-11-11T12:52:54Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "DR-PX-2026-11-11-021 and rows PX-198..219 landed on main as 5b6ecdfe (PR 196, 19 checks green); product rows stay NOT_STARTED"
+    }
+   ],
+   "owner_agent": "claude-fable-5.2",
+   "status_changed_on": "2026-11-11T12:52:54Z"
   },
   {
    "id": "DR-GOV-2026-10-30-008",
@@ -61018,6 +62203,21 @@
    "type": "refines"
   },
   {
+   "from": "DR-PX-2026-11-11-021",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DR-PX-2026-11-11-021",
+   "to": "65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DR-PX-2026-11-11-021",
+   "to": "DR-PX-2026-09-05",
+   "type": "refines"
+  },
+  {
    "from": "REQ-PX-000",
    "to": "desktop",
    "type": "owned_by_req"
@@ -66661,6 +67861,661 @@
    "from": "REQ-PX-197",
    "to": "PX-197",
    "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-198",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-198",
+   "to": "QUAL-PX-198",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-198",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-198",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-198",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-198",
+   "to": "PX-198",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-199",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-199",
+   "to": "QUAL-PX-199",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-199",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-199",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-199",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-199",
+   "to": "PX-199",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-200",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-200",
+   "to": "QUAL-PX-200",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-200",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-200",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-200",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-200",
+   "to": "PX-200",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-201",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-201",
+   "to": "QUAL-PX-201",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-201",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-201",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-201",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-201",
+   "to": "PX-201",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-202",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-202",
+   "to": "QUAL-PX-202",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-202",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-202",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-202",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-202",
+   "to": "PX-202",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-203",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-203",
+   "to": "QUAL-PX-203",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-203",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-203",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-203",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-203",
+   "to": "PX-203",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-204",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-204",
+   "to": "QUAL-PX-204",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-204",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-204",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-204",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-204",
+   "to": "PX-204",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-205",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-205",
+   "to": "QUAL-PX-205",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-205",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-205",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-205",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-205",
+   "to": "PX-205",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-206",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-206",
+   "to": "QUAL-PX-206",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-206",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-206",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-206",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-206",
+   "to": "PX-206",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-207",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-207",
+   "to": "QUAL-PX-207",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-207",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-207",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-207",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-207",
+   "to": "PX-207",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-208",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-208",
+   "to": "QUAL-PX-208",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-208",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-208",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-208",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-208",
+   "to": "PX-208",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-209",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-209",
+   "to": "QUAL-PX-209",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-209",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-209",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-209",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-209",
+   "to": "PX-209",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-210",
+   "to": "core-runtime",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-210",
+   "to": "QUAL-PX-210",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-210",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-210",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-210",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-210",
+   "to": "PX-210",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-211",
+   "to": "workspace-git",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-211",
+   "to": "QUAL-PX-211",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-211",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-211",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-211",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-211",
+   "to": "PX-211",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-212",
+   "to": "core-runtime",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-212",
+   "to": "QUAL-PX-212",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-212",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-212",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-212",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-212",
+   "to": "PX-212",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-213",
+   "to": "external-tools",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-213",
+   "to": "QUAL-PX-213",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-213",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-213",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-213",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-213",
+   "to": "PX-213",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-214",
+   "to": "verification",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-214",
+   "to": "QUAL-PX-214",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-214",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-214",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-214",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-214",
+   "to": "PX-214",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-215",
+   "to": "browser",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-215",
+   "to": "QUAL-PX-215",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-215",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-215",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-215",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-215",
+   "to": "PX-215",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-216",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-216",
+   "to": "QUAL-PX-216",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-216",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-216",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-216",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-216",
+   "to": "PX-216",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-217",
+   "to": "durability",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-217",
+   "to": "QUAL-PX-217",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-217",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-217",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-217",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-217",
+   "to": "PX-217",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-218",
+   "to": "core-runtime",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-218",
+   "to": "QUAL-PX-218",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-218",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-218",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-218",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-218",
+   "to": "PX-218",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-219",
+   "to": "sandbox-cloud",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-219",
+   "to": "QUAL-PX-219",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-219",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-219",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-219",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
   },
   {
    "from": "PX-000",
@@ -77543,6 +79398,1121 @@
    "type": "proves"
   },
   {
+   "from": "PX-198",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-198",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-198",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-198",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-198",
+   "to": "QUAL-PX-198",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-198",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-198",
+   "to": "PX-197",
+   "type": "after"
+  },
+  {
+   "from": "PX-198",
+   "to": "DOC-PX-020",
+   "type": "after"
+  },
+  {
+   "from": "PX-198",
+   "to": "PX-E2E-198",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-198",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-199",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-199",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-199",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-199",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-199",
+   "to": "QUAL-PX-199",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-199",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-199",
+   "to": "PX-198",
+   "type": "after"
+  },
+  {
+   "from": "PX-199",
+   "to": "DOC-PX-020",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-199",
+   "to": "REQ-EV-0037",
+   "type": "extends"
+  },
+  {
+   "from": "REQ-PX-199",
+   "to": "REQ-EV-0143",
+   "type": "extends"
+  },
+  {
+   "from": "PX-199",
+   "to": "PX-E2E-199",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-199",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-200",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-200",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-200",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-200",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-200",
+   "to": "QUAL-PX-200",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-200",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-200",
+   "to": "PX-199",
+   "type": "after"
+  },
+  {
+   "from": "PX-200",
+   "to": "DOC-PX-020",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-200",
+   "to": "REQ-EV-0037",
+   "type": "extends"
+  },
+  {
+   "from": "REQ-PX-200",
+   "to": "REQ-EV-0143",
+   "type": "extends"
+  },
+  {
+   "from": "PX-200",
+   "to": "PX-E2E-200",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-200",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-201",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-201",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-201",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-201",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-201",
+   "to": "QUAL-PX-201",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-201",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-201",
+   "to": "PX-200",
+   "type": "after"
+  },
+  {
+   "from": "PX-201",
+   "to": "DOC-PX-020",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-201",
+   "to": "REQ-EV-0037",
+   "type": "extends"
+  },
+  {
+   "from": "REQ-PX-201",
+   "to": "REQ-EV-0143",
+   "type": "extends"
+  },
+  {
+   "from": "PX-201",
+   "to": "PX-E2E-201",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-201",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-202",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-202",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-202",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-202",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-202",
+   "to": "QUAL-PX-202",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-202",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-202",
+   "to": "PX-201",
+   "type": "after"
+  },
+  {
+   "from": "PX-202",
+   "to": "DOC-PX-020",
+   "type": "after"
+  },
+  {
+   "from": "PX-202",
+   "to": "PX-E2E-202",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-202",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-203",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-203",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-203",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-203",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-203",
+   "to": "QUAL-PX-203",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-203",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-203",
+   "to": "PX-202",
+   "type": "after"
+  },
+  {
+   "from": "PX-203",
+   "to": "DOC-PX-020",
+   "type": "after"
+  },
+  {
+   "from": "PX-203",
+   "to": "PX-E2E-203",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-203",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-204",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-204",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-204",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-204",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-204",
+   "to": "QUAL-PX-204",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-204",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-204",
+   "to": "PX-202",
+   "type": "after"
+  },
+  {
+   "from": "PX-204",
+   "to": "DOC-PX-020",
+   "type": "after"
+  },
+  {
+   "from": "PX-204",
+   "to": "PX-E2E-204",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-204",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-205",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-205",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-205",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-205",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-205",
+   "to": "QUAL-PX-205",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-205",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-205",
+   "to": "PX-199",
+   "type": "after"
+  },
+  {
+   "from": "PX-205",
+   "to": "DOC-PX-020",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-205",
+   "to": "REQ-EV-0037",
+   "type": "extends"
+  },
+  {
+   "from": "REQ-PX-205",
+   "to": "REQ-EV-0143",
+   "type": "extends"
+  },
+  {
+   "from": "PX-205",
+   "to": "PX-E2E-205",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-205",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-206",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-206",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-206",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-206",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-206",
+   "to": "QUAL-PX-206",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-206",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-206",
+   "to": "PX-199",
+   "type": "after"
+  },
+  {
+   "from": "PX-206",
+   "to": "DOC-PX-020",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-206",
+   "to": "REQ-EV-0037",
+   "type": "extends"
+  },
+  {
+   "from": "REQ-PX-206",
+   "to": "REQ-EV-0143",
+   "type": "extends"
+  },
+  {
+   "from": "PX-206",
+   "to": "PX-E2E-206",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-206",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-207",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-207",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-207",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-207",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-207",
+   "to": "QUAL-PX-207",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-207",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-207",
+   "to": "PX-199",
+   "type": "after"
+  },
+  {
+   "from": "PX-207",
+   "to": "DOC-PX-020",
+   "type": "after"
+  },
+  {
+   "from": "PX-207",
+   "to": "PX-E2E-207",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-207",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-208",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-208",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-208",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-208",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-208",
+   "to": "QUAL-PX-208",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-208",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-208",
+   "to": "PX-199",
+   "type": "after"
+  },
+  {
+   "from": "PX-208",
+   "to": "DOC-PX-020",
+   "type": "after"
+  },
+  {
+   "from": "PX-208",
+   "to": "PX-E2E-208",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-208",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-209",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-209",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-209",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-209",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-209",
+   "to": "QUAL-PX-209",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-209",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-209",
+   "to": "PX-199",
+   "type": "after"
+  },
+  {
+   "from": "PX-209",
+   "to": "DOC-PX-020",
+   "type": "after"
+  },
+  {
+   "from": "PX-209",
+   "to": "PX-E2E-209",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-209",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-210",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-210",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-210",
+   "to": "core-runtime",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-210",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-210",
+   "to": "QUAL-PX-210",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-210",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-210",
+   "to": "PX-200",
+   "type": "after"
+  },
+  {
+   "from": "PX-210",
+   "to": "DOC-PX-020",
+   "type": "after"
+  },
+  {
+   "from": "PX-210",
+   "to": "PX-E2E-210",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-210",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-211",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-211",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-211",
+   "to": "workspace-git",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-211",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-211",
+   "to": "QUAL-PX-211",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-211",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-211",
+   "to": "PX-125",
+   "type": "after"
+  },
+  {
+   "from": "PX-211",
+   "to": "PX-202",
+   "type": "after"
+  },
+  {
+   "from": "PX-211",
+   "to": "DOC-PX-020",
+   "type": "after"
+  },
+  {
+   "from": "PX-211",
+   "to": "PX-E2E-211",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-211",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-212",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-212",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-212",
+   "to": "core-runtime",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-212",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-212",
+   "to": "QUAL-PX-212",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-212",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-212",
+   "to": "PX-211",
+   "type": "after"
+  },
+  {
+   "from": "PX-212",
+   "to": "DOC-PX-020",
+   "type": "after"
+  },
+  {
+   "from": "PX-212",
+   "to": "PX-E2E-212",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-212",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-213",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-213",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-213",
+   "to": "external-tools",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-213",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-213",
+   "to": "QUAL-PX-213",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-213",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-213",
+   "to": "PX-211",
+   "type": "after"
+  },
+  {
+   "from": "PX-213",
+   "to": "DOC-PX-020",
+   "type": "after"
+  },
+  {
+   "from": "PX-213",
+   "to": "PX-E2E-213",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-213",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-214",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-214",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-214",
+   "to": "verification",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-214",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-214",
+   "to": "QUAL-PX-214",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-214",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-214",
+   "to": "PX-208",
+   "type": "after"
+  },
+  {
+   "from": "PX-214",
+   "to": "DOC-PX-020",
+   "type": "after"
+  },
+  {
+   "from": "PX-214",
+   "to": "PX-E2E-214",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-214",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-215",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-215",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-215",
+   "to": "browser",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-215",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-215",
+   "to": "QUAL-PX-215",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-215",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-215",
+   "to": "PX-208",
+   "type": "after"
+  },
+  {
+   "from": "PX-215",
+   "to": "PX-069",
+   "type": "after"
+  },
+  {
+   "from": "PX-215",
+   "to": "DOC-PX-020",
+   "type": "after"
+  },
+  {
+   "from": "PX-215",
+   "to": "PX-E2E-215",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-215",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-216",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-216",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-216",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-216",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-216",
+   "to": "QUAL-PX-216",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-216",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-216",
+   "to": "PX-202",
+   "type": "after"
+  },
+  {
+   "from": "PX-216",
+   "to": "DOC-PX-020",
+   "type": "after"
+  },
+  {
+   "from": "PX-216",
+   "to": "PX-E2E-216",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-216",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-217",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-217",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-217",
+   "to": "durability",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-217",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-217",
+   "to": "QUAL-PX-217",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-217",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-217",
+   "to": "PX-201",
+   "type": "after"
+  },
+  {
+   "from": "PX-217",
+   "to": "PX-109",
+   "type": "after"
+  },
+  {
+   "from": "PX-217",
+   "to": "DOC-PX-020",
+   "type": "after"
+  },
+  {
+   "from": "PX-217",
+   "to": "PX-E2E-217",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-217",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
+   "from": "PX-218",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-218",
+   "to": "DR-PX-2026-11-11-021",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-218",
+   "to": "core-runtime",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-218",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-218",
+   "to": "QUAL-PX-218",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-218",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-218",
+   "to": "PX-199",
+   "type": "after"
+  },
+  {
+   "from": "PX-218",
+   "to": "DOC-PX-020",
+   "type": "after"
+  },
+  {
+   "from": "PX-218",
+   "to": "PX-E2E-218",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-218",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
    "from": "domain-events",
    "to": "38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md",
    "type": "specified_by"
@@ -78625,6 +81595,31 @@
   {
    "from": "DOC-PX-019",
    "to": "DR-PX-2026-11-04-020",
+   "type": "authorized_by"
+  },
+  {
+   "from": "DOC-PX-020",
+   "to": "DOC-GOV-007",
+   "type": "after"
+  },
+  {
+   "from": "DOC-PX-020",
+   "to": "governance",
+   "type": "owned_by"
+  },
+  {
+   "from": "DOC-PX-020",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-PX-020",
+   "to": "65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-PX-020",
+   "to": "DR-PX-2026-11-11-021",
    "type": "authorized_by"
   },
   {
@@ -83515,6 +86510,111 @@
   {
    "from": "RELEASE_ZERO",
    "to": "PX-197",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-198",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-199",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-200",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-201",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-202",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-203",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-204",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-205",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-206",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-207",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-208",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-209",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-210",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-211",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-212",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-213",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-214",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-215",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-216",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-217",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-218",
    "type": "includes"
   },
   {

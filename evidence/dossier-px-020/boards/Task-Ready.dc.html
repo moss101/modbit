@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Task: ready, with panes</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="modbit.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="mb app panes-on">
+  <aside class="side">
+    <div class="sbar"><button class="ibtn" aria-label="Hide sidebar"><span class="ms" aria-hidden="true">view_sidebar</span></button><span class="grow"></span><button class="ibtn" aria-label="Back"><span class="ms" aria-hidden="true">arrow_back</span></button><button class="ibtn" aria-label="Forward"><span class="ms" aria-hidden="true">arrow_forward</span></button></div>
+    <nav class="snav" aria-label="Main">
+      <button class="nv"><span class="ms" aria-hidden="true">add</span>New task<span class="kbd">⌘N</span></button>
+      <button class="nv"><span class="ms" aria-hidden="true">inbox</span>Inbox<span class="badge warn">2</span></button>
+      <button class="nv"><span class="ms" aria-hidden="true">schedule</span>Automations</button>
+      <button class="nv"><span class="ms" aria-hidden="true">rate_review</span>Review</button>
+      <button class="nv"><span class="ms" aria-hidden="true">tune</span>Customize</button>
+    </nav>
+    <div class="shd">Tasks<span class="grow"></span><button class="ibtn" aria-label="Search tasks"><span class="ms" aria-hidden="true">search</span></button><button class="ibtn" aria-label="Group, sort and filter"><span class="ms" aria-hidden="true">filter_list</span></button><button class="ibtn" aria-label="More"><span class="ms" aria-hidden="true">more_horiz</span></button></div>
+    <div class="slist">
+      <button class="grp">modbit<span class="ms" aria-hidden="true">expand_more</span></button>
+      <button class="srow"><span class="t">Wire the updater signing step into the release pipeline</span><span class="ms fill c-warn s16" role="img" aria-label="Needs you">error</span></button>
+      <button class="srow"><span class="t">Clean the build output</span><span class="ms fill c-warn s16" role="img" aria-label="Needs you">error</span></button>
+      <button class="srow"><span class="t">Add glm-5.3-flash to the price catalog</span><span class="ms c-acc s16 spin" role="img" aria-label="Working">progress_activity</span></button>
+      <button class="srow kid"><span class="ms tree" aria-hidden="true">subdirectory_arrow_right</span><span class="t">Re-run the px135 summary</span><span class="ms c-acc s16 spin" role="img" aria-label="Working">progress_activity</span></button>
+      <button class="srow on"><span class="t">Fix accounting reconciliation in the px133 rerun</span><span class="ms c-ok s16" role="img" aria-label="Ready to review">merge</span><span class="n">5</span></button>
+      <button class="srow"><span class="t">Stabilise ax_fixture on macOS GUI sessions</span><span class="ms c-ok s16" role="img" aria-label="Ready to review">merge</span><span class="n">2</span></button>
+      <button class="grp">dossier<span class="ms" aria-hidden="true">expand_more</span></button>
+      <button class="srow"><span class="t">Draft the SBOM decision record</span><span class="udot idle"></span></button>
+      <button class="srow"><span class="t">Gate threshold profile review</span><span class="ms c-pur s16" role="img" aria-label="On a branch">call_split</span></button>
+      <button class="grp">Archived · 14<span class="ms" aria-hidden="true">chevron_right</span></button>
+    </div>
+    <div class="sfoot"><span class="avatar">M</span><span>mohsin</span><span class="live"><i></i>Core</span><span class="grow"></span><button class="ibtn" aria-label="Help"><span class="ms" aria-hidden="true">help</span></button><button class="ibtn" aria-label="Settings"><span class="ms" aria-hidden="true">settings</span></button></div>
+  </aside>
+
+  <main class="card main">
+    <header class="top">
+      <h2 class="title">Fix accounting reconciliation in the px133 rerun</h2>
+      <span class="grow"></span>
+      <button class="ibtn" aria-label="Details"><span class="ms" aria-hidden="true">checklist</span></button>
+      <button class="ibtn on" aria-label="Terminal"><span class="ms" aria-hidden="true">terminal</span></button>
+      <button class="ibtn on" aria-label="Changes"><span class="ms" aria-hidden="true">difference</span></button>
+      <button class="ibtn on" aria-label="Evidence"><span class="ms" aria-hidden="true">verified_user</span></button>
+      <button class="ibtn" aria-label="More: browser, files, activity, split view"><span class="ms" aria-hidden="true">more_horiz</span></button>
+    </header>
+
+    <div class="scroll">
+      <div class="col stack">
+        <div class="msg-user">Two legs in the px133 rerun don’t reconcile with the Core’s accounting. Find out why and fix it.</div>
+        <p class="prose">Both dropped legs were being matched on attempt id. Escalated legs share one, so the second was treated as a duplicate. They now match on attempt and leg, and a test pins the px133 case.</p>
+        <button class="tline">Explored 9 files, edited 5, ran 3 commands<span class="ms" aria-hidden="true">chevron_right</span></button>
+        <div class="tasks">
+          <div class="ck"><span class="ms c-ok" aria-hidden="true">merge</span><span class="x"><b style="font-weight:500">#171</b> Match legs on attempt and leg</span></div>
+          <div class="ck c-dim" style="min-height:22px;font-size:13px">Checks 3 of 3 passed · 1 review comment · +61 −18</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:2px"><button class="btn pri sm">Merge when ready</button><button class="btn soft sm"><span class="switch on"></span>Auto-fix</button></div>
+        </div>
+        <div class="statusline"><span class="ms fill c-ok s16" aria-hidden="true">check_circle</span><span>Done</span><span>6m 40s · 41.2k tokens · $0.03</span></div>
+      </div>
+    </div>
+
+    <div class="dock">
+      <div class="col">
+        <div class="composer line">
+          <button class="ibtn" aria-label="Attach files, folders or connectors"><span class="ms" aria-hidden="true">add</span></button>
+          <label class="sr" for="followup">Ask for changes</label>
+          <textarea id="followup" rows="1" placeholder="Ask for changes, or start the next step"></textarea>
+          <button class="send off" aria-label="Send" disabled><span class="ms" aria-hidden="true">arrow_upward</span></button>
+        </div>
+        <div class="cfoot">
+          <button><span>Auto balance</span></button>
+          <button><span class="ms s16" aria-hidden="true">shield</span>Supervised</button>
+          <span class="ring" style="--p:61" role="img" aria-label="Context 61 percent used"></span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <section class="panes" aria-label="Workspace panes" style="grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);grid-template-rows:minmax(0,1.55fr) minmax(0,1fr)">
+    <div class="pane">
+      <div class="phd"><span class="nm">main → task/px133-reconcile</span><span class="ms s16" aria-hidden="true">expand_more</span><span class="grow"></span><button class="ibtn" aria-label="Search in changes"><span class="ms" aria-hidden="true">search</span></button><button class="ibtn" aria-label="Stage all, undo all"><span class="ms" aria-hidden="true">more_horiz</span></button><button class="ibtn" aria-label="Pop out"><span class="ms" aria-hidden="true">open_in_new</span></button><button class="ibtn" aria-label="Close pane"><span class="ms" aria-hidden="true">close</span></button></div>
+      <div class="pbd flush">
+        <div class="fh"><span class="ms s16" aria-hidden="true">expand_more</span><span class="p">crates/providers/src/<b>ledger.rs</b></span><span class="st"><span class="add">+22</span><span class="del">−9</span></span><button class="ibtn" aria-label="Mark viewed"><span class="ms" aria-hidden="true">check_circle</span></button></div>
+        <div class="hh"><span>@@ -118,9 +118,14 @@ reconcile</span><span class="grow"></span><button class="btn ghost sm">Keep</button><button class="btn ghost sm">Reject</button></div>
+        <div class="dl"><span class="n">118</span><span class="n">118</span><span class="c">  for leg in attempt.legs() {</span></div>
+        <div class="dl del"><span class="n">119</span><span class="n"></span><span class="c">-     seen.insert(attempt.id);</span></div>
+        <div class="dl add"><span class="n"></span><span class="n">119</span><span class="c">+     seen.insert((attempt.id, leg.index));</span></div>
+        <div class="dl"><span class="n">120</span><span class="n">120</span><span class="c">      total += leg.cost_minor();</span></div>
+        <div class="dl"><span class="n">121</span><span class="n">121</span><span class="c">  }</span></div>
+        <div class="hh"><span>@@ -142,6 +143,11 @@ merge_legs</span><span class="grow"></span><button class="btn ghost sm">Keep</button><button class="btn soft sm">Rejecting</button></div>
+        <div class="dl del"><span class="n">143</span><span class="n"></span><span class="c">-     a.clone()</span></div>
+        <div class="dl add"><span class="n"></span><span class="n">144</span><span class="c">+     // Escalated legs share an attempt id; keep both.</span></div>
+        <div class="dl add"><span class="n"></span><span class="n">145</span><span class="c">+     Leg::sum(a, b)</span></div>
+        <div class="reason">
+          <label class="sr" for="why">Reason sent to the agent</label>
+          <textarea id="why" rows="2" placeholder="Reason told to the agent when you reject a hunk">Summing hides the second leg in the report. Keep the legs separate.</textarea>
+          <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn ghost sm">Cancel</button><button class="btn pri sm">Reject and tell the agent</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pane">
+      <div class="phd"><span class="nm">Pull request #171</span><span class="grow"></span><button class="ibtn" aria-label="Open on the forge"><span class="ms" aria-hidden="true">open_in_new</span></button><button class="ibtn" aria-label="Close pane"><span class="ms" aria-hidden="true">close</span></button></div>
+      <div class="pbd">
+        <p style="font-weight:500;margin-bottom:2px">Match legs on attempt and leg so escalations reconcile</p>
+        <p class="c-dim" style="font-size:13px;margin-bottom:10px">task/px133-reconcile into main · 5 files</p>
+        <div class="ck"><span class="ms fill c-ok" aria-hidden="true">check_circle</span><span class="x">build · macOS, Ubuntu, Windows</span><span class="r">3m 12s</span></div>
+        <div class="ck"><span class="ms fill c-ok" aria-hidden="true">check_circle</span><span class="x">desktop e2e</span><span class="r">6m 05s</span></div>
+        <div class="ck"><span class="ms fill c-ok" aria-hidden="true">check_circle</span><span class="x">dossier check</span><span class="r">41s</span></div>
+        <div class="sepr"></div>
+        <div class="ck"><span class="ms" aria-hidden="true">chat_bubble</span><span class="x">1 review comment · ledger.rs:144</span><button class="btn soft sm">Address</button></div>
+        <div class="sepr"></div>
+        <div class="ck"><span class="switch on"></span><span class="x">Auto-fix failing checks and comments</span></div>
+        <div style="display:flex;gap:8px;margin-top:10px"><button class="btn pri">Merge when ready</button><button class="btn soft">Commit and push</button></div>
+      </div>
+    </div>
+
+    <div class="pane">
+      <div class="phd"><span class="nm">Terminal</span><button class="ibtn" aria-label="New terminal tab"><span class="ms" aria-hidden="true">add</span></button><span class="grow"></span><button class="ibtn" aria-label="Minimize"><span class="ms" aria-hidden="true">minimize</span></button><button class="ibtn" aria-label="Pop out"><span class="ms" aria-hidden="true">open_in_new</span></button><button class="ibtn" aria-label="Close pane"><span class="ms" aria-hidden="true">close</span></button></div>
+      <div class="pbd"><div class="term"><span class="d">modbit %</span> cargo test -p modbit-providers ledger
+running 9 tests
+test ledger::reconciles_px133_legs ... <span class="g">ok</span>
+test ledger::keeps_escalated_legs ... <span class="g">ok</span>
+test result: <span class="g">ok</span>. 9 passed; 0 failed
+<span class="d">modbit %</span></div></div>
+    </div>
+
+    <div class="pane">
+      <div class="phd"><span class="nm">Evidence</span><span class="grow"></span><button class="ibtn" aria-label="Pop out"><span class="ms" aria-hidden="true">open_in_new</span></button><button class="ibtn" aria-label="Close pane"><span class="ms" aria-hidden="true">close</span></button></div>
+      <div class="pbd">
+        <div class="ck"><span class="ms fill c-ok" aria-hidden="true">verified_user</span><span class="x">Targeted verification</span><span class="r">passed</span></div>
+        <div class="ck"><span class="ms" aria-hidden="true">fact_check</span><span class="x">Checks</span><span class="r">1 of 1</span></div>
+        <div class="ck"><span class="ms" aria-hidden="true">receipt_long</span><span class="x">Effect receipts</span><span class="r">6 · chain valid</span></div>
+        <div class="ck"><span class="ms" aria-hidden="true">history</span><span class="x">Checkpoints</span><span class="r">4 · restore</span></div>
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

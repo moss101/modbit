@@ -339,8 +339,10 @@ test("PX-044/045: themes, high contrast and reduced motion; the send button meet
   const { app, page } = await launch(dataDir);
   try {
     await setContentSize(app, page, 1280, 800);
+    // Buttons transition their colours: measure the settled colours, never a frame mid-transition.
     const ratio = () =>
-      page.evaluate(() => {
+      page.evaluate(async () => {
+        await Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined)));
         const lum = (css: string) => {
           const m = css.match(/\d+(\.\d+)?/g)!.slice(0, 3).map(Number);
           const lin = m.map((v) => ((v / 255) <= 0.04045 ? v / 255 / 12.92 : (((v / 255) + 0.055) / 1.055) ** 2.4));
