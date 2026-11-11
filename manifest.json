@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2097,
+    "root_and_tooling": 2112,
     "docs_bytes": 2408434
   },
   "sections": [
@@ -3962,6 +3962,81 @@
       "path": "evidence/m10/PX-197/mutation-check-2026-11-07.txt",
       "bytes": 625,
       "sha256": "234964ea438c7b631145bb92245b7a8adc40fff0138845c3df5946b48173ae34"
+    },
+    {
+      "path": "evidence/m10/PX-210/TASK_CARD.md",
+      "bytes": 11262,
+      "sha256": "4cb2ac207907e0e63a1fda713b2dbee3dd6d5d678cbd89ba3fed69fa1e13932d"
+    },
+    {
+      "path": "evidence/m10/PX-210/after/composer-after-tab-light.png",
+      "bytes": 30362,
+      "sha256": "a7b1367df855da4288ff969ddb1a68bb03d6a4ecbbc8071ad59d0e5dddabff4d"
+    },
+    {
+      "path": "evidence/m10/PX-210/after/composer-long-suggestion-dark-900.png",
+      "bytes": 35124,
+      "sha256": "14ec8efa1eafc089f6f688e72fb15a75e11555cdf3e48e237cb62fdeb3f3d36f"
+    },
+    {
+      "path": "evidence/m10/PX-210/after/composer-suggestion-light.png",
+      "bytes": 34930,
+      "sha256": "a2e7deb974c28f288daf671e57b634d2d8dafe7ea94c49b7b8ad8f852b3efb09"
+    },
+    {
+      "path": "evidence/m10/PX-210/core-suite.log",
+      "bytes": 250192,
+      "sha256": "ab1b4e084a858d4f7084388c37eba3ac3cf8c0300e44887890f728addb21ee1f"
+    },
+    {
+      "path": "evidence/m10/PX-210/e2e-composer-conversation.log",
+      "bytes": 111352,
+      "sha256": "e478399b08e42c57598bd3b81b8b69df225fe2e9b84eb95c16d0f0531a472953"
+    },
+    {
+      "path": "evidence/m10/PX-210/evidence.json",
+      "bytes": 7070,
+      "sha256": "cb78f61668155278e6ed291573ca558cb251b45c0a1d4f5ab5203fba4f8e4021"
+    },
+    {
+      "path": "evidence/m10/PX-210/mutation-check-2026-11-11.txt",
+      "bytes": 2862,
+      "sha256": "81b1642f64f6b1a43d40ce7a5b2b5e9f54fce4808460eea1385abb54e20dfa17"
+    },
+    {
+      "path": "evidence/m10/PX-210/px210-core.log",
+      "bytes": 1599,
+      "sha256": "2b45e60af5ed0f25fad154160a99461a1c15efd2016dda5995d6451a5ad7175e"
+    },
+    {
+      "path": "evidence/m10/PX-210/px210-e2e.log",
+      "bytes": 1450,
+      "sha256": "24d78f17647671c105021b37c3db41a58bdd6d238a9425911028c7de260b608b"
+    },
+    {
+      "path": "evidence/m10/PX-218/TASK_CARD.md",
+      "bytes": 6580,
+      "sha256": "b1a9205a04b95bbbe48bc3611eda34b16dc1228c126b0f10e3d5340c85e1d88d"
+    },
+    {
+      "path": "evidence/m10/PX-218/evidence.json",
+      "bytes": 3509,
+      "sha256": "378a55c575919f5a39ad25f69aa09df63ae6c386136e6fb8c1dfee1918b00cc7"
+    },
+    {
+      "path": "evidence/m10/PX-218/mutation-check-2026-11-11.txt",
+      "bytes": 980,
+      "sha256": "803c1f4de108c1d8e047e925b4148e32e55cc47dcd4b5fc2cae2e113f081caf2"
+    },
+    {
+      "path": "evidence/m10/PX-218/px218-core.log",
+      "bytes": 699,
+      "sha256": "badb27aa7801547b970953e3ed29891efbfa6974365a379d00ea1b679091496b"
+    },
+    {
+      "path": "evidence/m10/PX-218/px218-digest.log",
+      "bytes": 509,
+      "sha256": "f518ef6a5c1bc0eb87d1b2d0eeb897474b78d06723bc22dc983f3b998b9b47e6"
     },
     {
       "path": "evidence/m10/graph-audit-2026-11-07/AUDIT.md",
