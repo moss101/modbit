@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Review: pull requests and findings</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="modbit.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="mb app">
+  <aside class="side">
+    <div class="sbar"><button class="ibtn" aria-label="Hide sidebar"><span class="ms" aria-hidden="true">view_sidebar</span></button><span class="grow"></span><button class="ibtn" aria-label="Back"><span class="ms" aria-hidden="true">arrow_back</span></button><button class="ibtn" aria-label="Forward"><span class="ms" aria-hidden="true">arrow_forward</span></button></div>
+    <nav class="snav" aria-label="Main">
+      <button class="nv"><span class="ms" aria-hidden="true">add</span>New task<span class="kbd">⌘N</span></button>
+      <button class="nv"><span class="ms" aria-hidden="true">inbox</span>Inbox<span class="badge warn">2</span></button>
+      <button class="nv"><span class="ms" aria-hidden="true">schedule</span>Automations</button>
+      <button class="nv on"><span class="ms" aria-hidden="true">rate_review</span>Review</button>
+      <button class="nv"><span class="ms" aria-hidden="true">tune</span>Customize</button>
+    </nav>
+    <div class="shd">Tasks<span class="grow"></span><button class="ibtn" aria-label="Search tasks"><span class="ms" aria-hidden="true">search</span></button><button class="ibtn" aria-label="Group, sort and filter"><span class="ms" aria-hidden="true">filter_list</span></button><button class="ibtn" aria-label="More"><span class="ms" aria-hidden="true">more_horiz</span></button></div>
+    <div class="slist">
+      <button class="grp">modbit<span class="ms" aria-hidden="true">expand_more</span></button>
+      <button class="srow"><span class="t">Wire the updater signing step into the release pipeline</span><span class="ms fill c-warn s16" role="img" aria-label="Needs you">error</span></button>
+      <button class="srow"><span class="t">Clean the build output</span><span class="ms fill c-warn s16" role="img" aria-label="Needs you">error</span></button>
+      <button class="srow"><span class="t">Add glm-5.3-flash to the price catalog</span><span class="ms c-acc s16 spin" role="img" aria-label="Working">progress_activity</span></button>
+      <button class="srow"><span class="t">Fix accounting reconciliation in the px133 rerun</span><span class="ms c-ok s16" role="img" aria-label="Ready to review">merge</span><span class="n">5</span><span class="udot"></span></button>
+      <button class="srow"><span class="t">Stabilise ax_fixture on macOS GUI sessions</span><span class="ms c-ok s16" role="img" aria-label="Ready to review">merge</span><span class="n">2</span></button>
+      <button class="grp">dossier<span class="ms" aria-hidden="true">expand_more</span></button>
+      <button class="srow"><span class="t">Draft the SBOM decision record</span><span class="udot idle"></span></button>
+      <button class="grp">Archived · 14<span class="ms" aria-hidden="true">chevron_right</span></button>
+    </div>
+    <div class="sfoot"><span class="avatar">M</span><span>mohsin</span><span class="live"><i></i>Core</span><span class="grow"></span><button class="ibtn" aria-label="Help"><span class="ms" aria-hidden="true">help</span></button><button class="ibtn" aria-label="Settings"><span class="ms" aria-hidden="true">settings</span></button></div>
+  </aside>
+
+  <main class="card main">
+    <header class="pagehead"><h2>Review</h2><div class="segctl" style="margin-left:12px"><button class="on">Open · 3</button><button>Merged</button><button>All</button></div><span class="grow"></span><button class="chip"><span class="ms" aria-hidden="true">folder_open</span>modbit<span class="ms s16" aria-hidden="true">expand_more</span></button></header>
+    <div class="pagebody" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:24px;align-content:start">
+      <div>
+        <p class="label" style="margin:0 0 8px 2px">Pull requests from tasks</p>
+        <div class="list-card">
+          <div class="hrow" style="background:var(--hover)"><span class="ms c-ok" aria-hidden="true">merge</span><div class="tt"><b>#171 Match legs on attempt and leg</b><span>Checks 3 of 3 passed · 1 comment · 3 findings</span></div><span class="mono" style="font-size:12px"><span class="add">+61</span> <span class="del">−18</span></span></div>
+          <div class="hrow"><span class="ms c-bad" aria-hidden="true">merge</span><div class="tt"><b>#166 Flaky-test sweep fixes</b><span>1 check failing · auto-fix is working on it</span></div><span class="ms c-acc s16 spin" aria-hidden="true">progress_activity</span></div>
+          <div class="hrow"><span class="ms c-dim" aria-hidden="true">merge</span><div class="tt"><b>#172 Price glm-5.3-flash in the catalog</b><span>Draft · the task is still running</span></div><span class="tagx">Draft</span></div>
+        </div>
+
+        <p class="label" style="margin:26px 0 8px 2px">Local changes not in a pull request</p>
+        <div class="list-card">
+          <div class="hrow"><span class="ms" aria-hidden="true">difference</span><div class="tt"><b>Wire the updater signing step</b><span>task/updater-signing · own worktree</span></div><span class="mono" style="font-size:12px"><span class="add">+11</span> <span class="del">−1</span></span><button class="btn soft sm">Review</button></div>
+        </div>
+      </div>
+
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><p class="label" style="margin:0 0 0 2px">Findings on #171</p><span class="grow"></span><button class="btn ghost sm">Run the review again</button><button class="btn pri sm">Apply all fixes</button></div>
+        <div class="list-card">
+          <div class="hrow" style="align-items:flex-start">
+            <span class="tagx bad" style="margin-top:2px">Bug</span>
+            <div class="tt"><b style="white-space:normal">Summing two legs hides the second one in the report</b><span style="white-space:normal;line-height:18px">ledger.rs:144 · merge_legs returns one combined leg, so the px133 summary still shows one row where there were two.</span>
+              <div style="display:flex;gap:6px;margin-top:8px"><button class="btn soft sm">Walk through in diff</button><button class="btn soft sm">Fix this one</button><button class="btn ghost sm">Dismiss</button></div></div>
+          </div>
+          <div class="hrow" style="align-items:flex-start">
+            <span class="tagx warn" style="margin-top:2px">Risk</span>
+            <div class="tt"><b style="white-space:normal">The new set key changes iteration order</b><span style="white-space:normal;line-height:18px">ledger.rs:119 · a tuple key sorts differently, and one test compares the output as a list.</span>
+              <div style="display:flex;gap:6px;margin-top:8px"><button class="btn soft sm">Walk through in diff</button><button class="btn soft sm">Fix this one</button><button class="btn ghost sm">Dismiss</button></div></div>
+          </div>
+          <div class="hrow" style="align-items:flex-start">
+            <span class="tagx" style="margin-top:2px">Tidy</span>
+            <div class="tt"><b style="white-space:normal">The fixture repeats data already in the px133 results</b><span style="white-space:normal;line-height:18px">px133_legs.json · could read the two legs from the existing summary instead.</span>
+              <div style="display:flex;gap:6px;margin-top:8px"><button class="btn soft sm">Walk through in diff</button><button class="btn soft sm">Fix this one</button><button class="btn ghost sm">Dismiss</button></div></div>
+          </div>
+        </div>
+
+        <p class="label" style="margin:26px 0 8px 2px">Comments from people</p>
+        <div class="list-card">
+          <div class="hrow" style="align-items:flex-start"><span class="avatar" style="margin-top:1px">M</span><div class="tt"><b>moss101 <span class="c-dim" style="font-weight:400">· ledger.rs:144</span></b><span style="white-space:normal;line-height:18px">Keep both legs in the report, please.</span></div><button class="btn soft sm">Address</button></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
