@@ -8,7 +8,7 @@
  * viewport (plus an overscan) are in the document, so a thousand tasks cost the same as twenty.
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
-import { Badge, Icon, IconButton, Menu, StatusDot, type MenuItem } from "@modbit/ui";
+import { Badge, Button, Icon, IconButton, Menu, StatusDot, type MenuItem } from "@modbit/ui";
 import { densityMetrics, type Density } from "@modbit/design-tokens";
 import type { AgentHeaderView, ConversationSearchView } from "../../shared/conversation-types.ts";
 import type { ProjectInfo } from "../../shared/project-types.ts";
@@ -324,7 +324,10 @@ export function AgentListView(p: AgentListViewProps) {
               ))}
             </select>
           </label>
-          <IconButton label={f > 0 ? `Filters, ${f} active` : "Filters"} icon={<IconFilter />} pressed={panelOpen} onClick={() => setPanelOpen((o) => !o)} aria-expanded={panelOpen} aria-controls="agents-filter-panel" data-testid="agents-filter-toggle" />
+          {/* Words, not a second funnel: the Tasks head's list options already carry that glyph. */}
+          <Button size="sm" variant="ghost" aria-label={f > 0 ? `Filters, ${f} active` : "Filters"} aria-pressed={panelOpen} onClick={() => setPanelOpen((o) => !o)} aria-expanded={panelOpen} aria-controls="agents-filter-panel" data-testid="agents-filter-toggle">
+            Filters
+          </Button>
           {f > 0 && <Badge tone="accent">{f}</Badge>}
           {p.viewActions && <ViewsMenu v={p.viewActions} now={now} />}
         </div>

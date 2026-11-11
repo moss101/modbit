@@ -9,6 +9,8 @@ export interface AgentRegionProps {
   taskCount: number;
   attentionCount: number;
   onNewTask: () => void;
+  /** Home (the new-task composer) is what the centre shows: the New task row is the current one. */
+  homeOpen?: boolean | undefined;
   onExpand: () => void;
   onToggleAgentList: () => void;
   canGoBack: boolean;
@@ -49,13 +51,15 @@ interface NavEntry {
   disabled?: boolean | undefined;
   shortcut?: string | undefined;
   count?: number | undefined;
+  /** The row's page is what the centre shows (New task while home is open). */
+  current?: boolean | undefined;
 }
 
 /** One navigation row (32 px, 30 in Compact: `--mb-row`): an icon and a label, the same command and test id it has always had. */
-function NavRow({ testId, icon, label, onClick, pressed, disabled, shortcut, count }: NavEntry) {
+function NavRow({ testId, icon, label, onClick, pressed, disabled, shortcut, count, current }: NavEntry) {
   return (
     <li>
-      <button type="button" className="agent-nav-row" data-testid={testId} onClick={onClick} disabled={disabled ?? false} {...(pressed === undefined ? {} : { "aria-pressed": pressed })}>
+      <button type="button" className="agent-nav-row" data-testid={testId} onClick={onClick} disabled={disabled ?? false} {...(pressed === undefined ? {} : { "aria-pressed": pressed })} {...(current ? { "aria-current": "page" as const } : {})}>
         <Icon name={icon} />
         <span className="agent-nav-label">{label}</span>
         {shortcut && (
@@ -138,7 +142,7 @@ export function AgentRegion(p: AgentRegionProps) {
     );
   }
   const mac = typeof navigator !== "undefined" && /Mac/.test(navigator.platform);
-  const entries: NavEntry[] = [{ testId: "agents-new-task", icon: "plus", label: "New task", onClick: onNewTask, shortcut: mac ? "⌘N" : "Ctrl+N" }];
+  const entries: NavEntry[] = [{ testId: "agents-new-task", icon: "plus", label: "New task", onClick: onNewTask, shortcut: mac ? "⌘N" : "Ctrl+N", current: p.homeOpen ?? false }];
   if (p.onToggleInbox) entries.push({ testId: "open-inbox", icon: "shield-check", label: "Inbox", onClick: p.onToggleInbox, pressed: p.inboxOpen ?? false, count: attentionCount });
   if (p.onToggleAutomations) entries.push({ testId: "open-automations", icon: "clock", label: "Automations", onClick: p.onToggleAutomations, pressed: p.automationsOpen ?? false, disabled: p.automationsDisabled });
   if (p.onToggleCustomize) entries.push({ testId: "open-customize", icon: "blocks", label: "Customize", onClick: p.onToggleCustomize, pressed: p.customizeOpen ?? false, disabled: p.customizeDisabled });

@@ -182,7 +182,7 @@ export function Gallery() {
       <section aria-labelledby="g-agents" data-testid="gallery-agent-list">
         <h2 id="g-agents">Agent list</h2>
         <p className="meta">One row of every status class the Core serves: glyph and words, the changed files and the unread dot of a task ready for review, the mark and the reason of a task that needs the person, a child task under its parent, a pin. Fixtures only.</p>
-        <div className="gallery-shell-box gallery-list-box" style={{ width: 288, height: 800 }}>
+        <div className="gallery-shell-box gallery-list-box" style={{ width: 288, height: 960 }}>
           <AgentListView
             headers={AGENT_HEADER_FIXTURES}
             parents={AGENT_PARENT_FIXTURES}

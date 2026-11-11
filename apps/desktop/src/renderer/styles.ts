@@ -235,7 +235,7 @@ input.settings-toggle.settings-toggle::after, input.settings-toggle.settings-tog
 .splitter:hover::after, .splitter:focus-visible::after, .splitter:active::after { opacity: 1; }
 .topbar-spacer { flex: 1 1 0; }
 .agent-nav-row.agent-nav-row:hover:not(:disabled) { background: var(--color-hover); color: var(--color-foreground); }
-.agent-nav-row.agent-nav-row[aria-pressed="true"] { background: var(--color-selected); color: var(--color-foreground); }
+.agent-nav-row.agent-nav-row[aria-pressed="true"], .agent-nav-row.agent-nav-row[aria-current="page"] { background: var(--color-selected); color: var(--color-foreground); }
 .agent-nav-row.agent-nav-row:active:not(:disabled) { transform: none; }
 .agent-nav-label { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .agent-nav-key { flex: none; font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); }

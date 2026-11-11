@@ -490,6 +490,7 @@ export function Shell({ app }: { app: AppState }) {
             taskCount={tasks.length}
             attentionCount={cols.needsAttention.length}
             onNewTask={() => actions.focusNewTask()}
+            homeOpen={!actions.canGoBack()}
             onExpand={() => actions.toggleAgentList()}
             onToggleAgentList={() => actions.toggleAgentList()}
             canGoBack={actions.canGoBack()}
