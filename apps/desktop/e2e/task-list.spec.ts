@@ -112,6 +112,9 @@ async function populate(name: string): Promise<Populated> {
   await toNewTask(page);
   await page.mouse.move(900, 400);
   await expect(page.getByTestId("agent-row")).toHaveCount(6);
+  // The row's reason is the Core's attention view, which the app re-reads once the tasks' events pause (use-app.ts): until that
+  // read lands the row says the task's own next action. The list is measured once the Core's words are on it.
+  await expect(agentRow(page, attention).getByTestId("agent-facts")).toContainText("asks for a", { timeout: 30_000 });
   return { app, page, server: model.server, repoA, repoB, ids: { draft1, draft2, ready, attention, parent, child } };
 }
 
