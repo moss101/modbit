@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { registerComposerHandlers, requireInputId, requireMode, requirePreferencePatch, requireSkillNames, requireText, slashView } from "./composer-ipc.ts";
+import { ProtocolError, RejectedError } from "@modbit/ide-adapter-core";
+import { registerComposerHandlers, requireInputId, requireMode, requirePreferencePatch, requireSkillNames, requireText, slashView, suggestionRefusal } from "./composer-ipc.ts";
 
 const SID = "a".repeat(32);
 const TID = "b".repeat(32);
@@ -40,6 +41,9 @@ test("the composer handlers reject malformed arguments before anything reaches t
   await refused("a send behaviour that does not exist", "composer:setSendBehavior", SID, TID, "ALWAYS", "");
   await refused("a send-now behaviour that does not exist", "composer:setSendBehavior", SID, TID, "", "KILL");
   await refused("a side question with no text", "composer:sideQuestion", TID, "");
+  await refused("a suggestion for a session id that is not hex", "composer:suggest", "nope", TID);
+  await refused("a suggestion for a task id that is not hex", "composer:suggest", SID, "../etc");
+  await refused("a suggestion with no task", "composer:suggest", SID);
   await refused("a task id that is not hex", "composer:queue", "nope");
   await refused("attach bytes with no bytes", "composer:attachBytes", SID, TID, "a.png", "not bytes", "");
   await refused("attach bytes over the cap", "composer:attachBytes", SID, TID, "a.png", new Uint8Array(3 * 1024 * 1024 + 2), "");
@@ -50,7 +54,39 @@ test("the composer handlers reject malformed arguments before anything reaches t
 
 test("every composer channel is registered", () => {
   const h = harness();
-  for (const c of ["posture", "setMode", "setPreference", "variants", "slash", "queue", "queueInput", "editQueued", "removeQueued", "reorderQueued", "sendNow", "interrupt", "sendBehavior", "setSendBehavior", "sideQuestion", "attachPath", "attachBytes"]) assert.ok(h.channels.includes(`composer:${c}`), c);
+  for (const c of ["posture", "setMode", "setPreference", "variants", "slash", "queue", "queueInput", "editQueued", "removeQueued", "reorderQueued", "sendNow", "interrupt", "sendBehavior", "setSendBehavior", "sideQuestion", "suggest", "attachPath", "attachBytes"]) assert.ok(h.channels.includes(`composer:${c}`), c);
+});
+
+test("PX-210: a suggestion is one typed Core command under the session's lease; the Core's refusal is an answer, any other failure is an error", async () => {
+  const calls: string[] = [];
+  let answer: () => Promise<unknown> = () => Promise.reject(new Error("unset"));
+  const handlers = new Map<string, (...a: unknown[]) => unknown>();
+  registerComposerHandlers({
+    handle: (c, fn) => void handlers.set(c, fn),
+    client: () => ({ suggestNextPrompt: (sid: string, tid: string) => (calls.push(`suggest ${sid} ${tid}`), answer()) }) as never,
+    sessionId: (v) => v as string,
+    taskId: (v) => v as string,
+    lease: async (_c, sid) => void calls.push(`lease ${sid}`),
+    thumbnail: () => null,
+    readFile: () => ({ name: "x", bytes: new Uint8Array(0) }),
+  });
+  const suggest = () => Promise.resolve().then(() => handlers.get("composer:suggest")!(SID, TID));
+
+  answer = () => Promise.resolve({ text: "Run the tests again", taskOffset: 9007199254740993n, inputTokens: 400n, outputTokens: 9n, costKnown: true, costMinor: 2n, endpoint: "openai", model: "m", snapshotMessages: 8, usageOffset: 9007199254740995n });
+  assert.deepEqual(await suggest(), { text: "Run the tests again", refusal: "", reason: "", taskOffset: "9007199254740993", costKnown: true, costMinor: "2" });
+  assert.deepEqual(calls, [`lease ${SID}`, `suggest ${SID} ${TID}`], "the lease first, then the one command, named for its session");
+
+  for (const code of ["TURN_RUNNING", "INPUT_QUEUED", "BUDGET_EXHAUSTED", "BUDGET_WOULD_EXCEED", "COST_UNMETERED", "SUGGESTIONS_OFF", "TASK_ENDED", "STALE_LEASE"]) {
+    answer = () => Promise.reject(new RejectedError(code, "the Core's own words"));
+    assert.deepEqual(await suggest(), { text: "", refusal: code, reason: "the Core's own words", taskOffset: "0", costKnown: false, costMinor: "0" }, code);
+  }
+  // A lost Core or a bug is not "no suggestion": it is reported as the failure it is.
+  answer = () => Promise.reject(new ProtocolError("DISCONNECTED", "client closed"));
+  await assert.rejects(suggest(), /DISCONNECTED/);
+  answer = () => Promise.reject(new TypeError("boom"));
+  await assert.rejects(suggest(), /boom/);
+  assert.equal(suggestionRefusal(new Error("TURN_RUNNING: looks like one")), null, "only the client's rejection type is the Core's answer");
+  assert.deepEqual(suggestionRefusal(new RejectedError("INPUT_QUEUED", "1 queued input(s) are the task's next message")), { code: "INPUT_QUEUED", reason: "1 queued input(s) are the task's next message" });
 });
 
 test("argument validators accept what they should", () => {

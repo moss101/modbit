@@ -127,6 +127,8 @@ const BRIDGE_ALLOW_LIST = [
   "terminalList", "terminalAttach", "terminalAck", "terminalDetach", "terminalInput", "terminalResize", "terminalWrite", "terminalKill", "terminalHistory", "onTerminalFrame", "listWorkspaceDir", "readWorkspaceFile", "effectReceipts",
   // REQ-PX-054..056 (the composer): mode, preference, queue, interrupt, send behaviour, slash inventory, model variants and the side question. Added on purpose; each is one typed Core command or read that main validates (composer-ipc.ts).
   "composerPosture", "composerSetMode", "composerSetPreference", "composerVariants", "composerSlash", "composerQueue", "composerQueueInput", "composerEditQueued", "composerRemoveQueued", "composerReorderQueued", "composerSendNow", "composerInterrupt", "composerSendBehavior", "composerSetSendBehavior", "composerSideQuestion",
+  // REQ-PX-210 (next-prompt suggestion). Added on purpose: one typed Core command main validates (composer-ipc.ts); the Core decides whether the call is made and charges the task.
+  "composerSuggest",
   // REQ-PX-057 / 058 / 060 / 062 (approval stack, run modes, context accounting, checkpoints). Added on purpose; each is a typed request main validates (control-ipc.ts, control-args.ts).
   "dockApprovals", "allowAlways", "runMode", "setRunMode", "allowRules", "addAllowRule", "revokeAllowRule", "contextAccounting", "setTaskBudgets", "checkpoints", "previewRestore", "restoreCheckpoint", "forkFromTurn",
   // REQ-PX-055 / 058 (Wave 6): the agent's mode proposal and the approvals the Core closed as expired. Added on purpose; each is a typed request main validates (control-ipc.ts, control-args.ts).

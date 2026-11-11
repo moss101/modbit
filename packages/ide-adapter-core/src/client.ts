@@ -213,6 +213,9 @@ import {
 } from "@modbit/surface-protocol";
 import {
   AskSideQuestionSchema,
+  SuggestNextPromptSchema,
+  NextPromptSuggestionSchema,
+  type NextPromptSuggestion,
   EditQueuedInputSchema,
   GetSendBehaviorSchema,
   InterruptAcceptedSchema,
@@ -1078,6 +1081,18 @@ export class CoreClient {
   async askSideQuestion(taskId: string, text: string): Promise<SideAnswer> {
     const ack = await this.command("AskSideQuestion", toBinary(AskSideQuestionSchema, create(AskSideQuestionSchema, { taskId: { value: unhex(taskId) }, text })));
     return fromBinary(SideAnswerSchema, ack.result);
+  }
+
+  /**
+   * One suggested next message for a task whose turn has ended with nothing queued (REQ-PX-210): one bounded model call over a snapshot,
+   * charged to the task, that appends nothing to the task's log. The Core refuses with a typed code (TURN_RUNNING, INPUT_QUEUED,
+   * BUDGET_EXHAUSTED, BUDGET_WOULD_EXCEED, COST_UNMETERED, SUGGESTIONS_OFF, ...) instead of calling when one is not wanted or not affordable.
+   * Each call is a new command: a suggestion is kept nowhere, so a repeated command id is refused rather than replayed.
+   */
+  async suggestNextPrompt(sessionId: string, taskId: string): Promise<NextPromptSuggestion> {
+    const payload = toBinary(SuggestNextPromptSchema, create(SuggestNextPromptSchema, { taskId: { value: unhex(taskId) } }));
+    const ack = await this.command("SuggestNextPrompt", payload, undefined, this.leases.get(sessionId), sessionId);
+    return fromBinary(NextPromptSuggestionSchema, ack.result);
   }
 
   /** The variants each model offers and whether it may be pinned (PX-056); the picker lists them and computes nothing. */

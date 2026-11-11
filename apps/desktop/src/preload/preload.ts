@@ -5,7 +5,7 @@
 import { contextBridge, ipcRenderer, webUtils } from "electron";
 import type { AgentHeaderView, AgentHeadersView, ConversationSearchView, OpenStreamView, PendingApprovalView, SearchOptions, TranscriptOptions, TranscriptPageView } from "../shared/conversation-types.ts";
 import type { TerminalFrameJson, TerminalViewJson } from "../main/terminal-host.ts";
-import type { AttachmentResult, InterruptView, ModeChangedView, ModelCatalogView, PostureView, PreferencePatch, PreferenceSetView, QueuedChangeView, QueueView, SendBehaviorState, SideAnswerView, SlashInventoryView, TaskModeId, InputModeId } from "../shared/composer-types.ts";
+import type { AttachmentResult, InterruptView, ModeChangedView, ModelCatalogView, PostureView, PreferencePatch, PreferenceSetView, QueuedChangeView, QueueView, SendBehaviorState, SideAnswerView, SlashInventoryView, SuggestionView, TaskModeId, InputModeId } from "../shared/composer-types.ts";
 import type { AutoDetail, AutoEnableInput, AutoKillReport, AutoList, AutoRepoLoad, AutoRun, AutoRunInput, AutoRunStarted, AutoValidation, AutoView } from "../shared/automation-types.ts";
 import type { ApplyAckInfo, ApplyInputArgs, CleanupReportInfo, ProjectChangedInfo, ProjectInput, ProjectListInfo, ProjectPatch, WorktreeListInfo, WorktreeRemovalInfo } from "../shared/project-types.ts";
 import type { CustomizeHooksView, HookEnabledInfo, MemoryForgetInfo, MemoryPromoteInfo, MemoryRememberInfo, MemoryShareInfo, MemoryView, ImportReportInfo, SkillsView, SkillTrustInfo } from "../shared/customize-types.ts";
@@ -218,6 +218,8 @@ export interface TaskEconomicsSummary {
   prefixCacheMisses: number;
   compactionEpochs: number;
   contextTokensInjected: string;
+  /** REQ-PX-210: of modelCalls, the next-prompt suggestion calls charged to the task. */
+  suggestionCalls: number;
 }
 
 /** One thing a person must act on (REQ-EV-0151 / 0275), from the Core. */
@@ -452,6 +454,8 @@ export interface ModbitBridge {
   composerSendBehavior(taskId: string): Promise<SendBehaviorState>;
   composerSetSendBehavior(sessionId: string, taskId: string, whileRunning: string, sendNow: string): Promise<SendBehaviorState>;
   composerSideQuestion(taskId: string, text: string): Promise<SideAnswerView>;
+  /** REQ-PX-210: one suggested next message for a task whose turn has ended with nothing queued, or the Core's refusal code. The Core charges the task; nothing is sent for the person. */
+  composerSuggest(sessionId: string, taskId: string): Promise<SuggestionView>;
   reviewBundle(taskId: string): Promise<ReviewBundleView>;
   codeView(taskId: string, path: string, expectedFileRevision?: string): Promise<CodeView>;
   decideReview(sessionId: string, taskId: string, decision: "ACCEPT" | "RETURN", rejected: { path: string; index: number }[], note: string, expectedWorkspaceRevision: string): Promise<{ taskState: string; commit: string; reverted: string[]; workspaceRevision: string }>;
@@ -661,6 +665,7 @@ const bridge: ModbitBridge = {
   composerSendBehavior: (taskId) => ipcRenderer.invoke("composer:sendBehavior", taskId),
   composerSetSendBehavior: (sessionId, taskId, whileRunning, sendNow) => ipcRenderer.invoke("composer:setSendBehavior", sessionId, taskId, whileRunning, sendNow),
   composerSideQuestion: (taskId, text) => ipcRenderer.invoke("composer:sideQuestion", taskId, text),
+  composerSuggest: (sessionId, taskId) => ipcRenderer.invoke("composer:suggest", sessionId, taskId),
   reviewBundle: (taskId) => ipcRenderer.invoke("review:bundle", taskId),
   codeView: (taskId, path, expectedFileRevision) => ipcRenderer.invoke("review:codeView", taskId, path, expectedFileRevision ?? ""),
   decideReview: (sessionId, taskId, decision, rejected, note, expectedWorkspaceRevision) => ipcRenderer.invoke("review:decide", sessionId, taskId, decision, rejected, note, expectedWorkspaceRevision),

@@ -47,6 +47,11 @@ export interface AgentHeaderView {
   projectId?: string;
   /** The checkout a task in a worktree of its own came from (PX-118); "" or absent when the task works in its workspace root itself. */
   checkoutRoot?: string;
+  /**
+   * The last non-empty line of the assistant's latest finished message (PX-218), for the row's preview card: the Core's words, redacted as
+   * the transcript is, at most 200 characters (a longer line ends in an ellipsis). "" or absent when the task has not answered.
+   */
+  lastLine?: string;
 }
 
 export interface AgentHeadersView {
