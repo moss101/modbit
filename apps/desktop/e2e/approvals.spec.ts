@@ -114,10 +114,19 @@ test("PX-058: three pending approvals form a deck, oldest first, each decided on
   try {
     await setContentSize(app, page, 1280, 800);
     const ids: string[] = [];
-    for (let i = 0; i < 3; i++) ids.push(await runTask(page, goals[i]!, repos[i]!));
+    // The deck is ordered by when each approval was requested, not by when its task started: three first turns in flight at
+    // once finish in any order (the hosted Windows runner saw the third task ask before the second, so the second card was
+    // the third agent's and the test decided the wrong ones). Each task asks before the next one starts, so the order the
+    // deck must show is known; the three still wait together. Wait on what the Core lists, not on a clock.
+    const pendingTasks = (s: string) => page.evaluate((x) => window.modbit.dockApprovals(x).then((l) => l.map((a) => a.taskId)), s);
+    for (let i = 0; i < 3; i++) {
+      ids.push(await runTask(page, goals[i]!, repos[i]!));
+      const s = await sessionOf(page);
+      await expect.poll(() => pendingTasks(s), { timeout: 120_000 }).toContain(ids[i]!);
+    }
     const sid = await sessionOf(page);
-    // Wait on what the Core lists, not on a clock.
     await expect.poll(() => page.evaluate((s) => window.modbit.dockApprovals(s).then((l) => l.length), sid), { timeout: 120_000 }).toBe(3);
+    const taskOf = async (approvalId: string) => (await page.evaluate((s) => window.modbit.dockApprovals(s), sid)).find((a) => a.approvalId === approvalId)?.taskId;
     await openConversation(page, ids[0]!);
     await expect(page.getByTestId("approval-count")).toContainText("3 pending");
     // The open task's approval is surfaced first; the others follow, oldest first.
@@ -128,6 +137,7 @@ test("PX-058: three pending approvals form a deck, oldest first, each decided on
     await expect(page.getByTestId("approval-count")).toContainText("showing 2 of 3");
     await expect(page.getByTestId("approval-foreign")).toContainText("deck");
     const second = (await page.getByTestId("approval-card").getAttribute("data-approval-id"))!;
+    expect(await taskOf(second), "oldest first: the second card is the second agent's").toBe(ids[1]);
     await accessible(page, "a deck of three approvals, another agent's card showing");
     // Another agent's card is not decided by a bare key: Enter does nothing, Escape does nothing.
     await page.locator("body").click({ position: { x: 5, y: 5 } });
@@ -143,6 +153,8 @@ test("PX-058: three pending approvals form a deck, oldest first, each decided on
     const own = (await page.getByTestId("approval-card").getAttribute("data-approval-id"))!;
     const third = left.find((id) => id !== own)!;
     expect(third, "the third agent's approval is the one left").toBeTruthy();
+    expect(await taskOf(third), "the approval left is the third agent's").toBe(ids[2]);
+    expect(await taskOf(own), "the open task's own card").toBe(ids[0]);
     await page.getByTestId("approval-card").focus();
     await page.keyboard.press("Enter");
     await expect.poll(() => remotes(repos[0]!), { timeout: 90_000 }).toEqual(["r1"]);
