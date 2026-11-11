@@ -1910,4 +1910,82 @@ mod tests {
             "git grep x"
         );
     }
+
+    /// PX-218 on a real store: a message finished by a Core older than the
+    /// field has its line only in its text object. The header reads that
+    /// object once, holds the line to the bound, and does not read it again;
+    /// a record that carries its line is served without reading any object.
+    #[test]
+    fn the_last_line_of_a_record_older_than_the_field_is_read_from_its_object_once() {
+        use modbit_domain::event::{Actor, AggregateType};
+        use modbit_domain::stream::LAST_LINE_MAX_CHARS;
+        use modbit_domain::{RunId, RunStepId, SessionId, StreamId, TaskId, TenantId, TurnId};
+        use modbit_event_store::{AppendRequest, NewEvent};
+
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = EventStore::open(dir.path()).unwrap();
+        let session = SessionId::new();
+        let mut finish = |task: TaskId, text: &str, line: Option<&str>| {
+            let id = StreamId::new();
+            let hash = store.objects().put(text.as_bytes()).unwrap();
+            let delta = json!({
+                "event_type": "AssistantTextDelta", "stream_id": id, "kind": "TEXT", "sequence": 1,
+                "run_id": RunId::new(), "turn_id": TurnId::new(), "step_id": RunStepId::new(),
+                "text": "x", "provenance": "MODEL_OUTPUT", "retention": "COLLAPSIBLE_ON_COMPLETE"
+            });
+            let mut done = json!({
+                "event_type": "AssistantMessageCompleted", "stream_id": id, "kind": "TEXT",
+                "delta_count": 1, "text_ref": {"object_hash": hash, "byte_length": text.len()},
+                "content_hash": "00"
+            });
+            if let Some(line) = line {
+                done["last_line"] = json!(line);
+            }
+            store
+                .append(AppendRequest {
+                    tenant_id: TenantId::from_bytes([7; 16]),
+                    session_id: session,
+                    task_id: Some(task),
+                    run_id: None,
+                    turn_id: None,
+                    step_id: None,
+                    aggregate_type: AggregateType::AssistantStream,
+                    aggregate_id: *id.as_bytes(),
+                    expected_sequence: None,
+                    events: vec![
+                        NewEvent::new("AssistantTextDelta", delta, Actor::Core("test".into())),
+                        NewEvent::new(
+                            "AssistantMessageCompleted",
+                            done,
+                            Actor::Core("test".into()),
+                        ),
+                    ],
+                })
+                .unwrap();
+        };
+        let (old, new, silent) = (TaskId::new(), TaskId::new(), TaskId::new());
+        let long = "é".repeat(LAST_LINE_MAX_CHARS + 40);
+        finish(old, &format!("an old answer\n{long}\n\n"), None);
+        finish(
+            new,
+            "a new answer\nits own last line",
+            Some("its own last line"),
+        );
+        let digests = store.task_digests(&session).unwrap();
+        let of = |t: TaskId| digests.iter().find(|d| d.task_id == t);
+
+        // A record with its line: no object is read.
+        let before = store.objects().reads();
+        assert_eq!(last_line_of(&store, of(new).unwrap()), "its own last line");
+        assert_eq!(store.objects().reads(), before);
+        // An old record: its object is read, once, and the line is bounded.
+        let line = last_line_of(&store, of(old).unwrap());
+        assert_eq!(line.chars().count(), LAST_LINE_MAX_CHARS);
+        assert!(line.ends_with('\u{2026}') && long.starts_with(line.trim_end_matches('\u{2026}')));
+        assert_eq!(store.objects().reads(), before + 1);
+        assert_eq!(last_line_of(&store, of(old).unwrap()), line);
+        assert_eq!(store.objects().reads(), before + 1, "read again");
+        // A task that has not answered has none.
+        assert!(of(silent).is_none());
+    }
 }
