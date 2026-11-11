@@ -834,6 +834,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "CompensateEffect",
                     "UndoToolCall",
                     "AskSideQuestion",
+                    "SuggestNextPrompt",
                     "ListQuestions",
                     "RespondToQuestion",
                     "IngestAttachment",
@@ -1622,6 +1623,9 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         // write to steer the agent — the same class of decision as trusting
         // the repository.
         "SetTaskBudgets" => "task.author",
+        // REQ-PX-210: a next-prompt suggestion spends the task's budget on
+        // the person's behalf, so it is the author's to ask for.
+        "SuggestNextPrompt" => "task.author",
         // REQ-PX-049: quitting is the person's act, held by the client that
         // acts for one.
         "EndSession" => "task.author",
@@ -6494,6 +6498,10 @@ pub(crate) async fn handle_command_as(
         }
         "SetTaskBudgets" => {
             crate::budgets::set(core, cid, &env, record("SetTaskBudgets"), actor).await
+        }
+        // REQ-PX-210: one suggested next message, charged to the task.
+        "SuggestNextPrompt" => {
+            crate::suggest::handle(core, cid, &env, record("SuggestNextPrompt"), actor).await
         }
         "ListSkills" | "TrustSkill" | "UntrustSkill" => {
             crate::skills::handle(core, cid, &env, actor).await

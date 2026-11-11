@@ -1,0 +1,1535 @@
+
+Running 28 tests using 1 worker
+
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 17ms
+[electron] Error occurred in handler for 'approval:resolve': RejectedError: INTENT_MISMATCH: the approval binds intent c04f2abb0bb2a956cd98f16358300adeae6c7208c2081ed23eb6373c3e16a6bf and the decision names 0000000000000000000000000000000000000000000000000000000000000000; reload the approval before deciding
+    at _CoreClient.dispatch (<repo>/apps/desktop/dist/main/main.cjs:3886:61)
+    at Socket.<anonymous> (<repo>/apps/desktop/dist/main/main.cjs:3862:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'INTENT_MISMATCH'
+}
+[electron] modbit-desktop: core restart scheduled: connection lost: connection closed
+[electron] Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:11281:19
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'conversation:markRead': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:7948:17
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] modbit-core: recovery complete: boot_generation=2 events_verified=45 aggregates=11 projections_rebuilt=false sessions=1 tasks=1 in 8ms
+[electron] modbit-core: suspended 1 running task(s) after restart
+[electron] modbit-core: reattached to the terminal broker a previous Core left alive
+[electron] Debugger ending on ws://127.0.0.1:59260/89724e68-1227-4e52-9516-adda9cd58c4d
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'modeproposals:list': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'accounting:get': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'task:economics': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'approvals:dock': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:7916:37
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9118:49
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:7923:26
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9506:41
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9501:28
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'checkpoints:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9597:51
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] modbit-core: connection ended: io: Broken pipe (os error 32)
+modbit-core: supervising client closed its pipe; exiting
+  ✓   1 e2e/approvals.spec.ts:42:1 › PX-058: a pending effect docks a card with the exact intent and the Core's reason; a stale hash is refused; it survives a reload and a Core kill; Run executes it once (8.4s)
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+[electron] Debugger ending on ws://127.0.0.1:59312/5bf2b2ee-b1cf-45cf-9d48-540e0e0e1ad1
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:11281:19
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'checkpoints:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9597:51
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'composer:queue': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:8167:23
+    at <repo>/apps/desktop/dist/main/main.cjs:11620:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] modbit-core: supervising client closed its pipe; exiting
+  ✓   2 e2e/approvals.spec.ts:104:1 › PX-058: three pending approvals form a deck, oldest first, each decided on its own; a bare key never decides another agent's card; Skip is a typed user decision (7.0s)
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+[electron] Debugger ending on ws://127.0.0.1:59386/a1955541-91a1-4845-8e5f-aef7b4827d9d
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'conversation:transcript': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'automations:taskHeaders': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'approvals:expired': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:7916:37
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9118:49
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'worktrees:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9172:17
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'accounting:get': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9581:56
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'task:economics': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:11205:19
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9506:41
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9501:28
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] modbit-core: connection ended: io: Broken pipe (os error 32)
+  ✓   3 e2e/approvals.spec.ts:201:1 › PX-058: an effect that cannot be undone asks twice, and a key typed into a text field never decides; Always is not offered for it; the file is only deleted after the second confirmation (2.9s)
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+[electron] sandbox_extension_issue_file failed for <repo>/node_modules/.pnpm/electron@44.3.0_supports-color@8.1.1/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper.app/Contents/Resources: 1 (Operation not permitted)
+[electron] Error occurred in handler for 'rules:add': RejectedError: PATTERN_WRAPPER: `sh` runs whatever it is given, so a rule that names it covers everything; allow the program it would run instead
+    at _CoreClient.dispatch (<repo>/apps/desktop/dist/main/main.cjs:3886:61)
+    at Socket.<anonymous> (<repo>/apps/desktop/dist/main/main.cjs:3862:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'PATTERN_WRAPPER'
+}
+[electron] Debugger ending on ws://127.0.0.1:59408/b75a8c30-e92c-4410-83ed-dbafd7ddbbcf
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:7923:26
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'automations:taskHeaders': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:10148:17
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:11281:19
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓   4 e2e/approvals.spec.ts:246:1 › PX-057/058: Allowlist plus Always on a card makes a durable rule through the Core; the same kind of command then runs silently and its receipt names the rule; the rule can be revoked (3.1s)
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 6ms
+[electron] Debugger ending on ws://127.0.0.1:59432/2d02cdf8-af02-4186-9e49-5a401623b73b
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'conversation:transcript': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'composer:queue': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'modeproposals:list': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'accounting:get': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'task:economics': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'attention:list': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'approvals:dock': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'composer:queue': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:8167:23
+    at <repo>/apps/desktop/dist/main/main.cjs:11620:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'conversation:markRead': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:7948:17
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:7916:37
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9118:49
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'checkpoints:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9597:51
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:7923:26
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] modbit-core: connection ended: io: Broken pipe (os error 32)
+[electron] modbit-core: supervising client closed its pipe; exiting
+  ✓   5 e2e/approvals.spec.ts:314:1 › PX-057: the widest preset needs its warning and still asks for the always-ask classes; everything else in the envelope runs without asking (2.6s)
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 7ms
+[electron] Error occurred in handler for 'runmode:set': Error: BAD_ARGUMENT: mode must be one of ASK, ALLOWLIST, ALLOWLIST_SANDBOX, RUN_EVERYTHING, AUTONOMOUS
+    at bad3 (<repo>/apps/desktop/dist/main/main.cjs:8308:9)
+    at validRunMode (<repo>/apps/desktop/dist/main/main.cjs:8314:63)
+    at <repo>/apps/desktop/dist/main/main.cjs:9549:18
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'runmode:set': Error: BAD_ARGUMENT: task id must be 32 hex chars
+    at Object.requireTaskId [as taskId] (<repo>/apps/desktop/dist/main/main.cjs:11105:55)
+    at <repo>/apps/desktop/dist/main/main.cjs:9548:19
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'runmode:set': Error: BAD_ARGUMENT: acknowledgeRisk must be a boolean
+    at bad3 (<repo>/apps/desktop/dist/main/main.cjs:8308:9)
+    at validBool (<repo>/apps/desktop/dist/main/main.cjs:8318:38)
+    at <repo>/apps/desktop/dist/main/main.cjs:9550:17
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'rules:add': Error: BAD_ARGUMENT: pattern must be 1..16 tokens
+    at bad3 (<repo>/apps/desktop/dist/main/main.cjs:8308:9)
+    at validPattern (<repo>/apps/desktop/dist/main/main.cjs:8336:68)
+    at validRuleInput (<repo>/apps/desktop/dist/main/main.cjs:8349:19)
+    at <repo>/apps/desktop/dist/main/main.cjs:9564:18
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'rules:add': Error: BAD_ARGUMENT: scope must be TASK, REPO or USER
+    at bad3 (<repo>/apps/desktop/dist/main/main.cjs:8308:9)
+    at validRuleInput (<repo>/apps/desktop/dist/main/main.cjs:8350:78)
+    at <repo>/apps/desktop/dist/main/main.cjs:9564:18
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'rules:add': Error: BAD_ARGUMENT: expiresAtMs must be a future time or 0
+    at bad3 (<repo>/apps/desktop/dist/main/main.cjs:8308:9)
+    at validRuleInput (<repo>/apps/desktop/dist/main/main.cjs:8353:153)
+    at <repo>/apps/desktop/dist/main/main.cjs:9564:18
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'rules:revoke': Error: BAD_ARGUMENT: ruleId must be a rule id
+    at bad3 (<repo>/apps/desktop/dist/main/main.cjs:8308:9)
+    at validRuleId (<repo>/apps/desktop/dist/main/main.cjs:8343:92)
+    at <repo>/apps/desktop/dist/main/main.cjs:9572:20
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'approval:allowAlways': Error: BAD_ARGUMENT: approvalId must be an approval id
+    at bad3 (<repo>/apps/desktop/dist/main/main.cjs:8308:9)
+    at validApprovalId (<repo>/apps/desktop/dist/main/main.cjs:8323:30)
+    at <repo>/apps/desktop/dist/main/main.cjs:9522:24
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'approval:allowAlways': Error: BAD_ARGUMENT: intentHash must be the 64-hex-digit intent the card showed
+    at bad3 (<repo>/apps/desktop/dist/main/main.cjs:8308:9)
+    at validIntentHash (<repo>/apps/desktop/dist/main/main.cjs:8327:66)
+    at <repo>/apps/desktop/dist/main/main.cjs:9523:18
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'checkpoints:restore': Error: BAD_ARGUMENT: checkpointId must be a checkpoint id
+    at bad3 (<repo>/apps/desktop/dist/main/main.cjs:8308:9)
+    at validTarget (<repo>/apps/desktop/dist/main/main.cjs:8366:82)
+    at <repo>/apps/desktop/dist/main/main.cjs:9624:20
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'checkpoints:restore': Error: BAD_ARGUMENT: a kept path must be a path inside the workspace
+    at bad3 (<repo>/apps/desktop/dist/main/main.cjs:8308:9)
+    at <repo>/apps/desktop/dist/main/main.cjs:8393:175
+    at Array.map (<anonymous>)
+    at validKeepPaths (<repo>/apps/desktop/dist/main/main.cjs:8392:12)
+    at <repo>/apps/desktop/dist/main/main.cjs:9632:23
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'checkpoints:restore': Error: BAD_ARGUMENT: an expected entry needs a sha256 or an empty hash
+    at bad3 (<repo>/apps/desktop/dist/main/main.cjs:8308:9)
+    at <repo>/apps/desktop/dist/main/main.cjs:8403:118
+    at Array.map (<anonymous>)
+    at validExpected (<repo>/apps/desktop/dist/main/main.cjs:8400:12)
+    at <repo>/apps/desktop/dist/main/main.cjs:9631:22
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'checkpoints:restore': Error: BAD_ARGUMENT: name the checkpoint by one of checkpointId, turnId, turnOrdinal or name
+    at bad3 (<repo>/apps/desktop/dist/main/main.cjs:8308:9)
+    at validTarget (<repo>/apps/desktop/dist/main/main.cjs:8386:25)
+    at <repo>/apps/desktop/dist/main/main.cjs:9624:20
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'checkpoints:fork': Error: BAD_ARGUMENT: a fork names a checkpoint, a turn or a turn number
+    at bad3 (<repo>/apps/desktop/dist/main/main.cjs:8308:9)
+    at <repo>/apps/desktop/dist/main/main.cjs:9657:33
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'checkpoints:preview': Error: BAD_ARGUMENT: task id must be 32 hex chars
+    at Object.requireTaskId [as taskId] (<repo>/apps/desktop/dist/main/main.cjs:11105:55)
+    at <repo>/apps/desktop/dist/main/main.cjs:9600:19
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'budgets:set': Error: BAD_ARGUMENT: maxWallMs must be a decimal count
+    at bad3 (<repo>/apps/desktop/dist/main/main.cjs:8308:9)
+    at validCount (<repo>/apps/desktop/dist/main/main.cjs:8414:62)
+    at <repo>/apps/desktop/dist/main/main.cjs:9589:23
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'accounting:get': Error: BAD_ARGUMENT: task id must be 32 hex chars
+    at Object.requireTaskId [as taskId] (<repo>/apps/desktop/dist/main/main.cjs:11105:55)
+    at <repo>/apps/desktop/dist/main/main.cjs:9580:19
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Debugger ending on ws://127.0.0.1:59444/3fba9f98-0a84-4784-97bc-80218d20612c
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓   6 e2e/approvals.spec.ts:364:1 › PX-057/058: the main process rejects invalid arguments before the Core sees them (560ms)
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 2ms
+[electron] Debugger ending on ws://127.0.0.1:59450/9b6f838b-0ca0-4641-b6b8-e768e8e2ea0d
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9506:41
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9501:28
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓   7 e2e/composer.spec.ts:22:1 › PX-055: messages sent during a turn queue in the Core, can be edited, reordered and deleted, survive a reload, and drain in order as their own turns (3.5s)
+[electron] Debugger ending on ws://127.0.0.1:59469/26ea3714-dded-4812-bf8c-cb15751ec0c9
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'modeproposals:list': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'checkpoints:list': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'automations:taskHeaders': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'projects:list': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'conversation:approvals': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'conversation:markRead': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'composer:queue': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'accounting:get': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'task:economics': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'terminal:list': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'approvals:dock': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9506:41
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:7916:37
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9118:49
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:7923:26
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9501:28
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:11281:19
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+modbit-core: connection ended: io: Broken pipe (os error 32)
+modbit-core: supervising client closed its pipe; exiting
+[electron] Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9506:41
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓   8 e2e/composer.spec.ts:133:1 › PX-055: Send now cuts the live stream as a user interrupt, keeps the partial text marked partial, and the new turn starts from the sent message (4.1s)
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 8ms
+[electron] Debugger ending on ws://127.0.0.1:59550/2cdb2df3-ee9d-41ea-a688-4b2feb5b629c
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'terminal:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at TerminalHost.client (<repo>/apps/desktop/dist/main/main.cjs:11087:9)
+    at TerminalHost.list (<repo>/apps/desktop/dist/main/main.cjs:10330:26)
+    at <repo>/apps/desktop/dist/main/main.cjs:11674:54
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9506:41
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9501:28
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:11281:19
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] modbit-core: connection ended: io: Broken pipe (os error 32)
+[electron] modbit-core: supervising client closed its pipe; exiting
+[electron] Error occurred in handler for 'accounting:get': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9581:56
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'task:economics': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:11205:19
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓   9 e2e/composer.spec.ts:169:1 › PX-055: Stop ends the turn as a user interrupt, leaves the message editable and re-sends nothing; Continue resumes only when the person says so (4.9s)
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 9ms
+[electron] Debugger ending on ws://127.0.0.1:59676/ad82b3dc-13c8-47f7-8855-9a934ff4e74f
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'checkpoints:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9597:51
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓  10 e2e/composer.spec.ts:204:1 › PX-054: Shift+Tab walks the modes with the right chip and placeholder, the Core's mode field is authoritative, and a write in Plan is refused at the kernel (3.7s)
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 3ms
+[electron] Debugger ending on ws://127.0.0.1:59762/6d32277b-94dc-4745-b382-60ade712a481
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:7916:37
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9118:49
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:7923:26
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9506:41
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9501:28
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'accounting:get': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9581:56
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'task:economics': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:11205:19
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'terminal:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at TerminalHost.client (<repo>/apps/desktop/dist/main/main.cjs:11087:9)
+    at TerminalHost.list (<repo>/apps/desktop/dist/main/main.cjs:10330:26)
+    at <repo>/apps/desktop/dist/main/main.cjs:11674:54
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:7916:37
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓  11 e2e/composer.spec.ts:281:1 › PX-054: the slash menu lists the Core's inventory in its order with a divider, shows an untrusted skill disabled with the Core's reason, treats a planted description as text, and runs a trusted skill (1.8s)
+[electron] Error occurred in handler for 'composer:attachBytes': Error: ATTACHMENT_REFUSED: A .png file is not a type that can be attached. Images, PDFs and plain-text files can.
+    at ingest (<repo>/apps/desktop/dist/main/main.cjs:8279:28)
+    at <repo>/apps/desktop/dist/main/main.cjs:8299:12
+    at <repo>/apps/desktop/dist/main/main.cjs:11620:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'composer:attachBytes': Error: ATTACHMENT_REFUSED: A .exe file is not a type that can be attached. Images, PDFs and plain-text files can.
+    at ingest (<repo>/apps/desktop/dist/main/main.cjs:8279:28)
+    at <repo>/apps/desktop/dist/main/main.cjs:8299:12
+    at <repo>/apps/desktop/dist/main/main.cjs:11620:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Debugger ending on ws://127.0.0.1:59814/20c7a361-bf11-42ca-beda-d0b4ad39d5b9
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9506:41
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9501:28
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:11281:19
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'composer:queue': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:8167:23
+    at <repo>/apps/desktop/dist/main/main.cjs:11620:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓  12 e2e/composer.spec.ts:334:1 › PX-054: an attachment is validated and ingested by the Core, an image shows a thumbnail and reaches the model, and what is not allowed is refused with its reason (2.0s)
+[electron] Error occurred in handler for 'composer:setPreference': RejectedError: POLICY_BLOCKED: openai/gpt-5-mini is blocked by the organisation model policy (block=openai/gpt-5-mini)
+    at _CoreClient.dispatch (<repo>/apps/desktop/dist/main/main.cjs:3886:61)
+    at Socket.<anonymous> (<repo>/apps/desktop/dist/main/main.cjs:3862:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'POLICY_BLOCKED'
+}
+[electron] Debugger ending on ws://127.0.0.1:59850/4fb0c1a8-3a98-4fa9-95a9-a1363e17690b
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'checkpoints:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9597:51
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:11281:19
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓  13 e2e/composer.spec.ts:388:1 › PX-056: the picker lists the Core's variants, records the objective and a pin, shows a policy-blocked model with the Core's reason and keeps the prompt, and the choice reaches the model request and survives a reload (2.4s)
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+[electron] Debugger ending on ws://127.0.0.1:59900/0ead99a5-0189-4a79-817a-eb49453b00d9
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'checkpoints:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9597:51
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓  14 e2e/composer.spec.ts:480:1 › PX-056: a model the policy blocks at the run (the task's default) fails before any token; the prompt is restored and the tray names the typed cause (1.7s)
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+[electron] Debugger ending on ws://127.0.0.1:59924/98befa7c-778c-4aaf-aabe-e0efa3ae8df9
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:11281:19
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] modbit-core: supervising client closed its pipe; exiting
+  ✓  15 e2e/composer.spec.ts:510:1 › PX-054: the @ menu lists the Core's sources and a protected path cannot be attached; a draft and its chips survive navigation and a reload and are never sent; Alt+Up and Alt+Down walk the history (2.2s)
+[electron] Debugger ending on ws://127.0.0.1:59952/f4267272-b60d-41f3-8062-02e7101ac0b9
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'modeproposals:list': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'conversation:transcript': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'automations:taskHeaders': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'approvals:dock': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:7916:37
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9118:49
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:7923:26
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'checkpoints:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9597:51
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'accounting:get': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9581:56
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'task:economics': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:11205:19
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'terminal:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at TerminalHost.client (<repo>/apps/desktop/dist/main/main.cjs:11087:9)
+    at TerminalHost.list (<repo>/apps/desktop/dist/main/main.cjs:10330:26)
+    at <repo>/apps/desktop/dist/main/main.cjs:11674:54
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+modbit-core: connection ended: io: Broken pipe (os error 32)
+  ✓  16 e2e/composer.spec.ts:609:1 › PX-055: the background-terminals tray lists a live terminal with its timer, opens it in the Terminal tab, kills it after a confirm and wakes the agent once; a side question is answered without entering the main context (2.4s)
+[electron] Debugger ending on ws://127.0.0.1:59973/9c87cb20-9711-4ecc-9724-bf7e1b78f89b
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'terminal:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at TerminalHost.client (<repo>/apps/desktop/dist/main/main.cjs:11087:9)
+    at TerminalHost.list (<repo>/apps/desktop/dist/main/main.cjs:10330:26)
+    at <repo>/apps/desktop/dist/main/main.cjs:11674:54
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:7916:37
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9118:49
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:7923:26
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9506:41
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9501:28
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] modbit-core: connection ended: io: Socket is not connected (os error 57)
+  ✓  17 e2e/composer.spec.ts:669:1 › PX-054: a message to a task waiting for review is queued for its next run and says so; the same send replayed sends once (2.2s)
+[electron] modbit-desktop: core restart scheduled: connection lost: connection closed
+[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:7916:37
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9118:49
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:7923:26
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'checkpoints:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9597:51
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9506:41
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9501:28
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:11281:19
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'terminal:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at TerminalHost.client (<repo>/apps/desktop/dist/main/main.cjs:11087:9)
+    at TerminalHost.list (<repo>/apps/desktop/dist/main/main.cjs:10330:26)
+    at <repo>/apps/desktop/dist/main/main.cjs:11674:54
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'conversation:markRead': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:7948:17
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] modbit-core: recovery complete: boot_generation=2 events_verified=34 aggregates=9 projections_rebuilt=false sessions=1 tasks=1 in 2ms
+[electron] modbit-core: suspended 1 running task(s) after restart
+[electron] modbit-core: closed 1 open assistant stream(s) as aborted by recovery
+[electron] modbit-core: reattached to the terminal broker a previous Core left alive
+[electron] Debugger ending on ws://127.0.0.1:59996/76df12d0-7fbf-485a-a30d-61d4f3cb16f9
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:7916:37
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9118:49
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:7923:26
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9506:41
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9501:28
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓  18 e2e/composer.spec.ts:712:1 › PX-055: the queue is the Core's: it survives the Core being killed mid-stream, and the interrupted stream shows as stopped by a restart, not by the person (2.5s)
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+[electron] Debugger ending on ws://127.0.0.1:60026/f0eaf30b-e9b7-49ff-9c5c-40cb71bb3419
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'agents:headers': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'projects:list': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'terminal:list': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9506:41
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9501:28
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:11281:19
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓  19 e2e/conversation.spec.ts:24:1 › PX-047: a streamed answer appears incrementally, is never shown as final while open, only grows, and is final when the stream completes (1.9s)
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+[electron] Debugger ending on ws://127.0.0.1:60058/94f3821d-dcf6-4317-a9f0-0ea301343bb5
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'conversation:transcript': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9506:41
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9501:28
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'conversation:markRead': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:7948:17
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:11281:19
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] modbit-core: connection ended: io: Broken pipe (os error 32)
+  ✓  20 e2e/conversation.spec.ts:71:1 › PX-047: a reload in the middle of a stream resumes it: the partial text comes back and the rest follows (1.9s)
+[electron] modbit-desktop: core restart scheduled: connection lost: connection closed
+[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:7916:37
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9118:49
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:7923:26
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9506:41
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9501:28
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'checkpoints:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9597:51
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] modbit-core: recovery complete: boot_generation=2 events_verified=32 aggregates=9 projections_rebuilt=false sessions=1 tasks=1 in 4ms
+[electron] modbit-core: suspended 1 running task(s) after restart
+[electron] modbit-core: closed 1 open assistant stream(s) as aborted by recovery
+[electron] modbit-core: reattached to the terminal broker a previous Core left alive
+[electron] Debugger ending on ws://127.0.0.1:60080/7a7fc7b4-ab2c-4c14-a10b-92dbb36f517c
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:7916:37
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9118:49
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'accounting:get': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9581:56
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'task:economics': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:11205:19
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'terminal:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at TerminalHost.client (<repo>/apps/desktop/dist/main/main.cjs:11087:9)
+    at TerminalHost.list (<repo>/apps/desktop/dist/main/main.cjs:10330:26)
+    at <repo>/apps/desktop/dist/main/main.cjs:11674:54
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:7923:26
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓  21 e2e/conversation.spec.ts:103:1 › PX-047: killing the Core mid-stream shows the response as stopped, with its cause, never as an answer (2.4s)
+[electron] Debugger ending on ws://127.0.0.1:60115/e211e9d2-272e-499c-b3d3-56b8f77f4f64
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'terminal:list': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (<repo>/apps/desktop/dist/main/main.cjs:3931:54)
+    at _CoreClient.close (<repo>/apps/desktop/dist/main/main.cjs:3936:10)
+    at CoreSupervisor.stop (<repo>/apps/desktop/dist/main/main.cjs:5066:18)
+    at Object.run (<repo>/apps/desktop/dist/main/main.cjs:11872:43)
+    at <repo>/apps/desktop/dist/main/main.cjs:10230:15
+    at Array.map (<anonymous>)
+    at runShutdown (<repo>/apps/desktop/dist/main/main.cjs:10228:22)
+    at <repo>/apps/desktop/dist/main/main.cjs:11875:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] modbit-core: connection ended: io: Broken pipe (os error 32)
+modbit-core: supervising client closed its pipe; exiting
+  ✓  22 e2e/conversation.spec.ts:132:1 › PX-047: scrolling up freezes follow, the pill counts later messages, the jump returns to the tail; planted markup and instructions render as inert text (1.8s)
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+[electron] modbit-desktop: core restart scheduled: connection lost: connection closed
+[electron] Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:11281:19
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] modbit-core: recovery complete: boot_generation=2 events_verified=128 aggregates=25 projections_rebuilt=false sessions=1 tasks=1 in 4ms
+[electron] modbit-core: suspended 1 running task(s) after restart
+[electron] modbit-core: reattached to the terminal broker a previous Core left alive
+[electron] Debugger ending on ws://127.0.0.1:60142/0416654d-eb0e-49f8-87ef-0d5917ea34ae
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'checkpoints:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9597:51
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓  23 e2e/conversation.spec.ts:190:1 › PX-047: tool steps fold by density without changing the rows; a question is answered inline and an approval on the docked card with the exact intent, neither folded away; both survive a reload and a Core restart (4.7s)
+[electron] sandbox_extension_issue_file failed for <repo>/node_modules/.pnpm/electron@44.3.0_supports-color@8.1.1/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper.app/Contents/Resources: 1 (Operation not permitted)
+[electron] Debugger ending on ws://127.0.0.1:60217/002814cd-58ae-4af1-baee-0dfdcbd1c748
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'worktrees:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:9172:17
+    at <repo>/apps/desktop/dist/main/main.cjs:11601:61
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:11281:19
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓  24 e2e/keyboard.spec.ts:80:1 › keyboard: every screen by keyboard only — shortcuts, list and review navigation, confirmed approval and cancellation, focus retained across Core events, live announcements, the accessibility suite on each screen (6.6s)
+  -  25 e2e/live-approvals.spec.ts:34:1 › live: the approval deck with a real model: a card for a command no rule covers, Always makes a rule that applies, the run continues
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 6ms
+[electron] Error occurred in handler for 'approval:resolve': RejectedError: UNKNOWN_APPROVAL: 01234567-89ab-cdef-0123-456789abcdef
+    at _CoreClient.dispatch (<repo>/apps/desktop/dist/main/main.cjs:3886:61)
+    at Socket.<anonymous> (<repo>/apps/desktop/dist/main/main.cjs:3862:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'UNKNOWN_APPROVAL'
+}
+[electron] Error occurred in handler for 'browser:session': RejectedError: UNKNOWN_TASK: 01234567-89ab-cdef-0123-456789abcdef
+    at _CoreClient.dispatch (<repo>/apps/desktop/dist/main/main.cjs:3886:61)
+    at Socket.<anonymous> (<repo>/apps/desktop/dist/main/main.cjs:3862:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'UNKNOWN_TASK'
+}
+[electron] Error occurred in handler for 'session:create': Error: SENDER_REFUSED: only the app's own renderer may ask this
+    at <repo>/apps/desktop/dist/main/main.cjs:11127:13
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'debug:coreInfo': Error: SENDER_REFUSED: only the app's own renderer may ask this
+    at <repo>/apps/desktop/dist/main/main.cjs:11127:13
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'credential:list': Error: SENDER_REFUSED: only the app's own renderer may ask this
+    at <repo>/apps/desktop/dist/main/main.cjs:11127:13
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Debugger ending on ws://127.0.0.1:60290/7c02a62e-577f-4959-bdac-15d1e4f00c86
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] modbit-core: supervising client closed its pipe; exiting
+  ✓  26 e2e/workers.spec.ts:143:1 › renderer compromise (REQ-EV-0075): the app's renderer holds no secret, no Node, no socket; the bridge is typed requests only; the Core refuses what the renderer cannot vouch for; a foreign window with the same bridge is refused by main and audited (1.6s)
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 16ms
+[renderer-diag] window renderer pid=19283 webContents=1; processes: 18770:Browser 19270:GPU 19271:Utility(Network Service) 19283:Tab
+[renderer-diag] page1.crash at 11 ms
+[electron] modbit-desktop: renderer gone: reason=killed exitCode=2 via=event replacing=true
+[renderer-diag] page1.close at 42 ms
+[renderer-diag] main-replaced at 114 ms
+[renderer-diag] renderer-pid-gone at 114 ms
+[renderer-diag] playwright-window at 114 ms
+[electron] Debugger ending on ws://127.0.0.1:60322/0c7bf636-04fd-4571-b55b-3a5402fb1ec2
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (<repo>/apps/desktop/dist/main/main.cjs:11093:17)
+    at <repo>/apps/desktop/dist/main/main.cjs:11281:19
+    at <repo>/apps/desktop/dist/main/main.cjs:11133:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓  27 e2e/workers.spec.ts:247:1 › renderer killed (REQ-EV-0076): the renderer's process dies mid-session; main keeps the Core, the lease and the stream; the renderer comes back from the Core's snapshot and cursor with the session's truth unchanged and its typed requests answered (4.9s)
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 9ms
+[electron] Debugger ending on ws://127.0.0.1:60354/b41c0c4e-236c-4c6c-8b3d-17f5e396160c
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  28 e2e/workers.spec.ts:366:1 › browser view killed (REQ-EV-0081): the view's process dies under the agent's session; the host restarts the view at its page and attaches it again to the same session; the Core, its log and the task are untouched, and the agent's next observation reads the restarted page (4.2s)
+
+  1 skipped
+  27 passed (1.5m)

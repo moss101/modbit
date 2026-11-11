@@ -1,0 +1,19 @@
+    Finished `test` profile [unoptimized] target(s) in 0.58s
+     Running tests/px_210_next_prompt.rs (target/debug/deps/px_210_next_prompt-cd2ef32d127a744d)
+
+running 3 tests
+modbit-core: recovery complete: boot_generation=modbit-core: recovery complete: boot_generation=modbit-core: recovery complete: boot_generation=11 events_verified=01 events_verified=0 aggregates= events_verified=0 aggregates= aggregates=0 projections_rebuilt=0 projections_rebuilt=false sessions=00 projections_rebuilt=false sessions=0 tasks=0 in  tasks=0 in 0ms0msfalse sessions=0
+ tasks=0 in 0
+ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+test qual_px_210_the_core_refuses_while_a_turn_runs_an_input_is_queued_or_the_call_is_not_affordable ... ok
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: recovery complete: boot_generation=2 events_verified=48 aggregates=8 projections_rebuilt=false sessions=1 tasks=1 in 2ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: registry generation registry-px210 restored
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+test qual_px_210_a_suggestion_writes_nothing_to_the_tasks_log_and_is_charged_to_the_task ... ok
+test qual_px_210_with_the_setting_off_no_call_is_made ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.88s
+

@@ -1,0 +1,10 @@
+    Finished `test` profile [unoptimized] target(s) in 0.09s
+     Running tests/last_message_digest.rs (target/debug/deps/last_message_digest-52b4e0a0eccc5358)
+
+running 3 tests
+test a_record_written_before_the_field_existed_is_named_without_a_line ... ok
+test an_archived_tasks_line_is_the_one_it_had_when_it_was_put_away ... ok
+test the_digest_names_the_last_line_of_the_latest_finished_text_message_only ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+

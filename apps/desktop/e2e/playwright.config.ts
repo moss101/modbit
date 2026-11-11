@@ -4,6 +4,10 @@ import { defineConfig } from "@playwright/test";
 // suite's Cores are killed on purpose, so the grace is short here; every worker inherits the variable, and the
 // restart specs reattach well within it.
 process.env.MODBIT_EXECD_ORPHAN_GRACE_SECS ??= "5";
+// REQ-PX-210: the composer asks the Core for a suggested next message when a turn ends, which is one more model request per
+// turn. The suite's scripted models answer by request order or count, so the Core's own switch turns the call off for
+// every spec (the Core then refuses the request and calls no model); px-210-suggestion.spec.ts turns it back on.
+process.env.MODBIT_NEXT_PROMPT_SUGGESTIONS ??= "off";
 
 export default defineConfig({
   testDir: ".",

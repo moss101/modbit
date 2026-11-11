@@ -127,6 +127,7 @@ function headerView(h: AgentHeader) {
     attentionItems: h.attentionItems,
     projectId: hexOf(h.projectId?.value),
     checkoutRoot: h.checkoutRoot,
+    lastLine: h.lastLine,
   };
 }
 

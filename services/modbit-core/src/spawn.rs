@@ -1503,6 +1503,15 @@ pub(crate) fn child_holds_in(
         if let Some(scan) = e.envelope.task_id.and_then(|t| scans.get_mut(&t)) {
             let payload = store.payload(&e.envelope).unwrap_or_default();
             scan.observe(&e.envelope, &payload);
+        } else if e.envelope.event_type == crate::usage::SUGGESTION_USAGE {
+            // REQ-PX-210: a suggestion call made for a child is the child's
+            // spend, charged from a record kept off its log.
+            let payload = store.payload(&e.envelope).unwrap_or_default();
+            if let Some(scan) = crate::usage::off_log_task(&e.envelope.event_type, &payload)
+                .and_then(|t| scans.get_mut(&t))
+            {
+                scan.observe_off_log(&payload);
+            }
         }
     }
     nodes
@@ -1598,6 +1607,17 @@ pub(crate) async fn regrant(
         let registry = core.gateway.registry();
         let mut caps = modbit_core_runtime::Budgets::default();
         let mut scan = crate::usage::SpendScan::new(registry.as_ref());
+        // REQ-PX-210: the parent's own suggestion calls are its spend too.
+        for e in events
+            .iter()
+            .filter(|e| e.envelope.event_type == crate::usage::SUGGESTION_USAGE)
+        {
+            let payload = store.payload(&e.envelope).unwrap_or_default();
+            if crate::usage::off_log_task(&e.envelope.event_type, &payload) == Some(parent.task_id)
+            {
+                scan.observe_off_log(&payload);
+            }
+        }
         for e in events
             .iter()
             .filter(|e| e.envelope.task_id == Some(parent.task_id))

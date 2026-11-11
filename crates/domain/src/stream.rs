@@ -38,6 +38,30 @@ pub const MIN_DELTA_INTERVAL_MS: u64 = 50;
 /// cancelled, so neither the Core nor the log grows without bound.
 pub const MAX_STREAM_BYTES: u64 = 4 * 1024 * 1024;
 
+/// Most characters the completion record's `last_line` carries (PX-218): a
+/// preview of how the message ended, never the message.
+pub const LAST_LINE_MAX_CHARS: usize = 200;
+
+/// The last non-empty line of `text`, trimmed, for a task header's preview
+/// (PX-218, DR-PX-2026-11-11-021 MWS-20). A line longer than
+/// [`LAST_LINE_MAX_CHARS`] characters is cut at a character boundary and ends
+/// in an ellipsis, so the result never exceeds the bound and a reader can
+/// tell a cut line from a whole one. Empty when the text has no line with
+/// anything on it. The caller passes text that is already redacted.
+#[must_use]
+pub fn last_line(text: &str) -> String {
+    let Some(line) = text.lines().rev().map(str::trim).find(|l| !l.is_empty()) else {
+        return String::new();
+    };
+    if line.chars().count() <= LAST_LINE_MAX_CHARS {
+        return line.to_owned();
+    }
+    let mut cut: String = line.chars().take(LAST_LINE_MAX_CHARS - 1).collect();
+    cut.truncate(cut.trim_end().len());
+    cut.push('\u{2026}');
+    cut
+}
+
 /// Event type names of this aggregate.
 pub const DELTA: &str = "AssistantTextDelta";
 /// The closing record of a stream that finished.
@@ -139,6 +163,11 @@ pub enum StreamEvent {
         text_ref: TextRef,
         /// SHA-256 hex of the full text.
         content_hash: String,
+        /// [`last_line`] of that text (PX-218): what a task header shows of
+        /// how the message ended, without reading the object. `None` only on
+        /// a record written before the field existed.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        last_line: Option<String>,
     },
     /// `AssistantMessageAborted`: the stream ended without completing.
     AssistantMessageAborted {
@@ -229,7 +258,11 @@ pub fn check_next(
                 return Err("a delta carries text".into());
             }
         }
-        StreamEvent::AssistantMessageCompleted { delta_count, .. } => {
+        StreamEvent::AssistantMessageCompleted {
+            delta_count,
+            last_line,
+            ..
+        } => {
             if sequence == 1 {
                 return Err("a stream cannot complete before its first delta".into());
             }
@@ -238,6 +271,17 @@ pub fn check_next(
                     "the completion record counts {delta_count} deltas; the stream holds {}",
                     sequence - 1
                 ));
+            }
+            if let Some(line) = last_line {
+                let chars = line.chars().count();
+                if chars > LAST_LINE_MAX_CHARS {
+                    return Err(format!(
+                        "the completion record's last line is {chars} characters; the bound is {LAST_LINE_MAX_CHARS}"
+                    ));
+                }
+                if line.contains(['\n', '\r']) {
+                    return Err("the completion record's last line is more than one line".into());
+                }
             }
         }
         StreamEvent::AssistantMessageAborted { delta_count, .. } => {
@@ -291,6 +335,7 @@ mod tests {
                 byte_length: 2,
             },
             content_hash: "h".into(),
+            last_line: Some("b".into()),
         };
         assert!(check_next(agg, 3, Some(DELTA), &done).is_ok());
         // a miscounting completion, an early one, and anything after it
@@ -318,5 +363,76 @@ mod tests {
         assert_eq!(v["kind"], "TEXT");
         assert_eq!(v["retention"], "COLLAPSIBLE_ON_COMPLETE");
         assert_eq!(AbortSource::Recovery.label(), "RECOVERY");
+    }
+
+    /// PX-218: the header's line is the last line with anything on it, whole
+    /// when it fits and cut at a character boundary when it does not.
+    #[test]
+    fn the_last_line_is_the_last_non_empty_one_and_is_cut_at_a_character_boundary() {
+        assert_eq!(last_line(""), "");
+        assert_eq!(last_line(" \n\t\r\n"), "");
+        assert_eq!(last_line("one"), "one");
+        assert_eq!(last_line("first\nsecond\n"), "second");
+        assert_eq!(last_line("first\r\n  second  \r\n\r\n   \n"), "second");
+        // Exactly at the bound: whole, no ellipsis.
+        let exact = "é".repeat(LAST_LINE_MAX_CHARS);
+        assert_eq!(last_line(&format!("intro\n{exact}")), exact);
+        // Past it: every character is two or four bytes, so a cut by bytes
+        // would land inside one. The result is a prefix of the line plus the
+        // ellipsis and stays within the bound.
+        let long = "é😀".repeat(LAST_LINE_MAX_CHARS);
+        let cut = last_line(&format!("intro\n{long}\n"));
+        assert_eq!(cut.chars().count(), LAST_LINE_MAX_CHARS);
+        assert!(cut.ends_with('\u{2026}'));
+        let kept = cut.trim_end_matches('\u{2026}');
+        assert!(long.starts_with(kept) && kept.chars().count() == LAST_LINE_MAX_CHARS - 1);
+        // A cut that lands on a space does not leave it before the ellipsis.
+        let spaced = format!("{} {}", "a".repeat(LAST_LINE_MAX_CHARS - 2), "b".repeat(50));
+        let cut = last_line(&spaced);
+        assert_eq!(
+            cut,
+            format!("{}\u{2026}", "a".repeat(LAST_LINE_MAX_CHARS - 2))
+        );
+    }
+
+    /// PX-218: the store refuses a completion record whose last line is over
+    /// the bound or is not one line, and reads a record written before the
+    /// field existed.
+    #[test]
+    fn a_completion_records_a_bounded_single_last_line_and_old_records_still_read() {
+        let id = StreamId::new();
+        let agg = *id.as_bytes();
+        let done = |line: Option<String>| StreamEvent::AssistantMessageCompleted {
+            stream_id: id,
+            kind: StreamKind::Text,
+            delta_count: 1,
+            text_ref: TextRef {
+                object_hash: "h".into(),
+                byte_length: 1,
+            },
+            content_hash: "h".into(),
+            last_line: line,
+        };
+        assert!(check_next(agg, 2, Some(DELTA), &done(None)).is_ok());
+        assert!(check_next(agg, 2, Some(DELTA), &done(Some(String::new()))).is_ok());
+        let at_bound = "x".repeat(LAST_LINE_MAX_CHARS);
+        assert!(check_next(agg, 2, Some(DELTA), &done(Some(at_bound))).is_ok());
+        let over = "x".repeat(LAST_LINE_MAX_CHARS + 1);
+        assert!(check_next(agg, 2, Some(DELTA), &done(Some(over))).is_err());
+        assert!(check_next(agg, 2, Some(DELTA), &done(Some("a\nb".into()))).is_err());
+        // The field is absent from an old record and from one that has none.
+        let old = serde_json::json!({
+            "event_type": COMPLETED, "stream_id": id, "kind": "TEXT", "delta_count": 1,
+            "text_ref": {"object_hash": "h", "byte_length": 1}, "content_hash": "h"
+        });
+        assert_eq!(
+            serde_json::from_value::<StreamEvent>(old.clone()).unwrap(),
+            done(None)
+        );
+        assert_eq!(serde_json::to_value(done(None)).unwrap(), old);
+        assert_eq!(
+            serde_json::to_value(done(Some("bye".into()))).unwrap()["last_line"],
+            "bye"
+        );
     }
 }

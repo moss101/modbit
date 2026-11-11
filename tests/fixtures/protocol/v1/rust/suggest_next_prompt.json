@@ -1,0 +1,6 @@
+{
+  "expected": {
+    "taskId": "21212121212121212121212121212121"
+  },
+  "type": "modbit.v1.SuggestNextPrompt"
+}
