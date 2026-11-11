@@ -97,11 +97,15 @@ test("a build streams live into the Terminal tab: output arrives while the proce
   expect((await viewOf(handle.paced)).state, "the build is still running while its output is on screen").toBe("RUNNING");
   await expect(screen()).not.toContainText("build done");
   const first = BigInt((await terminalView().getAttribute("data-cursor"))!);
-  await expect(screen()).toContainText("step 9 of 60", { timeout: 30_000 });
+  // The attach may replay a backlog that already holds later steps (a slow runner reaches this tab seconds after the build began):
+  // wait for a step printed after the cursor was read, so the advance can only come from the live stream.
+  const shown = Math.max(...[...(await screen().innerText()).matchAll(/step (\d+) of 60/g)].map((m) => Number(m[1])));
+  expect(shown, "the build still has live steps to stream").toBeLessThan(57);
+  await expect(screen()).toContainText(`step ${shown + 3} of 60`, { timeout: 30_000 });
   const second = BigInt((await terminalView().getAttribute("data-cursor"))!);
   expect(second, "the stream moved on without a reload or a reattach").toBeGreaterThan(first);
   await expect(terminalView()).toHaveAttribute("data-phase", "live");
-  expect((await viewOf(handle.paced)).state, "still running at step 9").toBe("RUNNING");
+  expect((await viewOf(handle.paced)).state, "still running while it streams").toBe("RUNNING");
   expect(await terminalView().getAttribute("data-lease"), "watching a build takes no input lease").toBe("free");
   // The end of the build reaches the same view as a frame: the Core's exit, with its code.
   await expect(screen()).toContainText("build done", { timeout: 60_000 });
