@@ -165,9 +165,10 @@ export function Composer(props: ComposerProps) {
   const catalogState = useCatalog(taskId, pickerWanted, `${posture?.preference.offset ?? ""}:${pickerTick}`);
 
   // ---- the next-prompt suggestion (REQ-PX-210, DR-PX-2026-11-11-021 MWS-16)
-  // Asked for once, when this composer sees a turn end with nothing queued and nothing typed; never on opening a conversation, and never
-  // with the setting off. The Core decides again on its own facts and charges the task; a refusal means there is no suggestion.
-  const suggestCtx = { enabled: store.suggestions, connected, hasSession: !!sessionId, ended, running, queued: rows.length, text };
+  // Asked for once, when this composer sees a turn end by itself with nothing queued and nothing typed; never on opening a conversation,
+  // never after the person stopped the turn or the model was refused, and never with the setting off. The Core decides again on its own
+  // facts and charges the task; a refusal means there is no suggestion.
+  const suggestCtx = { enabled: store.suggestions, connected, hasSession: !!sessionId, ended, running, queued: rows.length, text, interrupted: stopped !== null || policy !== null };
   const suggestCtxRef = useRef(suggestCtx);
   suggestCtxRef.current = suggestCtx;
   const wasRunning = useRef(false);
@@ -200,8 +201,8 @@ export function Composer(props: ComposerProps) {
   }, [running, sessionId, taskId]);
   // A suggestion stands only while the facts it was made for hold: a queued message, the setting turned off, a lost Core or an ended task withdraw it.
   useEffect(() => {
-    if (suggestion !== null && (!store.suggestions || !connected || ended || rows.length > 0)) setSuggestion(null);
-  }, [suggestion, store.suggestions, connected, ended, rows.length]);
+    if (suggestion !== null && (!store.suggestions || !connected || ended || rows.length > 0 || stopped !== null || policy !== null)) setSuggestion(null);
+  }, [suggestion, store.suggestions, connected, ended, rows.length, stopped, policy]);
   useEffect(
     () => () => {
       askSeq.current += 1;

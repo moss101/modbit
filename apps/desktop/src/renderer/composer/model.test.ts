@@ -200,7 +200,7 @@ test("PX-210: suggestions are on by default, the setting is kept with the compos
 });
 
 test("PX-210: a suggestion is asked for only after a turn, with nothing queued, nothing typed and the setting on", () => {
-  const due = { enabled: true, connected: true, hasSession: true, ended: false, running: false, queued: 0, text: "" };
+  const due = { enabled: true, connected: true, hasSession: true, ended: false, running: false, queued: 0, text: "", interrupted: false };
   assert.equal(suggestionDue(due), true);
   assert.equal(suggestionDue({ ...due, enabled: false }), false, "the setting is off: no call");
   assert.equal(suggestionDue({ ...due, running: true }), false, "a turn is running");
@@ -208,6 +208,7 @@ test("PX-210: a suggestion is asked for only after a turn, with nothing queued, 
   assert.equal(suggestionDue({ ...due, text: "half a thought" }), false, "the person is writing");
   assert.equal(suggestionDue({ ...due, text: "  \n" }), true, "blank space is not a message");
   assert.equal(suggestionDue({ ...due, ended: true }), false, "the task takes no more messages");
+  assert.equal(suggestionDue({ ...due, interrupted: true }), false, "the person stopped the turn, or the model was refused");
   assert.equal(suggestionDue({ ...due, connected: false }), false);
   assert.equal(suggestionDue({ ...due, hasSession: false }), false);
   // What came back is shown only if the same facts still hold and it says something.

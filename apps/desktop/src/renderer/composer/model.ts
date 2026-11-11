@@ -374,15 +374,17 @@ export interface SuggestionContext {
   queued: number;
   /** What is in the message box. */
   text: string;
+  /** The person stopped the turn, or the model was refused: what comes next is theirs to say, and the composer is showing them why. */
+  interrupted: boolean;
 }
 
 /**
  * Whether the composer asks the Core for a suggested next message (DR-PX-2026-11-11-021 MWS-16). It asks once, when it sees a turn end
- * with nothing queued and nothing typed; with the setting off it never asks, so no model call is made for it. The Core decides again on
+ * by itself with nothing queued and nothing typed; with the setting off it never asks, so no model call is made for it. The Core decides again on
  * its own facts (a turn it knows is running, a queued input, the task's budget) and its refusal simply means no suggestion.
  */
 export function suggestionDue(c: SuggestionContext): boolean {
-  return c.enabled && c.connected && c.hasSession && !c.ended && !c.running && c.queued === 0 && c.text.trim() === "";
+  return c.enabled && c.connected && c.hasSession && !c.ended && !c.running && !c.interrupted && c.queued === 0 && c.text.trim() === "";
 }
 
 /** Whether a suggestion that came back may still be shown: the same facts, judged again when the Core answers. */

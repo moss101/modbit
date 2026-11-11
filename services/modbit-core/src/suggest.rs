@@ -17,8 +17,9 @@
 //!
 //! The Core refuses, with a typed code and before any model call, whenever
 //! the call is not wanted or not affordable: the feature is off for this
-//! Core (`MODBIT_NEXT_PROMPT_SUGGESTIONS=off`), the task has ended, no turn
-//! has finished, a turn is running, an input is queued, another suggestion
+//! Core (`MODBIT_NEXT_PROMPT_SUGGESTIONS=off`), the task has ended or is a
+//! subagent's, no turn has finished, a turn is running, an input is queued,
+//! the command id was answered before, another suggestion
 //! for the task is in flight, the cost or wall-clock cap is reached, the
 //! call's worst case does not fit under the cost cap, or a capped task's call
 //! cannot be priced. Two refusals come after the call and keep its charge:
@@ -33,7 +34,7 @@ use modbit_domain::TaskId;
 use modbit_domain::event::{Actor, AggregateType};
 use modbit_domain::session::SessionEvent;
 use modbit_domain::state::StateMachine;
-use modbit_domain::task::{Task, TaskState};
+use modbit_domain::task::{Task, TaskOrigin, TaskState};
 use modbit_event_store::{AppendRequest, CommandOutcome, CommandRecord};
 use modbit_protocol::v1 as wire;
 use modbit_providers::{
@@ -178,6 +179,52 @@ pub(crate) fn budget_gate(l: &Limits, worst_case_minor: Option<u64>) -> Result<(
                 "the call could cost up to {worst} and {} of {cap} is spent",
                 l.spent_minor
             ),
+        ));
+    }
+    Ok(())
+}
+
+/// Whether the task is one a next message can be suggested for now: it has
+/// run, no turn is running, nothing is queued, it still takes messages, and
+/// its budget is its own. `loop_alive` is the runtime's own answer (a run
+/// parked on an approval is alive); `queued` is the number of inputs waiting.
+pub(crate) fn task_gate(
+    state: TaskState,
+    origin: TaskOrigin,
+    loop_alive: bool,
+    queued: usize,
+) -> Result<(), Refusal> {
+    if state.is_terminal() {
+        return Err(refuse(
+            "TASK_ENDED",
+            format!("task is {state:?}; it takes no more messages"),
+        ));
+    }
+    // A subagent's budget is the slice its parent reserved for it (`spawn.rs`),
+    // which its own log does not state: a call that cannot be judged against
+    // that slice is not made.
+    if origin == TaskOrigin::Subagent {
+        return Err(refuse(
+            "CHILD_TASK",
+            "a subagent's budget is the slice its parent reserved; no suggestion is made for it",
+        ));
+    }
+    if loop_alive || state == TaskState::Running {
+        return Err(refuse(
+            "TURN_RUNNING",
+            "a turn is running; a suggestion is made once it has ended",
+        ));
+    }
+    if matches!(state, TaskState::Created | TaskState::Queued) {
+        return Err(refuse(
+            "NO_FINISHED_TURN",
+            "the task has not run; there is nothing to suggest from",
+        ));
+    }
+    if queued > 0 {
+        return Err(refuse(
+            "INPUT_QUEUED",
+            format!("{queued} queued input(s) are the task's next message"),
         ));
     }
     Ok(())
@@ -353,24 +400,6 @@ async fn suggest(
     actor: Actor,
 ) -> Result<wire::NextPromptSuggestion, Refusal> {
     let task_id = task.task_id;
-    if task.state.is_terminal() {
-        return Err(refuse(
-            "TASK_ENDED",
-            format!("task is {:?}; it takes no more messages", task.state),
-        ));
-    }
-    if core.runtime.is_running(&task_id).await || task.state == TaskState::Running {
-        return Err(refuse(
-            "TURN_RUNNING",
-            "a turn is running; a suggestion is made once it has ended",
-        ));
-    }
-    if matches!(task.state, TaskState::Created | TaskState::Queued) {
-        return Err(refuse(
-            "NO_FINISHED_TURN",
-            "the task has not run; there is nothing to suggest from",
-        ));
-    }
     let queued = {
         let store = core.store.lock().await;
         crate::run_control::queue_of(&store, task_id)
@@ -378,12 +407,12 @@ async fn suggest(
             .pending()
             .len()
     };
-    if queued > 0 {
-        return Err(refuse(
-            "INPUT_QUEUED",
-            format!("{queued} queued input(s) are the task's next message"),
-        ));
-    }
+    task_gate(
+        task.state,
+        task.origin,
+        core.runtime.is_running(&task_id).await,
+        queued,
+    )?;
     let (before, last_route) = task_tip(core, task).await?;
     let (transcript, state, _, _) = rebuild(core, task, Budgets::default()).await;
     if !transcript.iter().any(|m| m.role == Role::Assistant) {
@@ -664,6 +693,50 @@ mod tests {
             ..Limits::default()
         };
         assert!(budget_gate(&in_time, None).is_ok());
+    }
+
+    #[test]
+    fn a_suggestion_is_made_only_for_a_task_that_has_run_is_idle_and_has_nothing_queued() {
+        use modbit_domain::task::WaitReason;
+        let gate = |state, origin, alive, queued| code(task_gate(state, origin, alive, queued));
+        let idle = TaskState::Waiting(WaitReason::UserInput);
+        // After a turn, nothing queued: yes, whatever ended the run short of the task itself.
+        assert_eq!(gate(idle, TaskOrigin::Desktop, false, 0), "");
+        assert_eq!(gate(TaskState::ReadyForReview, TaskOrigin::Cli, false, 0), "");
+        assert_eq!(
+            gate(TaskState::Waiting(WaitReason::Paused), TaskOrigin::Desktop, false, 0),
+            ""
+        );
+        // A turn is running: the state says so, or the runtime does (a run
+        // parked on an approval is Waiting and still alive).
+        assert_eq!(
+            gate(TaskState::Running, TaskOrigin::Desktop, false, 0),
+            "TURN_RUNNING"
+        );
+        assert_eq!(
+            gate(TaskState::Waiting(WaitReason::Approval), TaskOrigin::Desktop, true, 0),
+            "TURN_RUNNING"
+        );
+        // An input is queued, however many.
+        assert_eq!(gate(idle, TaskOrigin::Desktop, false, 1), "INPUT_QUEUED");
+        assert_eq!(gate(idle, TaskOrigin::Desktop, false, 7), "INPUT_QUEUED");
+        // A running turn is named before a queued input: both hold while a
+        // message waits behind a turn.
+        assert_eq!(gate(TaskState::Running, TaskOrigin::Desktop, true, 1), "TURN_RUNNING");
+        // A task that has not run, and one that has ended.
+        assert_eq!(
+            gate(TaskState::Created, TaskOrigin::Desktop, false, 0),
+            "NO_FINISHED_TURN"
+        );
+        assert_eq!(
+            gate(TaskState::Queued, TaskOrigin::Desktop, false, 0),
+            "NO_FINISHED_TURN"
+        );
+        for ended in [TaskState::Completed, TaskState::Failed, TaskState::Cancelled] {
+            assert_eq!(gate(ended, TaskOrigin::Desktop, false, 0), "TASK_ENDED");
+        }
+        // A subagent's budget is its parent's slice: no call is made for it.
+        assert_eq!(gate(idle, TaskOrigin::Subagent, false, 0), "CHILD_TASK");
     }
 
     #[test]

@@ -1723,14 +1723,19 @@ export declare const SideAnswerSchema: GenMessage<SideAnswer>;
  * task and never carries the text. `GetTaskEconomics` and the task's cost cap
  * count it.
  *
- * Refused with a typed code and no model call: SUGGESTIONS_OFF (the Core runs
- * with MODBIT_NEXT_PROMPT_SUGGESTIONS=off), TASK_ENDED, NO_FINISHED_TURN,
- * TURN_RUNNING, INPUT_QUEUED, SUGGESTION_IN_FLIGHT, BUDGET_EXHAUSTED (the cost
- * or wall-clock cap is reached), BUDGET_WOULD_EXCEED (the call's worst case
- * does not fit under the cost cap), COST_UNMETERED (a capped task whose call
- * cannot be priced), MODEL_NOT_ALLOWED, NO_PROVIDER, NO_MODEL, ROUTE_REFUSED.
- * Refused after the call, with its charge recorded: TASK_MOVED (the task's
- * log moved while the model answered) and EMPTY_SUGGESTION.
+ * The command spends the task's budget, so it presents the session's lease
+ * like any mutation. Refused with a typed code and no model call:
+ * SUGGESTIONS_OFF (the Core runs with MODBIT_NEXT_PROMPT_SUGGESTIONS=off),
+ * TASK_ENDED, CHILD_TASK (a subagent's budget is its parent's slice),
+ * TURN_RUNNING, NO_FINISHED_TURN, INPUT_QUEUED, ALREADY_ANSWERED (the command
+ * id was answered before: a suggestion is kept nowhere, so it is not replayed
+ * and not charged twice), SUGGESTION_IN_FLIGHT, BUDGET_EXHAUSTED (the cost or
+ * wall-clock cap is reached), BUDGET_WOULD_EXCEED (the call's worst case does
+ * not fit under the cost cap), COST_UNMETERED (a capped task whose call cannot
+ * be priced), MODEL_NOT_ALLOWED, NO_PROVIDER, NO_MODEL, ROUTE_REFUSED. A
+ * provider failure is refused with the provider's code and nothing is
+ * charged. Refused after the call, with its charge recorded: TASK_MOVED (the
+ * task's log moved while the model answered) and EMPTY_SUGGESTION.
  *
  * @generated from message modbit.v1.SuggestNextPrompt
  */
