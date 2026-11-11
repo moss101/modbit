@@ -31,6 +31,9 @@ export const composerCss = `
 .cmp-foot button { -webkit-app-region: no-drag; }
 .cmp-foot .cmp-chip { min-height: 22px; height: 22px; padding: 0 4px; font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); background: transparent; }
 .cmp-textarea::placeholder { color: var(--mb-color-text-muted); opacity: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* REQ-PX-210: a suggested next message is the placeholder; the hint beside it names the key that takes it and never covers it. */
+.cmp-textarea[data-suggestion] { padding-right: 176px; }
+.cmp-suggest-hint { position: absolute; top: 0; right: 0; height: var(--mb-type-body-line); display: inline-flex; align-items: center; gap: var(--mb-space-1); font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); pointer-events: none; white-space: nowrap; }
 .mb-btn.cmp-plus { width: 24px; min-height: 22px; height: 22px; padding: 0; border-radius: var(--radius-md); border-color: transparent; background: transparent; color: var(--mb-color-text-muted); }
 .cmp-chip, .cmp-seg { font: inherit; font-size: var(--mb-type-chrome-size); line-height: var(--mb-type-chrome-line); display: inline-flex; align-items: center; gap: var(--mb-space-1); min-height: var(--mb-control-sm); padding: 0 var(--mb-space-2); border-radius: calc(infinity * 1px); border: 1px solid var(--mb-color-border-control); background: var(--mb-color-raised); color: var(--mb-color-text); cursor: pointer; }
 .cmp-chip, .cmp-seg { border-color: transparent; border-radius: var(--radius-md); }

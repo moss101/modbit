@@ -77,7 +77,7 @@ const ACCOUNTING: AccountingInfo = {
   compactionSummaries: 1,
   budgets: { maxCostMinor: "500", spentMinor: "430", heldByChildrenMinor: "0", maxWallMs: "600000", wallMsUsed: "120000", maxChildren: 0, liveChildren: 0, forbidSpawn: false },
 };
-const ECONOMICS = { state: "Running", verified: false, checksPassed: 0, checksFailed: 0, model: "fixture-model", modelCalls: 4, inputTokens: "52000", cachedInputTokens: "40000", outputTokens: "2100", costUsd: 0.4312, pricingKnown: true, toolCalls: 9, wallMs: "120000", modelMs: "80000", toolMs: "30000", prefixCacheHits: 3, prefixCacheMisses: 1, compactionEpochs: 1, contextTokensInjected: "900" };
+const ECONOMICS = { state: "Running", verified: false, checksPassed: 0, checksFailed: 0, model: "fixture-model", modelCalls: 4, inputTokens: "52000", cachedInputTokens: "40000", outputTokens: "2100", costUsd: 0.4312, pricingKnown: true, toolCalls: 9, wallMs: "120000", modelMs: "80000", toolMs: "30000", prefixCacheHits: 3, prefixCacheMisses: 1, compactionEpochs: 1, contextTokensInjected: "900", suggestionCalls: 0 };
 
 const cp = (over: Partial<CheckpointInfo>): CheckpointInfo => ({ checkpointId: "00000000-0000-4000-8000-000000000001", epoch: 1, kind: "DELTA", status: "SUPERSEDED", reason: "turn_boundary", files: 2, removed: 0, eventOffset: "40", createdAtMs: GALLERY_NOW, name: "", turnId: "turnone", turnOrdinal: 1, retention: [], ...over });
 const CP_TURN1 = cp({});

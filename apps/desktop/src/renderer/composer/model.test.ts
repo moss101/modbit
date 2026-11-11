@@ -28,6 +28,9 @@ import {
   saveStore,
   sendNowLabel,
   slashMenu,
+  suggestionDue,
+  suggestionShows,
+  tabTakesSuggestion,
   suggestionsFor,
   triggerAt,
   walkHistory,
@@ -169,6 +172,64 @@ test("drafts and history round-trip, are bounded, and a broken store is an empty
   const throwing: KV = { getItem: () => { throw new Error("blocked"); }, setItem: () => { throw new Error("quota"); } };
   assert.deepEqual(loadStore(throwing), EMPTY_STORE);
   assert.doesNotThrow(() => saveStore(throwing, s));
+});
+
+test("PX-210: suggestions are on by default, the setting is kept with the composer's preferences, and off survives a reload", () => {
+  const mem = new Map<string, string>();
+  const kv: KV = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => void mem.set(k, v) };
+  assert.equal(EMPTY_STORE.suggestions, true);
+  assert.equal(loadStore(kv).suggestions, true, "nothing stored: on");
+  // A store written before the setting existed has no such key: still on, and nothing else of it is lost.
+  mem.set("modbit.composer.v1", JSON.stringify({ drafts: { t1: { text: "kept", mentions: [], skill: null } }, history: { t1: ["a"] }, educationAck: true }));
+  const old = loadStore(kv);
+  assert.equal(old.suggestions, true);
+  assert.equal(old.drafts.t1?.text, "kept");
+  assert.equal(old.educationAck, true);
+  saveStore(kv, { ...old, suggestions: false });
+  const off = loadStore(kv);
+  assert.equal(off.suggestions, false, "off is what was stored");
+  assert.equal(off.drafts.t1?.text, "kept");
+  // Writing a draft or a sent prompt keeps the setting.
+  assert.equal(withDraft(off, "t2", { text: "x", mentions: [], skill: null }).suggestions, false);
+  assert.equal(withHistory(off, "t1", "sent").suggestions, false);
+  saveStore(kv, { ...off, suggestions: true });
+  assert.equal(loadStore(kv).suggestions, true);
+  // Only an explicit false is off.
+  assert.equal(parseStore('{"suggestions":"no"}').suggestions, true);
+  assert.equal(parseStore('{"suggestions":false}').suggestions, false);
+});
+
+test("PX-210: a suggestion is asked for only after a turn, with nothing queued, nothing typed and the setting on", () => {
+  const due = { enabled: true, connected: true, hasSession: true, ended: false, running: false, queued: 0, text: "" };
+  assert.equal(suggestionDue(due), true);
+  assert.equal(suggestionDue({ ...due, enabled: false }), false, "the setting is off: no call");
+  assert.equal(suggestionDue({ ...due, running: true }), false, "a turn is running");
+  assert.equal(suggestionDue({ ...due, queued: 1 }), false, "an input is queued");
+  assert.equal(suggestionDue({ ...due, text: "half a thought" }), false, "the person is writing");
+  assert.equal(suggestionDue({ ...due, text: "  \n" }), true, "blank space is not a message");
+  assert.equal(suggestionDue({ ...due, ended: true }), false, "the task takes no more messages");
+  assert.equal(suggestionDue({ ...due, connected: false }), false);
+  assert.equal(suggestionDue({ ...due, hasSession: false }), false);
+  // What came back is shown only if the same facts still hold and it says something.
+  assert.equal(suggestionShows(due, "Run the tests"), true);
+  assert.equal(suggestionShows(due, "   "), false);
+  assert.equal(suggestionShows({ ...due, text: "typed meanwhile" }, "Run the tests"), false);
+  assert.equal(suggestionShows({ ...due, running: true }, "Run the tests"), false);
+  assert.equal(suggestionShows({ ...due, enabled: false }, "Run the tests"), false);
+});
+
+test("PX-210: only the plain Tab in an empty box takes the suggestion", () => {
+  const key = (k: Partial<{ key: string; shiftKey: boolean; altKey: boolean; ctrlKey: boolean; metaKey: boolean }>) => ({ key: "Tab", shiftKey: false, altKey: false, ctrlKey: false, metaKey: false, ...k });
+  assert.equal(tabTakesSuggestion(key({}), "Run the tests", ""), true);
+  assert.equal(tabTakesSuggestion(key({}), null, ""), false, "nothing is suggested: Tab moves focus as it always does");
+  assert.equal(tabTakesSuggestion(key({}), "", ""), false);
+  assert.equal(tabTakesSuggestion(key({}), "Run the tests", "my own words"), false, "a draft is never overwritten");
+  assert.equal(tabTakesSuggestion(key({ shiftKey: true }), "Run the tests", ""), false, "Shift+Tab stays the mode cycle");
+  assert.equal(tabTakesSuggestion(key({ ctrlKey: true }), "Run the tests", ""), false);
+  assert.equal(tabTakesSuggestion(key({ metaKey: true }), "Run the tests", ""), false);
+  assert.equal(tabTakesSuggestion(key({ altKey: true }), "Run the tests", ""), false);
+  // Enter never takes or sends a suggestion: it is not text in the box.
+  assert.equal(tabTakesSuggestion(key({ key: "Enter" }), "Run the tests", ""), false);
 });
 
 test("Alt+Up and Alt+Down walk the history and return to the unsent text", () => {

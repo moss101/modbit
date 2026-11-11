@@ -5,7 +5,9 @@
  * square while a turn runs), the typed @ and / menus, attachments through the
  * Core's ingest, input history and a local draft, and the trays that dock
  * above it (queue, education, stopped, policy-blocked, background terminals,
- * side question).
+ * side question). After a turn it may show one suggested next message as the
+ * box's placeholder (REQ-PX-210): Tab puts it in the box, typing dismisses
+ * it, and it is never sent for the person.
  *
  * The renderer holds no authority (docs/81). The mode shown is the Core's
  * field; one the Core has not acknowledged is drawn "unconfirmed". The queue,
@@ -15,7 +17,7 @@
  * sent without the person pressing send.
  */
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Button, Icon, IconButton, Menu, trays, useLayer, type IconName, type MenuItem } from "@modbit/ui";
+import { Button, Icon, IconButton, Kbd, Menu, trays, useLayer, type IconName, type MenuItem } from "@modbit/ui";
 import { ContextRing } from "../context/ring.tsx";
 import type { AttachmentResult, TaskModeId } from "../../shared/composer-types.ts";
 import { MAX_ATTACHMENTS_PER_MESSAGE, MAX_ATTACHMENT_BYTES } from "../../shared/attachments.ts";
@@ -45,6 +47,11 @@ import {
   reorderTarget,
   runningTerminals,
   saveStore,
+  SUGGEST_ATTEMPTS,
+  SUGGEST_RETRY_MS,
+  suggestionDue,
+  suggestionShows,
+  tabTakesSuggestion,
   triggerAt,
   walkHistory,
   withDraft,
@@ -131,6 +138,8 @@ export function Composer(props: ComposerProps) {
   const [pickerTick, setPickerTick] = useState(0);
   const [pickerWanted, setPickerWanted] = useState(false);
   const [announce, setAnnounce] = useState("");
+  // REQ-PX-210: the Core's suggested next message, shown as the placeholder until it is taken, typed over or out of date.
+  const [suggestion, setSuggestion] = useState<string | null>(null);
   const area = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   // One id per message text: a retry of the same send replays in the Core; edited text is a different message.
@@ -154,6 +163,51 @@ export function Composer(props: ComposerProps) {
   const rows = useMemo(() => queueRows(queue?.items ?? []), [queue]);
   const running_terminals = useMemo(() => runningTerminals(core.terminals), [core.terminals]);
   const catalogState = useCatalog(taskId, pickerWanted, `${posture?.preference.offset ?? ""}:${pickerTick}`);
+
+  // ---- the next-prompt suggestion (REQ-PX-210, DR-PX-2026-11-11-021 MWS-16)
+  // Asked for once, when this composer sees a turn end with nothing queued and nothing typed; never on opening a conversation, and never
+  // with the setting off. The Core decides again on its own facts and charges the task; a refusal means there is no suggestion.
+  const suggestCtx = { enabled: store.suggestions, connected, hasSession: !!sessionId, ended, running, queued: rows.length, text };
+  const suggestCtxRef = useRef(suggestCtx);
+  suggestCtxRef.current = suggestCtx;
+  const wasRunning = useRef(false);
+  const askSeq = useRef(0);
+  useEffect(() => {
+    const turnEnded = wasRunning.current && !running;
+    wasRunning.current = running;
+    if (running) {
+      // A new turn: what was suggested is about a state that is gone, and an answer still on its way is not shown.
+      askSeq.current += 1;
+      setSuggestion(null);
+      return;
+    }
+    if (!turnEnded || !sessionId || !suggestionDue(suggestCtxRef.current)) return;
+    const seq = (askSeq.current += 1);
+    void (async () => {
+      for (let attempt = 0; attempt < SUGGEST_ATTEMPTS; attempt += 1) {
+        const v = await window.modbit.composerSuggest(sessionId, taskId).catch(() => null);
+        if (seq !== askSeq.current) return;
+        if (v && v.refusal === "" && suggestionShows(suggestCtxRef.current, v.text)) {
+          setSuggestion(v.text);
+          setAnnounce(`Suggested next message: ${v.text}. Press Tab to put it in the message box.`);
+          return;
+        }
+        if (!v || v.refusal !== "TURN_RUNNING") return;
+        await new Promise((r) => setTimeout(r, SUGGEST_RETRY_MS));
+        if (seq !== askSeq.current || !suggestionDue(suggestCtxRef.current)) return;
+      }
+    })();
+  }, [running, sessionId, taskId]);
+  // A suggestion stands only while the facts it was made for hold: a queued message, the setting turned off, a lost Core or an ended task withdraw it.
+  useEffect(() => {
+    if (suggestion !== null && (!store.suggestions || !connected || ended || rows.length > 0)) setSuggestion(null);
+  }, [suggestion, store.suggestions, connected, ended, rows.length]);
+  useEffect(
+    () => () => {
+      askSeq.current += 1;
+    },
+    [],
+  );
 
   // ---- the draft is a local convenience that survives navigation and a reload
   const persist = useCallback((next: ComposerStore) => {
@@ -392,6 +446,14 @@ export function Composer(props: ComposerProps) {
         }
       }
     }
+    if (tabTakesSuggestion(e, suggestion, text)) {
+      // The suggestion goes into the box for the person to read, change and send; nothing is sent here.
+      e.preventDefault();
+      setTextAndCaret(suggestion!, suggestion!.length);
+      setSuggestion(null);
+      setAnnounce("The suggestion is in the message box. Nothing was sent.");
+      return;
+    }
     if (e.key === "Tab" && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
       e.preventDefault();
       applyMode(nextMode(shownMode));
@@ -453,6 +515,20 @@ export function Composer(props: ComposerProps) {
     { id: "mention-changes", label: "Mention the changes on this branch", onSelect: () => insertAt("@changes") },
     { id: "side", label: "Ask a side question", separatorBefore: true, onSelect: () => setSideOpen(true) },
     { id: "behavior", label: "Send behavior…", onSelect: () => setBehaviorOpen(true) },
+    {
+      id: "suggest-next",
+      label: "Suggest the next message",
+      checked: store.suggestions,
+      onSelect: () => {
+        const on = !storeRef.current.suggestions;
+        persist({ ...storeRef.current, suggestions: on });
+        if (!on) {
+          askSeq.current += 1;
+          setSuggestion(null);
+        }
+        setAnnounce(on ? "Suggestions are on: after a turn the agent may suggest your next message." : "Suggestions are off: no suggestion is asked for.");
+      },
+    },
     ...MODE_CYCLE.map((m, i): MenuItem => ({ id: `mode-${m.toLowerCase()}`, label: `${MODE_DEFS[m].label} mode`, radio: true, checked: shownMode === m, separatorBefore: i === 0, onSelect: () => applyMode(m) })),
   ];
   function insertAt(s: string) {
@@ -695,7 +771,9 @@ export function Composer(props: ComposerProps) {
               aria-autocomplete={menuOpen ? "list" : undefined}
               aria-controls={menuOpen && optionCount > 0 ? listId : undefined}
               aria-activedescendant={menuOpen && optionCount > 0 ? `${listId}-o${activeIdx}` : undefined}
-              placeholder={placeholder}
+              placeholder={suggestion ?? placeholder}
+              data-suggestion={suggestion !== null ? "true" : undefined}
+              aria-describedby={suggestion !== null && text === "" ? `${listId}-suggestion` : undefined}
               rows={Math.min(8, Math.max(1, text.split("\n").length))}
               maxLength={20_000}
               value={text}
@@ -704,6 +782,8 @@ export function Composer(props: ComposerProps) {
                 setText(e.target.value);
                 setCaret(e.target.selectionStart);
                 setHistory(HISTORY_START);
+                // Any typing dismisses the suggestion: the person is writing their own message.
+                if (suggestion !== null) setSuggestion(null);
                 if (error) setError("");
               }}
               onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
@@ -718,6 +798,11 @@ export function Composer(props: ComposerProps) {
                 }
               }}
             />
+            {suggestion !== null && text === "" && (
+              <span className="cmp-suggest-hint" id={`${listId}-suggestion`} data-testid="composer-suggestion-hint">
+                <Kbd>Tab</Kbd> to use this suggestion
+              </span>
+            )}
             {mentionOpen && <MentionMenu id={listId} options={mentionSources.options} loading={mentionSources.loading} active={activeIdx} onActive={setActiveIdx} onChoose={chooseMention} />}
             {slashOpen && <SlashMenuView id={listId} items={slash.items} dividerAt={slash.dividerAt} active={activeIdx} onActive={setActiveIdx} onChoose={chooseSlash} loaded={slashInv !== null} />}
           </div>

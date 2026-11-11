@@ -394,6 +394,7 @@ handle("task:economics", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
     prefixCacheMisses: v.prefixCacheMisses,
     compactionEpochs: v.compactionEpochs,
     contextTokensInjected: v.contextTokensInjected.toString(),
+    suggestionCalls: v.suggestionCalls,
   };
 });
 

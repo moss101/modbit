@@ -177,6 +177,24 @@ export interface SideAnswerView {
   lastOffset: string;
 }
 
+/**
+ * The Core's answer to a request for a suggested next message (REQ-PX-210): the suggestion, or the typed code it refused with. A refusal
+ * is an ordinary answer here, not an error: a turn that is running, a queued input or a budget at its cap simply means there is none.
+ */
+export interface SuggestionView {
+  /** One line; "" when the Core refused. */
+  text: string;
+  /** The Core's refusal code (TURN_RUNNING, INPUT_QUEUED, BUDGET_EXHAUSTED, SUGGESTIONS_OFF, ...); "" when a suggestion was made. */
+  refusal: string;
+  /** The Core's words for the refusal. */
+  reason: string;
+  /** The task's last log offset the suggestion was made at: the call did not move it. */
+  taskOffset: string;
+  costKnown: boolean;
+  /** What the task was charged, in the registry's minor units, when the cost is known. */
+  costMinor: string;
+}
+
 export interface QueuedChangeView {
   inputId: string;
   state: string;
