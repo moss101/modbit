@@ -702,9 +702,17 @@ mod tests {
         let idle = TaskState::Waiting(WaitReason::UserInput);
         // After a turn, nothing queued: yes, whatever ended the run short of the task itself.
         assert_eq!(gate(idle, TaskOrigin::Desktop, false, 0), "");
-        assert_eq!(gate(TaskState::ReadyForReview, TaskOrigin::Cli, false, 0), "");
         assert_eq!(
-            gate(TaskState::Waiting(WaitReason::Paused), TaskOrigin::Desktop, false, 0),
+            gate(TaskState::ReadyForReview, TaskOrigin::Cli, false, 0),
+            ""
+        );
+        assert_eq!(
+            gate(
+                TaskState::Waiting(WaitReason::Paused),
+                TaskOrigin::Desktop,
+                false,
+                0
+            ),
             ""
         );
         // A turn is running: the state says so, or the runtime does (a run
@@ -714,7 +722,12 @@ mod tests {
             "TURN_RUNNING"
         );
         assert_eq!(
-            gate(TaskState::Waiting(WaitReason::Approval), TaskOrigin::Desktop, true, 0),
+            gate(
+                TaskState::Waiting(WaitReason::Approval),
+                TaskOrigin::Desktop,
+                true,
+                0
+            ),
             "TURN_RUNNING"
         );
         // An input is queued, however many.
@@ -722,7 +735,10 @@ mod tests {
         assert_eq!(gate(idle, TaskOrigin::Desktop, false, 7), "INPUT_QUEUED");
         // A running turn is named before a queued input: both hold while a
         // message waits behind a turn.
-        assert_eq!(gate(TaskState::Running, TaskOrigin::Desktop, true, 1), "TURN_RUNNING");
+        assert_eq!(
+            gate(TaskState::Running, TaskOrigin::Desktop, true, 1),
+            "TURN_RUNNING"
+        );
         // A task that has not run, and one that has ended.
         assert_eq!(
             gate(TaskState::Created, TaskOrigin::Desktop, false, 0),
@@ -732,7 +748,11 @@ mod tests {
             gate(TaskState::Queued, TaskOrigin::Desktop, false, 0),
             "NO_FINISHED_TURN"
         );
-        for ended in [TaskState::Completed, TaskState::Failed, TaskState::Cancelled] {
+        for ended in [
+            TaskState::Completed,
+            TaskState::Failed,
+            TaskState::Cancelled,
+        ] {
             assert_eq!(gate(ended, TaskOrigin::Desktop, false, 0), "TASK_ENDED");
         }
         // A subagent's budget is its parent's slice: no call is made for it.
