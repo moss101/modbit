@@ -3790,7 +3790,11 @@ async fn qual_px_069_real_helper_a_document_and_a_modal_dialog_are_driven_by_acc
     let doc = fixture_app::Fixture::launch_kind(Kind::Document);
     let dlg = fixture_app::Fixture::launch_kind(Kind::Dialog);
     let steps = vec![
-        // 0-5 the document application.
+        // 0-6 the document application. Setting the text may restructure
+        // the text view (AppKit adds scrollers, relays out), and then the
+        // helper reports the tree changed and the Core refuses the old ids
+        // (TARGET_STALE, re_observe): read again before the next press, as an
+        // agent must.
         start(Kind::Document.bundle_id()),
         fx(call("computer.state", json!({}))),
         st(|s| {
@@ -3799,17 +3803,18 @@ async fn qual_px_069_real_helper_a_document_and_a_modal_dialog_are_driven_by_acc
                 json!({"element": s.el("Document"), "value": "Dear Ada,\nthe engine runs."}),
             )
         }),
+        fx(call("computer.state", json!({}))),
         st(|s| call("computer.press", json!({"element": s.el("Save")}))),
         fx(call("computer.state", json!({}))),
         fx(call("computer.release", json!({}))),
-        // 6-8 the modal-dialog application: Delete... opens the sheet.
+        // 7-9 the modal-dialog application: Delete... opens the sheet.
         start(Kind::Dialog.bundle_id()),
         fx(call("computer.state", json!({}))),
         st(|s| call("computer.press", json!({"element": s.el("Delete\u{2026}")}))),
-        // 9 the sheet is read, 10 the window it blocks is refused.
+        // 10 the sheet is read, 11 the window it blocks is refused.
         fx(call("computer.state", json!({}))),
         st(|s| call("computer.press", json!({"element": s.el("Delete\u{2026}")}))),
-        // 11 the sheet's own button answers it, 12 read back, 13 give the machine back.
+        // 12 the sheet's own button answers it, 13 read back, 14 give the machine back.
         st(|s| call("computer.press", json!({"element": s.el("Delete")}))),
         fx(call("computer.state", json!({}))),
         fx(call("computer.release", json!({}))),
@@ -3817,14 +3822,14 @@ async fn qual_px_069_real_helper_a_document_and_a_modal_dialog_are_driven_by_acc
     let mut rig = run(real(), steps, approve_all()).await;
     rig.finish().await;
     let o = rig.outs();
-    for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13] {
+    for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14] {
         assert!(
             o[i].0.starts_with("status: SUCCESS"),
             "call {i}: {}",
             o[i].0
         );
     }
-    for i in [2, 3, 8, 11] {
+    for i in [2, 4, 9, 12] {
         assert_eq!(
             o[i].1["modality"], "ax",
             "call {i} used no coordinate: {}",
@@ -3837,16 +3842,16 @@ async fn qual_px_069_real_helper_a_document_and_a_modal_dialog_are_driven_by_acc
         doc.get("doc").as_deref(),
         Some("Dear Ada,\\nthe engine runs.")
     );
-    let tree = o[4].1["tree"].as_str().unwrap();
+    let tree = o[5].1["tree"].as_str().unwrap();
     assert!(tree.contains("the engine runs"), "{tree}");
     // The sheet was read and the blocked window refused, with nothing actuated.
-    let sheet = o[9].1["tree"].as_str().unwrap();
+    let sheet = o[10].1["tree"].as_str().unwrap();
     assert!(sheet.contains("Delete the item?"), "{sheet}");
-    expect_refusal(&o, 10, "MODAL_BLOCKING", "ask_user");
+    expect_refusal(&o, 11, "MODAL_BLOCKING", "ask_user");
     // The sheet's Delete answered the dialog.
     assert_eq!(dlg.get("dialog").as_deref(), Some("deleted"));
     assert_eq!(dlg.get("sheet").as_deref(), Some("closed"));
-    let last = o[12].1["tree"].as_str().unwrap();
+    let last = o[13].1["tree"].as_str().unwrap();
     assert!(last.contains("item=deleted"), "{last}");
     // Two sessions, one per application, each closed by a release; every
     // input an accessibility action.
