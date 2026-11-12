@@ -100,7 +100,7 @@ None injected (setup card). Two real failures occurred and were root-caused:
 ## 9. Remaining gaps and blockers
 
 1. `gh auth login` has not been run on this machine — needed before the first push/PR (owner action).
-2. N2 is fixed on `wip/win-00-manifest-windows-paths` @ `e562e0a1`, but until the maintainer merges it **and reseals** (regenerate manifest.json/MANIFEST.md on macOS), `check_dossier --manifest` on native Windows shows the builder's own hash/size mismatch and exits 1. Strict RUN-3 native acceptance lands after that merge+reseal. A Linux cross-check of the patch (apply → expect only the self-hash finding → restore) is deferred: the WSL VM could not cold-start under the WIN-01 baseline's full-core load (HCS_E_CONNECTION_TIMEOUT; pristine-Linux exit 0 was already verified before the baseline started).
+2. N2 is fixed on `wip/win-00-manifest-windows-paths` @ `e562e0a1`, but until the maintainer merges it **and reseals** (regenerate manifest.json/MANIFEST.md on macOS), `check_dossier --manifest` on native Windows shows the builder's own hash/size mismatch and exits 1. Strict RUN-3 native acceptance lands after that merge+reseal. A Linux cross-check of the patch (apply → check → restore, in the WSL clone) completed after the baseline freed the machine: patched, the check fails with exactly the same two self-reference findings (builder hash+size) as on Windows; restored, it exits 0 with "manifest hashes verified" — the fix behaves identically on both platforms.
 3. The `.gitattributes`/`eol=lf` gap (N1) is reported for a macOS-side decision; every fresh Windows clone needs the renormalize workaround until then.
 4. Chassis (physical vs VM) unrecorded; OS build recorded.
 5. No Defender exclusion added (not needed at current build speeds).
