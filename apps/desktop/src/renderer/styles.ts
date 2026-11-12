@@ -213,13 +213,69 @@ input.settings-toggle.settings-toggle::after, input.settings-toggle.settings-tog
 .agent-core-dot { width: 6px; height: 6px; border-radius: calc(infinity * 1px); background: var(--mb-color-warn); }
 .agent-core[data-status="ok"] .agent-core-dot { background: var(--mb-color-ok); }
 .agent-core[data-status="danger"] .agent-core-dot { background: var(--mb-color-danger); outline: 1px solid var(--mb-color-text); }
-.apps-panel { position: relative; height: 100%; min-height: 0; display: flex; flex-direction: column; }
-.apps-panel > .mb-tabs { flex: 1 1 0; min-height: 0; }
-.apps-panel .mb-tablist { box-sizing: border-box; width: 100%; max-width: none; height: var(--mb-top-bar); padding: 0 64px 0 8px; border-radius: 0; border-bottom: 1px solid var(--color-tab-border); overflow-x: auto; }
-.apps-panel .mb-tabpanel { min-height: 0; overflow: auto; display: flex; flex-direction: column; }
-.apps-panel-tools { position: absolute; top: calc((var(--mb-top-bar) - var(--mb-control-sm)) / 2); right: 8px; z-index: 1; display: inline-flex; gap: 2px; }
-.apps-panel .mb-tabpanel > * { padding-inline: var(--mb-space-3); }
-.apps-panel .mb-tabpanel > .changes-app { padding: 0; flex: 1 1 0; min-height: 0; }
+/* MWS-10 (REQ-PX-202): the pane dock. Panes tile in at most two columns, each with a head the height of the top bar and a 1 px edge; none is under 280 by 100 (the dock scrolls where they cannot all fit). The sizes are the dock model's (shell/dock.ts). */
+.apps-panel { position: relative; box-sizing: border-box; height: 100%; min-height: 0; display: flex; align-items: flex-start; overflow-x: hidden; overflow-y: auto; }
+.dock-col { position: relative; flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
+.dock-col + .dock-col { border-left: 1px solid var(--color-tab-border); }
+.pane { position: relative; flex: none; box-sizing: border-box; min-width: 0; min-height: 100px; background: var(--mb-surface-conversation); display: flex; flex-direction: column; overflow: hidden; }
+.pane + .pane { border-top: 1px solid var(--color-tab-border); }
+.pane-head { flex: none; box-sizing: border-box; height: var(--mb-top-bar); min-width: 0; display: flex; align-items: center; gap: var(--mb-space-1); padding: 0 var(--mb-space-2) 0 var(--mb-space-4); border-bottom: 1px solid var(--color-tab-border); font-size: var(--mb-type-chrome-size); color: var(--mb-color-text-muted); }
+.apps-panel .pane-name { flex: 0 1 auto; min-width: 0; margin: 0 var(--mb-space-1) 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--mb-type-chrome-size); line-height: var(--mb-type-chrome-line); font-weight: 500; color: var(--mb-color-text); }
+.pane-actions { flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: var(--mb-space-1); overflow: hidden; }
+.pane-actions > .mb-btn { flex: none; }
+.pane-head > .mb-btn { flex: none; }
+.pane-body { flex: 1 1 0; min-height: 0; min-width: 0; overflow: auto; display: flex; flex-direction: column; }
+.pane-body > * { padding-inline: var(--mb-space-3); }
+.pane-body > .changes-app { padding: 0; flex: 1 1 0; min-height: 0; }
+.pane-body > p.meta:first-child { margin-top: var(--mb-space-3); }
+.splitter[data-axis="horizontal"] { top: 0; bottom: auto; left: 0; right: 0; width: auto; height: 4px; cursor: row-resize; }
+.splitter[data-axis="horizontal"]::after { top: 50%; bottom: auto; left: 0; right: 0; width: auto; height: 2px; margin: -1px 0 0; }
+.topbar-panes .mb-btn[data-state="minimized"] { position: relative; }
+.topbar-panes .mb-btn[data-state="minimized"]::after { content: ""; position: absolute; left: 50%; bottom: 2px; width: 10px; height: 2px; margin-left: -5px; border-radius: 1px; background: var(--mb-color-text-muted); }
+/* The Activity pane: the find field in the head, the kinds as a row of filters, the entries one line each in the log's order. */
+.activity-find { flex: 0 1 220px; min-width: 96px; box-sizing: border-box; height: var(--mb-control-md); display: flex; align-items: center; gap: var(--mb-space-1); padding: 0 var(--mb-space-2); border-radius: var(--radius-md); background: var(--mb-surface-fill); color: var(--mb-color-text-muted); }
+.activity-find:focus-within { box-shadow: 0 0 0 1px var(--mb-color-focus); }
+.activity-find svg { flex: none; }
+.activity-find input { flex: 1 1 0; min-width: 0; border: 0; padding: 0; background: transparent; color: var(--mb-color-text); font: inherit; font-size: var(--mb-type-caption-size); outline: none; }
+.activity-find input::placeholder { color: var(--mb-color-text-muted); opacity: 1; }
+.activity-app, .background-app, .pr-app { display: flex; flex-direction: column; min-width: 0; padding-block: var(--mb-space-2) var(--mb-space-3); font-size: var(--mb-type-chrome-size); line-height: var(--mb-type-chrome-line); }
+.activity-kinds { display: flex; flex-wrap: wrap; gap: var(--mb-space-1); padding-bottom: var(--mb-space-2); }
+.activity-kind.activity-kind { min-height: 0; height: var(--mb-control-sm); display: inline-flex; align-items: center; gap: var(--mb-space-1); padding: 0 var(--mb-space-2); border: 0; border-radius: var(--radius-md); background: var(--mb-surface-fill); color: var(--mb-color-text-muted); font: inherit; font-size: var(--mb-type-caption-size); cursor: pointer; }
+.activity-kind.activity-kind:hover { background: var(--color-hover); color: var(--mb-color-text); }
+.activity-kind.activity-kind[aria-pressed="true"] { background: var(--color-selected); color: var(--mb-color-text); }
+.activity-count { font-variant-numeric: tabular-nums; }
+.activity-list { list-style: none; margin: 0; padding: 0 0 0 20px; position: relative; }
+.activity-list::before { content: ""; position: absolute; left: 5px; top: 8px; bottom: 8px; width: 1px; background: var(--color-tab-border); }
+.activity-entry { position: relative; display: flex; align-items: baseline; gap: var(--mb-space-2); min-height: var(--mb-control-md); padding: 3px 0; box-sizing: border-box; }
+.activity-entry::before { content: ""; position: absolute; left: -18px; top: 11px; width: 7px; height: 7px; border-radius: 50%; background: var(--mb-color-text-muted); box-shadow: 0 0 0 3px var(--mb-surface-conversation); }
+.activity-entry[data-tone="ask"]::before { background: var(--mb-color-warn); }
+.activity-entry[data-tone="ok"]::before { background: var(--mb-color-ok); }
+.activity-entry[data-tone="bad"]::before { background: var(--mb-color-danger); }
+.activity-text { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.activity-time { flex: none; font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); font-variant-numeric: tabular-nums; }
+.apps-panel .background-count { margin: 0 0 var(--mb-space-1); }
+/* The Pull request pane: the request, then its checks and people's comments, each under a hairline. */
+.pr-sec { padding: var(--mb-space-2) 0 var(--mb-space-3); min-width: 0; }
+.pr-sec + .pr-sec { border-top: 1px solid var(--color-tab-border); }
+.pr-app p { margin: 0 0 var(--mb-space-1); }
+.pr-title { font-weight: 500; color: var(--mb-color-text); }
+.pr-url { overflow-wrap: anywhere; user-select: text; }
+.pr-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--mb-space-2); margin-top: var(--mb-space-2); }
+.pr-approval { padding: var(--mb-space-2) var(--mb-space-3); border-radius: var(--radius-lg); background: var(--mb-color-warn-tint); }
+.pr-approval .pr-actions { justify-content: flex-end; }
+.apps-panel .pr-h { display: flex; align-items: baseline; gap: var(--mb-space-2); margin: 0 0 var(--mb-space-1); font-size: var(--mb-type-caption-size); font-weight: 500; color: var(--mb-color-text); }
+.pr-h-aside { margin-left: auto; font-weight: 400; color: var(--mb-color-text-muted); }
+.pr-list { list-style: none; margin: 0; padding: 0; }
+.pr-row { display: flex; align-items: center; gap: var(--mb-space-2); min-height: var(--mb-row); min-width: 0; }
+.pr-mark { flex: none; display: inline-flex; color: var(--mb-color-text-muted); }
+.pr-mark[data-tone="ok"] { color: var(--mb-color-ok); }
+.pr-mark[data-tone="bad"] { color: var(--mb-color-danger); }
+.pr-x { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pr-dim { color: var(--mb-color-text-muted); font-size: var(--mb-type-caption-size); }
+.pr-result { flex: none; font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); }
+.pr-comment { padding: var(--mb-space-1) 0; min-width: 0; }
+.pr-comment-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--mb-space-2); }
+.pr-comment-body { margin: var(--mb-space-1) 0 0; padding: var(--mb-space-2); border-radius: var(--radius-md); background: var(--mb-surface-fill); font-family: inherit; font-size: var(--mb-type-caption-size); white-space: pre-wrap; overflow-wrap: anywhere; }
 .changes-app { gap: 0; }
 .changes-head { flex: none; box-sizing: border-box; height: var(--mb-top-bar); display: flex; align-items: center; gap: var(--mb-space-2); padding: 0 12px; border-bottom: 1px solid var(--color-tab-border); font-size: var(--mb-type-chrome-size); color: var(--mb-color-text-muted); }
 .changes-summary { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -1,6 +1,6 @@
 /**
  * Renderer-local UI preferences (AFW-A03, A06, A09, A13; MWS-03): list width and
- * collapse, panel ratio, per-task panel state, theme, zoom and density. A per-viewer
+ * collapse, panel ratio, each task's pane dock, theme, zoom and density. A per-viewer
  * convenience in the renderer's own storage, like the notification
  * preferences; never task state and never authoritative. Everything read back
  * is validated and clamped, and a missing or hostile value falls back to the
@@ -9,12 +9,62 @@
 import { GEOMETRY, isDensity, isThemePreference, type Density, type ThemePreference } from "@modbit/design-tokens";
 import { clampListWidth, clampPanelRatio } from "./layout.ts";
 
-export const APP_KINDS = ["changes", "terminal", "browser", "files", "evidence"] as const;
+/** The panes a task can show (DR-PX-2026-11-11-021 MWS-10): the five apps PX-048 owns, then Activity, Background tasks and Pull request. */
+export const APP_KINDS = ["changes", "terminal", "browser", "files", "evidence", "activity", "background", "pull-request"] as const;
 export type AppKind = (typeof APP_KINDS)[number];
 
+/**
+ * One task's pane dock (MWS-10): which panes are open, in the order they tile, which of them are minimized, and their sizes.
+ * A view choice of this window; the Core knows nothing of it.
+ */
 export interface PanelState {
-  open: boolean;
-  tab: AppKind;
+  /** The open panes, in the order they tile. */
+  panes: AppKind[];
+  /** Open panes taken out of the grid; each keeps its place and its size for when it comes back. */
+  minimized: AppKind[];
+  /** The set the dock's own toggle brings back after every pane was closed. */
+  last: AppKind[];
+  /** The left column's share of the dock's width where two columns tile. */
+  split: number;
+  /** A pane's share of its column's height against the others in it; a pane with no entry counts 1. */
+  weights: Partial<Record<AppKind, number>>;
+}
+
+export const DOCK_SPLIT_DEFAULT = 0.5;
+export const DOCK_SPLIT_MIN = 0.2;
+export const DOCK_SPLIT_MAX = 0.8;
+export const PANE_WEIGHT_MIN = 0.05;
+export const PANE_WEIGHT_MAX = 20;
+export const EMPTY_DOCK: PanelState = { panes: [], minimized: [], last: [], split: DOCK_SPLIT_DEFAULT, weights: {} };
+
+const isAppKind = (v: unknown): v is AppKind => APP_KINDS.some((k) => k === v);
+/** A stored list of panes: known kinds only, each once, in the stored order. */
+const paneList = (v: unknown): AppKind[] => (Array.isArray(v) ? [...new Set(v.filter(isAppKind))] : []);
+
+/**
+ * Validates one stored dock. An entry from before the dock (`{ open, tab }`: one app behind a tab strip) becomes that one pane,
+ * open or remembered (DR-PX-2026-11-11-021 section 7). Null where the entry is neither shape.
+ */
+export function parsePanelState(s: unknown): PanelState | null {
+  if (typeof s !== "object" || s === null || Array.isArray(s)) return null;
+  const v = s as Record<string, unknown>;
+  if (Array.isArray(v.panes)) {
+    const panes = paneList(v.panes);
+    const weights: Partial<Record<AppKind, number>> = {};
+    if (typeof v.weights === "object" && v.weights !== null && !Array.isArray(v.weights)) {
+      for (const [k, w] of Object.entries(v.weights as Record<string, unknown>)) if (isAppKind(k) && typeof w === "number" && Number.isFinite(w)) weights[k] = Math.min(PANE_WEIGHT_MAX, Math.max(PANE_WEIGHT_MIN, w));
+    }
+    return {
+      panes,
+      minimized: paneList(v.minimized).filter((k) => panes.includes(k)),
+      last: paneList(v.last),
+      split: typeof v.split === "number" && Number.isFinite(v.split) ? Math.min(DOCK_SPLIT_MAX, Math.max(DOCK_SPLIT_MIN, v.split)) : DOCK_SPLIT_DEFAULT,
+      weights,
+    };
+  }
+  if (typeof v.open !== "boolean") return null;
+  const tab = APP_KINDS.find((k) => k === v.tab) ?? "changes";
+  return { ...EMPTY_DOCK, panes: v.open ? [tab] : [], last: [tab] };
 }
 
 export interface UiPrefs {
@@ -59,9 +109,8 @@ export function parseUiPrefs(raw: string | null): UiPrefs {
   const panelByTask: Record<string, PanelState> = {};
   if (isObject(v.panelByTask)) {
     for (const [id, s] of Object.entries(v.panelByTask).slice(-MAX_TASK_ENTRIES)) {
-      if (!isObject(s) || typeof s.open !== "boolean") continue;
-      const tab = APP_KINDS.find((k) => k === s.tab) ?? "changes";
-      panelByTask[id] = { open: s.open, tab };
+      const dock = parsePanelState(s);
+      if (dock) panelByTask[id] = dock;
     }
   }
   return {

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import type { AccountingInfo, CheckpointInfo } from "../../shared/control-types.ts";
 import type { ExtensionRowInfo } from "../../shared/customize-types.ts";
 import type { TaskEconomicsSummary } from "../../preload/preload.ts";
-import { backgroundOf, budgetLines, changeWords, checkpointHeading, checkpointLabel, folderWords, locationWords, modelCallWords, restorable, spendWords, toolServers, verificationWords } from "./rail-model.ts";
+import { backgroundOf, budgetLines, economicsFacts, evidenceWords, changeWords, checkpointHeading, checkpointLabel, folderWords, locationWords, modelCallWords, restorable, spendWords, toolServers, verificationWords } from "./rail-model.ts";
 
 const economics = (over: Partial<TaskEconomicsSummary>): TaskEconomicsSummary => ({ state: "Running", verified: false, checksPassed: 0, checksFailed: 0, model: "m", modelCalls: 0, inputTokens: "0", cachedInputTokens: "0", outputTokens: "0", costUsd: 0, pricingKnown: false, toolCalls: 0, wallMs: "0", modelMs: "0", toolMs: "0", prefixCacheHits: 0, prefixCacheMisses: 0, compactionEpochs: 0, contextTokensInjected: "0", suggestionCalls: 0, ...over });
 const checkpoint = (over: Partial<CheckpointInfo>): CheckpointInfo => ({ checkpointId: "c", epoch: 1, kind: "TURN", status: "CURRENT", reason: "", files: 0, removed: 0, eventOffset: "1", createdAtMs: 0, name: "", turnId: "t1", turnOrdinal: 1, retention: [], ...over });
@@ -80,4 +80,41 @@ test("PX-201: the rail offers the committed turn boundaries, newest first, one p
   assert.equal(checkpointLabel(list.checkpoints[1]!), "Turn 2 · before the edit");
   assert.equal(checkpointHeading(list.checkpoints[0]!), "at the end of turn 1");
   assert.equal(checkpointHeading(checkpoint({ turnOrdinal: 0 })), "at the end of this turn");
+});
+
+test("PX-201 follow-up: the latest evidence line is said in a person's words, with the Core's facts kept", () => {
+  assert.equal(evidenceWords("delegated child-a (BACKGROUND)"), "Started a child task in the background: child-a");
+  assert.equal(evidenceWords("delegated child-a (PARALLEL_WAIT)"), "Started a child task (parallel wait): child-a");
+  assert.equal(evidenceWords("delegated a child ()"), "Started a child task: a child");
+  assert.equal(evidenceWords("delegation refused: DEPTH_EXCEEDED at ADMISSION"), "A child task could not be started: depth exceeded (at admission)");
+  assert.equal(evidenceWords("child child-a reached a protected effect: git.push (External)"), "A child task (child-a) is waiting for approval to use git.push");
+  assert.equal(evidenceWords("child completed: created src/a/a.txt"), "A child task finished: created src/a/a.txt");
+  assert.equal(evidenceWords("child failed: no such file"), "A child task failed: no such file");
+  assert.equal(evidenceWords("targeted verification PASSED"), "Targeted checks passed");
+  assert.equal(evidenceWords("acceptance gate ACCEPT"), "Final check before review: passed");
+  assert.equal(evidenceWords("acceptance gate INCONCLUSIVE"), "Final check before review: could not decide");
+  assert.equal(evidenceWords("acceptance gate REJECT"), "Final check before review: did not pass");
+  assert.equal(evidenceWords("acceptance gate HELD"), "Final check before review: held");
+  assert.equal(evidenceWords("escalated to openai/gpt-5"), "Moved to another model: openai/gpt-5");
+  assert.equal(evidenceWords("something the desktop does not know"), "something the desktop does not know", "a line of no known shape is the Core's own");
+  for (const raw of ["delegated child-a (BACKGROUND)", "targeted verification PASSED", "acceptance gate ACCEPT"]) assert.doesNotMatch(evidenceWords(raw), /BACKGROUND|PASSED|ACCEPT|delegated|gate/, raw);
+});
+
+test("PX-201 follow-up: the economics are a list of facts in plain words, each one or two of the Core's numbers", () => {
+  const facts = economicsFacts(economics({ verified: false, checksPassed: 1, checksFailed: 1, model: "gpt-5", modelCalls: 3, inputTokens: "12345", cachedInputTokens: "2000", outputTokens: "678", costUsd: 0.01234, pricingKnown: true, toolCalls: 4, wallMs: "65000", modelMs: "3000", toolMs: "900", prefixCacheHits: 2, prefixCacheMisses: 1 }));
+  assert.deepEqual(Object.fromEntries(facts.map((f) => [f.label, f.value])), {
+    Checks: "1 of 2 passed, not verified yet",
+    Model: "3 model calls to gpt-5",
+    Tokens: "12,345 in (2,000 reused from the cache), 678 out",
+    Cost: "$0.0123 at list prices",
+    "Tool calls": "4",
+    Time: "1 min 5 s in all, 3 s in the model, 900 ms in tools",
+    "Prompt reuse": "2 of 3 requests reused the start of the prompt",
+  });
+  const bare = Object.fromEntries(economicsFacts(economics({ model: "", pricingKnown: false })).map((f) => [f.label, f.value]));
+  assert.equal(bare["Checks"], "none run yet");
+  assert.equal(bare["Model"], "0 model calls");
+  assert.equal(bare["Cost"], "no price is known for this model");
+  assert.equal("Prompt reuse" in bare, false, "no request, no line");
+  assert.doesNotMatch(facts.map((f) => `${f.label} ${f.value}`).join(" "), /Economics|prefix|wall\b|\d ms wall/);
 });

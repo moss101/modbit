@@ -2,11 +2,13 @@ import type { Ref } from "react";
 import { Icon, IconButton, Menu, type IconName, type MenuItem } from "@modbit/ui";
 import { APP_LABEL } from "./artifacts.ts";
 import type { AppKind } from "./prefs.ts";
+import type { PaneState } from "./dock.ts";
 
-/** One pane the open task can show, and whether it is open now. */
+/** One pane the open task can show, and where it is now: in the grid, minimized out of it, or closed. */
 export interface PaneToggle {
   kind: AppKind;
   open: boolean;
+  state: PaneState;
 }
 
 export interface TopBarProps {
@@ -23,11 +25,14 @@ export interface TopBarProps {
   details?: { shown: boolean; onToggle: () => void } | undefined;
 }
 
-export const APP_ICON: Record<AppKind, IconName> = { changes: "file-diff", terminal: "terminal", browser: "globe", files: "file-text", evidence: "eye" };
+export const APP_ICON: Record<AppKind, IconName> = { changes: "file-diff", terminal: "terminal", browser: "globe", files: "file-text", evidence: "eye", activity: "clock", background: "layers", "pull-request": "git-compare" };
+
+/** What a pane's toggle does next, as its tooltip: an open pane closes, a minimized one comes back, a closed one opens. */
+export const paneToggleTitle = (kind: AppKind, state: PaneState): string => (state === "open" ? `Hide ${APP_LABEL[kind]}` : state === "minimized" ? `Show ${APP_LABEL[kind]} (minimized)` : `Show ${APP_LABEL[kind]}`);
 
 /**
  * The centre's top bar (45 px, 40 in Compact: `--mb-top-bar`; DR-PX-2026-11-11-021 MWS-05): the title, which opens the task's
- * menu; then the details rail's toggle and one toggle per pane the task can show, each saying whether it is open; then More.
+ * menu; then the details rail's toggle and one toggle per pane the task can show, each saying whether it is open, minimized or closed (MWS-10: any of them can be open together); then More.
  * The task's state and branch are in the details rail (MWS-09).
  */
 export function TopBar(p: TopBarProps) {
@@ -56,7 +61,7 @@ export function TopBar(p: TopBarProps) {
       {p.panes.length > 0 && (
         <span className="topbar-panes" role="group" aria-label="Panes" data-testid="pane-toggles">
           {p.panes.map((pane) => (
-            <IconButton key={pane.kind} label={`${APP_LABEL[pane.kind]} pane`} title={pane.open ? `Hide ${APP_LABEL[pane.kind]}` : `Show ${APP_LABEL[pane.kind]}`} icon={<Icon name={APP_ICON[pane.kind]} />} pressed={pane.open} data-open={pane.open} data-testid={`pane-toggle-${pane.kind}`} onClick={() => p.onPane(pane.kind)} />
+            <IconButton key={pane.kind} label={pane.state === "minimized" ? `${APP_LABEL[pane.kind]} pane, minimized` : `${APP_LABEL[pane.kind]} pane`} title={paneToggleTitle(pane.kind, pane.state)} icon={<Icon name={APP_ICON[pane.kind]} />} pressed={pane.open} data-open={pane.open} data-state={pane.state} data-testid={`pane-toggle-${pane.kind}`} onClick={() => p.onPane(pane.kind)} />
           ))}
         </span>
       )}

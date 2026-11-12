@@ -84,7 +84,7 @@ test("a drag stores a ratio of the window width that reproduces the width", () =
 });
 
 test("persisted UI preferences round-trip, and hostile or corrupt storage falls back to defaults (never throws)", () => {
-  const p = { ...DEFAULT_UI_PREFS, listWidth: 333, listCollapsed: true, panelRatio: 0.42, theme: "dark" as const, zoom: 1.16, density: "compact" as const, panelByTask: { t1: { open: true, tab: "browser" as const } } };
+  const p = { ...DEFAULT_UI_PREFS, listWidth: 333, listCollapsed: true, panelRatio: 0.42, theme: "dark" as const, zoom: 1.16, density: "compact" as const, panelByTask: { t1: { panes: ["changes" as const, "terminal" as const, "activity" as const], minimized: ["terminal" as const], last: ["browser" as const], split: 0.6, weights: { changes: 2 } } } };
   assert.deepEqual(parseUiPrefs(serializeUiPrefs(p)), p);
   assert.deepEqual(parseUiPrefs(null), DEFAULT_UI_PREFS);
   assert.deepEqual(parseUiPrefs("{not json"), DEFAULT_UI_PREFS);
@@ -96,7 +96,14 @@ test("persisted UI preferences round-trip, and hostile or corrupt storage falls 
   assert.equal(hostile.theme, "system");
   assert.equal(hostile.zoom, 1);
   assert.equal(hostile.listCollapsed, false);
-  assert.deepEqual(hostile.panelByTask, { b: { open: true, tab: "changes" } });
+  // DR-PX-2026-11-11-021 section 7: a stored panel tab (the entry from before the dock) becomes the one open pane; an unknown tab is Changes, as it was.
+  assert.deepEqual(hostile.panelByTask, { b: { panes: ["changes"], minimized: [], last: ["changes"], split: 0.5, weights: {} } });
+  const before = parseUiPrefs(JSON.stringify({ panelByTask: { open: { open: true, tab: "terminal" }, closed: { open: false, tab: "evidence" } } })).panelByTask;
+  assert.deepEqual(before["open"], { panes: ["terminal"], minimized: [], last: ["terminal"], split: 0.5, weights: {} });
+  assert.deepEqual(before["closed"], { panes: [], minimized: [], last: ["evidence"], split: 0.5, weights: {} }, "a closed panel stays closed and its tab is what the dock's toggle brings back");
+  // A hostile dock: unknown panes dropped, a pane listed once, a minimized pane that is not open dropped, sizes clamped.
+  const dock = parseUiPrefs(JSON.stringify({ panelByTask: { t: { panes: ["files", "nope", "files", "evidence"], minimized: ["evidence", "terminal"], last: "x", split: 9, weights: { files: -3, evidence: "big", nope: 2 } } } })).panelByTask["t"];
+  assert.deepEqual(dock, { panes: ["files", "evidence"], minimized: ["evidence"], last: [], split: 0.8, weights: { files: 0.05 } });
   assert.equal(UI_PREFS_KEY, "modbit.ui.v1");
 });
 
@@ -182,8 +189,8 @@ test("AFW-A16: every registered command runs its action, and an unavailable one 
 test("PX-200 (MWS-05): a task has a toggle for each pane it can show, in tab order; one that has not started has none", () => {
   assert.deepEqual(panesOf([]), []);
   assert.deepEqual(panesOf(artifactsOf({ taskId: "a", state: "Queued" }, { browsingTaskId: null })), []);
-  assert.deepEqual(panesOf(artifactsOf({ taskId: "a", state: "Running" }, { browsingTaskId: null })), ["changes", "browser", "files", "evidence"], "the Browser pane is where a session is opened from");
-  assert.deepEqual(panesOf(artifactsOf({ taskId: "a", state: "Running" }, { browsingTaskId: "a", terminalTaskIds: new Set(["a"]) })), ["changes", "terminal", "browser", "files", "evidence"]);
+  assert.deepEqual(panesOf(artifactsOf({ taskId: "a", state: "Running" }, { browsingTaskId: null })), ["changes", "browser", "files", "evidence", "activity", "background", "pull-request"], "the Browser pane is where a session is opened from; MWS-10 adds Activity, Background tasks and Pull request");
+  assert.deepEqual(panesOf(artifactsOf({ taskId: "a", state: "Running" }, { browsingTaskId: "a", terminalTaskIds: new Set(["a"]) })), ["changes", "terminal", "browser", "files", "evidence", "activity", "background", "pull-request"]);
   assert.deepEqual(panesOf(["terminal"]), ["terminal"], "a terminal alone does not make a workspace");
 });
 
