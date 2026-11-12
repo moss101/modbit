@@ -96,3 +96,14 @@ export async function setDensity(page: Page, density: "comfortable" | "compact")
     if ((await conversation.count()) === 1) await expect(conversation).toHaveAttribute("data-loaded", "true", { timeout: 30_000 });
   }
 }
+
+/** Opens the apps panel from the title bar's pane toggles (DR-PX-2026-11-11-021 MWS-05) unless it is already open; `kind` is the pane it opens on. */
+export async function openPane(page: Page, kind: "changes" | "terminal" | "browser" | "files" | "evidence" = "changes"): Promise<void> {
+  if ((await page.getByTestId("region-apps").count()) === 0) {
+    const toggle = page.getByTestId(`pane-toggle-${kind}`);
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  }
+  await expect(page.getByTestId("region-apps")).toBeVisible();
+}

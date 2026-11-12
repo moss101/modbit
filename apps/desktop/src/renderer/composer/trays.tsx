@@ -7,7 +7,7 @@
  * callbacks; there is no queue or interrupt logic in the renderer.
  */
 import { useEffect, useRef, useState } from "react";
-import { Badge, Button } from "@modbit/ui";
+import { Badge, Button, Icon, IconButton } from "@modbit/ui";
 import type { SendBehaviorState } from "../../shared/composer-types.ts";
 import type { TerminalViewJson } from "../../preload/preload.ts";
 import { EDUCATION, elapsedLabel, queueHeader, sendNowLabel, type QueueRow } from "./model.ts";
@@ -28,7 +28,10 @@ export interface QueueTrayProps {
   onLeave: () => void;
 }
 
-/** The durable queue the Core holds, one row per message in the order it will run. */
+/**
+ * The durable queue the Core holds, one row per message in the order it will run (MWS-07): each row is the message with Send
+ * now and Remove; editing it (the row itself, or Edit) and moving it are PX-055's and stay beside them.
+ */
 export function QueueTray(p: QueueTrayProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
@@ -125,6 +128,7 @@ export function QueueTray(p: QueueTrayProps) {
                     }}
                     onClick={() => startEdit(r)}
                   >
+                    <Icon name="clock" size={14} />
                     <span className="cmp-qline" data-testid="queue-line">
                       {r.line}
                     </span>
@@ -135,21 +139,21 @@ export function QueueTray(p: QueueTrayProps) {
                     </span>
                   </button>
                   <span className="cmp-qactions">
-                    <Button size="sm" disabled={p.busy} onClick={() => p.onSendNow(r.inputId)} title={send.title} data-testid="queue-send-now">
+                    <Button size="sm" variant="ghost" disabled={p.busy} onClick={() => p.onSendNow(r.inputId)} title={send.title} data-testid="queue-send-now">
                       {send.label}
                     </Button>
-                    <Button size="sm" disabled={p.busy} onClick={() => startEdit(r)} aria-label={`Edit queued message ${r.position}`} data-testid="queue-edit">
-                      Edit
-                    </Button>
-                    <Button size="sm" variant="danger" disabled={p.busy} onClick={() => p.onDelete(r.inputId)} aria-label={`Delete queued message ${r.position}`} data-testid="queue-delete">
-                      Delete
-                    </Button>
-                    <Button size="sm" variant="ghost" disabled={p.busy || !r.canMoveUp} onClick={() => p.onMove(r.inputId, "up")} aria-label={`Move queued message ${r.position} up`} data-testid="queue-up">
-                      ↑
-                    </Button>
-                    <Button size="sm" variant="ghost" disabled={p.busy || !r.canMoveDown} onClick={() => p.onMove(r.inputId, "down")} aria-label={`Move queued message ${r.position} down`} data-testid="queue-down">
-                      ↓
-                    </Button>
+                    <IconButton size="sm" label={`Edit queued message ${r.position}`} icon={<Icon name="pencil" size={14} />} disabled={p.busy} onClick={() => startEdit(r)} data-testid="queue-edit" />
+                    {p.rows.length > 1 && (
+                      <>
+                        <Button size="sm" variant="ghost" disabled={p.busy || !r.canMoveUp} onClick={() => p.onMove(r.inputId, "up")} aria-label={`Move queued message ${r.position} up`} data-testid="queue-up">
+                          ↑
+                        </Button>
+                        <Button size="sm" variant="ghost" disabled={p.busy || !r.canMoveDown} onClick={() => p.onMove(r.inputId, "down")} aria-label={`Move queued message ${r.position} down`} data-testid="queue-down">
+                          ↓
+                        </Button>
+                      </>
+                    )}
+                    <IconButton size="sm" label={`Remove queued message ${r.position}`} icon={<Icon name="x" size={14} />} disabled={p.busy} onClick={() => p.onDelete(r.inputId)} data-testid="queue-delete" />
                   </span>
                 </>
               )}

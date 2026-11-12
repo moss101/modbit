@@ -195,3 +195,45 @@ export interface PendingApprovalView {
   intentHash: string;
   requestedAtMs: number;
 }
+
+/** The states the Core's work graph gives a step (REQ-PX-200); the renderer shows them and never derives one. */
+export const WORK_STATUSES = ["PENDING", "READY", "ACTIVE", "BLOCKED", "DONE", "FAILED", "CANCELLED"] as const;
+export type WorkStatus = (typeof WORK_STATUSES)[number];
+
+/** One step of a task's plan as the Core's work graph holds it. */
+export interface WorkStepView {
+  id: string;
+  title: string;
+  /** The Core's state for the step; a name this build does not know is passed as it came. */
+  status: WorkStatus | string;
+  dependsOn: string[];
+  blockers: string[];
+  evidenceRefs: number;
+  attempts: number;
+  /** An agent owns the step (a child task works it). */
+  owned: boolean;
+  planVersion: number;
+}
+
+/** The task's work graph (GetWorkGraph): the steps in the order they were made, and the latest plan version that changed one. */
+export interface WorkGraphInfo {
+  taskId: string;
+  steps: WorkStepView[];
+  ready: string[];
+  planVersion: number;
+}
+
+/** The task's plan as recorded (GetPlan): the version in force with what it states, and how many versions there have been. */
+export interface PlanInfo {
+  taskId: string;
+  /** 0 when the task has no plan. */
+  currentVersion: number;
+  outcome: string;
+  /** model | user_review | cli */
+  provenance: string;
+  reason: string;
+  versions: number;
+  /** The steps the version in force itself names (a plan may name none: the work graph is then unchanged by it). */
+  stepsInVersion: number;
+  executedVersions: number[];
+}

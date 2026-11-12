@@ -1,4 +1,4 @@
-import { Icon, IconButton, Tabs, type IconName, type TabDef } from "@modbit/ui";
+import { Icon, IconButton, Tabs, type TabDef } from "@modbit/ui";
 import type { TerminalViewJson } from "../../preload/preload.ts";
 import { BrowserApp } from "../apps/browser-app.tsx";
 import { ChangesApp } from "../apps/changes-app.tsx";
@@ -7,6 +7,7 @@ import { FilesApp } from "../apps/files-app.tsx";
 import { TerminalApp } from "../apps/terminal-app.tsx";
 import { APP_LABEL } from "./artifacts.ts";
 import { APP_KINDS, type AppKind } from "./prefs.ts";
+import { APP_ICON } from "./top-bar.tsx";
 
 export interface AppsPanelProps {
   sessionId: string;
@@ -34,7 +35,6 @@ export interface AppsPanelProps {
   onToggleMaximize: () => void;
 }
 
-const APP_ICON: Record<AppKind, IconName> = { changes: "file-diff", terminal: "terminal", browser: "globe", files: "file-text", evidence: "eye" };
 
 /**
  * The typed apps-panel host (AFW-A01, AFW-I01, REQ-PX-048): a tab per app kind
@@ -48,7 +48,7 @@ export function AppsPanel(p: AppsPanelProps) {
     <div className="apps-panel" data-testid="apps-panel" data-task-id={p.taskId}>
       <span className="apps-panel-tools">
         <IconButton label={p.maximized ? "Restore the panel" : "Widen the panel"} icon={<Icon name="maximize-2" size={14} />} size="sm" pressed={p.maximized} onClick={p.onToggleMaximize} data-testid="apps-panel-maximize" />
-        <IconButton label="Apps panel" icon={<Icon name="panel-right" size={14} />} size="sm" pressed data-testid="toggle-apps-panel" onClick={p.onClose} />
+        <IconButton label="Close the apps panel" icon={<Icon name="panel-right" size={14} />} size="sm" pressed data-testid="toggle-apps-panel" onClick={p.onClose} />
       </span>
       <Tabs label="Apps" tabs={tabs} selected={p.tab} onSelect={(id) => p.onTab(id as AppKind)} idPrefix="apps" testId="apps-tabs">
         {p.tab === "changes" &&

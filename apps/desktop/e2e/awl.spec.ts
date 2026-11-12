@@ -207,15 +207,8 @@ async function workspaceDrift(page: Page, density: Density = "comfortable"): Pro
   if (box_.width > GEOMETRY.column + 1 || user.width > GEOMETRY.columnText + 1) bad.push(`column wider than ${GEOMETRY.column}: composer ${box_.width}, message ${user.width}`);
   if (Math.abs(user.width - Math.min(GEOMETRY.columnText, box_.width)) > 2 || Math.abs(user.x + user.width / 2 - (box_.x + box_.width / 2)) > 2) bad.push(`composer and message are not one column: ${box_.x}/${box_.width} and ${user.x}/${user.width}`);
   if (scroll.y + scroll.height > box_.y + 1) bad.push("the transcript runs under the composer");
-  // The composer: the text on top, then one bar with the mode, model and a round send; the location and run mode under the box.
-  const input = await box(page, "composer-input");
-  const send = await box(page, "composer-send");
-  const mode = await box(page, "mode-chip");
-  if (send.y < input.y + input.height - 1 || mode.y < input.y + input.height - 1) bad.push("the mode and send are not in a bar under the text");
-  if (Math.abs(send.width - 24) > 1 || Math.abs(send.height - 24) > 1) bad.push(`send is ${send.width} x ${send.height}`);
-  if (send.x <= mode.x) bad.push("send is not at the end of the bar");
-  const foot = await box(page, "composer-foot");
-  if (foot.y < box_.y + box_.height - 1) bad.push("the location and run mode are not under the box");
+  // MWS-07: the composer is one line (add context, the text, then stop or send) and, under the box at the right, the mode, the model, the run mode and the ring.
+  bad.push(...(await composerDrift(page)));
   // A step is one line with its verb and icon.
   const steps = page.getByTestId("conv-group");
   for (let i = 0; i < (await steps.count()); i++) {
@@ -434,6 +427,57 @@ async function densityDrift(page: Page): Promise<string[]> {
   return bad;
 }
 
+/**
+ * What the composer breaks of MWS-07 (empty when it holds): with nothing typed the box is one line holding add context, the
+ * text and stop or send side by side; the mode, the model, the run mode and the context ring are under the box, in its right half.
+ */
+async function composerDrift(page: Page): Promise<string[]> {
+  const bad: string[] = [];
+  const outer = await box(page, "composer");
+  const input = await box(page, "composer-input");
+  const add = await box(page, "add-context");
+  const endId = (await page.getByTestId("composer-send").count()) === 1 ? "composer-send" : "composer-stop";
+  const end = await box(page, endId);
+  const overlapsRow = (b: { y: number; height: number }) => b.y < input.y + input.height - 1 && b.y + b.height > input.y + 1;
+  if (!overlapsRow(add) || !overlapsRow(end)) bad.push(`composer: not one line (add context ${add.y}, text ${input.y} to ${input.y + input.height}, ${endId} ${end.y})`);
+  if (add.x + add.width > input.x + 1 || end.x < input.x + input.width - 1) bad.push("composer: add context, the text, then stop or send are not in that order");
+  const lineHeight = await page.getByTestId("composer-input").evaluate((el) => parseFloat(getComputedStyle(el).lineHeight));
+  if ((await page.getByTestId("composer-input").inputValue()) === "" && (input.height > lineHeight + 12 || outer.height > lineHeight + 30)) bad.push(`composer: an empty box is ${outer.height} high with a ${input.height} text area: more than one line`);
+  if (Math.abs(end.width - 28) > 1 || Math.abs(end.height - 28) > 1) bad.push(`composer: ${endId} is ${end.width} x ${end.height}`);
+  // Under the box and at its right: after where the task runs, in a row that ends at the box's right edge (a narrow centre has no room for "the right half").
+  const where = await page.getByTestId("conv-location").boundingBox();
+  let last = 0;
+  for (const id of ["mode-chip", "model-chip", "runmode-button", "context-ring"]) {
+    const b = await page.getByTestId("composer-foot").getByTestId(id).boundingBox();
+    if (!b) bad.push(`composer: ${id} is not in the bar under the box`);
+    else {
+      if (b.y < outer.y + outer.height - 1) bad.push(`composer: ${id} is not under the box (${b.y}; the box ends at ${outer.y + outer.height})`);
+      if (where && b.x < where.x + where.width) bad.push(`composer: ${id} is not under the box at the right (it is before where the task runs)`);
+      last = Math.max(last, b.x + b.width);
+    }
+  }
+  if (Math.abs(outer.x + outer.width - last) > 12) bad.push(`composer: the controls are not under the box at the right (they end at ${last}, the box at ${outer.x + outer.width})`);
+  if ((await page.getByTestId("composer").locator('[data-testid="mode-chip"], [data-testid="model-chip"], [data-testid="context-ring"]').count()) !== 0) bad.push("composer: a control of the bar is inside the box");
+  return bad;
+}
+
+/** What the docked approval card breaks of MWS-08 (empty when it holds): no native select, one disclosure, and the decisions in their order. */
+async function approvalDrift(page: Page): Promise<string[]> {
+  const bad: string[] = [];
+  const card = page.getByTestId("approval-card");
+  const selects = await card.locator("select").count();
+  if (selects !== 0) bad.push(`approval: ${selects} native select${selects === 1 ? "" : "s"} in the card`);
+  if ((await card.locator("[aria-expanded]:not([aria-haspopup])").count()) !== 1) bad.push("approval: not exactly one disclosure");
+  if ((await card.getByTestId("approval-intent-hash").count()) !== 1) bad.push("approval: the intent hash is not in the card");
+  const title = (await card.getByTestId("approval-title").textContent()) ?? "";
+  const tool = (await card.getByTestId("approval-tool").textContent()) ?? "";
+  if (tool && title.includes(tool)) bad.push(`approval: the tool's own name (${tool}) is in the headline`);
+  const skip = await card.getByTestId("approval-skip").boundingBox();
+  const run = await card.getByTestId("approval-run").boundingBox();
+  if (!skip || !run || skip.x >= run.x || Math.abs(skip.y + skip.height / 2 - (run.y + run.height / 2)) > 2) bad.push("approval: Skip and Allow once are not one row, in that order");
+  return bad;
+}
+
 /** What breaks the conversation's column where the centre has room for it (MWS-01): the composer 768, its text 736, inset 16 on each side. */
 async function columnDrift(page: Page): Promise<string[]> {
   const bad: string[] = [];
@@ -480,6 +524,19 @@ test("PX-194, PX-198: a scripted task with tool steps, an edit, a terminal and a
     await expect(page.getByTestId("approval-card")).toBeVisible({ timeout: 90_000 });
     // One decision surface: the approval is decided on the docked card, the width of the composer, and not again in the transcript.
     await expect(page.getByTestId("conv-approve")).toHaveCount(0);
+    // MWS-08: the card has no native select and one disclosure; the retained mutation (two selects in the card, as before this record) fails.
+    expect(await approvalDrift(page), "the docked approval").toEqual([]);
+    await page.getByTestId("approval-card").evaluate((el) => {
+      for (const id of ["awl-select-1", "awl-select-2"]) {
+        const sel = document.createElement("select");
+        sel.id = id;
+        sel.setAttribute("aria-label", id);
+        el.appendChild(sel);
+      }
+    });
+    expect(await approvalDrift(page), "two selects in the card fail").toEqual(["approval: 2 native selects in the card"]);
+    await page.evaluate(() => document.querySelectorAll("#awl-select-1, #awl-select-2").forEach((el) => el.remove()));
+    expect(await approvalDrift(page), "clean again").toEqual([]);
     const docked = await box(page, "approval-card");
     const under = await box(page, "composer");
     expect(Math.abs(docked.width - under.width), `approval card ${docked.width}, composer ${under.width}`).toBeLessThanOrEqual(4);
@@ -503,8 +560,8 @@ test("PX-194, PX-198: a scripted task with tool steps, an edit, a terminal and a
     await page.getByTestId("task-details-toggle").click();
     await expect(page.getByTestId("conv-group").first()).toBeVisible();
     await expect(page.locator('[data-testid="conv-footer"][data-outcome="COMPLETED"]').first()).toBeAttached();
-    await page.getByTestId("toggle-apps-panel").click();
-    await page.getByTestId("tab-changes").click();
+    await page.getByTestId("pane-toggle-changes").click();
+    await expect(page.getByTestId("tab-changes")).toHaveAttribute("aria-selected", "true");
     await expect(page.getByTestId("app-changes")).toBeVisible({ timeout: 30_000 });
     for (const density of DENSITIES) {
       await setDensity(page, density);
@@ -550,7 +607,11 @@ test("PX-194, PX-198: a scripted task with tool steps, an edit, a terminal and a
     };
     expect(await failsWorkspace(".conv-user { font-size: 14px !important; line-height: 22px !important; }", "transcript text"), "the old 14 on 22 transcript fails").toBe(true);
     expect(await failsWorkspace(".apps-panel .mb-tablist { height: 40px !important; }", "panel tabs"), "a 40 px pane head fails in Comfortable").toBe(true);
-    expect(await failsWorkspace(".cmp-bar { position: absolute !important; top: 0 !important; }", "bar under the text"), "a bar above the text fails").toBe(true);
+    // MWS-07 and section 6: the superseded two-row composer fails, in each of the ways it can come back.
+    expect(await failsWorkspace(".cmp-line { flex-direction: column !important; align-items: stretch !important; }", "composer: not one line"), "a two-row composer (send under the text) fails").toBe(true);
+    expect(await failsWorkspace(".cmp-one .cmp-textarea { min-height: 44px !important; }", "more than one line"), "the old two-line text area fails").toBe(true);
+    expect(await failsWorkspace(".cmp-under { position: absolute !important; top: 0 !important; }", "is not under the box"), "the model, run mode and ring above the box fail").toBe(true);
+    expect(await failsWorkspace(".cmp-under { flex-direction: row-reverse !important; }", "not under the box at the right"), "the controls at the left fail").toBe(true);
     expect(await failsWorkspace(".apps-panel { padding-top: 40px !important; }", "panel tabs"), "tabs pushed down fail").toBe(true);
     expect(await workspaceDrift(page), "clean again").toEqual([]);
 

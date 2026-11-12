@@ -3,7 +3,7 @@
  * renderer needs, over Electron's validated IPC. No Node, no fs, no shell.
  */
 import { contextBridge, ipcRenderer, webUtils } from "electron";
-import type { AgentHeaderView, AgentHeadersView, ConversationSearchView, OpenStreamView, PendingApprovalView, SearchOptions, TranscriptOptions, TranscriptPageView } from "../shared/conversation-types.ts";
+import type { AgentHeaderView, AgentHeadersView, ConversationSearchView, OpenStreamView, PendingApprovalView, PlanInfo, SearchOptions, TranscriptOptions, TranscriptPageView, WorkGraphInfo } from "../shared/conversation-types.ts";
 import type { TerminalFrameJson, TerminalViewJson } from "../main/terminal-host.ts";
 import type { AttachmentResult, InterruptView, ModeChangedView, ModelCatalogView, PostureView, PreferencePatch, PreferenceSetView, QueuedChangeView, QueueView, SendBehaviorState, SideAnswerView, SlashInventoryView, SuggestionView, TaskModeId, InputModeId } from "../shared/composer-types.ts";
 import type { AutoDetail, AutoEnableInput, AutoKillReport, AutoList, AutoRepoLoad, AutoRun, AutoRunInput, AutoRunStarted, AutoValidation, AutoView } from "../shared/automation-types.ts";
@@ -280,6 +280,10 @@ export interface ModbitBridge {
   agentHeaders(sessionId: string, includeArchived?: boolean): Promise<AgentHeadersView>;
   /** PX-047: one page of a task's conversation, projected by the Core in one of three densities. */
   transcript(taskId: string, options?: TranscriptOptions): Promise<TranscriptPageView>;
+  /** REQ-PX-200: the steps of the task's plan with the state the Core's work graph holds for each. A read. */
+  workGraph(taskId: string): Promise<WorkGraphInfo>;
+  /** REQ-PX-200: the plan version in force as the Core recorded it. A read. */
+  plan(taskId: string): Promise<PlanInfo>;
   /** PX-047: the protected effects of the session still waiting for a decision, with the exact intent each decision must name. */
   pendingApprovals(sessionId: string): Promise<PendingApprovalView[]>;
   /** PX-047: the text of the task's assistant streams that are still open, as main has seen them (a transcript carries a stream's text only once it completes). */
@@ -530,6 +534,8 @@ export interface ModbitBridge {
 const bridge: ModbitBridge = {
   agentHeaders: (sessionId, includeArchived) => ipcRenderer.invoke("agents:headers", sessionId, includeArchived ?? false),
   transcript: (taskId, options) => ipcRenderer.invoke("conversation:transcript", taskId, options ?? {}),
+  workGraph: (taskId) => ipcRenderer.invoke("conversation:workGraph", taskId),
+  plan: (taskId) => ipcRenderer.invoke("conversation:plan", taskId),
   pendingApprovals: (sessionId) => ipcRenderer.invoke("conversation:approvals", sessionId),
   openStreams: (taskId) => ipcRenderer.invoke("conversation:openStreams", taskId),
   searchConversations: (sessionId, query, options) => ipcRenderer.invoke("conversation:search", sessionId, query, options ?? {}),

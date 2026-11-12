@@ -14,6 +14,7 @@ import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { accessible, appDir, closeApp, git, launch, setContentSize } from "./support/ui-harness.ts";
 import { createTask, openConversation, routedModel, sessionOf } from "./support/conversation-harness.ts";
+import { openPane } from "./support/new-task.ts";
 
 const REPO_TSC = resolve(appDir, "..", "..", "node_modules", ".bin", "tsc");
 
@@ -132,7 +133,7 @@ test("PX-145: a first fix that does not build is a repair attempt the Core recor
     // The bridge carries the attempt the Core recorded, and the app shows the same one.
     const bundle = await page.evaluate((t) => window.modbit.reviewBundle(t), taskId);
     expect(bundle.repairAttempts.map((a) => [a.ordinal, a.outcome])).toEqual([[1, "RESOLVED"]]);
-    if ((await page.getByTestId("region-apps").count()) === 0) await page.getByTestId("toggle-apps-panel").click();
+    await openPane(page);
     await page.getByTestId("tab-evidence").click();
     await expect(page.getByTestId("app-evidence")).toBeVisible();
     await expect(page.getByTestId("evidence-repair")).toHaveCount(1, { timeout: 30_000 });

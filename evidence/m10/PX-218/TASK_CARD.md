@@ -44,3 +44,13 @@ All local, macOS 27.0.1 arm64, rustc 1.97.1, node 26.11.1. The model is the repo
 - "Unchanged for an archived task" is built as: the line is read as of the archive. A task archived before it ever answered therefore shows none until it is brought back.
 - macOS only so far. Linux and Windows are CI's.
 - Not sealed: the row is not on `main`, and sealing is not this task's.
+
+## Addition (2026-11-12, with PX-200): the preview card and the desktop's end-to-end proof
+
+Built on `wip/desktop-2-task-view`, one change with PX-200. It closes the first limitation above: the card now shows the line, and PX-E2E-218's "read the header and the card; restart; read them again" is proven for both.
+
+- **What was built.** `apps/desktop/src/renderer/agents/preview-card.tsx` shows `AgentHeaderView.lastLine` under the state and its reason, when the header has one (`agent-preview-last`; at most three lines of the card; "The assistant's last line:" before it for a screen reader). The card still makes no read of its own: the line is the header's field, which the list already holds. No Core, protocol or bridge change.
+- **Proof** (`apps/desktop/e2e/px-218-last-line.spec.ts`, the real app, a real Core, a scripted model whose answer ends with a known line holding a credential-shaped token; `px218-e2e.log`): while the message is unfinished (the model held mid-answer) the header has no line; after the turn the header's line is "The token [redacted] is in the last one.", equal to the last line of the transcript's message; the token is nowhere in the transcript or the page; the card shows exactly the header's line, under the state; a task that has not answered has no line and its card draws none; after the app and its Core are stopped and started again on the same data the header's line and the card are the same, and the unanswered task still has none. Axe on the card.
+- **Screenshots** (`after/`, the running app at 1440 by 900, light and dark): the card with the line before and after the restart.
+- **Still not shown here:** a long line cut at a character boundary and an archived task's line are the Core's tests (above), not repeated through the desktop. The card's line was looked at on one line; the three-line clamp was not looked at with a long line.
+- The card closes when focus leaves it, and the list moves focus to a row once after a task is created or the app starts; the spec opens the card again if that happened under it. That is PX-199's behaviour, seen while writing this proof and not changed.

@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2163,
+    "root_and_tooling": 2195,
     "docs_bytes": 2408434
   },
   "sections": [
@@ -4219,6 +4219,141 @@
       "sha256": "a25213955afe0034cc1c3eb56504a333efcb2e9e17965d29ca2202f612c71c68"
     },
     {
+      "path": "evidence/m10/PX-200/TASK_CARD.md",
+      "bytes": 24999,
+      "sha256": "90c79d0fb67fd8e1eae641ac46fb7d506e19166e5f347df453c87a2d1517f16f"
+    },
+    {
+      "path": "evidence/m10/PX-200/after/approval-destructive-asks-twice-dark-comfortable.png",
+      "bytes": 264986,
+      "sha256": "3008e53a53d0084905cad613902879dfb7de617b10593c856c8acfb5d3f858e1"
+    },
+    {
+      "path": "evidence/m10/PX-200/after/approval-destructive-asks-twice-light-comfortable.png",
+      "bytes": 265988,
+      "sha256": "117630d1c2434b48c80afd4a4d70bd5a164a6a45843ce0d89de4f534217519e3"
+    },
+    {
+      "path": "evidence/m10/PX-200/after/approval-destructive-dark-comfortable.png",
+      "bytes": 268747,
+      "sha256": "64d1d251ce81a27102646142e72ff3e7ac661d0dfb6dcdcba807998bd6282ffc"
+    },
+    {
+      "path": "evidence/m10/PX-200/after/approval-destructive-dark-compact.png",
+      "bytes": 255303,
+      "sha256": "49d01f0c5c82a5d43609712a9597ed7f8b2a7c1d15e3e3bb66cec71952ce14fa"
+    },
+    {
+      "path": "evidence/m10/PX-200/after/approval-destructive-light-comfortable.png",
+      "bytes": 269844,
+      "sha256": "112640998cc49e452782cdf645583b67ac4cf736176abc5101018b3dc30e54b2"
+    },
+    {
+      "path": "evidence/m10/PX-200/after/approval-destructive-light-compact.png",
+      "bytes": 258205,
+      "sha256": "4d712feac9e6c803c520b0a47fe03c4f1add82b6be4b8ce911d72b7197af151c"
+    },
+    {
+      "path": "evidence/m10/PX-200/after/approval-disclosure-open-dark-comfortable.png",
+      "bytes": 280177,
+      "sha256": "65f402d1d4806e05139e01f0cc09fb90ea89e9dcd2b054f9b8ba0f4483d6daac"
+    },
+    {
+      "path": "evidence/m10/PX-200/after/approval-disclosure-open-light-comfortable.png",
+      "bytes": 280700,
+      "sha256": "5ef03c6b676ae2f52f58129f9a8d8d842c24fd2cb662c101fc2e7a65e34bfe53"
+    },
+    {
+      "path": "evidence/m10/PX-200/after/approval-protected-write-always-menu-dark-comfortable.png",
+      "bytes": 332424,
+      "sha256": "5d3627de16a0429cb7e15882fbb75f7b0b0566468a96d4ce8b86ff2682a2a8bd"
+    },
+    {
+      "path": "evidence/m10/PX-200/after/approval-protected-write-always-menu-dark-compact.png",
+      "bytes": 316007,
+      "sha256": "77c98d5e6401a66cb3564ba7f71047f441f904712b50cb8420caaf36bb684f3b"
+    },
+    {
+      "path": "evidence/m10/PX-200/after/approval-protected-write-always-menu-light-comfortable.png",
+      "bytes": 333989,
+      "sha256": "299f652a9bae1a63da58390bfa80113291b63f0d3c6be1922d76ff66129a178c"
+    },
+    {
+      "path": "evidence/m10/PX-200/after/approval-protected-write-always-menu-light-compact.png",
+      "bytes": 319339,
+      "sha256": "5e6373ec2e1c38b78ad653dc4fd0858d86f20c70c10ee74b104fe5070c2bff74"
+    },
+    {
+      "path": "evidence/m10/PX-200/after/finished-plan-all-done-dark-comfortable.png",
+      "bytes": 255190,
+      "sha256": "8c7677753645b10b849516d8ceaf4ee6427c7d73b236b0fbfee9653ead8ca1bd"
+    },
+    {
+      "path": "evidence/m10/PX-200/after/finished-plan-all-done-light-comfortable.png",
+      "bytes": 255354,
+      "sha256": "dab99fef75976c4b739c8dc7370305318b7eb1fbb2648354b2ef6caf5612fc91"
+    },
+    {
+      "path": "evidence/m10/PX-200/after/pane-toggle-open-on-changes-dark-comfortable.png",
+      "bytes": 238905,
+      "sha256": "34cfd03c5103827cf477914bd3db5848c5d97903a8fc7d8eb0dd0d2444f0704e"
+    },
+    {
+      "path": "evidence/m10/PX-200/after/pane-toggle-open-on-changes-light-comfortable.png",
+      "bytes": 200468,
+      "sha256": "789982921733f6938caa8fbffe92a5f9757373149a0016433a0cb6ed2dc3745c"
+    },
+    {
+      "path": "evidence/m10/PX-200/after/queued-message-tray-dark-comfortable.png",
+      "bytes": 230454,
+      "sha256": "56a1c3575dca9c94cf5c8abbe70baa128b38dfe585ebf802ebca18c58dad922c"
+    },
+    {
+      "path": "evidence/m10/PX-200/after/queued-message-tray-light-comfortable.png",
+      "bytes": 231432,
+      "sha256": "2e6db2991095e57e326bcd3225dc30ab3c0dd512505f48730d2b1687d2dfd879"
+    },
+    {
+      "path": "evidence/m10/PX-200/after/running-plan-card-status-line-dark-comfortable.png",
+      "bytes": 184321,
+      "sha256": "5d810812048026301b86e7ec9199b55dc0bb4e618e9945082fe2ff864c68050a"
+    },
+    {
+      "path": "evidence/m10/PX-200/after/running-plan-card-status-line-dark-compact.png",
+      "bytes": 174815,
+      "sha256": "0dcdb597d15b4524ad89597f55c60de250175f5a41fcb660239dc205dc7e0ce3"
+    },
+    {
+      "path": "evidence/m10/PX-200/after/running-plan-card-status-line-light-comfortable.png",
+      "bytes": 184833,
+      "sha256": "72010f360dae96214e479f9d350bc2be37deb1fa767a698a10eca1a294276cc7"
+    },
+    {
+      "path": "evidence/m10/PX-200/after/running-plan-card-status-line-light-compact.png",
+      "bytes": 176574,
+      "sha256": "14bd8171fffd28af02bca9bf8292462d019e8c4f5e4e8bf2358062627dbb295f"
+    },
+    {
+      "path": "evidence/m10/PX-200/after/title-menu-and-pane-toggles-dark-comfortable.png",
+      "bytes": 188108,
+      "sha256": "81b84edde8ab1e8695d9a29e42c5c9dccc993de325afa0250499286d7b2f9aa3"
+    },
+    {
+      "path": "evidence/m10/PX-200/after/title-menu-and-pane-toggles-light-comfortable.png",
+      "bytes": 190360,
+      "sha256": "23f2632aefbcceb817c0b4e1d53b62a7b00555f9b0acb410827a50fdc44617ae"
+    },
+    {
+      "path": "evidence/m10/PX-200/desktop-e2e-full-results.txt",
+      "bytes": 38138,
+      "sha256": "7a6f3e8a9ebd220218f80b8846a95380ab1c1996b3f80f86d0e52ae50e264ee4"
+    },
+    {
+      "path": "evidence/m10/PX-200/evidence.json",
+      "bytes": 6799,
+      "sha256": "b59732825c02e8598e000ae2e25498e0dd1204601e30cc2260a74180a057d275"
+    },
+    {
       "path": "evidence/m10/PX-210/TASK_CARD.md",
       "bytes": 11262,
       "sha256": "4cb2ac207907e0e63a1fda713b2dbee3dd6d5d678cbd89ba3fed69fa1e13932d"
@@ -4270,13 +4405,33 @@
     },
     {
       "path": "evidence/m10/PX-218/TASK_CARD.md",
-      "bytes": 6580,
-      "sha256": "b1a9205a04b95bbbe48bc3611eda34b16dc1228c126b0f10e3d5340c85e1d88d"
+      "bytes": 8719,
+      "sha256": "5841729a20211aed1ffd695f11da622cbd4cea4d8dd58795a496b1a5af1829a3"
+    },
+    {
+      "path": "evidence/m10/PX-218/after/preview-card-last-line-after-restart-dark.png",
+      "bytes": 148352,
+      "sha256": "92d41ade0b962ce536bedefb152262bcdb5b987ee5726c2bf9fef701ada90e8b"
+    },
+    {
+      "path": "evidence/m10/PX-218/after/preview-card-last-line-after-restart-light.png",
+      "bytes": 149315,
+      "sha256": "2f823957dffe44f8215f3a95a368e0490f715e8ec9336f14ec5de8a3bece5638"
+    },
+    {
+      "path": "evidence/m10/PX-218/after/preview-card-last-line-dark.png",
+      "bytes": 147722,
+      "sha256": "7f96d8b2ba57353e58322559d47eac34a222fd7cdb1deec6c464bd32c8b229c6"
+    },
+    {
+      "path": "evidence/m10/PX-218/after/preview-card-last-line-light.png",
+      "bytes": 147904,
+      "sha256": "0fec13535b7c56edfc906bf623e78d54e6948ae31bcb16e1c7c8787286e1d959"
     },
     {
       "path": "evidence/m10/PX-218/evidence.json",
-      "bytes": 3509,
-      "sha256": "378a55c575919f5a39ad25f69aa09df63ae6c386136e6fb8c1dfee1918b00cc7"
+      "bytes": 4527,
+      "sha256": "9faafd066fc295a805e348c8daeb8ae7b7c711b3ee12034abbf0f020ee01ea49"
     },
     {
       "path": "evidence/m10/PX-218/mutation-check-2026-11-11.txt",
@@ -4292,6 +4447,11 @@
       "path": "evidence/m10/PX-218/px218-digest.log",
       "bytes": 509,
       "sha256": "f518ef6a5c1bc0eb87d1b2d0eeb897474b78d06723bc22dc983f3b998b9b47e6"
+    },
+    {
+      "path": "evidence/m10/PX-218/px218-e2e.log",
+      "bytes": 223,
+      "sha256": "2817d55fc986444cc19d29aa2c02b0ebdeeb0b91453f2deb6c9bf13dd1d67309"
     },
     {
       "path": "evidence/m10/graph-audit-2026-11-07/AUDIT.md",

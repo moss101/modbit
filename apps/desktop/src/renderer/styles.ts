@@ -119,6 +119,17 @@ input.settings-toggle.settings-toggle::after, input.settings-toggle.settings-tog
 .topbar { flex: none; box-sizing: border-box; height: var(--mb-top-bar); display: flex; align-items: center; gap: var(--mb-space-2); padding: 0 var(--mb-space-2) 0 var(--mb-space-5); background: transparent; border-bottom: 1px solid var(--color-tab-border); z-index: var(--mb-z-topbar); -webkit-app-region: drag; }
 .topbar button, .topbar select { -webkit-app-region: no-drag; }
 .topbar-title { margin: 0; flex: 0 1 auto; max-width: 60%; font-size: var(--mb-type-chrome-size); line-height: var(--mb-type-chrome-line); font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* MWS-05: the title opens the task's menu; at the right one toggle per pane, each showing whether it is open, then More. */
+.topbar-title .mb-menu-host { display: flex; min-width: 0; max-width: 100%; }
+.mb-btn.topbar-title-btn { min-width: 0; max-width: 100%; margin-left: calc(-1 * var(--mb-space-2)); padding: 0 var(--mb-space-2); gap: var(--mb-space-1); font: inherit; font-weight: 500; color: var(--mb-color-text); }
+.topbar-title-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topbar-title-btn > svg { flex: none; color: var(--mb-color-text-muted); }
+.topbar-title:has(.mb-menu-host) { overflow: visible; }
+.topbar-title .mb-menu { font-weight: 400; }
+.topbar-panes { flex: none; display: inline-flex; align-items: center; gap: 2px; margin-left: var(--mb-space-2); }
+.topbar-panes .mb-btn[aria-pressed="true"] { background: var(--color-selected); color: var(--mb-color-text); }
+.topbar-end { flex: none; position: relative; display: inline-flex; align-items: center; }
+.topbar-end:empty { display: none; }
 .topbar-slot { flex: 1 1 0; min-width: 0; position: relative; display: flex; align-items: center; gap: var(--mb-space-2); }
 .topbar-pill { flex: none; font-size: var(--mb-type-caption-size); line-height: var(--mb-type-caption-line); padding: 1px 6px; border-radius: calc(infinity * 1px); background: var(--color-selected); color: var(--mb-color-text-muted); }
 .topbar-branch { flex: 0 1 auto; min-width: 0; display: inline-flex; align-items: center; gap: var(--mb-space-1); font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); }

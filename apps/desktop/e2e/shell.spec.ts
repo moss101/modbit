@@ -95,7 +95,9 @@ test("PX-045, PX-198: geometry at 1280 x 800, keyboard-resizable splits inside 2
     near((await box(page, "region-agents")).width, 288, 2, "agent list");
     near((await box(page, "top-bar")).height, 45, 1, "top bar");
     expect(await page.getByTestId("region-apps").count(), "the apps panel is absent until a task has an artifact").toBe(0);
-    await expect(page.getByTestId("toggle-apps-panel")).toHaveAttribute("aria-disabled", "true");
+    // MWS-05: a toggle stands for a pane the open task can show; with no task there is none (the one disabled "Apps panel" toggle is gone).
+    await expect(page.getByTestId("pane-toggles")).toHaveCount(0);
+    await expect(page.getByTestId("toggle-apps-panel")).toHaveCount(0);
     expect((await box(page, "region-conversation")).width).toBeGreaterThanOrEqual(424);
 
     const sep = page.getByTestId("splitter-list");
@@ -467,7 +469,9 @@ test("PX-045: the apps panel appears for a task with an artifact, within the geo
     await expect(page.getByTestId("review")).toHaveCount(0);
     await expect(page.getByTestId("conversation")).toHaveAttribute("data-task-id", taskId);
     await expect(page.getByTestId("top-bar-title")).toContainText("Edit the notes");
-    await expect(page.getByTestId("toggle-apps-panel")).toHaveAttribute("aria-disabled", "false");
+    // MWS-05: the task has run, so it has a toggle per pane it can show, each saying it is closed; the terminal has none because the Core lists no terminal.
+    for (const kind of ["changes", "browser", "files", "evidence"]) await expect(page.getByTestId(`pane-toggle-${kind}`), kind).toHaveAttribute("aria-pressed", "false");
+    await expect(page.getByTestId("pane-toggle-terminal")).toHaveCount(0);
     expect(await page.getByTestId("region-apps").count()).toBe(0);
 
     // The changes chord opens the panel; the geometry holds: centre >= 424, panel >= 384.

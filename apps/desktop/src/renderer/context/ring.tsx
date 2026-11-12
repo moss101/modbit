@@ -211,9 +211,8 @@ export function RingButton({ accounting, open, onToggle }: { accounting: Account
   );
 }
 
-/** The status row's context ring for the open task: shows the Core's usage and docks the breakdown tray on a click. */
-export function ContextRing({ taskId, connected }: { taskId: string; connected: boolean }) {
-  const { accounting, economics } = useAccounting(taskId, connected);
+/** The context ring for the open task from the Core's numbers the caller already reads: it shows the usage and docks the breakdown tray on a click. */
+export function ContextRingView({ taskId, accounting, economics }: { taskId: string; accounting: AccountingInfo | null; economics: TaskEconomicsSummary | null }) {
   const [setting, setSetting] = useState<UsageSetting>(loadUsageSetting);
   const snap = useSyncExternalStore(trays.subscribe, trays.getSnapshot, trays.getSnapshot);
   const open = snap.trays.some((t) => t.id === TRAY_ID);

@@ -11,7 +11,7 @@ import { TrayHost, chordMatches, isMacPlatform, useEscapeLayers, useKeyDispatch,
 import type { KeyScope } from "@modbit/ui/logic";
 import { GEOMETRY, THEME_LABEL, THEME_PREFERENCES, type Density, type ThemePreference } from "@modbit/design-tokens";
 import type { AppState } from "../state/use-app.ts";
-import { AgentList } from "../agents/agent-list.tsx";
+import { AgentList, type TaskActions } from "../agents/agent-list.tsx";
 import { ProjectDetail } from "../projects/project-detail.tsx";
 import { useProjects } from "../projects/use-projects.ts";
 import { WorktreesPanel } from "../worktrees/worktrees-panel.tsx";
@@ -34,7 +34,7 @@ import { useTerminals } from "../apps/use-terminals.ts";
 import { recoverySummary } from "../../main/lifecycle.ts";
 import { AppsPanel } from "./apps-panel.tsx";
 import { Automations } from "../automations/automations.tsx";
-import { artifactsOf, panelTaskFor } from "./artifacts.ts";
+import { artifactsOf, panelTaskFor, panesOf } from "./artifacts.ts";
 import { shellRegistry, type ShellActions } from "./commands.ts";
 import { CommandPalette, type PaletteItem } from "./palette.tsx";
 import { clampZoom, loadUiPrefs, saveUiPrefs, ZOOM_STEP, type AppKind, type PanelState, type UiPrefs } from "./prefs.ts";
@@ -42,7 +42,7 @@ import { clampPanelRatio, PANEL_MAX_RATIO } from "./layout.ts";
 import { ShellFrame } from "./shell-frame.tsx";
 import { ShortcutHelp } from "./shortcut-help.tsx";
 import { TrayDirector } from "../context/tray-director.tsx";
-import { TopBar } from "./top-bar.tsx";
+import { TopBar, type PaneToggle } from "./top-bar.tsx";
 import { PermissionsDialog } from "../computer/permissions-dialog.tsx";
 import { PresenceBar, STOP_CHORD, useComputerStop } from "../computer/presence-bar.tsx";
 import { holdsMachine, permissionsNeeded } from "../computer/model.ts";
@@ -94,6 +94,9 @@ export function Shell({ app }: { app: AppState }) {
   const [leftConversation, setLeftConversation] = useState<string | null>(null);
   const [headers, setHeaders] = useState<readonly AgentHeaderView[]>([]);
   const [topSlot, setTopSlot] = useState<HTMLSpanElement | null>(null);
+  const [topEndSlot, setTopEndSlot] = useState<HTMLSpanElement | null>(null);
+  // MWS-05: the open task's title menu pins and archives through the task list, which owns both.
+  const [taskActions, setTaskActions] = useState<TaskActions | null>(null);
   const [userName, setUserName] = useState("");
   const [branchByTask, setBranchByTask] = useState<Record<string, string>>({});
   const noteBranch = useCallback((taskId: string, branch: string) => setBranchByTask((m) => (m[taskId] === branch ? m : { ...m, [taskId]: branch })), []);
@@ -423,7 +426,22 @@ export function Shell({ app }: { app: AppState }) {
   const title = settingsOpen ? "Settings" : customizeOpen ? "Customize" : inboxOpen ? "Inbox" : automationsOpen ? "Automations" : dashboardOpen ? "Dashboard" : reviewing || browsing ? (overlayTitle ?? "Task") : projectPage ? (openedProject?.name ?? "Project") : worktreesOpen ? "Worktrees" : (overlayTitle ?? "New task");
   const openedHeader = conversation ? headers.find((h) => h.taskId === conversation.taskId) : undefined;
   const panelRefreshKey = useThrottled(`${panelTask?.state ?? ""}:${panelTask?.lastOffset ?? ""}`, 1200);
-  const panelUnavailable = panelTaskId === null ? "no task has an artifact yet" : null;
+  // MWS-05: one toggle per pane the task in the centre can show, each with its state. A page that is not a task, and a task that has not started, have none.
+  const shownTaskId = settingsOpen || customizeOpen || inboxOpen || automationsOpen || dashboardOpen ? null : (reviewing ?? browsing?.taskId ?? (projectPage || worktreesOpen ? null : (conversation?.taskId ?? null)));
+  const panes = useMemo<PaneToggle[]>(() => (shownTaskId !== null && shownTaskId === panelTaskId ? panesOf(artifacts).map((kind) => ({ kind, open: panelOpen && panelState.tab === kind })) : []), [shownTaskId, panelTaskId, artifacts, panelOpen, panelState.tab]);
+  const onPane = (kind: AppKind) => {
+    if (!panelTaskId) return;
+    setPanelState(panelTaskId, panelOpen && panelState.tab === kind ? { ...panelState, open: false } : { open: true, tab: kind });
+  };
+  // The title is the task's while its conversation is what the centre shows; then it opens the task's menu.
+  const menuTaskId = conversation && shownTaskId === conversation.taskId && !reviewing && !browsing ? conversation.taskId : null;
+  const taskMenu = useMemo<MenuItem[] | undefined>(() => {
+    if (!menuTaskId || !taskActions) return undefined;
+    const pinned = taskActions.pins.includes(menuTaskId);
+    const items: MenuItem[] = [{ id: "task-pin", label: pinned ? "Unpin" : "Pin", onSelect: () => (pinned ? taskActions.unpin(menuTaskId) : taskActions.pin(menuTaskId)) }];
+    if (openedHeader && !openedHeader.archived) items.push({ id: "task-archive", label: "Archive", separatorBefore: true, onSelect: () => taskActions.archive(menuTaskId) });
+    return items;
+  }, [menuTaskId, taskActions, openedHeader]);
   // REQ-PX-049: what the Core recovered at start, as counts of its own task states, shown once its snapshot and attention list are in.
   const [recoveryNote, setRecoveryNote] = useState<{ boot: string; text: string } | null>(null);
   useEffect(() => {
@@ -544,6 +562,7 @@ export function Shell({ app }: { app: AppState }) {
                     setWorkspaceRoot(root);
                     actions.focusNewTask();
                   }}
+                  onTaskActions={setTaskActions}
                 />
               )
             }
@@ -560,7 +579,7 @@ export function Shell({ app }: { app: AppState }) {
           />
         }
         topBar={
-          <TopBar title={title} slotRef={setTopSlot} panelOpen={panelOpen} panelUnavailable={panelUnavailable} onTogglePanel={() => actions.togglePanel()} />
+          <TopBar title={title} taskMenu={taskMenu} slotRef={setTopSlot} endSlotRef={setTopEndSlot} panes={panes} onPane={onPane} />
         }
         tray={conversation && !reviewing && !browsing && !dashboardOpen ? null : <TrayHost />}
         statusRow={
@@ -641,6 +660,7 @@ export function Shell({ app }: { app: AppState }) {
               onOpenTask={(id) => openConversation(id)}
               titleOf={(id) => model.tasks.get(id)?.goalText ?? "another task"}
               topSlot={topSlot}
+              topEndSlot={topEndSlot}
               subtasks={childrenOf(model, conversation.taskId)}
               screenState={model.tasks.has(conversation.taskId) ? taskState({ card: model.tasks.get(conversation.taskId)!, core, attention: attentionItems }) : null}
               worktree={Boolean(openedHeader?.checkoutRoot)}

@@ -52,5 +52,13 @@
     "A message finished before this build has no line on its record; the header reads it from the text object once per Core process per message (proven on a real store by a unit test, not on a real Core).",
     "For an archived task the line is read as of the archive.",
     "macOS only so far; Linux and Windows are CI's."
-  ]
+  ],
+  "addition_2026_11_12": {
+    "with": "PX-200 (branch wip/desktop-2-task-view)",
+    "built": "apps/desktop/src/renderer/agents/preview-card.tsx shows AgentHeaderView.lastLine under the state (agent-preview-last); no Core, protocol or bridge change",
+    "test": "apps/desktop/e2e/px-218-last-line.spec.ts (1 passed; px218-e2e.log): no line while the message is unfinished; after the turn the header's line equals the transcript's last line with the credential-shaped token redacted; the card shows the header's line; a task that has not answered shows none; the same after the app and its Core are restarted on the same data",
+    "screenshots": "after/*.png (the running app at 1440 by 900, light and dark, before and after the restart)",
+    "closes_limitation": "The preview card (PX-199) is not in this change: PX-E2E-218 is proven for the header, not for the card.",
+    "still_not_proven_through_the_desktop": "a long line cut at a character boundary; an archived task's line (both are the Core's tests)"
+  }
 }

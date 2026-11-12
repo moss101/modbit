@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ECHO_LOOP, expectTerminals, gate, nodeTerminal, steppedModel, type Step } from "./support/apps-harness.ts";
 import { accessible, closeApp, launch, makeRepo, setContentSize } from "./support/ui-harness.ts";
-import { queueTask } from "./support/new-task.ts";
+import { openPane, queueTask } from "./support/new-task.ts";
 
 async function recordDialog(app: ElectronApplication, answer: number): Promise<void> {
   await app.evaluate(({ dialog }, response) => {
@@ -71,7 +71,9 @@ test("the agent list, the conversation and the apps panel work together on one r
 
     // The same selection drives the apps panel: it appears once there is an artifact, for this task, with the conversation still in the centre.
     await expectTerminals(page, taskId, 1);
-    await page.getByTestId("toggle-apps-panel").click();
+    // MWS-05: the title bar has a toggle for each pane the task can show; the terminal's is there because the Core lists one.
+    await expect(page.getByTestId("pane-toggle-terminal")).toHaveAttribute("aria-pressed", "false");
+    await openPane(page);
     const panel = page.getByTestId("region-apps");
     await expect(panel).toBeVisible();
     await expect(page.getByTestId("apps-panel")).toHaveAttribute("data-task-id", taskId);
