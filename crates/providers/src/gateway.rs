@@ -169,6 +169,13 @@ pub struct Endpoint {
     /// endpoint where the canonical body has no such key. Never a secret.
     #[serde(default)]
     pub extra_body: serde_json::Map<String, serde_json::Value>,
+    /// Optional wire fields this endpoint rejects (a compatible gateway that
+    /// answers an unknown field with HTTP 400), left out of every request
+    /// body. Only fields in [`OMITTABLE_FIELDS`] can be named: configuration
+    /// never removes a field a request needs. The Core keeps what the field
+    /// carried (the cache key is still recorded on the route).
+    #[serde(default)]
+    pub omit_fields: Vec<String>,
     /// Requests this endpoint is asked to serve at once; the rest wait for a
     /// slot inside their own deadline. 0 = [`DEFAULT_ENDPOINT_CONCURRENCY`].
     #[serde(default)]
@@ -1128,6 +1135,11 @@ impl ProviderGateway {
         // Gateway-specific fields fill in beside the canonical body; a
         // canonical key is never overridden by configuration.
         if let Some(obj) = body.as_object_mut() {
+            for f in &ep.omit_fields {
+                if OMITTABLE_FIELDS.contains(&f.as_str()) {
+                    obj.remove(f);
+                }
+            }
             for (k, v) in &ep.extra_body {
                 obj.entry(k.clone()).or_insert_with(|| v.clone());
             }
@@ -1417,11 +1429,17 @@ enum Attempt {
     },
 }
 
+/// The optional request fields an endpoint may decline
+/// ([`Endpoint::omit_fields`]): `prompt_cache_key` is OpenAI's caching hint,
+/// which Gemini's OpenAI-compatible endpoint refuses as an unknown field.
+pub const OMITTABLE_FIELDS: &[&str] = &["prompt_cache_key"];
+
 /// Endpoints from the Core's environment (docs/15 "Credentials": only the
 /// Core reads them). Per provider: `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`;
 /// optional `MODBIT_<P>_BASE_URL` (a compatible gateway), `MODBIT_<P>_MODELS`
 /// (its catalog, see [`parse_models_spec`]), `MODBIT_<P>_AUTH` (`native` or
-/// `bearer`) and `MODBIT_<P>_EXTRA_BODY` (a JSON object of request fields).
+/// `bearer`), `MODBIT_<P>_EXTRA_BODY` (a JSON object of request fields) and
+/// `MODBIT_<P>_OMIT_FIELDS` (comma-separated, from [`OMITTABLE_FIELDS`]).
 #[must_use]
 pub fn endpoints_from_env() -> Vec<Endpoint> {
     endpoints_from(|name| std::env::var(name).ok())
@@ -1506,6 +1524,17 @@ pub fn endpoints_from(lookup: impl Fn(&str) -> Option<String>) -> Vec<Endpoint> 
                 },
                 None => serde_json::Map::new(),
             };
+            let mut omit_fields = Vec::new();
+            if let Some(text) = present(&format!("{prefix}_OMIT_FIELDS")) {
+                for f in text.split(',').map(str::trim).filter(|f| !f.is_empty()) {
+                    if !OMITTABLE_FIELDS.contains(&f) {
+                        return Err(format!(
+                            "{prefix}_OMIT_FIELDS: {f:?} cannot be left out (only {OMITTABLE_FIELDS:?})"
+                        ));
+                    }
+                    omit_fields.push(f.to_owned());
+                }
+            }
             Ok(Endpoint {
                 name: name.into(),
                 kind,
@@ -1518,6 +1547,7 @@ pub fn endpoints_from(lookup: impl Fn(&str) -> Option<String>) -> Vec<Endpoint> 
                 max_retries: 3,
                 auth,
                 extra_body,
+                omit_fields,
                 max_concurrency,
             })
         })();

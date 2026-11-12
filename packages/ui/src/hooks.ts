@@ -49,13 +49,32 @@ export function focusables(root: HTMLElement): HTMLElement[] {
   return [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => !el.hasAttribute("hidden") && el.getAttribute("aria-hidden") !== "true");
 }
 
-/** Focus moves into the container when it opens, Tab cycles inside it, and focus returns to where it was when it closes. */
+/**
+ * Focus moves into the container when it opens, Tab cycles inside it, focus that anything else moves out of it is
+ * brought back, and focus returns to where it was when it closes.
+ */
 export function useFocusTrap(ref: RefObject<HTMLElement | null>, active: boolean, initial?: RefObject<HTMLElement | null>): void {
   useEffect(() => {
     const root = ref.current;
     if (!active || !root) return;
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    (initial?.current ?? focusables(root)[0] ?? root).focus({ preventScroll: true });
+    const first = initial?.current ?? focusables(root)[0] ?? root;
+    first.focus({ preventScroll: true });
+    // A modal keeps focus: a deferred `.focus()` queued before it opened (the home composer's goal, a page's first
+    // field) must not take the keyboard from it, or typing and Enter reach the screen behind it. Another modal opened
+    // above this one keeps its own focus.
+    let last: HTMLElement = root.contains(document.activeElement) ? (document.activeElement as HTMLElement) : first;
+    const onFocusIn = (e: FocusEvent) => {
+      const t = e.target;
+      if (!(t instanceof HTMLElement)) return;
+      if (root.contains(t)) {
+        last = t;
+        return;
+      }
+      if (t.closest('[aria-modal="true"]')) return;
+      (last.isConnected && root.contains(last) ? last : first.isConnected ? first : root).focus({ preventScroll: true });
+    };
+    document.addEventListener("focusin", onFocusIn, true);
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Tab") return;
       const items = focusables(root);
@@ -77,6 +96,7 @@ export function useFocusTrap(ref: RefObject<HTMLElement | null>, active: boolean
     };
     root.addEventListener("keydown", onKey);
     return () => {
+      document.removeEventListener("focusin", onFocusIn, true);
       root.removeEventListener("keydown", onKey);
       if (previous && previous.isConnected) previous.focus({ preventScroll: true });
     };
