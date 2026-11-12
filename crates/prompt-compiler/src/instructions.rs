@@ -470,16 +470,14 @@ mod tests {
         assert_ne!(h1, h2);
     }
 
-    #[cfg(unix)]
     #[test]
     fn symbolic_links_are_followed_inside_the_repository_and_refused_outside_it() {
-        use std::os::unix::fs::symlink;
         let outside = tempfile::tempdir().unwrap();
         write(outside.path(), "secret.md", "OUTSIDE-TEXT");
         let r = repo();
         write(r.path(), "docs/shared.md", "SHARED-INSIDE");
-        symlink(r.path().join("docs/shared.md"), r.path().join("AGENTS.md")).unwrap();
-        symlink(outside.path().join("secret.md"), r.path().join("CLAUDE.md")).unwrap();
+        link(r.path().join("docs/shared.md"), r.path().join("AGENTS.md"));
+        link(outside.path().join("secret.md"), r.path().join("CLAUDE.md"));
         let d = discover(r.path(), &[]);
         assert_eq!(d.rules.len(), 1, "{d:?}");
         assert!(d.rules[0].body.contains("SHARED-INSIDE"));
@@ -491,7 +489,7 @@ mod tests {
             "a link out of the repository was read"
         );
         // A nested directory that is a link out is refused as well.
-        symlink(outside.path(), r.path().join("evil")).unwrap();
+        link(outside.path(), r.path().join("evil"));
         write(outside.path(), "AGENTS.md", "OUTSIDE-AGENTS");
         let d = discover(r.path(), &["evil/x.rs".into()]);
         assert!(!d.rules.iter().any(|r| r.body.contains("OUTSIDE-AGENTS")));
@@ -499,8 +497,24 @@ mod tests {
         // CLAUDE.md linked to AGENTS.md is one file, in force once.
         let r2 = repo();
         write(r2.path(), "AGENTS.md", "SAME");
-        symlink(r2.path().join("AGENTS.md"), r2.path().join("CLAUDE.md")).unwrap();
+        link(r2.path().join("AGENTS.md"), r2.path().join("CLAUDE.md"));
         assert_eq!(discover(r2.path(), &[]).rules.len(), 1);
+    }
+
+    /// A symbolic link on any platform: Windows needs to know a file link
+    /// from a directory link, and creating either needs Developer Mode (or an
+    /// elevated process), which this project's machines and CI runners have;
+    /// without it the unwrap below fails loudly rather than skipping (PX-030).
+    fn link(target: impl AsRef<std::path::Path>, at: impl AsRef<std::path::Path>) {
+        let (target, at) = (target.as_ref(), at.as_ref());
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(target, at).unwrap();
+        #[cfg(windows)]
+        if target.is_dir() {
+            std::os::windows::fs::symlink_dir(target, at).unwrap();
+        } else {
+            std::os::windows::fs::symlink_file(target, at).unwrap();
+        }
     }
 
     #[test]
