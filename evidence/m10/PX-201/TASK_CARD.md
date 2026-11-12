@@ -120,3 +120,9 @@
 - After those fixes the 13 touched specs passed locally (47 of 47); the whole suite was not run again locally before the second push.
 - The proof is local (macOS arm64); CI runs are recorded in evidence.json.
 - The owner has not yet seen these screenshots beside the boards, which the record makes an exit criterion. The row is not COMPLETE and no graph status was set.
+
+## Closure (2026-11-12)
+
+- CI run 43268843557 on head 455e3b58: all 19 checks passed. Ubuntu desktop E2E passed on one rerun (first attempt failed `task-list.spec.ts:492`, the flake PX-200 recorded). `rust CI_COMPATIBLE (macos-latest)` passed on its third attempt: it first failed `qual_px_179` in the GUI benchmark (this change has no Rust) and its second attempt was cancelled. Merged to main as 540711f0 (moss101/modbit#202).
+- The owner was shown the screenshots of the running app beside boards A2 and A3 with the differences listed, and answered "Yes, seal when green" on 2026-11-12.
+- Left open at the seal and told to the owner: Core wording in Evidence and Details ("delegated child-a (BACKGROUND)", "Generation", the economics paragraph), caps in minor units, and More's lower part behind a docked approval card in a narrow window. The tool-server section with servers present is unit-proven only.
