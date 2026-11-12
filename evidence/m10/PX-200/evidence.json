@@ -1,0 +1,86 @@
+{
+  "task": "PX-200",
+  "requirements": [
+    "REQ-PX-200",
+    "QUAL-PX-200",
+    "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-200"
+  ],
+  "scenarios": [
+    "QUAL-PX-200 / PX-E2E-200"
+  ],
+  "decision_record": "DR-PX-2026-11-11-021 (MWS-05, MWS-06, MWS-07, MWS-08); DR-PX-2026-11-04-020 sections 5.4 and 5.9 stay in force",
+  "tier": "release-critical",
+  "branch": "wip/desktop-2-task-view",
+  "status": "built and proven locally on macOS arm64; not sealed (graph.py was not run: sealing is not this task's)",
+  "audit": {
+    "classification": "IMPLEMENTED-PARTIAL (task view); NOT-FOUND (bridge for GetWorkGraph and GetPlan)",
+    "first_missing_link": "no client, IPC or preload method for GetWorkGraph or GetPlan; the renderer told the plan from transcript rows named plan.*",
+    "plans_and_the_work_graph": "Not every plan reaches the work graph as steps: plan.update's steps are optional (required: outcome, expected_files), and a plan with none records PlanRecorded/PlanRevised and a transcript row but no WorkNodesChanged (services/modbit-core/src/runtime.rs handle_plan). Shown on the real Core by e2e/px-200-task-view.spec.ts test 2 (workGraph has 0 steps, plan has version 1). The card is drawn only where the graph has steps; otherwise the plan line stays.",
+    "traced": "Conversation -> usePlan -> window.modbit.workGraph / plan -> conversation:workGraph / conversation:plan (conversation-ipc.ts) -> CoreClient.getWorkGraph / getPlan -> GetWorkGraph / GetPlan (server.rs) -> EventStore::work_nodes, plans::view"
+  },
+  "bridge": {
+    "added": [
+      "workGraph(taskId)",
+      "plan(taskId)"
+    ],
+    "channels": [
+      "conversation:workGraph",
+      "conversation:plan"
+    ],
+    "preload_pin": "apps/desktop/src/main/hardening-guard.test.ts preloadSha256 77809483595ce6c91861bdf0303f8767beb0c49882405d7cff1cf1a39c73a251",
+    "allow_list": "apps/desktop/e2e/workers.spec.ts BRIDGE_ALLOW_LIST",
+    "protocol_change": "none",
+    "csp_change": "none",
+    "rust_change": "none"
+  },
+  "tests": [
+    "apps/desktop/e2e/px-200-task-view.spec.ts",
+    "apps/desktop/e2e/awl.spec.ts",
+    "apps/desktop/e2e/approvals.spec.ts",
+    "apps/desktop/e2e/composer.spec.ts",
+    "apps/desktop/e2e/shell.spec.ts",
+    "apps/desktop/e2e/workers.spec.ts",
+    "apps/desktop/e2e/apps-browser.spec.ts",
+    "apps/desktop/e2e/apps-panel-state.spec.ts",
+    "apps/desktop/e2e/agent-workspace.spec.ts",
+    "apps/desktop/e2e/autonomy.spec.ts",
+    "apps/desktop/e2e/wave4.spec.ts",
+    "apps/desktop/e2e/live-approvals.spec.ts (moved, not run: needs a live provider)",
+    "apps/desktop/src/main/conversation-ipc.test.ts",
+    "apps/desktop/src/main/hardening-guard.test.ts",
+    "apps/desktop/src/renderer/conversation/model.test.ts",
+    "apps/desktop/src/renderer/approvals/model.test.ts",
+    "apps/desktop/src/renderer/shell/shell.test.ts"
+  ],
+  "unit": "@modbit/desktop 373 of 373; pnpm typecheck clean.",
+  "proof": "Whole desktop e2e suite, local, macOS 27.0.1 arm64, node 26.11.1, real Core (the prebuilt modbit-core, modbit-execd, modbit-cli and modbit-actuator-fixture of research/desktop-2/bin, built from main's Rust; this change has no Rust), scripted models. Run 1 on 03ce8f12: 203 passed, 1 failed, 2 skipped in 19.3m; the failure (computer-surface.spec.ts:177) stopped at its first step before anything this change touches and was not reproduced (9 of 9 on rerun, and passed in run 2). Run 2 on the final build: 204 passed, 0 failed, 2 skipped in 17.8m. The 2 skipped are the live-provider specs.",
+  "retained_mutations": [
+    "awl.spec.ts: a two-row composer (send under the text)",
+    "awl.spec.ts: the old 44 px text area",
+    "awl.spec.ts: the model, run mode and ring above the box",
+    "awl.spec.ts: the controls before the location",
+    "awl.spec.ts: two native selects in the approval card"
+  ],
+  "removed_test_ids": [
+    "toggle-apps-panel in the top bar (it stays on the panel's close button)"
+  ],
+  "moved_test_ids": "see TASK_CARD.md, Removed test ids",
+  "removed_checks": [
+    "shell.spec.ts: the Apps panel toggle is aria-disabled with no task (the toggle was removed on purpose; replaced by: no pane toggle with no task)"
+  ],
+  "not_proven_here": "A work-graph change with no plan version (a subtask admitted against a node) is not scripted: the card is shown equal to GetWorkGraph at every stage and the transcript is shown to hold no step. BLOCKED, FAILED, CANCELLED and READY steps are unit-proven only. Send now in the tray and Archive in the title's menu are asserted present, not exercised. live-approvals.spec.ts was moved to the menu and not run.",
+  "screenshots": "after/*.png: the running app against a real Core at 1440 by 900 (captured at 2x), written by e2e/px-200-task-view.spec.ts with MODBIT_SHOTS_DIR set, on the final build. The boards for the comparison are in ../PX-198/boards/ and evidence/dossier-px-020/boards/.",
+  "full_suite_results": "evidence/m10/PX-200/desktop-e2e-full-results.txt",
+  "build_digest": {
+    "dist/renderer/index.js": "sha256:08342e9475733405e87fa9d18d6aca0e1c34ef8e7b09667664a40839132256c7",
+    "dist/renderer/app.css": "sha256:d73f92c1836d01a7e7048476d2f774ca0c5b5e762e227854b360213ba9be1c5b",
+    "dist/preload/preload.cjs": "sha256:e195ff5ba0724b9c8b79104d7c8a35fa42f59040cf0a1c7839b05c90450e6167",
+    "dist/main/main.cjs": "sha256:5ebb1fe6e3ff9a03f005fb99fd6c8bd0e83202a091ce02eb4ac8647d27e2bfdc",
+    "note": "the build run 2 and the screenshots used (node build.mjs at the renderer of WIP commit 8266b954, which the final commit's renderer equals)"
+  },
+  "core_binary": {
+    "path": "research/desktop-2/bin/modbit-core (prebuilt from main's Rust; not in the repository)",
+    "sha256": "c5ec630a2c92680ceaccf3dc72a663ecf0e3f369c3e1309e146a691807234fcb"
+  },
+  "ci": "recorded on the pull request; not known when this file was written"
+}
