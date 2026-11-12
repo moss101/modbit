@@ -48,11 +48,28 @@ export async function openTask(page: Page, taskId: string): Promise<void> {
   await expect(page.getByTestId("conversation")).toHaveAttribute("data-task-id", taskId);
 }
 
-/** The open conversation's details (state, phase, risk, evidence, context, economics, density, undo all, browser, cancel). */
+/** The title bar's More, opened: the conversation's density, undo all, browser and cancel, and the details rail's body where the task area has no room for the rail (MWS-09). */
+export async function openTaskMore(page: Page): Promise<Locator> {
+  const more = page.getByTestId("task-more");
+  if (!(await more.isVisible())) await page.getByTestId("task-details-toggle").click();
+  await expect(more).toBeVisible();
+  return more;
+}
+
+/**
+ * The open task's details (state, phase, agents, generation, attachments, risk, security, next action, the context inspector and the
+ * economics), opened behind Details in the rail's head, with More open beside them for the controls the popover held. The rail's body
+ * is beside the conversation, or under More where the task area is 800 px or narrower.
+ */
 export async function openTaskDetails(page: Page): Promise<Locator> {
+  // Beside the conversation the rail's head is under More's corner, so Details is opened first; without the rail its head is inside More.
+  const beside = (await page.getByTestId("details-rail").count()) === 1;
+  if (!beside) await openTaskMore(page);
   const panel = page.getByTestId("task-details");
-  if (!(await panel.isVisible())) await page.getByTestId("task-details-toggle").click();
-  await expect(panel).toBeVisible();
+  const toggle = page.getByTestId("rail-details-toggle");
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
+  await expect(panel).toHaveAttribute("data-open", "true");
+  if (beside) await openTaskMore(page);
   return panel;
 }
 

@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2195,
+    "root_and_tooling": 2210,
     "docs_bytes": 2408434
   },
   "sections": [
@@ -4352,6 +4352,81 @@
       "path": "evidence/m10/PX-200/evidence.json",
       "bytes": 7172,
       "sha256": "a68fd6af32270b5cd708e6947d622bacb9d8c23d082569edb95a06ac5bd6e562"
+    },
+    {
+      "path": "evidence/m10/PX-201/TASK_CARD.md",
+      "bytes": 20504,
+      "sha256": "13d9f44e1fe6533708a99c8319af0f17cb5b5a0ee681d296a5e577e74d1ec3d5"
+    },
+    {
+      "path": "evidence/m10/PX-201/after/details-open-dark-comfortable.png",
+      "bytes": 416550,
+      "sha256": "2bd1f0f5f4df39f6a01235bb49bccef7b4127025a3a1a1f37354adebb0b4f5d9"
+    },
+    {
+      "path": "evidence/m10/PX-201/after/details-open-light-comfortable.png",
+      "bytes": 418589,
+      "sha256": "286dd4264a2801065bae72959897615de551161bb08a5516582d9fc5e104ea2b"
+    },
+    {
+      "path": "evidence/m10/PX-201/after/running-child-terminal-checkpoints-budget-dark-comfortable.png",
+      "bytes": 290133,
+      "sha256": "32d2381252ca448fa3255922d920f7ec9a750c9dfb568eef86a484992cfd3e50"
+    },
+    {
+      "path": "evidence/m10/PX-201/after/running-child-terminal-checkpoints-budget-dark-compact.png",
+      "bytes": 281580,
+      "sha256": "6948640577205580eccd3f0ba9764bded9a191c3189d23ece5830f664840bd1c"
+    },
+    {
+      "path": "evidence/m10/PX-201/after/running-child-terminal-checkpoints-budget-light-comfortable.png",
+      "bytes": 291466,
+      "sha256": "b547319aca94c8101355dfe251297c446d1245d6270e43f0d6284933217ca8ff"
+    },
+    {
+      "path": "evidence/m10/PX-201/after/running-child-terminal-checkpoints-budget-light-compact.png",
+      "bytes": 282478,
+      "sha256": "a3ddab2feabb19b552ae888ef0fceeba818ff696cdbc4264174a368b83ff7d9a"
+    },
+    {
+      "path": "evidence/m10/PX-201/after/waiting-on-approval-dark-comfortable.png",
+      "bytes": 378017,
+      "sha256": "5e34aa8fbac8e261e17c56c881fb9c8639a7465d28b61d437eb03e63a44130d6"
+    },
+    {
+      "path": "evidence/m10/PX-201/after/waiting-on-approval-dark-compact.png",
+      "bytes": 356478,
+      "sha256": "28e5ccf173d5f60cdc4deb1869386f39c8e7534e56bf98631aea1069db122cda"
+    },
+    {
+      "path": "evidence/m10/PX-201/after/waiting-on-approval-light-comfortable.png",
+      "bytes": 379548,
+      "sha256": "63728878d6ea6deefaf6c8a472f6d723b709169e91fb0ea24b8fe28817245a0f"
+    },
+    {
+      "path": "evidence/m10/PX-201/after/waiting-on-approval-light-compact.png",
+      "bytes": 359080,
+      "sha256": "1e678b124dd8a27c6749402e4fd87d6f6a2aa15292123747700f0d3e1b2b5906"
+    },
+    {
+      "path": "evidence/m10/PX-201/after/window-1000-rail-gone-more-open-dark-comfortable.png",
+      "bytes": 301988,
+      "sha256": "b4b66ad87efec00d8b2559db75c186085f8003bb6c4e7c4f9b3d2459e07b9f56"
+    },
+    {
+      "path": "evidence/m10/PX-201/after/window-1000-rail-gone-more-open-light-comfortable.png",
+      "bytes": 304401,
+      "sha256": "5371f68f57db0e865623102f316e970cd4f889afcfdad92909d48cd0b645472f"
+    },
+    {
+      "path": "evidence/m10/PX-201/desktop-e2e-full-results.txt",
+      "bytes": 40002,
+      "sha256": "14d7bb719e30e8c2aaf5791e4786c6d29999b6867720d1ff4be22afe7812adfd"
+    },
+    {
+      "path": "evidence/m10/PX-201/evidence.json",
+      "bytes": 6815,
+      "sha256": "5f8ec67db888cdc8f3d21a1fb7acb5e5d0bd0adc9e53bffa062f2bb359058ad1"
     },
     {
       "path": "evidence/m10/PX-210/TASK_CARD.md",

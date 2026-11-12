@@ -130,19 +130,51 @@ input.settings-toggle.settings-toggle::after, input.settings-toggle.settings-tog
 .topbar-panes .mb-btn[aria-pressed="true"] { background: var(--color-selected); color: var(--mb-color-text); }
 .topbar-end { flex: none; position: relative; display: inline-flex; align-items: center; }
 .topbar-end:empty { display: none; }
-.topbar-slot { flex: 1 1 0; min-width: 0; position: relative; display: flex; align-items: center; gap: var(--mb-space-2); }
-.topbar-pill { flex: none; font-size: var(--mb-type-caption-size); line-height: var(--mb-type-caption-line); padding: 1px 6px; border-radius: calc(infinity * 1px); background: var(--color-selected); color: var(--mb-color-text-muted); }
-.topbar-branch { flex: 0 1 auto; min-width: 0; display: inline-flex; align-items: center; gap: var(--mb-space-1); font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); }
-.topbar-branch svg { flex: none; }
-.topbar-branch span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .shell-toast { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: var(--mb-z-tray); margin: 0; max-width: 80%; padding: var(--mb-space-1) var(--mb-space-3); border: 1px solid var(--color-tab-border); border-radius: var(--radius-lg); background: var(--color-panel); box-shadow: var(--mb-elevation-2); }
 .shell-frame { position: relative; }
-.task-details { position: absolute; top: calc(100% + (var(--mb-top-bar) - var(--mb-control-md)) / 2); right: 0; z-index: var(--mb-z-popover); width: min(440px, 80vw); max-height: 70vh; overflow: auto; box-sizing: border-box; display: flex; flex-direction: column; gap: var(--mb-space-2); padding: var(--mb-space-3); border: 1px solid var(--color-tab-border); border-radius: var(--radius-xl); background: var(--color-panel); box-shadow: var(--mb-elevation-2); font-size: var(--mb-type-chrome-size); -webkit-app-region: no-drag; }
+.task-more { position: absolute; top: calc(100% + (var(--mb-top-bar) - var(--mb-control-md)) / 2); right: 0; z-index: var(--mb-z-popover); width: min(360px, 80vw); max-height: calc(100vh - var(--mb-top-bar) - var(--mb-space-4)); overflow: auto; box-sizing: border-box; display: flex; flex-direction: column; gap: var(--mb-space-3); padding: var(--mb-space-3); border: 1px solid var(--color-tab-border); border-radius: var(--radius-xl); background: var(--color-panel); box-shadow: var(--mb-elevation-2); font-size: var(--mb-type-chrome-size); -webkit-app-region: no-drag; }
+/* MWS-09: the details rail beside the conversation, inside the task area: on the editor surface with a 1 px edge, its width given by the layout (320, never under 280). Under More the same body stands in a card. */
+.shell-main { flex: 1 1 0; min-width: 0; min-height: 0; display: flex; }
+.shell-main > .shell-content { min-width: 0; }
+.details-rail { flex: none; box-sizing: border-box; min-height: 0; overflow: auto; background: var(--mb-surface-conversation); border-left: 1px solid var(--color-tab-border); padding: var(--mb-space-1_5) 18px 18px; font-size: var(--mb-type-chrome-size); line-height: var(--mb-type-chrome-line); }
+.rail-body { display: flex; flex-direction: column; min-width: 0; }
+.rail-head { display: flex; align-items: center; gap: var(--mb-space-2); min-height: var(--mb-row); }
+.rail-grow { flex: 1 1 0; }
+.rail-pill { flex: none; font-size: var(--mb-type-caption-size); line-height: var(--mb-type-caption-line); padding: 1px 6px; border-radius: calc(infinity * 1px); background: var(--color-selected); color: var(--mb-color-text-muted); }
+.rail-details:not(.mb-sr-only) { display: flex; flex-direction: column; gap: var(--mb-space-2); padding: var(--mb-space-1) 0 var(--mb-space-3); font-size: var(--mb-type-caption-size); line-height: var(--mb-type-caption-line); }
+.rail-sec { padding: var(--mb-space-3) 0; border-top: 1px solid var(--color-tab-border); min-width: 0; }
+.rail-h { margin: 0 0 var(--mb-space-1); min-height: var(--mb-control-md); display: flex; align-items: center; gap: var(--mb-space-1); font-size: var(--mb-type-caption-size); line-height: var(--mb-type-caption-line); font-weight: 500; color: var(--mb-color-text); }
+.rail-sec > .rail-h:last-child { margin-bottom: 0; }
+.rail-h-aside { margin-left: auto; display: inline-flex; align-items: center; gap: var(--mb-space-2); font-weight: 400; color: var(--mb-color-text-muted); white-space: nowrap; }
+.rail-hbtn { flex: 1 1 auto; min-width: 0; min-height: var(--mb-control-md); display: flex; align-items: center; gap: var(--mb-space-1); margin: 0 calc(-1 * var(--mb-space-1_5)); padding: 0 var(--mb-space-1_5); border: 0; border-radius: var(--radius-md); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.rail-hbtn > svg { flex: none; color: var(--mb-color-text-muted); }
+.rail-row { display: flex; align-items: center; gap: 10px; min-height: var(--mb-row); min-width: 0; }
+.rail-rowbtn { width: calc(100% + 2 * var(--mb-space-1_5)); box-sizing: border-box; margin: 0 calc(-1 * var(--mb-space-1_5)); padding: 0 var(--mb-space-1_5); border: 0; border-radius: var(--radius-md); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.rail-rowbtn:hover:not(:disabled), .rail-hbtn:hover:not(:disabled) { background: var(--color-hover); }
+.rail-ico { flex: none; display: inline-flex; color: var(--mb-color-text-muted); }
+.rail-x { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rail-aside { flex: none; margin-left: auto; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); }
+.rail-dim { color: var(--mb-color-text-muted); }
+.rail-warn { color: var(--mb-color-warn); }
+.rail-mono { font-family: var(--mb-font-mono); font-size: var(--mb-type-mono-size); }
+.rail-link { min-height: 0; border: 0; padding: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.rail-link.rail-mono { font-family: var(--mb-font-mono); font-size: var(--mb-type-mono-size); }
+.rail-link:hover:not(:disabled) { background: transparent; text-decoration: underline; }
+.rail-list { list-style: none; margin: 0; padding: 0; }
+.rail-sub { padding-left: 26px; }
+.rail-armed { flex: none; display: inline-flex; align-items: center; gap: var(--mb-space-1); }
+.rail-stop { flex: none; width: 22px; height: 22px; min-height: 0; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: var(--radius-md); background: transparent; cursor: pointer; }
+.rail-stop span { width: 9px; height: 9px; border-radius: 2px; background: var(--mb-color-text); }
+.rail-stop:hover:not(:disabled) { background: var(--color-hover); }
+.rail-bar { width: 26px; height: 6px; border-radius: 3px; background: var(--color-tab-border); overflow: hidden; display: inline-block; }
+.rail-bar i { display: block; height: 100%; border-radius: 3px; background: var(--mb-color-accent-text); }
+/* More stands over whatever is docked above the composer (an approval card, a tray). */
+.topbar:has(.task-more) { z-index: var(--mb-z-popover); }
+.task-more .rail-body { margin-top: calc(-1 * var(--mb-space-1)); }
 .task-facts { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px var(--mb-space-3); }
 .task-fact { display: contents; }
 .task-fact dt { color: var(--mb-color-text-muted); }
 .task-fact dd { margin: 0; overflow-wrap: anywhere; }
-.task-subtasks { list-style: none; margin: 0; padding: 0; }
 .task-section { margin: 0; }
 .task-section summary { cursor: pointer; }
 .task-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--mb-space-2); }

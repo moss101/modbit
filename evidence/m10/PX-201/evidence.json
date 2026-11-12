@@ -1,0 +1,94 @@
+{
+  "task": "PX-201",
+  "requirements": [
+    "REQ-PX-201",
+    "QUAL-PX-201",
+    "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-201"
+  ],
+  "scenarios": [
+    "QUAL-PX-201 / PX-E2E-201"
+  ],
+  "decision_record": "DR-PX-2026-11-11-021 (MWS-09, section 5.1); DR-PX-2026-11-04-020 sections 5.3, 5.6, 5.8 and 5.9 stay in force",
+  "tier": "release-critical",
+  "branch": "wip/desktop-2-details-rail",
+  "status": "built and proven locally on macOS arm64; not sealed (graph.py was not run: sealing is not this task's)",
+  "audit": {
+    "classification": "IMPLEMENTED-PARTIAL (every fact crossed the bridge already; the surface and its place in the layout were missing)",
+    "first_missing_link": "no surface beside the conversation and no place for one in computeLayout; the facts were in a popover (conversation/task-details.tsx), the top bar and the composer's foot",
+    "found_and_fixed": [
+      "the shell kept the headers the task list last read after the list left the screen, and with no header the location fell back to this machine's name without a read",
+      "the branch was read only once the Changes app had been opened"
+    ],
+    "core_limits": "no per-task tool-server list and no liveness probe (customizeHooks lists the session's extensions with their declared servers, CONFIGURED or INERT); the budget is in minor currency units with no currency, the cost in dollars at catalog list prices",
+    "traced": "Shell -> ShellFrame (computeLayout detailsPx) -> aside.details-rail <- portal <- Conversation -> DetailsRail -> window.modbit.agentHeaders / changesState / runMode / pendingApprovals / contextAccounting / customizeHooks / taskEconomics / checkpoints / transcript (facts) / terminalList, and the session's snapshot and events for the card -> main's handlers -> CoreClient -> Core"
+  },
+  "bridge": {
+    "added": [],
+    "protocol_change": "none",
+    "preload_change": "none",
+    "main_change": "none",
+    "csp_change": "none",
+    "rust_change": "none",
+    "proof": "dist/preload/preload.cjs and dist/main/main.cjs have the digests evidence/m10/PX-200/evidence.json recorded"
+  },
+  "left_out": [
+    "tool servers per task and their connection state (no Core read); the section is absent when the session declares none",
+    "Move to cloud (PX-128)",
+    "spend against budget as one ratio (two units)"
+  ],
+  "tests": [
+    "apps/desktop/e2e/px-201-details-rail.spec.ts",
+    "apps/desktop/e2e/awl.spec.ts",
+    "apps/desktop/e2e/supervision.spec.ts",
+    "apps/desktop/e2e/fleet-agents.spec.ts",
+    "apps/desktop/e2e/composer.spec.ts",
+    "apps/desktop/e2e/conversation.spec.ts",
+    "apps/desktop/e2e/checkpoints.spec.ts",
+    "apps/desktop/e2e/workers.spec.ts",
+    "apps/desktop/e2e/support/new-task.ts",
+    "apps/desktop/src/renderer/conversation/rail-model.test.ts",
+    "apps/desktop/src/renderer/shell/shell.test.ts",
+    "apps/desktop/src/renderer/measured-css.test.ts"
+  ],
+  "unit": "@modbit/desktop 383 of 383; pnpm typecheck clean.",
+  "proof": "Whole desktop e2e suite, local, macOS 27.0.1 arm64, real Core (the prebuilt modbit-core, modbit-execd, modbit-cli and modbit-actuator-fixture of research/desktop-2/bin, built from main's Rust; this change has no Rust), scripted models. Run 1 on bfa9e852: 206 passed, 1 failed, 2 skipped in 19.3m; the failure (composer.spec.ts:204) measured the composer at 1280 wide, where the conversation beside the rail is 672 wide: caused by this change; the spec runs at 1440 with its assertions unchanged. Run 2 on the final build: 207 passed, 0 failed, 2 skipped in 19.2m. The 2 skipped are the live-provider specs. px-201-details-rail.spec.ts also passed 4 of 4 with --repeat-each 4.",
+  "bridge_log": "A tap added by the spec in the main process (ipcMain's handlers and webContents.send for core:event); every value element of the rail names its preload read in data-src and the spec finds that read answered for the task or session, then compares each section's words with the logged answer.",
+  "retained_mutations": [
+    "px-201-details-rail.spec.ts: a value that names no read",
+    "px-201-details-rail.spec.ts: a value naming a read the bridge never answered",
+    "px-201-details-rail.spec.ts: words on the rail that are no value",
+    "px-201-details-rail.spec.ts: a made-up spend naming a real read",
+    "px-201-details-rail.spec.ts: a location written in place",
+    "px-201-details-rail.spec.ts: the default phase and agent counts against the Core's after a reload",
+    "awl.spec.ts: a rail at a task area of 800",
+    "awl.spec.ts: the popover back",
+    "awl.spec.ts: a 260 px rail",
+    "awl.spec.ts: a rail with no minimum",
+    "awl.spec.ts: a rail on the sidebar surface",
+    "awl.spec.ts: a rail with no edge",
+    "awl.spec.ts: a rail floating over the composer",
+    "awl.spec.ts: sections with no hairline",
+    "measured-css.test.ts: a rail row with a height of its own"
+  ],
+  "removed_test_ids": [],
+  "moved_test_ids": "see TASK_CARD.md, Test ids",
+  "removed_checks": [
+    "awl.spec.ts workspaceDrift: top-bar-state is in the top bar (the pill moved to the rail on purpose; replaced by: the bar holds neither the state nor the branch, and railDrift has the state in the rail's head)",
+    "awl.spec.ts composerDrift: a control under the box is not before where the task runs (the location left the composer's foot on purpose; replaced by: where the task runs is not under the box)"
+  ],
+  "not_proven_here": "The tool-server section with servers present, a task in a worktree of its own, a cloud location, an unpriced model and a failed verification are unit-proven only.",
+  "screenshots": "after/*.png: the running app against a real Core at 1440 by 900 (captured at 2x), written by e2e/px-201-details-rail.spec.ts with MODBIT_SHOTS_DIR set, on the final build; the last pair is the window at 1000 wide. The boards for the comparison are in ../PX-198/boards/ and evidence/dossier-px-020/boards/.",
+  "full_suite_results": "evidence/m10/PX-201/desktop-e2e-full-results.txt",
+  "build_digest": {
+    "dist/renderer/index.js": "sha256:fc74fe5475cac110c8027183843942b076f1d1e72683cc77d4f886b4e6c09c48",
+    "dist/renderer/app.css": "sha256:7fd826752f0228828127fe57e44db27ede8dfa1029a26521040fdd0e193610f9",
+    "dist/preload/preload.cjs": "sha256:e195ff5ba0724b9c8b79104d7c8a35fa42f59040cf0a1c7839b05c90450e6167",
+    "dist/main/main.cjs": "sha256:5ebb1fe6e3ff9a03f005fb99fd6c8bd0e83202a091ce02eb4ac8647d27e2bfdc",
+    "note": "the build run 2 and the screenshots used (node build.mjs at WIP commit 9a4534a8, which the final commit's apps/ equals)"
+  },
+  "core_binary": {
+    "path": "research/desktop-2/bin/modbit-core (prebuilt from main's Rust; not in the repository)",
+    "sha256": "c5ec630a2c92680ceaccf3dc72a663ecf0e3f369c3e1309e146a691807234fcb"
+  },
+  "ci": {}
+}

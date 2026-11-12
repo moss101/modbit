@@ -69,6 +69,10 @@ const MEASURED: [keyof typeof COMPONENT_SHEETS, string, string, string][] = [
   ["shellCss", ".shell-frame", "background", "var(--mb-surface-conversation)"],
   ["shellCss", ".shell-panel", "background", "var(--mb-surface-conversation)"],
   ["shellCss", ".shell-list", "background", "var(--mb-surface-list)"],
+  // MWS-09: the details rail on the editor surface with a 1 px edge; its rows are the row height and its text the chrome's, so Compact is the tokens.
+  ["shellCss", ".details-rail", "background", "var(--mb-surface-conversation)"],
+  ["shellCss", ".details-rail", "font-size", "var(--mb-type-chrome-size)"],
+  ["shellCss", ".rail-row", "min-height", "var(--mb-row)"],
   ["workspaceCss", ".conv-user", "background", "var(--mb-surface-fill)"],
   ["workspaceCss", ".conv-code", "background", "var(--mb-surface-fill)"],
 ];
@@ -116,6 +120,8 @@ test("MWS-01/02: the measured surfaces take their sizes and their surface from t
   assert.match(mutate("workspaceCss", "max-width: var(--mb-column-text);", "max-width: 640px;").join("\n"), /\.conv-inner \{ max-width: 640px \}/);
   assert.match(mutate("composerCss", "max-width: var(--mb-column);", "max-width: 640px;").join("\n"), /\.cmp > \* \{ max-width: 640px \}/);
   assert.match(mutate("composerCss", "border-radius: var(--mb-composer-radius);", "border-radius: var(--radius-xl);").join("\n"), /\.cmp-box \{ border-radius: var\(--radius-xl\) \}/);
+  // MWS-09: a rail row with a height of its own would not follow the density.
+  assert.match(mutate("shellCss", ".rail-row { display: flex; align-items: center; gap: 10px; min-height: var(--mb-row);", ".rail-row { display: flex; align-items: center; gap: 10px; min-height: 32px;").join("\n"), /\.rail-row \{ min-height: 32px \}/);
   // The superseded mapping (the conversation on chrome, the message on the editor surface) is caught too.
   assert.match(mutate("shellCss", "overflow: hidden; background: var(--mb-surface-conversation); }", "overflow: hidden; background: var(--color-background); }").join("\n"), /\.shell-frame \{ background: var\(--color-background\) \}/);
   assert.match(mutate("workspaceCss", ".conv-user { align-self: stretch; background: var(--mb-surface-fill);", ".conv-user { align-self: stretch; background: var(--color-panel);").join("\n"), /\.conv-user \{ background: var\(--color-panel\) \}/);
