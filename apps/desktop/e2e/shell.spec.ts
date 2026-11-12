@@ -356,6 +356,42 @@ test("PX-045: the command palette and the shortcut registry by keyboard alone; E
   }
 });
 
+test("PX-045: a modal keeps focus: the home composer's deferred focus cannot pull it out of a palette opened before it fires", async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-shell-palette-race-"));
+  const { app, page } = await launch(dataDir);
+  try {
+    await setContentSize(app, page, 1280, 800);
+    await page.keyboard.press(`${MOD}+n`);
+    await page.keyboard.type("Palette race task");
+    for (let i = 0; i < 4; i++) await page.keyboard.press("Tab");
+    expect(await focusedTestId(page)).toBe("run");
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("conversation")).toHaveAttribute("data-task-id", /.+/, { timeout: 30_000 });
+    const taskId = (await page.getByTestId("conversation").getAttribute("data-task-id"))!;
+
+    // Leaving a conversation for home focuses the goal one task later. Open the palette in the same task as the
+    // click, before that deferred focus runs, as a slow machine does between two real inputs.
+    await page.evaluate((mac) => {
+      document.querySelector<HTMLElement>('[data-testid="agents-new-task"]')!.click();
+      document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "k", code: "KeyK", metaKey: mac, ctrlKey: !mac, bubbles: true, cancelable: true }));
+    }, process.platform === "darwin");
+    await expect(page.getByTestId("palette")).toBeVisible();
+    // Let the deferred focus (and anything else queued by the click) run.
+    await page.evaluate(() => new Promise((r) => setTimeout(r, 100)));
+    expect(await focusedTestId(page), "focus stays in the modal palette").toBe("palette-input");
+    await expect(page.getByTestId("goal"), "nothing typed reached the composer behind the palette").toHaveValue("");
+
+    await page.keyboard.type("race");
+    await expect(page.getByTestId("palette-input")).toHaveValue("race");
+    await expect(page.getByTestId("palette-option").first()).toHaveAttribute("data-id", `agent:${taskId}`);
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("palette")).toHaveCount(0);
+    await expect(page.getByTestId("conversation")).toHaveAttribute("data-task-id", taskId);
+  } finally {
+    await closeApp(app);
+  }
+});
+
 test("PX-044/045: themes, high contrast and reduced motion; the send button meets AA; axe on every region in every theme", async () => {
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-shell-theme-"));
   const { app, page } = await launch(dataDir);
