@@ -542,6 +542,9 @@ test("PX-199: the keyboard alone reaches every row, pins, archives with undo and
 
     // ---- e archives from the row, focus goes to the nearest remaining row, and the toast's Undo brings it back.
     await agentRow(page, ids.draft2).getByTestId("agent-open").focus();
+    // The press is aimed at this row and nothing else: wait until the keyboard is provably on it, not still on the
+    // row the unpin's follow-through is about to refocus on a slow machine.
+    await expectFocusedTask(page, ids.draft2, "the keyboard is on the row about to be archived");
     await page.keyboard.press("e");
     await expect(agentRow(page, ids.draft2)).toHaveCount(0, { timeout: 15_000 });
     await expectFocusedTask(page, ids.draft1, "focus moved to the nearest remaining row");

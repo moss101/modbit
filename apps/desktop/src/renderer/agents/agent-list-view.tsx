@@ -412,6 +412,15 @@ export function AgentListView(p: AgentListViewProps) {
         <div
           ref={scroller}
           className="agents-scroll"
+          onFocusCapture={(e) => {
+            // Real focus wins over a focus still pending: a request made before it (a pin's follow-through, whose
+            // commit a slow machine delays by seconds) must not pull the keyboard off the row the person just focused.
+            const id = (e.target as HTMLElement).getAttribute("data-row-id");
+            if (id) {
+              pendingFocus.current = null;
+              setActiveId((was) => (was === id ? was : id));
+            }
+          }}
           onScroll={(e) => {
             setScrollTop(e.currentTarget.scrollTop);
             if (preview) closePreview();
