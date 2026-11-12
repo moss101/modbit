@@ -97,3 +97,8 @@
 - **CI run 3** (43198251756 on f477e2de, with main's two later commits merged): desktop E2E passed on macOS and Ubuntu and every other job passed (one supply-chain job was cancelled when the failed job was rerun); on Windows 201 passed, 1 failed, 6 skipped: this row's own `px-200-task-view.spec.ts:151`, where the click that closes the context tray did not close it. `wave4.spec.ts` already notes that a click landing while the ring re-renders can be lost and retries the close; the new spec did not. The failed job was rerun once. The spec now closes the tray as `wave4.spec.ts` does; that change is committed after the fourth push and is not pushed (the budget of pushes was four). A lost click on the ring is a fault of the ring, older than this change and not fixed here.
 - The proof of the final code beyond that is local (macOS arm64); later CI runs are recorded in evidence.json.
 - The owner has not yet seen these screenshots beside the boards, which the record makes an exit criterion. The row is not COMPLETE and no graph status was set.
+
+## Closure (2026-11-12)
+
+- CI run 43198251756 on head f477e2de: all 19 checks passed (Windows desktop E2E on one rerun). Merged to main as 441a70ac (moss101/modbit#199).
+- The owner reviewed the screenshots of the running app beside the boards and answered "Yes, seal them" on 2026-11-12.

@@ -1271,3 +1271,7 @@ Accepted on the owner's chat instruction of 2026-11-11 ("the design would be not
 - **Tooling:** one entry in the parity table of `tools/build_graph.py` (creates the change record and DOC-PX-020); `tools/test_dossier.py` pins 220 PX rows, 197 ADOPT tasks and 23 DEFERRED and adds `test_dr_021_adopts_the_measured_workspace_inside_the_clean_room_posture`.
 - **Evidence:** `evidence/dossier-px-020/` holds the sources of the sixteen approved boards and the owner's export of the comparison.
 - **Not done here:** the product behaviour of PX-198..218. PX-211 to PX-213, PX-215 and PX-217 cannot leave NOT_STARTED until PX-125, PX-069 and PX-109 are COMPLETE.
+
+### Wording correction to DR-PX-2026-11-11-021, section 9 (2026-11-12)
+
+Section 9 said the suggestion call "writes nothing". PX-210 as built writes nothing to the task's log (proven byte for byte) and appends one charge record to the session's log, because MWS-16 requires the call to be charged to the task. The sentence now says that. No rule, row, pinned count or owner changes. The owner was told of the correction on 2026-11-11 and 2026-11-12 before it was made and raised no objection; it was applied with the seal of PX-200, PX-210 and PX-218.
