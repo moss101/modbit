@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2199,
+    "root_and_tooling": 2200,
     "docs_bytes": 2408986
   },
   "sections": [
@@ -1132,6 +1132,11 @@
       "path": "docs/decisions/README.md",
       "bytes": 11335,
       "sha256": "6000d8aea12959fbef30f0935ccf01cff063f8b40a72e60b8b10cca8f85ee3e0"
+    },
+    {
+      "path": "evidence/.DS_Store",
+      "bytes": 14340,
+      "sha256": "ae9e212e57c01ac7b19bf3f6a5ce4e5474c9ad30ec15ecbb3d0f305af4e6b1c8"
     },
     {
       "path": "evidence/dossier-epr-v1.1/baseline.json",

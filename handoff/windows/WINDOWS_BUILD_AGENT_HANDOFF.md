@@ -2,7 +2,7 @@
 
 **Audience:** a build agent on a physical or VM Windows 11 x64 machine.
 **Loop:** you build and commit on GitHub (`moss101/modbit`); the maintainer (macOS) pulls, builds, runs clippy and tests locally, checks hosted CI, and seals graph/manifest.
-**Written:** 2026-10-10. State claims below were read from the repo that day; re-verify with the commands given before relying on them.
+**Written:** 2026-10-10. **Refreshed:** 2026-11-12 against `main` at `a1c0836c`. State claims below were read from the repo on those days; re-verify with the commands given before relying on them. Section 9 lists what changed in the refresh. Section 10 describes the optional remote-runner mode, in which the Windows machine only runs tests and never commits.
 
 > `AGENTS.md` governs you exactly as it governs every other agent. Precedence: `AGENTS.md` > `SKILLS.md` > `docs/02` > the rest. This file adds Windows scope; it overrides nothing. The `WIN-*` labels below are a work breakdown for this handoff only. They are **not** graph nodes. The real graph tasks they serve are named in each card.
 
@@ -14,11 +14,11 @@
 |---|---|
 | macOS is the only Alpha release platform. Windows is `CI_COMPATIBLE`, never "supported". | `docs/76`, `tools/platforms.json` |
 | Windows becomes `RELEASE_GRADE` only through PX-031 evidence (packaged desktop E2E + applicable Release Zero subset) **and a Decision Record**. | `docs/76`, `docs/62` §PX-031 |
-| PX-031 prerequisites: M10.3 (RC E2E catalog) and PX-030. PX-030 is `IMPLEMENTING`, M10.2 (updater/signing/SBOM) and M10.3 are `NOT_STARTED` in the graph. | `python3 tools/graph.py show PX-031` |
-| Hosted CI already builds and tests on `windows-latest` (jobs `rust`, `node`, `desktop-e2e`). | `.github/workflows/ci.yml` |
-| Windows has Rust code paths already: named-pipe transport (`crates/protocol/src/client.rs`, `services/modbit-execd/src/broker.rs`), ConPTY via `portable-pty`, `netstat`/CIM listener discovery (`services/modbit-execd/src/listeners.rs`), "job-less tree kill" (`broker.rs` ~L1357), DPAPI label in `apps/desktop/src/main/main.ts`. | code |
-| Many Unix-only tests are `#[cfg(unix)]`-gated and therefore **do not run on Windows at all**. | see WIN-02 |
-| No Windows packaging, signing or updater exists. No Windows computer-control actuator exists and one is explicitly out of scope. | `docs/66` §8, `docs/78` |
+| PX-031 prerequisites: M10.3 (RC E2E catalog) and PX-030. As of 2026-11-12: PX-030 is `WIRED`, M10.2 (updater/signing/SBOM) is `REAL_TESTING` (unsigned packaging, packaged E2E subset and SBOM landed; signing is owner-supplied), M10.3 and PX-031 are `NOT_STARTED`. | `python3 tools/graph.py show PX-031` (also `PX-030`, `M10.2`, `M10.3`) |
+| Hosted CI builds and tests on `windows-latest` in the jobs `rust`, `node`, `desktop-e2e` and `desktop-packaged` (the last builds the UNSIGNED NSIS installer and zip, runs the packaged suite and the update suite). Linux-only jobs: `cloud`, `release-sbom`, `supply-chain`, `dossier`. | `.github/workflows/ci.yml` |
+| Windows has Rust code paths already: named-pipe transport (`crates/protocol/src/client.rs`, `services/modbit-execd/src/broker.rs`), ConPTY via `portable-pty`, `netstat`/CIM listener discovery (`services/modbit-execd/src/listeners.rs`), job-less process-tree kill in `broker.rs` (locate it with `rg -n "tree" services/modbit-execd/src/broker.rs`; line numbers move), DPAPI label in `apps/desktop/src/main/main.ts`. | code |
+| Many Unix-only tests are `#[cfg(unix)]`-gated and therefore **do not run on Windows at all**. Some have been ported since October (PX-082 Core suite, PX-115/052 MCP reaper and slash inventory, hooks on Windows, the 16 MiB Core worker stack fix); check history before porting. | see WIN-02 |
+| An UNSIGNED Windows package exists (electron-builder, NSIS per-user plus zip, `apps/desktop/electron-builder.yml`). Signing, notarization and the updater signing key are owner-supplied and absent; the package says `UNSIGNED` in its name and `build-info.json`. No Windows computer-control actuator exists and one is explicitly out of scope. | `docs/66` §8, `docs/78`, `docs/77` §5 item 4 |
 
 **Hard rule: do not change `tools/platforms.json` to `RELEASE_GRADE`, and do not write any user-facing text claiming Windows support.** `tools/support_claims.py` fails the build if you do. Promotion is a separate Decision Record the owner writes after evidence exists.
 
@@ -51,7 +51,7 @@ Record every version in `handoff/windows/reports/WIN-00.md`.
 | Python 3 | for `tools/*.py` and `pytest==8.4.2` (fixture runner) |
 | Symlinks | enable Developer Mode (or run tests elevated). Several path-policy tests use **real** symlinks; without this they fail for the wrong reason. |
 | Long paths | set `HKLM\SYSTEM\CurrentControlSet\Control\FileSystem\LongPathsEnabled=1` |
-| Line endings | `git config core.autocrlf false` in the clone. Check `.gitattributes`; if text fixtures or golden files differ by CRLF, fix at the source, do not normalize in tests. |
+| Line endings | `git config core.autocrlf false` in the clone. `.gitattributes` currently only marks binary fixtures and has **no** `eol=lf` rule, so a Windows checkout may still convert text. If text fixtures, golden files or manifest hashes differ by CRLF, report it to the maintainer (the fix is a `.gitattributes` change plus a reseal made on macOS); do not normalize in tests. |
 | Repo location | a short path on NTFS (e.g. `C:\src\modbit`), **not** OneDrive/Dropbox. Add a Defender exclusion for the repo and `target\` only if builds are unworkably slow, and record that you did. |
 | Clone | `git clone https://github.com/moss101/modbit.git`, then branch `wip/win-<card>-<slug>` off current `main`. |
 
@@ -73,9 +73,10 @@ cargo build --workspace --locked
 cargo test --workspace --locked
 cargo run --locked -p architecture-lint -- --manifest-path Cargo.toml --rules tools/architecture-lint/rules.toml
 cargo run --locked -p architecture-lint -- spawns --repo . --rules tools/architecture-lint/rules.toml
+cargo run --locked -p architecture-lint -- credentials --repo . --rules tools/architecture-lint/rules.toml
 pnpm install --frozen-lockfile
 pnpm -r test
-cargo build --locked -p modbit-core -p modbit-execd -p modbit-cli
+cargo build --locked -p modbit-core -p modbit-execd -p modbit-cli -p modbit-actuator-fixture
 pnpm --filter "@modbit/desktop" build
 $env:MODBIT_CORE_BIN = "$PWD\target\debug\modbit-core.exe"
 pnpm --filter "@modbit/ide-adapter-core" conformance
@@ -83,7 +84,7 @@ pnpm --filter "@modbit/vscode-adapter" test
 pnpm --filter "@modbit/desktop" exec playwright test -c e2e/playwright.config.ts
 ```
 
-(`.github/workflows/ci.yml` is the source of truth; if it differs from this list, follow the workflow and note the drift.)
+(`.github/workflows/ci.yml` is the source of truth; if it differs from this list, follow the workflow and note the drift. The packaged leg is WIN-08, not this card. The `supply-chain` and `release-sbom` jobs run on Linux only and are not part of the Windows baseline.)
 
 **Prove:** a table in `reports/WIN-01.md`: every command, exit code, duration, and for each failure the first error line and whether it also fails on hosted `windows-latest` (check `gh run list --branch main --workflow ci`). Separate **local-only** failures (your machine) from **real Windows** failures.
 
@@ -95,7 +96,7 @@ Windows currently does **not execute** these Unix-gated tests, so "Windows CI gr
 
 `crates/workspace/tests/{real_fs.rs:348,613 · snapshot.rs · property_paths.rs:144}` · `crates/workspace/src/snapshot.rs:230,566,596` · `crates/git/tests/{hardening.rs · px_067_remaining.rs · apply_back.rs:454}` · `crates/git/src/harden.rs:68,350` · `crates/tools/tests/git_hardening.rs:230,334` · `crates/retrieval/{src/persist.rs:156 · tests/persisted_indexes.rs:656}` · `crates/prompt-compiler/src/instructions.rs:473` · `services/modbit-core/tests/worktrees_px.rs` (several) · `crates/sandbox/src/backend/mod.rs:17` (microVM, **stays Unix-only**, Linux/KVM, document and leave).
 
-**Do:** regenerate this list with `rg -n "cfg\((unix|not\(windows\))" crates services apps` (it will have moved). For each gate, classify: (a) Unix-only by nature (permission bits, Unix socket, KVM) → write the Windows analogue (ACL / named-pipe descriptor / hidden-file attribute) or record a justified gap; (b) Unix-gated only because the test used `sh`/symlink helpers → port it so it runs on Windows with a real equivalent.
+**Do:** regenerate this list with `rg -n "cfg\((unix|not\(windows\))" crates services apps` (it has moved; about 60 files carry such gates as of 2026-11-12). First read `git log --oneline -i --grep=windows` and the closed PX rows (PX-082, PX-115, PX-052) so you do not redo ported tests. For each gate, classify: (a) Unix-only by nature (permission bits, Unix socket, KVM) → write the Windows analogue (ACL / named-pipe descriptor / hidden-file attribute) or record a justified gap; (b) Unix-gated only because the test used `sh`/symlink helpers → port it so it runs on Windows with a real equivalent.
 
 **Prove:** each ported test fails when the property under test is broken (mutate the code, show red, restore, show green). Record the before/after in the report.
 
@@ -119,7 +120,7 @@ The workspace path policy (`crates/workspace`) is a security boundary. Windows a
 **Do:** against the real broker (`services/modbit-execd/tests/broker.rs`) and Core on Windows prove:
 
 1. **ConPTY:** interactive command, resize, ANSI output, replay window, cancel.
-2. **Process-tree kill:** `broker.rs` uses "job-less tree kill". Audit it. A command that spawns grandchildren (e.g. `cmd /c start /b ping -n 100 127.0.0.1`, and a Node child that forks) must leave **zero** survivors after cancel/timeout/Core stop. If tree-kill leaks, implement Windows **Job Objects** (`JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`) inside the existing broker; do not add a second process manager.
+2. **Process-tree kill:** `broker.rs` uses job-less tree kill (the broker changed by roughly 230 lines since October; re-read it, do not trust old line numbers). Audit it. A command that spawns grandchildren (e.g. `cmd /c start /b ping -n 100 127.0.0.1`, and a Node child that forks) must leave **zero** survivors after cancel/timeout/Core stop. If tree-kill leaks, implement Windows **Job Objects** (`JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`) inside the existing broker; do not add a second process manager.
 3. **Durable broker survival:** kill the real Core process (`taskkill /F`), restart, and confirm the running command is reattached through `execd.ready` (docs/21 "As built (M4.5)"), not respawned.
 4. **Named-pipe security:** pipe name is per-user and unguessable; a second local user/low-integrity process cannot connect (set an explicit security descriptor; test with `runas` or a restricted token). Windows analogue of the Unix `0o700` owner-only directory.
 5. **Listener discovery:** `listeners.rs` parses `netstat -ano` and CIM; run against a real listening port and a localized-Windows output sample (non-English `netstat` headers must not break parsing, or must fail closed with a typed error).
@@ -135,6 +136,8 @@ Run `crates/git` hardening against real Git for Windows: hooks (`.bat`, `.cmd`, 
 
 ### WIN-06 — Desktop shell on Windows (serves PX-031 groundwork; `docs/78`, `docs/32`)
 
+**State since October:** the desktop frontend was rebuilt to the approved agent-workspace mockup (DR-PX-2026-11-04-020, PX-195..197; PX-200 measured task view), the Fleet board was removed, and the E2E catalog now has 54 specs, most reworked, with new ones such as `supervision`, `session-end`, `terminal-history`, `live-approvals`, `live-autonomy`, `px-104-live-review`, `px-106-customize` and `px-188-memory`. Do not carry over expectations about screens from the October version of this card. Take the current specs under `apps/desktop/e2e/` as the catalog, and do not redesign anything here: this card finds Windows-only defects in the current UI.
+
 **Do:** run the Playwright catalog against the Electron app on Windows (WIN-01 shows the baseline) and fix Windows-only defects within the existing shell:
 
 - window chrome per `docs/78` (`titleBarOverlay` / frame behavior on Windows), DPI scaling at 100/125/150/200 %, multi-monitor
@@ -147,28 +150,31 @@ Run `crates/git` hardening against real Git for Windows: hooks (`.bat`, `.cmd`, 
 
 **Prove:** Playwright traces and screenshots for each state saved as artifacts; axe accessibility run clean on Windows.
 
-### WIN-07 — Packaging, signing, updater, SBOM (serves M10.2) — **partly blocked on the owner**
+### WIN-07 — Windows half of packaging, signing and updater (serves M10.2) — **signing is blocked on the owner**
 
-Before starting: `git branch -a` shows a local-only branch `wip/m10-2-updater-signing-sbom` (macOS-side work in progress). Ask the maintainer for its current state; **do not create a competing packaging design**. Build the Windows half inside whatever the M10.2 design chooses.
+**What exists (do not create a competing design).** M10.2 is `REAL_TESTING`. The design is chosen and merged: electron-builder packaging (`apps/desktop/electron-builder.yml`: Windows targets `nsis` per-user, not one-click, plus `zip`), the signed-manifest updater in `apps/desktop/src/main/update` and `tools/release` (no `electron-updater`), UNSIGNED labelling (`artifactName` ends in `-UNSIGNED`, `package-resources/build-info.json`), package SBOM, and `tools/release/{release,repro,unsigned-bundle}.mjs`. CI job `desktop-packaged` already builds the Windows installer and runs the packaged and update suites on `windows-latest`; `release-sbom` (Linux) generates SBOMs with the generator approved in DR-M10-2-2026-10-02. Read `evidence/m10/M10.2/TASK_CARD.md` and the graph row before touching anything. Branches `wip/m10-2-unsigned` and `wip/m10-2-updater-signing-sbom` also exist on `origin` and are not in `main`'s ancestry (squash merges can hide that); ask the maintainer whether they are superseded before reading them as current.
 
-**You may do without owner input:**
+**Do, without owner input:**
 
-- an unsigned, reproducible Windows installer build (one chosen toolchain, recorded as an ADR proposal if none is chosen yet) that packages Electron + `modbit-core.exe` + `modbit-execd.exe` + `modbit-cli.exe` and nothing from `target\debug`
-- install / launch / upgrade / uninstall on a clean VM snapshot; per-user install without admin; install path with spaces; uninstall removes app files but keeps or removes user data exactly as the spec says
-- a CI job (new, `windows-latest`) that builds the installer and uploads it plus a SHA-256 digest as an artifact
-- SBOM generation for the Windows artifact set (format per the M10.2 decision)
+- Build the installer on a real Windows machine: `cargo build --release --locked -p modbit-core -p modbit-execd`, then `pnpm --filter @modbit/desktop run package` with `CSC_IDENTITY_AUTO_DISCOVERY=false`. Confirm it contains `modbit-core.exe`, `modbit-execd.exe`, `apply-helper.cjs` and nothing from `target\debug`.
+- Install, launch, upgrade and uninstall on a clean VM snapshot: per-user install without admin; install path with spaces and a non-ASCII user name; uninstall removes app files and treats user data exactly as the spec says; Windows Defender and SmartScreen behaviour recorded (not fixed).
+- Run the update suite on the installed build and record whether any case differs from the hosted run.
+- Record any difference between your local package and the hosted `desktop-packaged` Windows artifact (digests will differ unless the build is reproducible; compare `tools/release/repro.mjs` output).
 
-**Blocked until the owner supplies (stop and report, do not improvise):** Authenticode code-signing certificate and where it lives (HSM / cloud signing / Azure Trusted Signing), the updater signing key, the updater hosting endpoint, and the SBOM Decision Record. Never commit, print or log a key or certificate; never generate a self-signed cert and call the result "signed".
+**Blocked until the owner supplies (stop and report, do not improvise):** the Authenticode code-signing certificate and where it lives (HSM, cloud signing or Azure Trusted Signing), the updater signing key and the pinned update keys, and the updater hosting endpoint. Never commit, print or log a key or certificate; never generate a self-signed cert and call the result "signed". A build with no pinned update key must keep failing updates closed.
 
-**Prove (signed stage, once unblocked):** `signtool verify /pa /v` on every PE and on the installer; SmartScreen reputation is out of scope but record the observed behavior; updater tests: valid update applies, **tampered payload is rejected**, **downgrade is rejected**, **wrong-key signature is rejected**, interrupted update rolls back, update while the app is running.
+**Prove (signed stage, once unblocked):** `signtool verify /pa /v` on every PE and on the installer; updater tests: valid update applies, **tampered payload is rejected**, **downgrade is rejected**, **wrong-key signature is rejected**, interrupted update rolls back, update while the app is running.
 
 ### WIN-08 — Packaged Windows E2E and evidence bundle (serves PX-031, M10.3)
 
-Depends on WIN-06 and WIN-07. Run the packaged-app E2E catalog (the same catalog macOS uses for M10.3; do not invent a weaker Windows subset) and the Release Zero subset that `docs/60` / `docs/75` mark applicable, **against the installed build**, not `electron dist/main/main.cjs`.
+Depends on WIN-06 and WIN-07. **State:** the packaged subset exists for M10.2 (`apps/desktop/e2e/packaged.spec.ts`, `packaged-update.spec.ts`, config `e2e/playwright.packaged.config.ts`, script `pnpm --filter @modbit/desktop run e2e:packaged`) and already runs on `windows-latest`. The full M10.3 release-candidate E2E catalog does **not** exist yet (M10.3 is `NOT_STARTED`); do not invent a Windows-specific substitute. Until M10.3 defines it, this card is limited to:
+
+- running `e2e:packaged` and the update suite against the **installed** Windows build on a real machine (not `electron dist/main/main.cjs`), and recording differences from the hosted run;
+- the Release Zero subset that `docs/60` / `docs/75` mark applicable, only where it can run against the installed build today.
 
 **Evidence bundle** (`evidence/`-compatible, committed under `handoff/windows/reports/WIN-08/`): build digest (SHA-256 of installer), source revision, OS build, per-suite results, artifact digests, hosted-CI run ids, logs. `docs/62` §PX-031 and `docs/93` define the accepted `--evidence` grammar (`run:`, `test:`, `commit:`, `build:`, `env:`, `artifact:` …); lay the bundle out so each item maps to one.
 
-**Do not** promote Windows. Your deliverable is a bundle the owner can attach to a Decision Record.
+**Do not** promote Windows. Your deliverable is a bundle the owner can attach to a Decision Record once M10.3 and PX-031 exist.
 
 ### Out of scope here (do not start)
 
@@ -219,7 +225,21 @@ A card without a report, or whose report omits failed commands, is not accepted.
 
 ## 8. Open questions for the owner (the agent must not answer these)
 
-- Installer technology for Windows (NSIS, MSI/WiX, MSIX) and updater mechanism: not decided in the repo; M10.2 owns the decision.
-- Authenticode signing route and certificate custody.
+- Authenticode signing route and certificate custody; updater signing key and hosting endpoint.
 - Whether Windows promotion is wanted at all before Release Zero (`docs/77` row 7 calls it optional and separate).
 - Minimum supported Windows version and whether ARM64 is in scope (this handoff assumes x64 only).
+- Whether MSI or MSIX are wanted later; the current package is NSIS per-user plus zip.
+
+## 9. Refresh log
+
+**2026-11-12 (main `a1c0836c`):** PX-030 and M10.2 statuses updated; CI job list updated (`desktop-packaged`, `release-sbom`, `supply-chain`, credential-read lint); WIN-01 command list gains the `credentials` lint and `modbit-actuator-fixture`; WIN-02 and WIN-04 line references replaced by search commands, and prior Windows ports noted; WIN-06 notes the rebuilt frontend and 54-spec catalog; WIN-07 and WIN-08 rewritten because unsigned packaging, the packaged E2E subset and the update suite now exist; `.gitattributes` has no `eol=lf` rule (flagged to the maintainer); optional remote-runner mode added. Unchanged: the ground rules, the reporting format, WIN-03 and WIN-05, and the out-of-scope list. `handoff/windows/reports/` was still empty when this was written.
+
+## 10. Optional: remote-runner mode (Mac codes, Windows and WSL only run tests)
+
+Use this mode when the owner says the Windows machine is a test box and not a build agent. It replaces the commit/PR parts of section 4 and nothing else; every rule in section 1 still applies, and the reports are the same.
+
+- Code is edited and pushed only from the macOS dev host. The Windows machine never commits or pushes; fixes go back through macOS.
+- Two independent clones on the Windows machine: `C:\src\modbit` (native) and `~/modbit` inside WSL2 Ubuntu on WSL's own filesystem, never under `/mnt/c`. Do not share one working tree between them.
+- The Mac reaches the machine over SSH (OpenSSH server, key-only, reachable only on the LAN or Tailscale). For each run it executes, for a given branch: `git fetch origin && git checkout <branch> && git reset --hard origin/<branch>` followed by the test command, in PowerShell for native Windows and through `wsl -e bash -lc "..."` for Linux, and it must receive the real exit code.
+- WIN-00 applies to both environments. In WSL install the Linux build dependencies the Linux CI legs install (read `.github/workflows/ci.yml`; do not guess package names) and put `cargo` and `go` on PATH in `~/.profile`, because `bash -lc` reads the login profile.
+- A failure found on either side is reported with the exact command and output, not fixed on the Windows machine.
