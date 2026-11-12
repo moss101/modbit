@@ -232,14 +232,42 @@ A card without a report, or whose report omits failed commands, is not accepted.
 
 ## 9. Refresh log
 
-**2026-11-12 (main `a1c0836c`):** PX-030 and M10.2 statuses updated; CI job list updated (`desktop-packaged`, `release-sbom`, `supply-chain`, credential-read lint); WIN-01 command list gains the `credentials` lint and `modbit-actuator-fixture`; WIN-02 and WIN-04 line references replaced by search commands, and prior Windows ports noted; WIN-06 notes the rebuilt frontend and 54-spec catalog; WIN-07 and WIN-08 rewritten because unsigned packaging, the packaged E2E subset and the update suite now exist; `.gitattributes` has no `eol=lf` rule (flagged to the maintainer); optional remote-runner mode added. Unchanged: the ground rules, the reporting format, WIN-03 and WIN-05, and the out-of-scope list. `handoff/windows/reports/` was still empty when this was written.
+**2026-11-12 (main `a1c0836c`):** PX-030 and M10.2 statuses updated; CI job list updated (`desktop-packaged`, `release-sbom`, `supply-chain`, credential-read lint); WIN-01 command list gains the `credentials` lint and `modbit-actuator-fixture`; WIN-02 and WIN-04 line references replaced by search commands, and prior Windows ports noted; WIN-06 notes the rebuilt frontend and 54-spec catalog; WIN-07 and WIN-08 rewritten because unsigned packaging, the packaged E2E subset and the update suite now exist; `.gitattributes` has no `eol=lf` rule (flagged to the maintainer); optional remote-runner mode added (section 10, RUN-1..4: SSH server, WSL2 Ubuntu, two clones, proof from the Mac; no Go toolchain, the repo has no Go code). Unchanged: the ground rules, the reporting format, WIN-03 and WIN-05, and the out-of-scope list. `handoff/windows/reports/` was still empty when this was written.
 
 ## 10. Optional: remote-runner mode (Mac codes, Windows and WSL only run tests)
 
-Use this mode when the owner says the Windows machine is a test box and not a build agent. It replaces the commit/PR parts of section 4 and nothing else; every rule in section 1 still applies, and the reports are the same.
+Use this mode when the owner says the Windows machine is a test box and not a build agent. It replaces the commit/PR parts of section 4 and nothing else; every rule in section 1 still applies, and the reports are the same. The pinned tool versions of section 2 apply in **both** environments; never install "latest".
+
+**Roles**
 
 - Code is edited and pushed only from the macOS dev host. The Windows machine never commits or pushes; fixes go back through macOS.
 - Two independent clones on the Windows machine: `C:\src\modbit` (native) and `~/modbit` inside WSL2 Ubuntu on WSL's own filesystem, never under `/mnt/c`. Do not share one working tree between them.
-- The Mac reaches the machine over SSH (OpenSSH server, key-only, reachable only on the LAN or Tailscale). For each run it executes, for a given branch: `git fetch origin && git checkout <branch> && git reset --hard origin/<branch>` followed by the test command, in PowerShell for native Windows and through `wsl -e bash -lc "..."` for Linux, and it must receive the real exit code.
-- WIN-00 applies to both environments. In WSL install the Linux build dependencies the Linux CI legs install (read `.github/workflows/ci.yml`; do not guess package names) and put `cargo` and `go` on PATH in `~/.profile`, because `bash -lc` reads the login profile.
+- The Mac reaches the machine over SSH. For each run it executes, for a given branch: `git fetch origin && git checkout <branch> && git reset --hard origin/<branch>` followed by the test command, in PowerShell for native Windows and through `wsl -e bash -lc "..."` for Linux, and it must receive the real exit code.
 - A failure found on either side is reported with the exact command and output, not fixed on the Windows machine.
+
+**Inputs the owner must supply first (ask; never guess):** the Mac's **public** SSH key, the Windows account that accepts SSH and whether it is an administrator, the address (LAN or Tailscale name), and how the repo is accessed (owner runs `gh auth login` interactively, or a read-only deploy key). Never print or store a private key or token.
+
+**RUN-1: SSH server (admin PowerShell).**
+
+```powershell
+Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+Set-Service sshd -StartupType Automatic; Start-Service sshd
+winget install --id Microsoft.PowerShell -e
+New-ItemProperty -Path HKLM:\SOFTWARE\OpenSSH -Name DefaultShell -Value "C:\Program Files\PowerShell\7\pwsh.exe" -PropertyType String -Force
+```
+
+Put the Mac's public key in `C:\Users\<user>\.ssh\authorized_keys`, or for an administrator account in `C:\ProgramData\ssh\administrators_authorized_keys` and then `icacls "C:\ProgramData\ssh\administrators_authorized_keys" /inheritance:r /grant "Administrators:F" /grant "SYSTEM:F"`. Restrict the firewall rule to the Private and Domain profiles (`Set-NetFirewallRule -Name OpenSSH-Server-In-TCP -Profile Private,Domain`); SSH must never be reachable from the public internet. Prove key login from the Mac in a second session, and only then set `PasswordAuthentication no` in `C:\ProgramData\ssh\sshd_config` and restart `sshd`. Keep the machine awake on AC power (`powercfg /change standby-timeout-ac 0`; `powercfg /change hibernate-timeout-ac 0`).
+
+**RUN-2: WSL2 Ubuntu.** `wsl --install -d Ubuntu-24.04` (a reboot may be needed; the owner creates the Linux user). Virtualization must be on in firmware; if not, stop and tell the owner. Inside WSL install the Linux build dependencies that the Linux CI legs install (read `.github/workflows/ci.yml`; do not guess package names), `rustup` (the channel comes from `rust-toolchain.toml`), the Node version in `.node-version`, pnpm via `corepack` at the `packageManager` version, and Python 3. Put every toolchain on `PATH` in `~/.profile`, not only `~/.bashrc`, because `wsl -e bash -lc` reads the login profile. Set `git config --global core.autocrlf false`.
+
+**RUN-3: both clones.** Apply WIN-00 in full to the native side (including Developer Mode for real symlinks, long paths, `core.longpaths`, `core.autocrlf false`). Clone `moss101/modbit` to `C:\src\modbit` and to `~/modbit`. Acceptance for each: `pnpm install --frozen-lockfile` succeeds and `python3 tools/check_dossier.py --manifest` exits 0 (this is the line-ending check: the manifest hashes break on CRLF; if it fails, report the `.gitattributes` gap from section 2, do not edit files).
+
+**RUN-4: prove it from the Mac.**
+
+```bash
+ssh win-test 'hostname; cd C:\src\modbit; git rev-parse HEAD'
+ssh win-test 'wsl -e bash -lc "cd ~/modbit && git rev-parse HEAD && cargo --version"'
+ssh win-test 'exit 7'; echo "exit=$?"
+```
+
+A deliberately failing test in each environment must also return a non-zero exit code to the Mac. Report with the section 5 format, with one `RUN-NN.md` per phase under `handoff/windows/reports/`.
