@@ -51,7 +51,7 @@
     "apps/desktop/src/renderer/measured-css.test.ts"
   ],
   "unit": "@modbit/desktop 383 of 383; pnpm typecheck clean.",
-  "proof": "Whole desktop e2e suite, local, macOS 27.0.1 arm64, real Core (the prebuilt modbit-core, modbit-execd, modbit-cli and modbit-actuator-fixture of research/desktop-2/bin, built from main's Rust; this change has no Rust), scripted models. Run 1 on bfa9e852: 206 passed, 1 failed, 2 skipped in 19.3m; the failure (composer.spec.ts:204) measured the composer at 1280 wide, where the conversation beside the rail is 672 wide: caused by this change; the spec runs at 1440 with its assertions unchanged. Run 2 on the final build: 207 passed, 0 failed, 2 skipped in 19.2m. The 2 skipped are the live-provider specs. px-201-details-rail.spec.ts also passed 4 of 4 with --repeat-each 4.",
+  "proof": "Whole desktop e2e suite, local, macOS 27.0.1 arm64, real Core (the prebuilt modbit-core, modbit-execd, modbit-cli and modbit-actuator-fixture of research/desktop-2/bin, built from main's Rust; this change has no Rust), scripted models. Run 1 on bfa9e852: 206 passed, 1 failed, 2 skipped in 19.3m; the failure (composer.spec.ts:204) measured the composer at 1280 wide, where the conversation beside the rail is 672 wide: caused by this change; the spec runs at 1440 with its assertions unchanged. Run 2 on the final build: 207 passed, 0 failed, 2 skipped in 19.2m. The 2 skipped are the live-provider specs. px-201-details-rail.spec.ts also passed 4 of 4 with --repeat-each 4. After CI run 1 (More's order and stacking, the helpers): 47 of 47 in the 13 touched specs locally; the whole suite was not run again locally before the second push.",
   "bridge_log": "A tap added by the spec in the main process (ipcMain's handlers and webContents.send for core:event); every value element of the rail names its preload read in data-src and the spec finds that read answered for the task or session, then compares each section's words with the logged answer.",
   "retained_mutations": [
     "px-201-details-rail.spec.ts: a value that names no read",
@@ -80,15 +80,17 @@
   "screenshots": "after/*.png: the running app against a real Core at 1440 by 900 (captured at 2x), written by e2e/px-201-details-rail.spec.ts with MODBIT_SHOTS_DIR set, on the final build; the last pair is the window at 1000 wide. The boards for the comparison are in ../PX-198/boards/ and evidence/dossier-px-020/boards/.",
   "full_suite_results": "evidence/m10/PX-201/desktop-e2e-full-results.txt",
   "build_digest": {
-    "dist/renderer/index.js": "sha256:fc74fe5475cac110c8027183843942b076f1d1e72683cc77d4f886b4e6c09c48",
-    "dist/renderer/app.css": "sha256:7fd826752f0228828127fe57e44db27ede8dfa1029a26521040fdd0e193610f9",
+    "dist/renderer/index.js": "sha256:311b7c37f2363683010949be9e007b7d0825976370d7dd1ef05529adcc23200e",
+    "dist/renderer/app.css": "sha256:5db512e232cd4d1e8de71e2c950e88996ebadf58877ec2787a7028e2e4a144ca",
     "dist/preload/preload.cjs": "sha256:e195ff5ba0724b9c8b79104d7c8a35fa42f59040cf0a1c7839b05c90450e6167",
     "dist/main/main.cjs": "sha256:5ebb1fe6e3ff9a03f005fb99fd6c8bd0e83202a091ce02eb4ac8647d27e2bfdc",
-    "note": "the build run 2 and the screenshots used (node build.mjs at WIP commit 9a4534a8, which the final commit's apps/ equals)"
+    "note": "the build the screenshots and the local run after CI run 1 used (the second push's apps/)"
   },
   "core_binary": {
     "path": "research/desktop-2/bin/modbit-core (prebuilt from main's Rust; not in the repository)",
     "sha256": "c5ec630a2c92680ceaccf3dc72a663ecf0e3f369c3e1309e146a691807234fcb"
   },
-  "ci": {}
+  "ci": {
+    "run_1": "43231429943 on 8e56e9eb (pull request 202): every job passed but the three desktop E2E jobs (and the supply-chain job, cancelled). macos-latest 201 passed, 3 failed, 2 skipped (browser.spec.ts:147 and :574; terminal-history.spec.ts:94, whose setup saw the task Waiting instead of Running: not explained, passed on the other two systems and locally); windows-latest 201 passed, 2 failed, 6 skipped (browser.spec.ts:147 and :574); ubuntu-latest 206 passed, 1 failed, 2 skipped (checkpoints.spec.ts:46). Cause of the browser failures, in this change: the runners' windows are narrower than the local one, so the task area had no room for the rail, More held the whole rail's body, the spec's helper left More open, and this change had put More above the docked approval card, so the card's Allow could not be clicked. More is back under a docked card (the popover's order) and the helper opens More only where asked. Cause of the checkpoints failure, in this change: Undo all stood under the rail's body inside More and moved as the body filled, so a click was lost; the controls now stand first."
+  }
 }

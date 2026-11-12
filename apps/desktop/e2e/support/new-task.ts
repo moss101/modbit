@@ -58,18 +58,15 @@ export async function openTaskMore(page: Page): Promise<Locator> {
 
 /**
  * The open task's details (state, phase, agents, generation, attachments, risk, security, next action, the context inspector and the
- * economics), opened behind Details in the rail's head, with More open beside them for the controls the popover held. The rail's body
- * is beside the conversation, or under More where the task area is 800 px or narrower.
+ * economics), opened behind Details in the rail's head. The rail's body is beside the conversation, or under More where the task
+ * area is 800 px or narrower (More is then opened, and stays open). The density, Undo all, Browser and Cancel task are `openTaskMore`'s.
  */
 export async function openTaskDetails(page: Page): Promise<Locator> {
-  // Beside the conversation the rail's head is under More's corner, so Details is opened first; without the rail its head is inside More.
-  const beside = (await page.getByTestId("details-rail").count()) === 1;
-  if (!beside) await openTaskMore(page);
+  if ((await page.getByTestId("details-rail").count()) === 0) await openTaskMore(page);
   const panel = page.getByTestId("task-details");
   const toggle = page.getByTestId("rail-details-toggle");
   if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
   await expect(panel).toHaveAttribute("data-open", "true");
-  if (beside) await openTaskMore(page);
   return panel;
 }
 

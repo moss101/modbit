@@ -545,8 +545,10 @@ test("PX-201: the details rail shows the Core's facts for the open task, each fr
     await railMatchesCore(app, page, taskId, sessionId, "under More");
     const moreBox = (await under.boundingBox())!;
     expect(moreBox.x >= 0 && moreBox.x + moreBox.width <= 1000 && moreBox.y + moreBox.height <= 900, "More is inside the window").toBe(true);
-    // More stands over the docked approval card, not under it.
-    expect(await under.evaluate((el) => { const r = el.getBoundingClientRect(); const at = document.elementFromPoint(r.left + r.width / 2, r.bottom - 12); return at !== null && el.contains(at); }), "More is on top").toBe(true);
+    const controls = (await under.getByTestId("task-cancel").boundingBox())!;
+    expect(controls.y, "the controls stand first, above the details").toBeLessThan((await under.getByTestId("rail-body").boundingBox())!.y);
+    // More never covers a docked decision: the approval card's answers stay on top of it and can be clicked.
+    for (const id of ["approval-run", "approval-skip"]) expect(await page.getByTestId(id).evaluate((el) => { const r = el.getBoundingClientRect(); const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return at !== null && el.contains(at); }), `${id} is not under More`).toBe(true);
     for (const theme of ["light", "dark", "high-contrast"] as const) {
       await setTheme(page, theme);
       await accessible(page, `More holding the details in ${theme}`, '[data-testid="shell"]');

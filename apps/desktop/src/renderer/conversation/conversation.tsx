@@ -328,7 +328,6 @@ export function Conversation(props: ConversationProps) {
             <IconButton label="More" icon={<Icon name="ellipsis" />} pressed={moreOpen} aria-haspopup="dialog" onClick={() => setMoreOpen((o) => !o)} data-testid="task-details-toggle" />
             {moreOpen && (
               <div className="task-more" role="dialog" aria-label={railSlot ? "More" : "More: task details"} data-testid="task-more" data-task-id={taskId} data-holds-details={!railSlot}>
-                {!railSlot && rail}
                 <div className="task-controls">
                   <label className="conv-density">
                     <span className="meta">Density</span>
@@ -353,6 +352,8 @@ export function Conversation(props: ConversationProps) {
                     </Button>
                   )}
                 </div>
+                {/* The controls stand first: what is under them grows as the Core answers, and a control must not move under a click. */}
+                {!railSlot && rail}
               </div>
             )}
           </>,

@@ -168,9 +168,7 @@ input.settings-toggle.settings-toggle::after, input.settings-toggle.settings-tog
 .rail-stop:hover:not(:disabled) { background: var(--color-hover); }
 .rail-bar { width: 26px; height: 6px; border-radius: 3px; background: var(--color-tab-border); overflow: hidden; display: inline-block; }
 .rail-bar i { display: block; height: 100%; border-radius: 3px; background: var(--mb-color-accent-text); }
-/* More stands over whatever is docked above the composer (an approval card, a tray). */
-.topbar:has(.task-more) { z-index: var(--mb-z-popover); }
-.task-more .rail-body { margin-top: calc(-1 * var(--mb-space-1)); }
+.task-more .task-controls { padding-bottom: var(--mb-space-2); }
 .task-facts { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px var(--mb-space-3); }
 .task-fact { display: contents; }
 .task-fact dt { color: var(--mb-color-text-muted); }
