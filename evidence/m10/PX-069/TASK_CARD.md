@@ -23,12 +23,18 @@ Machine: the owner's Mac (macOS 27.0.1 26A434, arm64), authorized by the owner o
 - `stop_halts_…` and `the_core_going_away_…` spawned the input and then waited with a blocking sleep on a one-thread runtime, so the input was never sent. They now use the multi-threaded runtime.
 - The nudge test compared a fractional pointer position with a warp that lands on whole pixels, and asserted the earlier V01 measurement that another process's HID-tap posts do not move the hardware idle counter. On macOS 27 they do (re-measured: 2.13 s → 0.07 s). CUC-D04 requires only that the helper's **own** events never count as a person. The test now asserts that, and asserts that the helper agrees with the counter it measures for other processes' events. Renamed `the_helpers_own_events_are_never_a_person_and_anothers_count_as_the_hardware_counter_says`.
 
+## A test defect found on the hosted macOS runner (after merge, fixed in #194)
+- The document test pressed Save with the element ids it read before setting the text. On the hosted runner (CI 42950308247) the text view restructured after the edit, the helper reported the tree changed, and the Core correctly refused the old ids TARGET_STALE. The test now observes again after the edit, as an agent must on `re_observe`; no assertion changed.
+
 ## Evidence
 - `real-mac-run-2026-11-09.txt`: `ax-tests.sh` with `MODBIT_REQUIRE_AX_TESTS=1`, 19 passed. That is 2 real-helper/manifest tests, the real-Core form test, the 4 PX-069 real-helper tests and the helper's 12 real-permission tests. Stop→last injected event −19.5 ms (stop answered in 6.7 ms); Core disconnect → helper gone in 4 ms.
 - `mutation-checks-2026-11-09.txt`: A (latch), B (window choice), C (sheet), each killed and restored.
+- `ci-run-42975633561.json`: main CI at cafa01ff (PX-069 code merged as 29af453a via #192, test fixes via #194), all 19 jobs green on attempt 2 (attempt 1 failed only to upload a perf artifact: `ENOTFOUND`). `ci-hosted-macos-42975633561.txt`: the four real-helper tests passed on GitHub's hosted macOS runner as well.
 - Fixture-actuator Core suite `px_computer.rs`: 43 passed, 7 ignored (the real-Mac tests). `modbit-computer`: 42 passed. Clippy `-D warnings` clean.
 
 ## Limits
 - The real-Mac tests are `#[ignore]`d on hosted runners (no Accessibility grant there); CI runs the fixture-actuator suite. The real-Mac leg is this machine's retained run.
 - The helper is ad-hoc signed here. A Developer ID signature and notarization are M10.2/PX-072, and the owner holds that identity.
 - No live model drives these runs; the scripted model issues the calls. A live-model GUI leg belongs to PX-179 and waits on the gateway key.
+
+Closed 2026-11-12: COMPLETE on run 42975633561 (main, cafa01ff), the owner-Mac real run and mutation checks above.
