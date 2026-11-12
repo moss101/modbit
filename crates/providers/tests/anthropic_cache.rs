@@ -58,6 +58,7 @@ fn compiled_shape() -> Vec<Message> {
                 call_id: "c1".into(),
                 name: "fs.read".into(),
                 arguments_json: "{}".into(),
+                provider_data: None,
             }],
         },
         Message {

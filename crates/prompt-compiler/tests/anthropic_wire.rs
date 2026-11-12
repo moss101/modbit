@@ -21,6 +21,7 @@ fn input(turn: usize) -> PromptInput {
                 call_id: format!("c{n}"),
                 name: "fs.read".into(),
                 arguments_json: format!("{{\"path\":\"f{n}.rs\"}}"),
+                provider_data: None,
             }],
         });
         transcript.push(Message {

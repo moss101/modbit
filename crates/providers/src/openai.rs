@@ -89,7 +89,20 @@ pub fn request_body(req: &ModelRequest) -> Value {
                             call_id,
                             name,
                             arguments_json,
-                        } => Some(json!({"id": call_id, "type": "function", "function": {"name": name, "arguments": arguments_json}})),
+                            provider_data,
+                        } => {
+                            let mut call = json!({"id": call_id, "type": "function", "function": {"name": name, "arguments": arguments_json}});
+                            // What the provider attached to the call goes
+                            // back exactly as it came (Gemini 3 requires its
+                            // thought signature on replayed calls).
+                            if let Some(extra) = provider_data
+                                .as_ref()
+                                .and_then(|d| d.get("extra_content"))
+                            {
+                                call["extra_content"] = extra.clone();
+                            }
+                            Some(call)
+                        }
                         _ => None,
                     })
                     .collect();
@@ -189,6 +202,9 @@ pub fn is_context_overflow(status: u16, body: &str) -> bool {
 #[derive(Debug, Default)]
 pub struct Decoder {
     calls: Vec<(String, String, String)>, // (id, name, args)
+    /// Per call index: the `extra_content` object the provider attached
+    /// (Gemini's thought signature arrives there), merged across deltas.
+    extra: Vec<Option<serde_json::Map<String, Value>>>,
     finish: Option<String>,
     done: bool,
 }
@@ -265,6 +281,14 @@ impl Decoder {
                     self.calls
                         .push((String::new(), String::new(), String::new()));
                 }
+                if let Some(obj) = tc.get("extra_content").and_then(Value::as_object) {
+                    if self.extra.len() <= idx {
+                        self.extra.resize(idx + 1, None);
+                    }
+                    self.extra[idx]
+                        .get_or_insert_with(serde_json::Map::new)
+                        .extend(obj.clone());
+                }
                 let entry = &mut self.calls[idx];
                 if let Some(id) = tc["id"].as_str() {
                     entry.0 = id.to_owned();
@@ -294,13 +318,16 @@ impl Decoder {
     }
 
     fn flush_calls(&mut self) -> Vec<ModelEvent> {
+        let mut extra = std::mem::take(&mut self.extra).into_iter();
         std::mem::take(&mut self.calls)
             .into_iter()
-            .filter(|(_, name, _)| !name.is_empty())
-            .map(|(id, name, args)| ModelEvent::ToolCallComplete {
+            .map(|c| (c, extra.next().flatten()))
+            .filter(|((_, name, _), _)| !name.is_empty())
+            .map(|((id, name, args), extra)| ModelEvent::ToolCallComplete {
                 call_id: id,
                 name,
                 arguments_json: if args.is_empty() { "{}".into() } else { args },
+                provider_data: extra.map(|e| json!({"extra_content": e})),
             })
             .collect()
     }
