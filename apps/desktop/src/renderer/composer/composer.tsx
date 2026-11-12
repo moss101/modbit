@@ -69,8 +69,6 @@ import { EducationTray, PolicyTray, QueueTray, SendBehaviorPanel, SideQuestionPa
 export const MODE_ICON: Record<TaskModeId, IconName> = { AGENT: "infinity", PLAN: "list-tree", DEBUG: "bug", MULTITASK: "layers", ASK: "circle-question-mark" };
 
 export interface ComposerProps {
-  /** Under the box, at the left: where the task runs. */
-  foot?: ReactNode | undefined;
   /** Under the box, at the right, after the mode and the model: the run-mode control and the context ring. */
   runMode?: ReactNode | undefined;
   ring?: ReactNode | undefined;
@@ -842,9 +840,8 @@ export function Composer(props: ComposerProps) {
           </p>
         )}
       </div>
-      {/* Under the box: where the task runs at the left; at the right the mode, the model, the run mode and the context ring. */}
+      {/* Under the box, at the right: the mode, the model, the run mode and the context ring. Where the task runs is in the details rail (MWS-09). */}
       <div className="cmp-foot cmp-under" data-testid="composer-foot">
-        {props.foot}
         <span className="cmp-spacer" />
         <span className="cmp-mode" data-testid="mode-chip" data-mode={shownMode}>
           <Menu label={`Mode: ${MODE_DEFS[shownMode].label}. Choose another`} placement="up" align="end" triggerTestId="mode-chip-button" triggerClassName="cmp-chip cmp-mode-btn" trigger={<><Icon name={MODE_ICON[shownMode]} size={14} /> <span data-testid="mode-label">{MODE_DEFS[shownMode].label}</span>{status === "unconfirmed" && <span className="cmp-dim" data-testid="mode-unconfirmed"> unconfirmed</span>}<Icon name="chevron-down" size={10} /></>} items={modeItems} />

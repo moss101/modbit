@@ -28,7 +28,7 @@ import { callRowId, canCommitPush, canDecide, changeSummary, chipText, commitLab
  * hunk and the run goes on; the notice the agent will get is shown. Nothing is
  * computed here: eligibility, staleness and attribution are the Core's.
  */
-export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenReview, onOpenCall, onBranch }: { sessionId: string; taskId: string; taskState: string; refreshKey: string; onOpenReview: () => void; onOpenCall?: (toolCallId: string) => void; onBranch?: ((branch: string) => void) | undefined }) {
+export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenReview, onOpenCall }: { sessionId: string; taskId: string; taskState: string; refreshKey: string; onOpenReview: () => void; onOpenCall?: (toolCallId: string) => void }) {
   const [bundle, setBundle] = useState<ReviewBundleView | null>(null);
   const [state, setState] = useState<ChangesStateInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,12 +42,6 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
   const [commit, setCommit] = useState<CommitPushAckInfo | null>(null);
   const [decided, setDecided] = useState<DecideHunkAckInfo | null>(null);
   const [reason, setReason] = useState("");
-  const branchNow = state?.branch;
-  useEffect(() => {
-    if (branchNow) onBranch?.(branchNow);
-    // The callback changes identity with the panel's render; the branch is what matters.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [branchNow]);
   const seq = useRef(0);
   /** The load that last set `state`, and the sequence number the current approval card was raised at: a state read before the card existed says nothing about it. */
   const loaded = useRef(0);

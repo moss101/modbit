@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2203,
+    "root_and_tooling": 2218,
     "docs_bytes": 2395097
   },
   "sections": [
@@ -4240,8 +4240,8 @@
     },
     {
       "path": "evidence/m10/PX-200/TASK_CARD.md",
-      "bytes": 25289,
-      "sha256": "940c3537672002eddb0602fc8c495c46b9626bcc8fc23162b8add6bad9746fae"
+      "bytes": 26066,
+      "sha256": "55a81c50b3752f8d9bc1a583936c7efbe3d053771e3095bffbab24a576a0881f"
     },
     {
       "path": "evidence/m10/PX-200/after/approval-destructive-asks-twice-dark-comfortable.png",
@@ -4375,8 +4375,83 @@
     },
     {
       "path": "evidence/m10/PX-200/evidence.json",
-      "bytes": 6799,
-      "sha256": "b59732825c02e8598e000ae2e25498e0dd1204601e30cc2260a74180a057d275"
+      "bytes": 7172,
+      "sha256": "a68fd6af32270b5cd708e6947d622bacb9d8c23d082569edb95a06ac5bd6e562"
+    },
+    {
+      "path": "evidence/m10/PX-201/TASK_CARD.md",
+      "bytes": 21766,
+      "sha256": "cd4f67d0da07dc16c832f9f126d260b295c324b027191f0f41d44cd5a43f153e"
+    },
+    {
+      "path": "evidence/m10/PX-201/after/details-open-dark-comfortable.png",
+      "bytes": 418264,
+      "sha256": "1f6da2b9272ae041d74190e9f6ef696ca7b3660011bd95f399299c022cbd9c6f"
+    },
+    {
+      "path": "evidence/m10/PX-201/after/details-open-light-comfortable.png",
+      "bytes": 419616,
+      "sha256": "f760d2de2c1bcda16d4f3f8896a22f26b665b735084492392465d9ee82e86cee"
+    },
+    {
+      "path": "evidence/m10/PX-201/after/running-child-terminal-checkpoints-budget-dark-comfortable.png",
+      "bytes": 291399,
+      "sha256": "7ab14c0fb11fd892bc16e723d4f180c6bdfa12b16f0fea08dae53b07eca9bf0d"
+    },
+    {
+      "path": "evidence/m10/PX-201/after/running-child-terminal-checkpoints-budget-dark-compact.png",
+      "bytes": 283207,
+      "sha256": "ff8fe71012a2ecdcf714c7e79e2956cc48290667856e8bf2fb833d36c7cba67b"
+    },
+    {
+      "path": "evidence/m10/PX-201/after/running-child-terminal-checkpoints-budget-light-comfortable.png",
+      "bytes": 292097,
+      "sha256": "1f7896b704211f69e93c479ac591e5359ed2c6381a23a9fbc1f3463f7e5d6419"
+    },
+    {
+      "path": "evidence/m10/PX-201/after/running-child-terminal-checkpoints-budget-light-compact.png",
+      "bytes": 284585,
+      "sha256": "26e64a7f0c8967cfcd665d386b68bf0229bcbebc1a0f0b945bfb474389d5f606"
+    },
+    {
+      "path": "evidence/m10/PX-201/after/waiting-on-approval-dark-comfortable.png",
+      "bytes": 379838,
+      "sha256": "f0e9bd581056bddd11c5488bdb6f7464d71ac9720de1b92fa5148ce2fe542a55"
+    },
+    {
+      "path": "evidence/m10/PX-201/after/waiting-on-approval-dark-compact.png",
+      "bytes": 357857,
+      "sha256": "40e870b087947645511fa529555c536797245c392201ef039b3db71e8f66233a"
+    },
+    {
+      "path": "evidence/m10/PX-201/after/waiting-on-approval-light-comfortable.png",
+      "bytes": 381211,
+      "sha256": "f4ebb0166e8ad31e6b4edff6231ce9aa7265411b3cc76a13be7db71538ab9a6f"
+    },
+    {
+      "path": "evidence/m10/PX-201/after/waiting-on-approval-light-compact.png",
+      "bytes": 360455,
+      "sha256": "3ba86a58341e8bd74071b6c6ab6dce1413711d790dd9c444ae040c4faf26edc4"
+    },
+    {
+      "path": "evidence/m10/PX-201/after/window-1000-rail-gone-more-open-dark-comfortable.png",
+      "bytes": 293224,
+      "sha256": "b69143a4385abf84463803ede5893044cbcd8acca928b9550b3a3042703b5e64"
+    },
+    {
+      "path": "evidence/m10/PX-201/after/window-1000-rail-gone-more-open-light-comfortable.png",
+      "bytes": 294989,
+      "sha256": "314c8aea73eafe95111a93ccca4a9e4098bf041faa38115b45b4d29427562cd7"
+    },
+    {
+      "path": "evidence/m10/PX-201/desktop-e2e-full-results.txt",
+      "bytes": 40002,
+      "sha256": "14d7bb719e30e8c2aaf5791e4786c6d29999b6867720d1ff4be22afe7812adfd"
+    },
+    {
+      "path": "evidence/m10/PX-201/evidence.json",
+      "bytes": 8062,
+      "sha256": "0c41621f0b97424f0f334c9873016f4ca63458de004c7ea31e20f3654d21a11d"
     },
     {
       "path": "evidence/m10/PX-210/TASK_CARD.md",

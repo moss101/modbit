@@ -17,7 +17,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { closeApp } from "./support/close-app.ts";
 import { readyForReview } from "./support/browser-harness.ts";
-import { agentRow, gearMenu, openTask, openTaskDetails, queueTask } from "./support/new-task.ts";
+import { agentRow, gearMenu, openTask, openTaskDetails, openTaskMore, queueTask } from "./support/new-task.ts";
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const coreBin = process.env.MODBIT_CORE_BIN ?? resolve(appDir, "..", "..", "target", "debug", process.platform === "win32" ? "modbit-core.exe" : "modbit-core");
@@ -117,7 +117,7 @@ function git(cwd: string, ...args: string[]): string {
 
 /** The open task's Browser panel, opened from the task's details (the panel is the host's view of the task's session). */
 async function openBrowserPanel(page: Page): Promise<void> {
-  await openTaskDetails(page);
+  await openTaskMore(page);
   await page.getByTestId("task-browser").click();
   await expect(page.getByTestId("browser")).toBeVisible();
 }

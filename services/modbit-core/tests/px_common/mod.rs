@@ -487,7 +487,13 @@ pub async fn scripted_model_metered(reply_fn: Reply, meter: Option<Meter>) -> (S
                 }
                 let calls = reply["calls"].as_array().cloned().unwrap_or_default();
                 for (i, c) in calls.iter().enumerate() {
-                    frames.push(serde_json::json!({"id":"c","model":"scripted-1","choices":[{"index":0,"delta":{"tool_calls":[{"index":i,"id":format!("call_{results}_{i}"),"type":"function","function":{"name":c["name"],"arguments":c["args"].to_string()}}]},"finish_reason":null}]}).to_string());
+                    let mut call = serde_json::json!({"index":i,"id":format!("call_{results}_{i}"),"type":"function","function":{"name":c["name"],"arguments":c["args"].to_string()}});
+                    // A call may carry what a provider attaches to it
+                    // (`extra_content`, where Gemini puts its signature).
+                    if let Some(extra) = c.get("extra_content") {
+                        call["extra_content"] = extra.clone();
+                    }
+                    frames.push(serde_json::json!({"id":"c","model":"scripted-1","choices":[{"index":0,"delta":{"tool_calls":[call]},"finish_reason":null}]}).to_string());
                 }
                 let finish = if calls.is_empty() {
                     "stop"

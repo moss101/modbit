@@ -12,7 +12,7 @@ import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { openTaskDetails, queueTask } from "./new-task.ts";
+import { openTaskMore, queueTask } from "./new-task.ts";
 
 export const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const coreBin = process.env.MODBIT_CORE_BIN ?? resolve(appDir, "..", "..", "target", "debug", process.platform === "win32" ? "modbit-core.exe" : "modbit-core");
@@ -97,7 +97,7 @@ export async function readyForReview(page: Page, model: { toolTexts: string[] },
 /** Create the task, open its browser session and start the run, with the panel closed (the host serves the agent). */
 export async function startBrowserTask(page: Page, repo: string, goal: string): Promise<{ taskId: string; bsid: string }> {
   const taskId = await queueTask(page, goal, repo);
-  await openTaskDetails(page);
+  await openTaskMore(page);
   await page.getByTestId("task-browser").click();
   const panel = page.getByTestId("browser");
   await expect(panel).toHaveAttribute("data-browser-session-id", /^[0-9a-f]{32}$/, { timeout: 30_000 });

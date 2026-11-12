@@ -15,6 +15,8 @@ export interface LayoutInput {
   listCollapsed: boolean;
   panelRatio: number;
   panelOpen: boolean;
+  /** The person wants the details rail and a task's conversation is in the centre (MWS-09). */
+  detailsOpen?: boolean | undefined;
 }
 
 export interface Layout {
@@ -29,6 +31,10 @@ export interface Layout {
   /** Largest panel width that keeps the centre at its minimum (for the splitter's aria-valuemax). */
   panelMax: number;
   singlePane: boolean;
+  /** The details rail's width beside the conversation, inside the centre; 0 when it is not shown. */
+  detailsPx: number;
+  /** The task area is wide enough for the rail once nothing else is beside the conversation. */
+  detailsFits: boolean;
 }
 
 export const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
@@ -44,6 +50,12 @@ export function clampPanelRatio(r: number): number {
   return clamp(Number.isFinite(r) ? r : GEOMETRY.panelRatioDefault, 0.2, PANEL_MAX_RATIO);
 }
 
+/**
+ * The details rail (DR-PX-2026-11-11-021 section 5.1, MWS-09): 320 px, never under 280, hidden when the task area is 800 px
+ * or narrower. It gives way while the apps panel is open.
+ */
+export const DETAILS_RAIL = { width: 320, min: 280, hiddenAtOrBelow: 800 } as const;
+
 export function computeLayout(input: LayoutInput): Layout {
   const width = Math.max(0, Math.round(input.width));
   const wanted = clampListWidth(input.listWidth);
@@ -51,10 +63,11 @@ export function computeLayout(input: LayoutInput): Layout {
   const listPx = rail ? GEOMETRY.rail : wanted;
   const avail = Math.max(0, width - listPx);
   const panelMax = avail - GEOMETRY.centerMin;
-  if (!input.panelOpen) return { rail, listPx, centerPx: avail, panelPx: 0, stacked: false, panelMax, singlePane: rail };
-  if (panelMax < GEOMETRY.panelMin) return { rail, listPx, centerPx: avail, panelPx: 0, stacked: true, panelMax, singlePane: true };
+  const detailsFits = avail > DETAILS_RAIL.hiddenAtOrBelow;
+  if (!input.panelOpen) return { rail, listPx, centerPx: avail, panelPx: 0, stacked: false, panelMax, singlePane: rail, detailsPx: input.detailsOpen === true && detailsFits ? DETAILS_RAIL.width : 0, detailsFits };
+  if (panelMax < GEOMETRY.panelMin) return { rail, listPx, centerPx: avail, panelPx: 0, stacked: true, panelMax, singlePane: true, detailsPx: 0, detailsFits };
   const panelPx = Math.round(clamp(clampPanelRatio(input.panelRatio) * width, GEOMETRY.panelMin, panelMax));
-  return { rail, listPx, centerPx: avail - panelPx, panelPx, stacked: false, panelMax, singlePane: rail };
+  return { rail, listPx, centerPx: avail - panelPx, panelPx, stacked: false, panelMax, singlePane: rail, detailsPx: 0, detailsFits };
 }
 
 /** The ratio that produces a panel of `px` pixels in a window of `width` (what a drag stores). */

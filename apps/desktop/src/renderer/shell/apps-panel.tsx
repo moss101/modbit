@@ -28,8 +28,6 @@ export interface AppsPanelProps {
   /** PX-104: open a tool call in the task's conversation (the Changes chip). */
   onOpenCall: (toolCallId: string) => void;
   onOpenBrowser: () => void;
-  /** Tells the shell the branch the Changes app read, for the top bar. */
-  onBranch: (taskId: string, branch: string) => void;
   onClose: () => void;
   maximized: boolean;
   onToggleMaximize: () => void;
@@ -53,7 +51,7 @@ export function AppsPanel(p: AppsPanelProps) {
       <Tabs label="Apps" tabs={tabs} selected={p.tab} onSelect={(id) => p.onTab(id as AppKind)} idPrefix="apps" testId="apps-tabs">
         {p.tab === "changes" &&
           (p.artifacts.includes("changes") ? (
-            <ChangesApp sessionId={p.sessionId} taskId={p.taskId} taskState={p.taskState} refreshKey={p.refreshKey} onOpenReview={p.onOpenReview} onOpenCall={p.onOpenCall} onBranch={(branch) => p.onBranch(p.taskId, branch)} />
+            <ChangesApp sessionId={p.sessionId} taskId={p.taskId} taskState={p.taskState} refreshKey={p.refreshKey} onOpenReview={p.onOpenReview} onOpenCall={p.onOpenCall} />
           ) : (
             <p className="meta" data-testid="app-changes-empty">
               This task has no change set to show yet.

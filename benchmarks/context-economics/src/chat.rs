@@ -141,6 +141,7 @@ fn to_messages(messages: &[Value]) -> Vec<Message> {
                             .as_str()
                             .unwrap_or("{}")
                             .to_owned(),
+                        provider_data: None,
                     });
                 }
                 Message {
@@ -298,6 +299,7 @@ impl Chat {
                     call_id,
                     name,
                     arguments_json,
+                    ..
                 } => calls.push(ToolCall {
                     id: call_id,
                     name,

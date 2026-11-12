@@ -144,6 +144,9 @@ test("M6.6: a delegating parent shows its phase, agents and the nested child; th
     // the run evaluated right after it (run events reach the task, PX-023).
     await expect(page.getByTestId("task-evidence")).toContainText(/child completed: created src\/a\/a\.txt|acceptance gate (ACCEPT|INCONCLUSIVE|REJECT)/);
     await expect(page.getByTestId("task-agents")).toHaveText("0/2");
+    // The child has ended: it is counted under Background tasks, and listed once the count is opened (MWS-09).
+    await expect(page.getByTestId("rail-finished")).toHaveAttribute("data-count", "1");
+    await page.getByTestId("rail-finished").click();
     await expect(page.getByTestId("child-state")).toHaveText("ReadyForReview");
     await expect(primaryRows(page)).toHaveCount(1);
     // Restart the app: the list and the details are rebuilt from the Core, children included.
@@ -153,6 +156,7 @@ test("M6.6: a delegating parent shows its phase, agents and the nested child; th
     await expect(primaryRows(again.page)).toHaveCount(1);
     await openTask(again.page, taskId);
     await openTaskDetails(again.page);
+    await again.page.getByTestId("rail-finished").click();
     await expect(again.page.getByTestId("child-card")).toHaveCount(1);
     await closeApp(again.app);
   } finally {
