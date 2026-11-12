@@ -450,8 +450,17 @@ export function tokenWords(tokens: bigint): string {
 /** Phases in which the line says how long the turn has been going: it runs, or it stopped to wait for the person. */
 export const TIMED_PHASES: ReadonlySet<string> = new Set(["RUNNING", "WAITING", "NEEDS_ATTENTION"]);
 
-/** When the turn the tail speaks of began: the person's latest message, else the first thing the task did; 0 when the page has neither. */
+/**
+ * Since when the task has been working on what the person last asked: the time of their latest message that has work after
+ * it. A message that is only queued has nothing after it yet and does not restart the clock. Where the page holds no such
+ * message, the first thing with a time; 0 when there is none.
+ */
 export function turnStartMs(rows: readonly TranscriptRowView[]): number {
-  for (let i = rows.length - 1; i >= 0; i--) if (rows[i]!.kind === "USER_MESSAGE" && rows[i]!.atMs > 0) return rows[i]!.atMs;
+  let worked = false;
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const r = rows[i]!;
+    if (r.kind !== "USER_MESSAGE") worked = worked || (r.kind !== "TIME_BOUNDARY" && r.kind !== "UNREAD_DIVIDER");
+    else if (worked && r.atMs > 0) return r.atMs;
+  }
   return rows.find((r) => r.atMs > 0)?.atMs ?? 0;
 }

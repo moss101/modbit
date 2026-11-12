@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { TranscriptRowView } from "../../shared/conversation-types.ts";
-import { INITIAL_FOLLOW, callStatus, toolVerb, unfinishedCalls, abortWords, applyStreamEvent, dividerOffsetOf, identityOf, messageIds, needsEyes, onDismiss, onJumpToBottom, onMessages, onScroll, pillText, presentAssistant, reuseRows, seedStreams, stallLevel, withDivider, withLiveOnly, type LiveStreams } from "./model.ts";
+import { INITIAL_FOLLOW, callStatus, toolVerb, unfinishedCalls, abortWords, applyStreamEvent, dividerOffsetOf, identityOf, messageIds, needsEyes, onDismiss, onJumpToBottom, onMessages, onScroll, pillText, presentAssistant, reuseRows, seedStreams, stallLevel, withDivider, withLiveOnly, elapsedWords, isPlanRow, planProgress, planSteps, tokenWords, turnStartMs, withPlanCard, type LiveStreams } from "./model.ts";
 import { sameBlock, splitBlocks } from "./blocks.ts";
 import { DEFAULT_CONVERSATION_PREFS, parseConversationPrefs } from "./prefs.ts";
 
@@ -188,4 +188,67 @@ test("a call denied before it ran is told as denied, never as a failed command",
   assert.equal(callStatus("FAILED", "POLICY_DENIED"), "DENIED");
   assert.equal(callStatus("FAILED", "NON_ZERO_EXIT"), "FAILED");
   assert.equal(callStatus("SUCCEEDED", ""), "SUCCEEDED");
+});
+
+// ------------------------------------------------------------------ PX-200
+
+const tool = (rowId: string, toolName: string, over: Partial<TranscriptRowView> = {}): TranscriptRowView => row({ kind: "TOOL_CARD", rowId, facts: { type: "tool", toolCallId: "", toolName, toolClass: toolName.startsWith("fs.") ? "READ" : "OTHER", effectClass: "", state: "SUCCEEDED", failureCode: "", paths: [] }, ...over });
+const group = (rowId: string, children: TranscriptRowView[]): TranscriptRowView => row({ kind: "WORK_GROUP", rowId, children, facts: { type: "group", turnId: "", label: "", steps: children.length, reads: 0, searches: 0, commands: 0, edits: 0, others: children.length, linesAdded: 0, linesRemoved: 0, durationMs: 0, open: false } });
+
+test("PX-200: with steps in the work graph one card stands where the latest plan version was recorded, and every plan step leaves the transcript", () => {
+  const user = row({ kind: "USER_MESSAGE", rowId: "u" });
+  const said = row({ kind: "ASSISTANT_MESSAGE", rowId: "m1" });
+  const rows = [user, tool("plan:1", "plan.update"), group("g1", [tool("t1", "fs.read"), tool("plan:2", "plan.update")]), said, group("g2", [tool("plan:3", "plan.update")]), tool("t2", "fs.read"), row({ kind: "ASSISTANT_MESSAGE", rowId: "m2" })];
+  assert.equal(isPlanRow(rows[1]!), true);
+  assert.equal(isPlanRow(rows[5]!), false);
+  const placed = withPlanCard(rows, true);
+  assert.deepEqual(placed.rows.map((r) => r.rowId), ["u", "g1", "m1", "t2", "m2"], "plan steps are gone, alone or in a fold, and a fold of only plan steps with them");
+  assert.equal(placed.cardAt, 3, "the card follows what stood before the latest plan version");
+  const g1 = placed.rows[1]!;
+  assert.deepEqual(g1.children.map((c) => c.rowId), ["t1"]);
+  assert.deepEqual(g1.facts.type === "group" ? [g1.facts.steps, g1.facts.others] : [], [1, 1], "the fold counts what it still holds");
+  assert.equal(placed.rows[0], user, "a row that holds no plan step is the same object, so its memoised view is kept");
+  assert.equal(placed.rows[3], rows[5]);
+  // No steps in the graph: nothing is taken out and no card is drawn (the plan line stays).
+  const kept = withPlanCard(rows, false);
+  assert.equal(kept.rows, rows);
+  assert.equal(kept.cardAt, null);
+  // Steps in the graph and no plan step on the page: the card stands at the end.
+  assert.deepEqual(withPlanCard([user, said], true), { rows: [user, said], cardAt: 2 });
+  // The plan was the first thing: the card is first.
+  assert.equal(withPlanCard([tool("plan:1", "plan.update"), said], true).cardAt, 0);
+});
+
+test("PX-200: a step's state is the Core's; an active step spins only while the task runs", () => {
+  const steps = [
+    { id: "a", title: "A", status: "DONE", blockers: [] },
+    { id: "b", title: "B", status: "ACTIVE", blockers: [] },
+    { id: "c", title: "C", status: "BLOCKED", blockers: ["needs a key", " "] },
+    { id: "d", title: "D", status: "FAILED", blockers: [] },
+    { id: "e", title: "E", status: "CANCELLED", blockers: [] },
+    { id: "f", title: "F", status: "READY", blockers: [] },
+    { id: "g", title: "G", status: "PENDING", blockers: [] },
+    { id: "h", title: "H", status: "SOMETHING_NEW", blockers: [] },
+  ];
+  const running = planSteps(steps, { running: true, needsPerson: false });
+  assert.deepEqual(running.map((s) => [s.tone, s.words, s.current]), [["ok", "Done", false], ["running", "In progress", true], ["warn", "Blocked", false], ["danger", "Failed", false], ["idle", "Dropped", false], ["idle", "Next", false], ["idle", "Not started", false], ["idle", "something new", false]]);
+  assert.deepEqual(running[2]!.blockers, ["needs a key"]);
+  assert.deepEqual(planSteps(steps, { running: false, needsPerson: true })[1], { id: "b", title: "B", status: "ACTIVE", tone: "warn", words: "In progress, waiting for you", blockers: [], current: true });
+  assert.equal(planSteps(steps, { running: false, needsPerson: false })[1]!.words, "In progress, not running now");
+  assert.equal(planSteps(steps, { running: false, needsPerson: true })[0]!.words, "Done", "only an active step is touched");
+  assert.equal(planProgress(steps), "1 of 7 done, 1 failed, 1 blocked, 1 dropped");
+  assert.equal(planProgress([{ status: "DONE" }, { status: "DONE" }]), "2 of 2 done");
+});
+
+test("PX-200: the status line's clock and token count", () => {
+  assert.deepEqual([0, 999, 42_000, 60_000, 192_000, 3_600_000 + 4 * 60_000, -5].map(elapsedWords), ["0s", "0s", "42s", "1m 00s", "3m 12s", "1h 04m", "0s"]);
+  assert.deepEqual([0n, 1n, 850n, 1000n, 18_449n, 999_999n, 1_250_000n].map(tokenWords), ["", "1 token", "850 tokens", "1.0k tokens", "18.4k tokens", "999.9k tokens", "1.2M tokens"]);
+  const u1 = row({ kind: "USER_MESSAGE", rowId: "u1", atMs: 1000 });
+  const work = tool("t1", "fs.read", { atMs: 2000 });
+  const queued = row({ kind: "USER_MESSAGE", rowId: "u2", atMs: 9000 });
+  assert.equal(turnStartMs([u1, work]), 1000);
+  assert.equal(turnStartMs([u1, work, queued]), 1000, "a message that is only queued does not restart the clock");
+  assert.equal(turnStartMs([u1, work, queued, tool("t2", "fs.read", { atMs: 9500 })]), 9000, "once work follows it, it is the turn's start");
+  assert.equal(turnStartMs([work]), 2000, "no message on the page: the first thing with a time");
+  assert.equal(turnStartMs([]), 0);
 });

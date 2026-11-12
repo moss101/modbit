@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { CommandRegistry } from "@modbit/ui/logic";
 import { computeLayout, clampListWidth, ratioForPanel } from "./layout.ts";
 import { DEFAULT_UI_PREFS, parseUiPrefs, serializeUiPrefs, clampZoom, UI_PREFS_KEY } from "./prefs.ts";
-import { artifactsOf, panelTaskFor } from "./artifacts.ts";
+import { artifactsOf, panelTaskFor, panesOf } from "./artifacts.ts";
 import { REQUIRED_CHORDS, buildShellRegistry, shellCommandDefs, shellRegistry, type ShellActions } from "./commands.ts";
 
 const base = { listWidth: 288, listCollapsed: false, panelRatio: 0.5, panelOpen: false };
@@ -177,4 +177,12 @@ test("AFW-A16: every registered command runs its action, and an unavailable one 
   const blocked = new Proxy(spy, { get: (t, n: string) => (n === "zoomAvailability" ? () => "Zoom is unavailable while the browser view is open" : Reflect.get(t, n)) });
   assert.equal(registry.availability("zoom.in", blocked), "Zoom is unavailable while the browser view is open");
   assert.equal(await registry.run("zoom.in", blocked), false);
+});
+
+test("PX-200 (MWS-05): a task has a toggle for each pane it can show, in tab order; one that has not started has none", () => {
+  assert.deepEqual(panesOf([]), []);
+  assert.deepEqual(panesOf(artifactsOf({ taskId: "a", state: "Queued" }, { browsingTaskId: null })), []);
+  assert.deepEqual(panesOf(artifactsOf({ taskId: "a", state: "Running" }, { browsingTaskId: null })), ["changes", "browser", "files", "evidence"], "the Browser pane is where a session is opened from");
+  assert.deepEqual(panesOf(artifactsOf({ taskId: "a", state: "Running" }, { browsingTaskId: "a", terminalTaskIds: new Set(["a"]) })), ["changes", "terminal", "browser", "files", "evidence"]);
+  assert.deepEqual(panesOf(["terminal"]), ["terminal"], "a terminal alone does not make a workspace");
 });

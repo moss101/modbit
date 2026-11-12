@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { DockApprovalView } from "../../shared/control-types.ts";
-import { alwaysAvailable, cardKey, commandLine, defaultPrefix, deckOrder, humanTitle, isIrreversible, prefixLadder, refusalWords, stepIndex, surfacedIndex, whyAsked, type KeyFacts } from "./model.ts";
+import { alwaysAvailable, cardKey, commandLine, defaultPrefix, deckOrder, humanTitle, isIrreversible, prefixLadder, prefixWords, refusalWords, SCOPE_WORDS, stepIndex, surfacedIndex, whyAsked, type KeyFacts } from "./model.ts";
 
 const approval = (over: Partial<DockApprovalView> = {}): DockApprovalView => ({
   approvalId: "a1",
@@ -104,4 +104,12 @@ test("REQ-PX-058: titles are readable and a refusal is explained in the Core's t
   assert.match(refusalWords("STALE_APPROVAL: x"), /no longer waiting/);
   // REQ-PX-058: an expired approval is refused by the Core and worded as expired, not as denied or stale.
   assert.match(refusalWords("Error invoking remote method 'x': Error: APPROVAL_EXPIRED: the approval expired"), /expired before it was answered/);
+});
+
+test("PX-200: the Always allow menu says what each prefix would cover and how long each place lasts", () => {
+  const argv = ["git", "remote", "add", "origin1"];
+  assert.deepEqual(prefixLadder(argv).map((p) => prefixWords(p, argv)), ["any git command", "any command that starts this way", "any command that starts this way", "exactly this command"]);
+  assert.equal(prefixWords(defaultPrefix(argv), argv), "exactly this command", "the default is the exact command; wider is the person's act");
+  assert.match(SCOPE_WORDS.REPO.detail, /30 days/);
+  assert.match(SCOPE_WORDS.TASK.detail, /task ends/);
 });

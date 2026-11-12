@@ -27,7 +27,7 @@ export const PlanCard = memo(function PlanCard({ graph, plan, running, needsPers
   return (
     <section className="conv-plan" aria-label={`Plan: ${progress}`} data-testid="plan-card" data-plan-version={version} data-steps={steps.length}>
       <header className="conv-plan-head">
-        <h3 className="conv-plan-title">Plan</h3>
+        <h2 className="conv-plan-title">Plan</h2>
         <span className="conv-plan-progress" data-testid="plan-progress">
           {progress}
         </span>

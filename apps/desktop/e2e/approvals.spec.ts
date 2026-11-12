@@ -272,8 +272,19 @@ test("PX-057/058: Allowlist plus Always on a card makes a durable rule through t
     await expect(page.getByTestId("approval-why")).toContainText("No allowlist rule covers this command");
     expect(remotes(repo)).toEqual([]);
     // Always: the prefix is chosen from the command's own words; the Core makes the rule and this one effect is approved.
-    await page.getByTestId("approval-prefix").selectOption({ label: "git remote add" });
-    // Shift+Enter allows the prefix, from the card (focus moves off the select, which keeps its own Enter).
+    // MWS-08: the prefix and the scope are in the one Always allow menu (they were two native selects in the card's foot).
+    await expect(card.locator("select")).toHaveCount(0);
+    await page.getByTestId("approval-always").click();
+    await expect(page.getByTestId("approval-scope").locator("input:checked")).toHaveAttribute("data-scope", "REPO");
+    await page.getByTestId("approval-prefix").locator('[data-prefix="git remote add"]').check();
+    await expect(page.getByTestId("approval-prefix")).toHaveAttribute("data-value", "git remote add");
+    // Enter on a choice of the menu decides nothing; Escape closes the menu and the card is still there.
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("approval-always-menu")).toHaveCount(0);
+    await expect(card).toBeVisible();
+    expect(remotes(repo)).toEqual([]);
+    // Shift+Enter allows the chosen prefix, from the card (focus moves off the button, which keeps its own Enter).
     await page.getByTestId("approval-title").click();
     await page.keyboard.press("Shift+Enter");
     await expect(page.getByTestId("approval-last")).toContainText("Allowed “git remote add”", { timeout: 30_000 });

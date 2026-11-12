@@ -36,6 +36,7 @@ export const controlsCss = `
 .appr-exact-list { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--mb-space-0_5) var(--mb-space-3); }
 .appr-exact code, .appr-fine code { font: var(--mb-type-mono-size)/var(--mb-type-mono-line) var(--mb-font-mono); }
 .appr-exact pre { margin: 0; padding: var(--mb-space-1_5) var(--mb-space-3); background: var(--mb-surface-fill); border-radius: var(--radius-lg); font: var(--mb-type-mono-size)/var(--mb-type-mono-line) var(--mb-font-mono); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 10em; overflow: auto; }
+.appr-exact.mb-sr-only pre { max-height: none; overflow: visible; white-space: nowrap; }
 .appr-fine { margin: 0; padding-block: 0 8px; font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); }
 .appr-deckbar + .appr-fine { padding-block: 8px 0; }
 .appr > .cc-appr { padding-block: 10px 0; }
@@ -47,7 +48,7 @@ export const controlsCss = `
 /* Always allow: one menu holding the prefix and where the rule applies. It is anchored to its button and drawn over the page, so the card's own edge never clips it. */
 .appr-always-host { display: inline-flex; }
 .appr-always-host > .mb-btn[aria-expanded="true"] { anchor-name: --appr-always; }
-.appr-always { position: fixed; position-anchor: --appr-always; right: anchor(right); bottom: anchor(top); margin-bottom: 6px; position-try-fallbacks: flip-block; z-index: var(--mb-z-popover); box-sizing: border-box; width: 340px; max-width: calc(100vw - 2 * var(--mb-space-4)); max-height: min(420px, 60vh); overflow-y: auto; display: flex; flex-direction: column; gap: var(--mb-space-1); padding: 6px; background: var(--color-menu); color: var(--color-foreground); border: 1px solid var(--color-popover-border); border-radius: var(--radius-xl); box-shadow: var(--mb-elevation-2); font-size: var(--mb-type-chrome-size); }
+.appr-always { position: fixed; position-anchor: --appr-always; right: anchor(right); bottom: anchor(top); margin-bottom: 6px; position-try-fallbacks: flip-block; z-index: var(--mb-z-popover); box-sizing: border-box; width: 340px; max-width: calc(100vw - 2 * var(--mb-space-4)); max-height: min(640px, calc(100vh - 2 * var(--mb-space-4))); overflow-y: auto; display: flex; flex-direction: column; gap: var(--mb-space-1); padding: 6px; background: var(--color-menu); color: var(--color-foreground); border: 1px solid var(--color-popover-border); border-radius: var(--radius-xl); box-shadow: var(--mb-elevation-2); font-size: var(--mb-type-chrome-size); }
 .appr-always-group { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .appr-always-group legend { padding: 6px 10px 4px; font-size: var(--mb-type-caption-size); font-weight: 600; color: var(--mb-color-text-muted); }
 .appr-always-item { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--mb-space-2); align-items: center; padding: 6px 10px; border-radius: var(--radius-lg); cursor: pointer; }

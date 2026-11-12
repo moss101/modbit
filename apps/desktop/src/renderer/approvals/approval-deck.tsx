@@ -248,7 +248,9 @@ export function ApprovalDeck(props: DeckProps) {
           </dl>
           {!cc && !a.intent.found && <p data-testid="approval-no-args">The call's arguments could not be read from the Core's record. The decision is still bound to the intent hash above.</p>}
           {!cc && a.intent.found && (
-            <pre data-testid="approval-args">{a.intent.argsPreview}</pre>
+            <pre data-testid="approval-args" tabIndex={exactOpen ? 0 : undefined}>
+              {a.intent.argsPreview}
+            </pre>
           )}
         </div>
       </div>
