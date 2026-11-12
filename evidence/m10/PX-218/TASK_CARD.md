@@ -54,3 +54,8 @@ Built on `wip/desktop-2-task-view`, one change with PX-200. It closes the first 
 - **Screenshots** (`after/`, the running app at 1440 by 900, light and dark): the card with the line before and after the restart.
 - **Still not shown here:** a long line cut at a character boundary and an archived task's line are the Core's tests (above), not repeated through the desktop. The card's line was looked at on one line; the three-line clamp was not looked at with a long line.
 - The card closes when focus leaves it, and the list moves focus to a row once after a task is created or the app starts; the spec opens the card again if that happened under it. That is PX-199's behaviour, seen while writing this proof and not changed.
+
+## Closure (2026-11-12)
+
+- CI run 43027055220 (header field, merged as 418af649, #197) and CI run 43198251756 (the preview card shows the line; PX-E2E-218 on the real app, merged as 441a70ac, #199): all checks passed.
+- The owner reviewed the screenshots of the running app beside the boards and answered "Yes, seal them" on 2026-11-12.

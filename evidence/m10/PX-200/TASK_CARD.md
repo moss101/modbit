@@ -96,3 +96,8 @@
   - `rust CI_COMPATIBLE (ubuntu-latest)` failed in run 2 in `run_control::qual_px_153_the_count_survives_a_restart_because_it_is_folded_from_the_log` (26 passed, 1 failed). This change has no Rust and no protocol change, and the same job passed in run 1 and on macOS and Windows in run 2; it was not looked into further.
 - The proof of the final code beyond that is local (macOS arm64); later CI runs are recorded in evidence.json.
 - The owner has not yet seen these screenshots beside the boards, which the record makes an exit criterion. The row is not COMPLETE and no graph status was set.
+
+## Closure (2026-11-12)
+
+- CI run 43198251756 on head f477e2de: all 19 checks passed (Windows desktop E2E on one rerun). Merged to main as 441a70ac (moss101/modbit#199).
+- The owner reviewed the screenshots of the running app beside the boards and answered "Yes, seal them" on 2026-11-12.

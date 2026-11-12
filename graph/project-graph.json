@@ -41023,8 +41023,23 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-200",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:43198251756",
+    "artifact:evidence/m10/PX-200/evidence.json",
+    "artifact:evidence/m10/PX-200/ci-run-43198251756.json",
+    "commit:441a70ac54cd59c33fd06e20f5af0c1c0a3f1d97"
+   ],
+   "notes": [
+    {
+     "at": "2026-11-12T13:58:04Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Merged as 441a70ac (PR 199, CI run 43198251756); owner reviewed the screenshots on 2026-11-12"
+    }
+   ],
+   "owner_agent": "claude-fable-5.2",
+   "status_changed_on": "2026-11-12T13:58:04Z"
   },
   {
    "id": "PX-201",
@@ -41262,8 +41277,23 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-210",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:43027055220",
+    "artifact:evidence/m10/PX-210/evidence.json",
+    "artifact:evidence/m10/PX-210/ci-run-43027055220.json",
+    "commit:418af649ca614250acb5f5124ba9828f0e41bc60"
+   ],
+   "notes": [
+    {
+     "at": "2026-11-12T13:58:05Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Merged as 418af649 (PR 197, CI run 43027055220); the composer of PX-200 keeps the suggestion (px-210 spec green in run 43198251756)"
+    }
+   ],
+   "owner_agent": "claude-fable-5.2",
+   "status_changed_on": "2026-11-12T13:58:05Z"
   },
   {
    "id": "PX-211",
@@ -41449,8 +41479,24 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-218",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:43027055220",
+    "run:43198251756",
+    "artifact:evidence/m10/PX-218/evidence.json",
+    "commit:418af649ca614250acb5f5124ba9828f0e41bc60",
+    "commit:441a70ac54cd59c33fd06e20f5af0c1c0a3f1d97"
+   ],
+   "notes": [
+    {
+     "at": "2026-11-12T13:58:05Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Header field merged as 418af649 (PR 197), preview card and PX-E2E-218 as 441a70ac (PR 199)"
+    }
+   ],
+   "owner_agent": "claude-fable-5.2",
+   "status_changed_on": "2026-11-12T13:58:05Z"
   },
   {
    "id": "QUAL-PX-000",
