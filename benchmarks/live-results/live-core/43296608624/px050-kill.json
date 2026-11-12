@@ -1,0 +1,57 @@
+{
+  "checks": [
+    {
+      "detail": "[\"c\", \"a\", \"b\"]",
+      "name": "order_before_the_kill",
+      "ok": true
+    },
+    {
+      "detail": "[\"c\", \"a\", \"b\"]",
+      "name": "same_inputs_same_order",
+      "ok": true
+    },
+    {
+      "detail": "the edit was lost",
+      "name": "edit_survived",
+      "ok": true
+    },
+    {
+      "detail": "the run was alive after the restart",
+      "name": "nothing_runs_until_resumed",
+      "ok": true
+    },
+    {
+      "detail": "TaskStatus { state: \"Waiting\", wait_reason: \"UserInput\", run_state: \"Suspended\", loop_alive: false, last_offset: 632, attention_reason: \"8 consecutive turns without progress\", failure_class: \"HARNESS\", failure_code: \"NO_PROGRESS\", retryable: false, user_action: \"steer the task or narrow the goal\", recovery_path: \"the run suspended after consecutive turns without progress; resume with StartTask\", evidence_refs: [], diagnostic_features: [\"class:harness\", \"code:no_progress\", \"not_retryable\", \"source:harness\"], user_explanation: \"A rule of the agent harness refused an action (NO_PROGRESS). Trying again as it is will not help. steer the task or narrow the goal.\", posture: Some(TaskPostureView { task_id: Some(Id { value: [225, 145, 210, 131, 78, 211, 34, 68, 44, 41, 144, 141, 15, 145, 30, 77] }), mode: Agent, mode_offset: 0, mode_in_force: Agent, posture: Some(ModePostureView { effect_ceiling: \"NONE\", allowed_capabilities: [], subagents: true, reproduction_first: false, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"DIRECT\", reason_code: \"NO_ACTIVE_REGISTRY\", detail: \"no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\", floor_mode: \"\", registry_generation: \"\" }) }) }",
+      "name": "run_ended_after_resume",
+      "ok": true
+    },
+    {
+      "detail": "[[\"c\"], [\"a\"], [\"b\"]]",
+      "name": "drained_in_order_after_recovery",
+      "ok": true
+    },
+    {
+      "detail": "[(\"a\", \"DISPATCHED\"), (\"b\", \"DISPATCHED\"), (\"c\", \"DISPATCHED\")]",
+      "name": "all_three_dispatched",
+      "ok": true
+    }
+  ],
+  "cost_usd": 0.10638675,
+  "counts": {
+    "first_delta_ms": 13336
+  },
+  "elapsed_s": 254.392148365,
+  "endpoint": "https://generativelanguage.googleapis.com/v1beta/openai",
+  "input_tokens": 74799,
+  "leg": "kill",
+  "live": true,
+  "model": "gemini-3.8-flash",
+  "model_calls": 9,
+  "notes": [],
+  "output_tokens": 13410,
+  "passed": true,
+  "row": "px050",
+  "run_id": "43296608624",
+  "started_at_ms": 1794514384281,
+  "stopped_by_cap": false
+}

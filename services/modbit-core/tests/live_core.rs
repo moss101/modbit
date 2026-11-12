@@ -3004,6 +3004,29 @@ fn big_parts(parts: usize) -> Vec<(String, String)> {
         .collect()
 }
 
+/// The window the compaction legs declare for the live model: its own, but no
+/// more than the 200k tokens the chain of parts is sized to reach.
+fn compaction_window(env: &LiveEnv) -> u64 {
+    env.window.unwrap_or(128_000).min(200_000)
+}
+
+/// `spec` (a `MODBIT_<P>_MODELS` catalog) with `model`'s `ctx=` set to `ctx`.
+fn with_ctx(spec: &str, model: &str, ctx: u64) -> String {
+    spec.split(',')
+        .map(|entry| {
+            let entry = entry.trim();
+            let mut fields: Vec<String> = entry.split(';').map(str::to_owned).collect();
+            if fields[0].split('=').next() != Some(model) {
+                return entry.to_owned();
+            }
+            fields.retain(|f| !f.starts_with("ctx="));
+            fields.insert(1, format!("ctx={ctx}"));
+            fields.join(";")
+        })
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
 struct CompactionRun {
     task: Id,
     events: Vec<Ev>,
@@ -3027,6 +3050,17 @@ async fn compaction_run(
         .collect();
     repo_files.push(("README.md", "# big files\n"));
     let mut extra: Vec<(&str, &str)> = vec![("MODBIT_COMPACTION_SUMMARIZER", summarizer)];
+    // The chain of parts is sized to reach a 200k-token window; a model with a
+    // wider one is declared to this Core with a 200k window so the run reaches
+    // its compaction budget (the threshold still follows the declared window).
+    let declared = compaction_window(env);
+    let catalog = match catalog {
+        Some(c) => Some(with_ctx(&c, &env.model, declared)),
+        None if env.window.is_some_and(|w| w > declared) => {
+            Some(with_ctx(&env.catalog, &env.model, declared))
+        }
+        None => None,
+    };
     let cat = catalog.clone().unwrap_or_default();
     if catalog.is_some() {
         extra.push(("MODBIT_OPENAI_MODELS", cat.as_str()));
@@ -3151,7 +3185,7 @@ async fn leg_px109_compaction(env: Arc<LiveEnv>) {
         .compaction_thresholds
         .clone()
         .expect("thresholds");
-    let window = env.window.unwrap_or(128_000);
+    let window = compaction_window(&env);
     leg.count("window_tokens", th.context_window_tokens);
     leg.count("hard_budget_tokens", th.hard_budget_tokens);
     leg.check(
@@ -3503,6 +3537,13 @@ fn spawn_call(key: &str, objective: &str, extra: &str) -> String {
 /// configuration layer that denies `agent.spawn` removes delegation; a child
 /// reads only its `read_scope`; and a Core killed between the reservation and
 /// the child's start comes back with the child admitted once and started.
+/// How many times dearer the live model is than the 0.15/0.50 USD per
+/// million tokens the cost fixtures were sized for (at least 1).
+fn cost_scale(env: &LiveEnv) -> u64 {
+    let r = (env.price.input_per_mtok_usd / 0.15).max(env.price.output_per_mtok_usd / 0.50);
+    r.ceil().max(1.0) as u64
+}
+
 async fn leg_px116_budgets(env: Arc<LiveEnv>) {
     let mut leg = Leg::begin(&env, "px116", "budgets", 0.60);
     let key = ed25519_dalek::SigningKey::from_bytes(&[116u8; 32]);
@@ -3531,13 +3572,17 @@ async fn leg_px116_budgets(env: Arc<LiveEnv>) {
     .await;
 
     // ---- A. the cost cap: clamp, exhaust, roll up ----------------------------
-    let cap: u64 = 400;
+    // The cost figures were sized for a model at 0.15/0.50 USD per million
+    // tokens; a dearer model scales them by its price ratio so the parent's
+    // own calls leave room for the children the leg asks for.
+    let k = cost_scale(&env);
+    let cap: u64 = 400 * k;
     let parent = fx
         .task(&format!(
             "Do exactly this and nothing else. Step 1: call plan.update with outcome \"three read-only children\" and expected_files [\"README.md\"]. Step 2: call agent.spawn three times with exactly these arguments: {} then {} then {}. Step 3: call agent.wait for k1, then k2, then k3 (timeout_ms 120000 each). Step 4: call task.complete with a one-sentence summary.",
-            spawn_call("k1", "CHILD-A read README.md and report its title in one sentence", ",\"max_cost_minor\":120"),
+            spawn_call("k1", "CHILD-A read README.md and report its title in one sentence", &format!(",\"max_cost_minor\":{}", 120 * k)),
             spawn_call("k2", "CHILD-B read README.md and report its title in one sentence", ",\"max_cost_minor\":6"),
-            spawn_call("k3", "CHILD-C read README.md and report its title in one sentence", ",\"max_cost_minor\":2000"),
+            spawn_call("k3", "CHILD-C read README.md and report its title in one sentence", &format!(",\"max_cost_minor\":{}", 2000 * k)),
         ))
         .await;
     fx.set_budgets(&parent, cap, 0, 0, false).await;
@@ -3579,12 +3624,12 @@ async fn leg_px116_budgets(env: Arc<LiveEnv>) {
     leg.count("reserved_k3", reserved(k3));
     leg.check(
         "first_two_reserved_as_asked",
-        reserved(k1) == 120 && reserved(k2) == 6,
+        reserved(k1) == 120 * k && reserved(k2) == 6,
         format!("{} / {}", reserved(k1), reserved(k2)),
     );
     leg.check(
         "third_clamped_below_its_request",
-        reserved(k3) < 2_000,
+        reserved(k3) < 2_000 * k,
         format!("{}", reserved(k3)),
     );
     leg.check(
@@ -3592,7 +3637,7 @@ async fn leg_px116_budgets(env: Arc<LiveEnv>) {
         k3.payload["clamped"].as_array().is_some_and(|a| {
             a.iter().any(|n| {
                 n.as_str()
-                    .is_some_and(|n| n.starts_with("max_cost_minor 2000 ->"))
+                    .is_some_and(|n| n.starts_with(&format!("max_cost_minor {} ->", 2000 * k)))
             })
         }),
         format!("{}", k3.payload["clamped"]),
@@ -3797,7 +3842,7 @@ async fn leg_px116_budgets(env: Arc<LiveEnv>) {
     let p5 = fx
         .task(&format!(
             "Do exactly this and nothing else. Step 1: call plan.update with outcome \"one read-only child\" and expected_files [\"README.md\"]. Step 2: call agent.spawn once with exactly these arguments: {}. Step 3: call agent.wait for k1 (timeout_ms 120000). Step 4: call task.complete with a one-sentence summary.",
-            spawn_call("k1", "CHILD-G read README.md and report its title in one sentence", ",\"max_cost_minor\":120"),
+            spawn_call("k1", "CHILD-G read README.md and report its title in one sentence", &format!(",\"max_cost_minor\":{}", 120 * k)),
         ))
         .await;
     fx.set_budgets(&p5, cap, 0, 0, false).await;
@@ -3841,7 +3886,7 @@ async fn leg_px116_budgets(env: Arc<LiveEnv>) {
     let adm5: Vec<&Ev> = of_kind(&evs5, "SubagentAdmitted");
     leg.check(
         "reservation_is_on_the_log_once",
-        adm5.len() == 1 && adm5[0].payload["reserved_cost_minor"] == 120,
+        adm5.len() == 1 && adm5[0].payload["reserved_cost_minor"] == 120 * k,
         format!("{} admissions", adm5.len()),
     );
     let kid5 = child_id(adm5[0]);
@@ -6187,4 +6232,17 @@ async fn scripted_px084_unattended_leg_mechanics() {
     )
     .unwrap();
     assert_eq!(rec["passed"], true, "{rec:#}");
+}
+
+#[test]
+fn with_ctx_sets_the_window_of_the_named_model_only() {
+    assert_eq!(
+        with_ctx(
+            "m=0.75/3.75;ctx=1000000;out=65536,other=1/2;ctx=5",
+            "m",
+            200_000
+        ),
+        "m=0.75/3.75;ctx=200000;out=65536,other=1/2;ctx=5"
+    );
+    assert_eq!(with_ctx("m=1/2", "m", 7), "m=1/2;ctx=7");
 }

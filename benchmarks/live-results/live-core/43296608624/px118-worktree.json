@@ -1,0 +1,121 @@
+{
+  "checks": [
+    {
+      "detail": "Err((\"ISOLATION_ROOT_UNWRITABLE\", \"the worktree root `/tmp/.tmpQ3oLa7/worktrees` cannot be written: File exists (os error 17); nothing was written to the checkout\"))",
+      "name": "unwritable_root_is_a_typed_refusal",
+      "ok": true
+    },
+    {
+      "detail": "the checkout changed",
+      "name": "unwritable_root_wrote_nothing",
+      "ok": true
+    },
+    {
+      "detail": "\"/tmp/.tmpQ3oLa7/worktrees/ee769850-f347-0183-aa33-67f7b68eaa5b\"",
+      "name": "worktree_exists",
+      "ok": true
+    },
+    {
+      "detail": "/tmp/.tmpQ3oLa7/worktrees/ee769850-f347-0183-aa33-67f7b68eaa5b / /tmp/.tmpv0PTHH",
+      "name": "task_root_is_the_worktree_not_the_checkout",
+      "ok": true
+    },
+    {
+      "detail": "README.md or notes.txt missing from the worktree",
+      "name": "users_work_was_carried_by_copy",
+      "ok": true
+    },
+    {
+      "detail": "TaskStatus { state: \"Waiting\", wait_reason: \"UserInput\", run_state: \"Suspended\", loop_alive: false, last_offset: 680, attention_reason: \"budget `max_turns` exhausted (25/25); partial evidence retained\", failure_class: \"BUDGET\", failure_code: \"BUDGET_EXHAUSTED\", retryable: false, user_action: \"raise `max_turns` (used 25 of 25) and resume, or narrow the goal\", recovery_path: \"the run suspended with its partial evidence; resume with StartTask and a larger budget\", evidence_refs: [], diagnostic_features: [\"budget:max_turns\", \"class:budget\", \"code:budget_exhausted\", \"not_retryable\", \"source:harness\"], user_explanation: \"A budget for this run was used up (BUDGET_EXHAUSTED). Trying again as it is will not help. raise `max_turns` (used 25 of 25) and resume, or narrow the goal.\", posture: Some(TaskPostureView { task_id: Some(Id { value: [238, 118, 152, 80, 243, 71, 1, 131, 170, 51, 103, 247, 182, 142, 170, 91] }), mode: Agent, mode_offset: 0, mode_in_force: Agent, posture: Some(ModePostureView { effect_ceiling: \"NONE\", allowed_capabilities: [], subagents: true, reproduction_first: false, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"DIRECT\", reason_code: \"NO_ACTIVE_REGISTRY\", detail: \"no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\", floor_mode: \"\", registry_generation: \"\" }) }) }",
+      "name": "run_ended",
+      "ok": true
+    },
+    {
+      "detail": "[\".modbit/verification.json\", \"README.md\", \"calc.py\", \"notes.txt\", \"test_calc.py\"]",
+      "name": "checkout_tree_identical",
+      "ok": true
+    },
+    {
+      "detail": "HEAD moved",
+      "name": "checkout_head_identical",
+      "ok": true
+    },
+    {
+      "detail": "calc.py in the worktree is the original",
+      "name": "the_worktree_changed",
+      "ok": true
+    },
+    {
+      "detail": "the unit tests fail in the worktree",
+      "name": "the_fix_works_in_the_worktree",
+      "ok": true
+    },
+    {
+      "detail": "no FileChanged on the log",
+      "name": "the_model_changed_files",
+      "ok": true
+    },
+    {
+      "detail": "ToolInvoked { tool_call_id: Some(Id { value: [200, 157, 44, 248, 131, 233, 107, 35, 105, 78, 161, 170, 37, 42, 44, 87] }), status: \"APPLICATION_FAILURE\", structured_output_json: \"null\", stdout_ref: \"\", error_code: \"PATH_OUTSIDE_ROOT\", error_message: \"path `../escape.txt` resolves outside the workspace root (`..` climbs above the root)\", workspace_revision_after: 0, result_ref: \"ad34264d521103b5c7a81994007f80e66cf2b7a21e213caadeb3d967e0c534a5\", approval_id: \"\", effect_receipt_ids: [] }",
+      "name": "dotdot_refused",
+      "ok": true
+    },
+    {
+      "detail": "ToolInvoked { tool_call_id: Some(Id { value: [177, 155, 107, 166, 151, 229, 231, 160, 60, 148, 234, 10, 249, 253, 222, 230] }), status: \"APPLICATION_FAILURE\", structured_output_json: \"null\", stdout_ref: \"\", error_code: \"PATH_OUTSIDE_ROOT\", error_message: \"path `/tmp/.tmpv0PTHH/calc.py` resolves outside the workspace root (absolute path not under the root)\", workspace_revision_after: 0, result_ref: \"61a9ca20e1d65a6c5333d978cd7512184d74e05cb7089f21aa55a1dff719064c\", approval_id: \"\", effect_receipt_ids: [] }",
+      "name": "absolute_path_into_the_checkout_refused",
+      "ok": true
+    },
+    {
+      "detail": "ToolInvoked { tool_call_id: Some(Id { value: [0, 135, 27, 137, 220, 112, 151, 246, 219, 157, 83, 247, 49, 151, 250, 170] }), status: \"APPLICATION_FAILURE\", structured_output_json: \"null\", stdout_ref: \"\", error_code: \"PATH_OUTSIDE_ROOT\", error_message: \"path `sneaky/calc.py` resolves outside the workspace root (symlink `/tmp/.tmpQ3oLa7/worktrees/ee769850-f347-0183-aa33-67f7b68eaa5b/sneaky` points to `/tmp/.tmpv0PTHH`)\", workspace_revision_after: 0, result_ref: \"20fcceca4c7257f1d8f57c7faf1f2977ad9c1e84b5124cc7f918c37bf3f264e3\", approval_id: \"\", effect_receipt_ids: [] }",
+      "name": "symlink_into_the_checkout_refused",
+      "ok": true
+    },
+    {
+      "detail": "the checkout changed after the escapes",
+      "name": "nothing_reached_the_checkout",
+      "ok": true
+    },
+    {
+      "detail": "/tmp/.tmpQ3oLa7/worktrees/e397ce50-eb82-339b-b70a-af21bd71b335",
+      "name": "same_worktree_after_the_kill",
+      "ok": true
+    },
+    {
+      "detail": "TaskStatus { state: \"Waiting\", wait_reason: \"Approval\", run_state: \"Running\", loop_alive: false, last_offset: 1386, attention_reason: \"runtime restarted while the task was running; resume with StartTask\", failure_class: \"INFRASTRUCTURE\", failure_code: \"RESTART_SUSPENDED\", retryable: true, user_action: \"resume with StartTask\", recovery_path: \"the run continues from its last recorded boundary; nothing is repeated\", evidence_refs: [], diagnostic_features: [\"boundary:turn_start\", \"class:infrastructure\", \"code:restart_suspended\", \"retryable\", \"source:restart\"], user_explanation: \"Something the agent depends on could not do its part (RESTART_SUSPENDED). Trying again may succeed. resume with StartTask.\", posture: Some(TaskPostureView { task_id: Some(Id { value: [227, 151, 206, 80, 235, 130, 51, 155, 183, 10, 175, 33, 189, 113, 179, 53] }), mode: Agent, mode_offset: 0, mode_in_force: Agent, posture: Some(ModePostureView { effect_ceiling: \"NONE\", allowed_capabilities: [], subagents: true, reproduction_first: false, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"DIRECT\", reason_code: \"NO_ACTIVE_REGISTRY\", detail: \"no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\", floor_mode: \"\", registry_generation: \"\" }) }) }",
+      "name": "second_run_ended",
+      "ok": true
+    },
+    {
+      "detail": "no f*.txt in the worktree",
+      "name": "resumed_work_landed_in_the_worktree",
+      "ok": true
+    },
+    {
+      "detail": "a file reached the checkout",
+      "name": "resumed_work_never_in_the_checkout",
+      "ok": true
+    }
+  ],
+  "cost_usd": 0.652494,
+  "counts": {
+    "file_changes": 1,
+    "files_in_the_worktree_after_resume": 4,
+    "shell_calls_approved_by_the_person": 0
+  },
+  "elapsed_s": 375.878982054,
+  "endpoint": "https://generativelanguage.googleapis.com/v1beta/openai",
+  "input_tokens": 853152,
+  "leg": "worktree",
+  "live": true,
+  "model": "gemini-3.8-flash",
+  "model_calls": 49,
+  "notes": [
+    "the reaper of PX-065 (removes an old terminal worktree, spares the running one) is time-driven and model-independent; it is proven in the scripted suite only"
+  ],
+  "output_tokens": 3368,
+  "passed": true,
+  "row": "px118",
+  "run_id": "43296608624",
+  "started_at_ms": 1794515510116,
+  "stopped_by_cap": false
+}
