@@ -126,7 +126,7 @@ input.settings-toggle.settings-toggle::after, input.settings-toggle.settings-tog
 .topbar-title-btn > svg { flex: none; color: var(--mb-color-text-muted); }
 .topbar-title:has(.mb-menu-host) { overflow: visible; }
 .topbar-title .mb-menu { font-weight: 400; }
-.topbar-panes { flex: none; display: inline-flex; align-items: center; gap: 2px; }
+.topbar-panes { flex: none; display: inline-flex; align-items: center; gap: 2px; margin-left: var(--mb-space-2); }
 .topbar-panes .mb-btn[aria-pressed="true"] { background: var(--color-selected); color: var(--mb-color-text); }
 .topbar-end { flex: none; position: relative; display: inline-flex; align-items: center; }
 .topbar-end:empty { display: none; }
