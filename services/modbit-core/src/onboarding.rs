@@ -74,6 +74,7 @@ pub(crate) fn configure_provider(
         max_retries: 3,
         auth: Default::default(),
         extra_body: Default::default(),
+        omit_fields: Vec::new(),
         max_concurrency: 0,
     });
     Ok(wire::ProviderConfigured {

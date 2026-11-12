@@ -349,6 +349,7 @@ fn replay_endpoint(kind: ProviderKind, fixture: &Value, base_url: &str) -> Endpo
             AuthScheme::Native
         },
         extra_body: p["extra_body"].as_object().cloned().unwrap_or_default(),
+        omit_fields: Vec::new(),
         max_concurrency: 0,
     }
 }
