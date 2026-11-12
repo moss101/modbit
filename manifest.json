@@ -2,12 +2,12 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-11-11",
+  "generated_on": "2026-11-12",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2159,
+    "root_and_tooling": 2163,
     "docs_bytes": 2408434
   },
   "sections": [
@@ -2510,8 +2510,18 @@
     },
     {
       "path": "evidence/m10/PX-069/TASK_CARD.md",
-      "bytes": 7484,
-      "sha256": "d5de8f8551cd702f28ca6a8b6832c214ef5bc51818962e77b8c70e9549fe3df1"
+      "bytes": 8361,
+      "sha256": "782fd69a854e1ad343441633377b72ada2aff00e63163d3b7e9deb4119a0c368"
+    },
+    {
+      "path": "evidence/m10/PX-069/ci-hosted-macos-42975633561.txt",
+      "bytes": 17345,
+      "sha256": "5cbd5ad097b32efffa8182cda2550f42181b6a178e3547d50e3c2804dafb8e6a"
+    },
+    {
+      "path": "evidence/m10/PX-069/ci-run-42975633561.json",
+      "bytes": 2092,
+      "sha256": "2170f803b0c681a37c403a167e0fcda79a7e0adbcbe2700d26d20f9606a14bd3"
     },
     {
       "path": "evidence/m10/PX-069/mutation-checks-2026-11-09.txt",
@@ -3965,8 +3975,8 @@
     },
     {
       "path": "evidence/m10/PX-198/TASK_CARD.md",
-      "bytes": 11275,
-      "sha256": "bdbbfcd9fcf29ae0c2c668cbc11cb063d4fdf12d9bb9a27e22100564ecaa4f46"
+      "bytes": 11603,
+      "sha256": "0950b77b1dc5679ab25f9699b06cfdb45434e4dc75ed663ba9de8c5ad87e01c2"
     },
     {
       "path": "evidence/m10/PX-198/after/home-dark-comfortable.png",
@@ -4064,6 +4074,11 @@
       "sha256": "d104030cbd4e79e18f36d450c05fe009414d0f11fb69ae40932dc7363dfc623c"
     },
     {
+      "path": "evidence/m10/PX-198/ci-run-43088097664.json",
+      "bytes": 65416,
+      "sha256": "c143986870e35ed7ac4701814534f5d32b7cb6a307b076b0edc3f4581a3a7511"
+    },
+    {
       "path": "evidence/m10/PX-198/desktop-e2e-full-results.txt",
       "bytes": 36205,
       "sha256": "4238dce1df1178f9dde742305a231311184132ffaca3965ad00f7581fff28612"
@@ -4075,8 +4090,8 @@
     },
     {
       "path": "evidence/m10/PX-199/TASK_CARD.md",
-      "bytes": 16628,
-      "sha256": "08d7a8519bc792e1c1e12b9a3d95ac5bec659cd18740ddb6a0f5c5041424d26c"
+      "bytes": 16956,
+      "sha256": "76d963bb31541e27624f369e0224e8aa7357c81563cded0f3801394cf9e4b42c"
     },
     {
       "path": "evidence/m10/PX-199/after/fixture-gallery-list-every-class-incl-failed-dark.png",
@@ -4192,6 +4207,11 @@
       "path": "evidence/m10/PX-199/after/tasks-head-more-menu-light-comfortable.png",
       "bytes": 64870,
       "sha256": "6ed34a5af706cc6ced4bae0ec22bb406a4ec6a4607241719efd1da55487d55bc"
+    },
+    {
+      "path": "evidence/m10/PX-199/ci-run-43088097664.json",
+      "bytes": 65416,
+      "sha256": "c143986870e35ed7ac4701814534f5d32b7cb6a307b076b0edc3f4581a3a7511"
     },
     {
       "path": "evidence/m10/PX-199/evidence.json",
@@ -11661,12 +11681,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 47635,
-      "sha256": "225d1c55bdcd95ae801acde6371887bf6e61215f6da6f52b3ddc7b4138e34cc0"
+      "sha256": "80ba6edb48465d8108c0f2fbdd0c6378a53ba3186ed06b501705db85096a2e7d"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2649656,
-      "sha256": "860b8fa8688291ef36b798f385b4dce158265d691657a0d6c2b0326a46d48a3d"
+      "bytes": 2651033,
+      "sha256": "e1a2fc486a940d7dc88de887cb0dddc78af7c9786a8438786d20cfa570599fe9"
     },
     {
       "path": "tools/build_graph.py",
