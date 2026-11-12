@@ -217,6 +217,16 @@ async fn live_recorded_tool_round_trip_on_each_configured_wire() {
         let rt = tool_round_trip(&gw, &ep.name, &model)
             .await
             .unwrap_or_else(|e| panic!("{}: {e}", ep.name));
+        // The proxy records an exchange when the upstream body closes; the
+        // adapter is done at the stream's end marker, which a provider may
+        // send before it closes the body (Gemini does). Wait for the
+        // recordings, bounded, then require exactly two.
+        let settle = std::time::Instant::now() + std::time::Duration::from_secs(15);
+        while proxy.exchanges.lock().expect("exchanges").len() < 2
+            && std::time::Instant::now() < settle
+        {
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        }
         let exchanges = proxy.exchanges.lock().expect("exchanges").clone();
         assert_eq!(
             exchanges.len(),
