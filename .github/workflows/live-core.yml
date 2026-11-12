@@ -120,10 +120,11 @@ jobs:
           MODBIT_OPENAI_MODELS: ${{ vars.MODBIT_OPENAI_MODELS }}
           MODBIT_OPENAI_AUTH: ${{ vars.MODBIT_OPENAI_AUTH }}
           MODBIT_OPENAI_EXTRA_BODY: ${{ vars.MODBIT_OPENAI_EXTRA_BODY }}
+          MODBIT_OPENAI_OMIT_FIELDS: ${{ vars.MODBIT_OPENAI_OMIT_FIELDS }}
           MODBIT_LIVE: "1"
           MODBIT_LIVE_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           MODBIT_LIVE_BASE_URL: ${{ vars.MODBIT_OPENAI_BASE_URL }}
-          MODBIT_LIVE_MODEL: ${{ vars.MODBIT_LIVE_MODEL }}
+          MODBIT_LIVE_MODEL: ${{ vars.MODBIT_OPENAI_LIVE_MODEL || vars.MODBIT_LIVE_MODEL }}
           MODBIT_LIVE_MAX_COST_USD: ${{ needs.plan.outputs.core_cap }}
           FILTERS: ${{ needs.plan.outputs.filters }}
         run: |
@@ -172,10 +173,11 @@ jobs:
           MODBIT_OPENAI_MODELS: ${{ vars.MODBIT_OPENAI_MODELS }}
           MODBIT_OPENAI_AUTH: ${{ vars.MODBIT_OPENAI_AUTH }}
           MODBIT_OPENAI_EXTRA_BODY: ${{ vars.MODBIT_OPENAI_EXTRA_BODY }}
+          MODBIT_OPENAI_OMIT_FIELDS: ${{ vars.MODBIT_OPENAI_OMIT_FIELDS }}
           MODBIT_LIVE: "1"
           MODBIT_LIVE_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           MODBIT_LIVE_BASE_URL: ${{ vars.MODBIT_OPENAI_BASE_URL }}
-          MODBIT_LIVE_MODEL: ${{ vars.MODBIT_LIVE_MODEL }}
+          MODBIT_LIVE_MODEL: ${{ vars.MODBIT_OPENAI_LIVE_MODEL || vars.MODBIT_LIVE_MODEL }}
           CAP: ${{ needs.plan.outputs.cap114 }}
         run: |
           if [ -z "$OPENAI_API_KEY" ]; then
