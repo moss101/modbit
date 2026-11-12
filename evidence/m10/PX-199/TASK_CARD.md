@@ -83,3 +83,8 @@
 - The preview card is placed with CSS anchor positioning; it was looked at beside rows near the top and middle of the list, not at the foot of a long list.
 - The proof is local (macOS arm64) until CI has run on the pull request; the suite's result and CI are recorded in evidence.json.
 - The owner has not yet seen these screenshots beside the boards, which the record makes an exit criterion. The row is not COMPLETE and no graph status was set.
+
+## Closure (2026-11-12)
+
+- CI run 43088097664 on head 621ee37f: all 19 checks passed (three single-job reruns across two heads, recorded in the pull request). Merged to main as 0ff0d38b (moss101/modbit#198).
+- The owner reviewed the screenshots of the running app beside the boards and answered "Yes, seal them" on 2026-11-12.

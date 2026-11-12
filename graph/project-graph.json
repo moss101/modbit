@@ -41101,8 +41101,23 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-198",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:43088097664",
+    "artifact:evidence/m10/PX-198/evidence.json",
+    "artifact:evidence/m10/PX-198/ci-run-43088097664.json",
+    "commit:0ff0d38b7fbb059e3bea6a0490fdbda8c5df9856"
+   ],
+   "notes": [
+    {
+     "at": "2026-11-12T05:22:22Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Merged as 0ff0d38b (PR 198, CI run 43088097664 green on three operating systems); the owner reviewed the real screenshots beside the boards on 2026-11-12"
+    }
+   ],
+   "owner_agent": "claude-fable-5.2",
+   "status_changed_on": "2026-11-12T05:22:22Z"
   },
   {
    "id": "PX-199",
@@ -41127,8 +41142,23 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-199",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:43088097664",
+    "artifact:evidence/m10/PX-199/evidence.json",
+    "artifact:evidence/m10/PX-199/ci-run-43088097664.json",
+    "commit:0ff0d38b7fbb059e3bea6a0490fdbda8c5df9856"
+   ],
+   "notes": [
+    {
+     "at": "2026-11-12T05:22:23Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Merged as 0ff0d38b (PR 198, CI run 43088097664 green on three operating systems); the owner reviewed the real screenshots beside the boards on 2026-11-12"
+    }
+   ],
+   "owner_agent": "claude-fable-5.2",
+   "status_changed_on": "2026-11-12T05:22:23Z"
   },
   {
    "id": "PX-200",
