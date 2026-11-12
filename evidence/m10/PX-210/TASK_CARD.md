@@ -59,3 +59,8 @@ All local, macOS 27.0.1 arm64, rustc 1.97.1, node 26.11.1, Electron 44.3.0, Play
 - A repeated command id is refused, not replayed, because the first answer is not kept.
 - macOS only so far. Linux and Windows are CI's.
 - Not sealed: the row is not on `main`, and sealing is not this task's.
+
+## Closure (2026-11-12)
+
+- CI run 43027055220 on head fa40b4b8: all 19 checks passed. Merged to main as 418af649 (moss101/modbit#197). Its prerequisite PX-200 is COMPLETE. DR section 9's wording was corrected the same day (docs/97).
+- The owner reviewed the screenshots of the running app beside the boards and answered "Yes, seal them" on 2026-11-12.

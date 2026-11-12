@@ -138,7 +138,7 @@ Rows PX-198 to PX-209 and PX-216 change no protocol message. PX-200 adds bridge 
 
 ## 9. Security impact
 
-No effect path changes for rows PX-198 to PX-209: every effect still goes through the Capability Kernel and its approvals, the exact intent stays on the card, and a destructive effect cannot be allowed from Inbox or home. A popped-out pane runs under the same preload and content security policy. The suggestion call reads a snapshot, writes nothing and sends nothing. Merge and the pushes of auto-fix are external effects and ask as every external effect does; auto-fix cannot raise a task's run mode. A per-application level can only narrow a grant. The updates record holds titles and ids, never transcript text.
+No effect path changes for rows PX-198 to PX-209: every effect still goes through the Capability Kernel and its approvals, the exact intent stays on the card, and a destructive effect cannot be allowed from Inbox or home. A popped-out pane runs under the same preload and content security policy. The suggestion call reads a snapshot, writes nothing to the task's log and sends nothing; its charge, which MWS-16 requires, is one record on the session's log that names the task and carries tokens and route, never the text (wording corrected 2026-11-12 after PX-210 was built; the rule is unchanged). Merge and the pushes of auto-fix are external effects and ask as every external effect does; auto-fix cannot raise a task's run mode. A per-application level can only narrow a grant. The updates record holds titles and ids, never transcript text.
 
 ## 10. Test impact
 

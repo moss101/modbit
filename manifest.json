@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2195,
-    "docs_bytes": 2408434
+    "root_and_tooling": 2199,
+    "docs_bytes": 2408986
   },
   "sections": [
     {
@@ -914,8 +914,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Dossier maintenance log",
-      "bytes": 148011,
-      "sha256": "950c17b384d76135fc682742293a3982ad0974874c6ae283d31fc05fd0a7edf8"
+      "bytes": 148563,
+      "sha256": "850cd91712fe2351e8636b24dd9c948f205bb3ca685baca5d889cca5336ba346"
     },
     {
       "path": "docs/98_BUILD_MANIFEST.md",
@@ -1125,8 +1125,8 @@
     },
     {
       "path": "docs/decisions/DR-PX-2026-11-11-021-measured-workspace.md",
-      "bytes": 22670,
-      "sha256": "185c80be6a3ce75062a9414952e773154180c0c8b68724f6e239f1a664cc76ad"
+      "bytes": 22901,
+      "sha256": "b7c8b8dd586bae037c0876e5d82fb017080afbfc52e415d52c04f839e1d9f17b"
     },
     {
       "path": "docs/decisions/README.md",
@@ -4220,8 +4220,8 @@
     },
     {
       "path": "evidence/m10/PX-200/TASK_CARD.md",
-      "bytes": 24999,
-      "sha256": "90c79d0fb67fd8e1eae641ac46fb7d506e19166e5f347df453c87a2d1517f16f"
+      "bytes": 25289,
+      "sha256": "940c3537672002eddb0602fc8c495c46b9626bcc8fc23162b8add6bad9746fae"
     },
     {
       "path": "evidence/m10/PX-200/after/approval-destructive-asks-twice-dark-comfortable.png",
@@ -4344,6 +4344,11 @@
       "sha256": "23f2632aefbcceb817c0b4e1d53b62a7b00555f9b0acb410827a50fdc44617ae"
     },
     {
+      "path": "evidence/m10/PX-200/ci-run-43198251756.json",
+      "bytes": 65416,
+      "sha256": "7133fd5c18bdaf2c57dd8183c427a901fc55f9f06eb9eef530afd2fd391d3582"
+    },
+    {
       "path": "evidence/m10/PX-200/desktop-e2e-full-results.txt",
       "bytes": 38138,
       "sha256": "7a6f3e8a9ebd220218f80b8846a95380ab1c1996b3f80f86d0e52ae50e264ee4"
@@ -4355,8 +4360,8 @@
     },
     {
       "path": "evidence/m10/PX-210/TASK_CARD.md",
-      "bytes": 11262,
-      "sha256": "4cb2ac207907e0e63a1fda713b2dbee3dd6d5d678cbd89ba3fed69fa1e13932d"
+      "bytes": 11615,
+      "sha256": "493c4c60c6a94d4a062040ba472476e08b5b9c7f30116221ff5eb56dd26873f4"
     },
     {
       "path": "evidence/m10/PX-210/after/composer-after-tab-light.png",
@@ -4372,6 +4377,11 @@
       "path": "evidence/m10/PX-210/after/composer-suggestion-light.png",
       "bytes": 34930,
       "sha256": "a2e7deb974c28f288daf671e57b634d2d8dafe7ea94c49b7b8ad8f852b3efb09"
+    },
+    {
+      "path": "evidence/m10/PX-210/ci-run-43027055220.json",
+      "bytes": 65416,
+      "sha256": "526705d5b7decc4920a9ac6a23924e42ad066fd009fa0400d309ecdd8c861409"
     },
     {
       "path": "evidence/m10/PX-210/core-suite.log",
@@ -4405,8 +4415,8 @@
     },
     {
       "path": "evidence/m10/PX-218/TASK_CARD.md",
-      "bytes": 8719,
-      "sha256": "5841729a20211aed1ffd695f11da622cbd4cea4d8dd58795a496b1a5af1829a3"
+      "bytes": 9057,
+      "sha256": "6aeaa8e0559a694ef7f54b72adc23a479f2a9cbd609f66e2fe59485935175966"
     },
     {
       "path": "evidence/m10/PX-218/after/preview-card-last-line-after-restart-dark.png",
@@ -4427,6 +4437,16 @@
       "path": "evidence/m10/PX-218/after/preview-card-last-line-light.png",
       "bytes": 147904,
       "sha256": "0fec13535b7c56edfc906bf623e78d54e6948ae31bcb16e1c7c8787286e1d959"
+    },
+    {
+      "path": "evidence/m10/PX-218/ci-run-43027055220.json",
+      "bytes": 65416,
+      "sha256": "526705d5b7decc4920a9ac6a23924e42ad066fd009fa0400d309ecdd8c861409"
+    },
+    {
+      "path": "evidence/m10/PX-218/ci-run-43198251756.json",
+      "bytes": 65416,
+      "sha256": "7133fd5c18bdaf2c57dd8183c427a901fc55f9f06eb9eef530afd2fd391d3582"
     },
     {
       "path": "evidence/m10/PX-218/evidence.json",
@@ -11841,12 +11861,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 47635,
-      "sha256": "80ba6edb48465d8108c0f2fbdd0c6378a53ba3186ed06b501705db85096a2e7d"
+      "sha256": "0996abb41cb541e164320e8f55535882816b2c18dae9324497d0b202e3d25e71"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2651033,
-      "sha256": "e1a2fc486a940d7dc88de887cb0dddc78af7c9786a8438786d20cfa570599fe9"
+      "bytes": 2652586,
+      "sha256": "764d2e04abafb7c42566e83368ecba177d4e0c74ba85ab1580312b3799e6b8aa"
     },
     {
       "path": "tools/build_graph.py",
