@@ -18,8 +18,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use modbit_bench_agent_engineering::axes::{self, TrialUsage, recorded_usage};
 use modbit_bench_agent_engineering::verifier::desktop_value;
@@ -809,11 +810,58 @@ fn bin() -> &'static str {
     env!("CARGO_BIN_EXE_competence-baseline")
 }
 
+/// One full suite pass on the real Core: minutes on every OS, and even a worst legitimate pass
+/// (waves of 4 trials, each ended by `--trial-timeout-secs` at 300 s) stays under an hour on a
+/// loaded Windows runner. Past the limit the runner itself is hung — the per-trial caps would have
+/// ended any stuck trial — and it is killed and named instead of eating the CI job's whole budget
+/// (the Windows rust job of run 43073138525 ran 1 h 29 m before failing in an unrelated test).
+const SUITE_PASS_LIMIT: Duration = Duration::from_secs(60 * 60);
+
+/// `Command::output` with a deadline: a hung child is killed and reported with the tail of its output.
+fn output_bounded(cmd: &mut Command, limit: Duration) -> std::process::Output {
+    cmd.stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut child = cmd.spawn().expect("spawn competence-baseline");
+    let start = Instant::now();
+    while child
+        .try_wait()
+        .expect("wait competence-baseline")
+        .is_none()
+    {
+        if start.elapsed() > limit {
+            let _ = child.kill();
+            let out = child.wait_with_output().expect("collect after kill");
+            let text = format!(
+                "{}{}",
+                String::from_utf8_lossy(&out.stdout),
+                String::from_utf8_lossy(&out.stderr)
+            );
+            let tail: String = text
+                .chars()
+                .rev()
+                .take(3000)
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+                .collect();
+            panic!(
+                "competence-baseline was still running after {} min and was killed; its per-trial cap ends any stuck trial, so this is a hang in the runner, not a slow suite. Tail of its output:\n{tail}",
+                limit.as_secs() / 60
+            );
+        }
+        std::thread::sleep(Duration::from_millis(500));
+    }
+    child
+        .wait_with_output()
+        .expect("competence-baseline output")
+}
+
 /// Run the whole suite once; the binary's exit code and output.
 fn run_suite(base: &str, out: &Path) -> (i32, String) {
     let (cli, core, actuator) = product_binaries();
-    let o = Command::new(bin())
-        .current_dir(root())
+    let mut cmd = Command::new(bin());
+    cmd.current_dir(root())
         .args([
             "--suite",
             suite_dir().join("tasks.json").to_str().unwrap(),
@@ -842,9 +890,8 @@ fn run_suite(base: &str, out: &Path) -> (i32, String) {
         .env("OPENAI_API_KEY", "")
         .env("ANTHROPIC_API_KEY", "")
         .env_remove("MODBIT_OPENAI_MODELS")
-        .env_remove("MODBIT_LIVE_MODEL")
-        .output()
-        .unwrap();
+        .env_remove("MODBIT_LIVE_MODEL");
+    let o = output_bounded(&mut cmd, SUITE_PASS_LIMIT);
     (
         o.status.code().unwrap_or(-1),
         format!(
