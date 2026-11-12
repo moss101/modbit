@@ -787,7 +787,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-199/after/tasks-head-more-menu-light-comfortable.png` | retained evidence | 64870 | `6ed34a5af706cc6ced4bae0ec22bb406a4ec6a4607241719efd1da55487d55bc` |
 | `evidence/m10/PX-199/ci-run-43088097664.json` | retained evidence | 65416 | `c143986870e35ed7ac4701814534f5d32b7cb6a307b076b0edc3f4581a3a7511` |
 | `evidence/m10/PX-199/evidence.json` | retained evidence | 6283 | `a25213955afe0034cc1c3eb56504a333efcb2e9e17965d29ca2202f612c71c68` |
-| `evidence/m10/PX-200/TASK_CARD.md` | retained evidence | 24999 | `90c79d0fb67fd8e1eae641ac46fb7d506e19166e5f347df453c87a2d1517f16f` |
+| `evidence/m10/PX-200/TASK_CARD.md` | retained evidence | 25776 | `db4d2a4ef42747a568ee808ccdb4768e9ebcaecc317e8db9fd7b591afe4a573c` |
 | `evidence/m10/PX-200/after/approval-destructive-asks-twice-dark-comfortable.png` | retained evidence | 264986 | `3008e53a53d0084905cad613902879dfb7de617b10593c856c8acfb5d3f858e1` |
 | `evidence/m10/PX-200/after/approval-destructive-asks-twice-light-comfortable.png` | retained evidence | 265988 | `117630d1c2434b48c80afd4a4d70bd5a164a6a45843ce0d89de4f534217519e3` |
 | `evidence/m10/PX-200/after/approval-destructive-dark-comfortable.png` | retained evidence | 268747 | `64d1d251ce81a27102646142e72ff3e7ac661d0dfb6dcdcba807998bd6282ffc` |
@@ -813,7 +813,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-200/after/title-menu-and-pane-toggles-dark-comfortable.png` | retained evidence | 188108 | `81b84edde8ab1e8695d9a29e42c5c9dccc993de325afa0250499286d7b2f9aa3` |
 | `evidence/m10/PX-200/after/title-menu-and-pane-toggles-light-comfortable.png` | retained evidence | 190360 | `23f2632aefbcceb817c0b4e1d53b62a7b00555f9b0acb410827a50fdc44617ae` |
 | `evidence/m10/PX-200/desktop-e2e-full-results.txt` | retained evidence | 38138 | `7a6f3e8a9ebd220218f80b8846a95380ab1c1996b3f80f86d0e52ae50e264ee4` |
-| `evidence/m10/PX-200/evidence.json` | retained evidence | 6799 | `b59732825c02e8598e000ae2e25498e0dd1204601e30cc2260a74180a057d275` |
+| `evidence/m10/PX-200/evidence.json` | retained evidence | 7172 | `a68fd6af32270b5cd708e6947d622bacb9d8c23d082569edb95a06ac5bd6e562` |
 | `evidence/m10/PX-210/TASK_CARD.md` | retained evidence | 11262 | `4cb2ac207907e0e63a1fda713b2dbee3dd6d5d678cbd89ba3fed69fa1e13932d` |
 | `evidence/m10/PX-210/after/composer-after-tab-light.png` | retained evidence | 30362 | `a7b1367df855da4288ff969ddb1a68bb03d6a4ecbbc8071ad59d0e5dddabff4d` |
 | `evidence/m10/PX-210/after/composer-long-suggestion-dark-900.png` | retained evidence | 35124 | `14ec8efa1eafc089f6f688e72fb15a75e11555cdf3e48e237cb62fdeb3f3d36f` |
