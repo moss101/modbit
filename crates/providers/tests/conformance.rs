@@ -224,6 +224,7 @@ fn endpoint(
         max_retries: retries,
         auth: AuthScheme::Native,
         extra_body: Default::default(),
+        omit_fields: Vec::new(),
         max_concurrency: 0,
     }
 }
@@ -1198,6 +1199,11 @@ async fn compatible_gateway_versioned_base_url_bearer_auth_and_extra_body() {
         assert_eq!(seen[0].path, "/api/paas/v4/chat/completions");
         assert_eq!(seen[0].body["tool_stream"], json!(true));
         assert_eq!(
+            seen[0].body["prompt_cache_key"],
+            json!("stable-prefix-hash"),
+            "the caching hint is sent by default"
+        );
+        assert_eq!(
             seen[0].body["model"],
             json!("m-tools"),
             "canonical keys win"
@@ -1207,6 +1213,49 @@ async fn compatible_gateway_versioned_base_url_bearer_auth_and_extra_body() {
                 .headers
                 .iter()
                 .any(|(k, v)| k == "authorization" && v == "Bearer k-openai")
+        );
+    }
+    // A gateway that refuses `prompt_cache_key` (Gemini's OpenAI-compatible
+    // endpoint answers it with HTTP 400): the endpoint leaves it out. A field
+    // outside the allowlist, set directly, is never removed.
+    let server = fake(vec![Script::Sse(openai_text_stream(&["ok"]))]).await;
+    let mut ep = endpoint(
+        "gw",
+        ProviderKind::OpenAi,
+        &format!("{}/v1beta/openai", server.base_url),
+        SecretHandle::Inline("k-gemini".into()),
+        0,
+    );
+    ep.omit_fields = vec!["prompt_cache_key".into(), "model".into(), "messages".into()];
+    let gw = ProviderGateway::new(vec![ep]);
+    let s = gw
+        .stream(
+            request(
+                "gw",
+                "m-tools",
+                vec![Message::text(Role::User, "hi")],
+                false,
+                5_000,
+            ),
+            &Requirements::default(),
+            CancellationToken::new(),
+        )
+        .unwrap();
+    let events = collect(s).await;
+    assert_eq!(text_of(&events), "ok");
+    {
+        let seen = server.seen.lock().unwrap();
+        assert_eq!(seen[0].path, "/v1beta/openai/v1/chat/completions");
+        let body = seen[0].body.as_object().unwrap();
+        assert!(!body.contains_key("prompt_cache_key"), "{body:?}");
+        assert_eq!(
+            body["model"],
+            json!("m-tools"),
+            "a required field is never removed"
+        );
+        assert!(
+            body["messages"].is_array(),
+            "a required field is never removed"
         );
     }
     // Anthropic family with the bearer scheme: `Authorization`, no `x-api-key`.
@@ -1316,6 +1365,17 @@ fn endpoints_from_configuration_register_providers_independently_with_priced_cat
     assert!(openai.models[1].vision && openai.models[1].reasoning);
     assert_eq!(openai.models[1].input_modalities, vec!["text", "image"]);
     assert_eq!(openai.extra_body.get("tool_stream"), Some(&json!(true)));
+    assert!(openai.omit_fields.is_empty());
+    let gemini = modbit_providers::endpoints_from(lookup(&[
+        ("OPENAI_API_KEY", "k1"),
+        (
+            "MODBIT_OPENAI_BASE_URL",
+            "https://generativelanguage.googleapis.com/v1beta/openai",
+        ),
+        ("MODBIT_OPENAI_OMIT_FIELDS", " prompt_cache_key ,"),
+    ]));
+    assert_eq!(gemini[0].omit_fields, ["prompt_cache_key"]);
+    assert_eq!(modbit_providers::OMITTABLE_FIELDS, ["prompt_cache_key"]);
     assert_eq!(openai.auth, AuthScheme::Native);
     assert!(matches!(openai.credential, SecretHandle::Env(ref v) if v == "OPENAI_API_KEY"));
     let anthropic = &eps[1];
@@ -1331,6 +1391,8 @@ fn endpoints_from_configuration_register_providers_independently_with_priced_cat
         ("MODBIT_OPENAI_AUTH", "basic"),
         ("MODBIT_OPENAI_EXTRA_BODY", "[1]"),
         ("MODBIT_OPENAI_EXTRA_BODY", "{not json"),
+        ("MODBIT_OPENAI_OMIT_FIELDS", "messages"),
+        ("MODBIT_OPENAI_OMIT_FIELDS", "prompt_cache_key,model"),
     ] {
         let eps = modbit_providers::endpoints_from(lookup(&[
             ("OPENAI_API_KEY", "k1"),
@@ -1594,6 +1656,7 @@ async fn qual_ev_0188_tool_media_is_split_for_strict_endpoints_and_embedded_wher
         max_retries: 0,
         auth: AuthScheme::Native,
         extra_body: Default::default(),
+        omit_fields: Vec::new(),
         max_concurrency: 0,
     }]);
     let tool_message = Message {

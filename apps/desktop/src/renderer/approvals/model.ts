@@ -91,6 +91,18 @@ export function defaultPrefix(argv: readonly string[]): string[] {
   return argv.slice(0, Math.min(argv.length, MAX_LADDER));
 }
 
+/** What a prefix would cover, said beside it in the Always allow menu: the whole command, or every command that starts this way. */
+export function prefixWords(prefix: readonly string[], argv: readonly string[]): string {
+  if (prefix.length >= argv.length) return "exactly this command";
+  return prefix.length === 1 ? `any ${prefix[0]} command` : "any command that starts this way";
+}
+
+/** Where a rule made from the card applies (DR-PX-2026-10-25-017: a repository-wide rule lasts 30 days, a task's rule ends with the task). */
+export const SCOPE_WORDS: Record<"REPO" | "TASK", { label: string; detail: string }> = {
+  REPO: { label: "In this repository", detail: "every task here, for 30 days" },
+  TASK: { label: "In this task", detail: "until the task ends" },
+};
+
 /** Whether "always allow this prefix" is offered for the card, and if not, why (the Core still validates any rule that is made). */
 export function alwaysAvailable(a: DockApprovalView): { ok: true } | { ok: false; why: string } {
   // PX-074 / docs/66 CUC-C01: native control is approved one call at a time. No rule, prefix or run mode covers it.

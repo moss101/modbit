@@ -179,6 +179,7 @@ fn gateway(server: &Server, max_concurrency: u32, max_retries: u32) -> ProviderG
         max_retries,
         auth: AuthScheme::Native,
         extra_body: Default::default(),
+        omit_fields: Vec::new(),
         max_concurrency,
     }])
 }

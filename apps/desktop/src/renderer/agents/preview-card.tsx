@@ -1,8 +1,9 @@
 /**
  * A task's preview card (DR-PX-2026-11-11-021 MWS-04): it opens when the pointer rests on a row and on Space, beside the list.
- * It shows the Core's state with its reason or next action, the size of the change, the context in use and Open. Everything on
- * it is the task's header and the facts the list already holds: it makes no read of its own and opens no transcript. The last
- * line the assistant wrote, the pull request and split view wait for the rows that deliver them (MWS-20, MWS-17, MWS-11).
+ * It shows the Core's state with its reason or next action, the last line the assistant wrote (MWS-20, REQ-PX-218: the header's
+ * own field, capped and redacted by the Core), the size of the change, the context in use and Open. Everything on it is the
+ * task's header and the facts the list already holds: it makes no read of its own and opens no transcript. The pull request and
+ * split view wait for the rows that deliver them (MWS-17, MWS-11).
  */
 import { useEffect, useRef } from "react";
 import { Button, StatusDot, useLayer } from "@modbit/ui";
@@ -66,6 +67,12 @@ export function PreviewCard(p: PreviewCardProps) {
       {reason && (
         <p className="agents-preview-reason" data-testid="agent-preview-reason">
           {reason}
+        </p>
+      )}
+      {h.lastLine && (
+        <p className="agents-preview-last" data-testid="agent-preview-last">
+          <span className="mb-sr-only">The assistant's last line: </span>
+          {h.lastLine}
         </p>
       )}
       {(change || h.contextPercent > 0) && (

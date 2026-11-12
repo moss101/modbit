@@ -95,7 +95,9 @@ test("PX-045, PX-198: geometry at 1280 x 800, keyboard-resizable splits inside 2
     near((await box(page, "region-agents")).width, 288, 2, "agent list");
     near((await box(page, "top-bar")).height, 45, 1, "top bar");
     expect(await page.getByTestId("region-apps").count(), "the apps panel is absent until a task has an artifact").toBe(0);
-    await expect(page.getByTestId("toggle-apps-panel")).toHaveAttribute("aria-disabled", "true");
+    // MWS-05: a toggle stands for a pane the open task can show; with no task there is none (the one disabled "Apps panel" toggle is gone).
+    await expect(page.getByTestId("pane-toggles")).toHaveCount(0);
+    await expect(page.getByTestId("toggle-apps-panel")).toHaveCount(0);
     expect((await box(page, "region-conversation")).width).toBeGreaterThanOrEqual(424);
 
     const sep = page.getByTestId("splitter-list");
@@ -356,6 +358,42 @@ test("PX-045: the command palette and the shortcut registry by keyboard alone; E
   }
 });
 
+test("PX-045: a modal keeps focus: the home composer's deferred focus cannot pull it out of a palette opened before it fires", async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-shell-palette-race-"));
+  const { app, page } = await launch(dataDir);
+  try {
+    await setContentSize(app, page, 1280, 800);
+    await page.keyboard.press(`${MOD}+n`);
+    await page.keyboard.type("Palette race task");
+    for (let i = 0; i < 4; i++) await page.keyboard.press("Tab");
+    expect(await focusedTestId(page)).toBe("run");
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("conversation")).toHaveAttribute("data-task-id", /.+/, { timeout: 30_000 });
+    const taskId = (await page.getByTestId("conversation").getAttribute("data-task-id"))!;
+
+    // Leaving a conversation for home focuses the goal one task later. Open the palette in the same task as the
+    // click, before that deferred focus runs, as a slow machine does between two real inputs.
+    await page.evaluate((mac) => {
+      document.querySelector<HTMLElement>('[data-testid="agents-new-task"]')!.click();
+      document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "k", code: "KeyK", metaKey: mac, ctrlKey: !mac, bubbles: true, cancelable: true }));
+    }, process.platform === "darwin");
+    await expect(page.getByTestId("palette")).toBeVisible();
+    // Let the deferred focus (and anything else queued by the click) run.
+    await page.evaluate(() => new Promise((r) => setTimeout(r, 100)));
+    expect(await focusedTestId(page), "focus stays in the modal palette").toBe("palette-input");
+    await expect(page.getByTestId("goal"), "nothing typed reached the composer behind the palette").toHaveValue("");
+
+    await page.keyboard.type("race");
+    await expect(page.getByTestId("palette-input")).toHaveValue("race");
+    await expect(page.getByTestId("palette-option").first()).toHaveAttribute("data-id", `agent:${taskId}`);
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("palette")).toHaveCount(0);
+    await expect(page.getByTestId("conversation")).toHaveAttribute("data-task-id", taskId);
+  } finally {
+    await closeApp(app);
+  }
+});
+
 test("PX-044/045: themes, high contrast and reduced motion; the send button meets AA; axe on every region in every theme", async () => {
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-shell-theme-"));
   const { app, page } = await launch(dataDir);
@@ -431,7 +469,9 @@ test("PX-045: the apps panel appears for a task with an artifact, within the geo
     await expect(page.getByTestId("review")).toHaveCount(0);
     await expect(page.getByTestId("conversation")).toHaveAttribute("data-task-id", taskId);
     await expect(page.getByTestId("top-bar-title")).toContainText("Edit the notes");
-    await expect(page.getByTestId("toggle-apps-panel")).toHaveAttribute("aria-disabled", "false");
+    // MWS-05: the task has run, so it has a toggle per pane it can show, each saying it is closed; the terminal has none because the Core lists no terminal.
+    for (const kind of ["changes", "browser", "files", "evidence"]) await expect(page.getByTestId(`pane-toggle-${kind}`), kind).toHaveAttribute("aria-pressed", "false");
+    await expect(page.getByTestId("pane-toggle-terminal")).toHaveCount(0);
     expect(await page.getByTestId("region-apps").count()).toBe(0);
 
     // The changes chord opens the panel; the geometry holds: centre >= 424, panel >= 384.

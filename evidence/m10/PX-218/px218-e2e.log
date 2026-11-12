@@ -1,0 +1,2 @@
+  ✓  1 e2e/px-218-last-line.spec.ts:58:1 › PX-218: after a finished turn the header and the preview card carry the assistant's last line, redacted; a task that has not answered carries none; both say 
+  1 passed (7.6s)

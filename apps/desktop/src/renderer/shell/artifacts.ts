@@ -5,7 +5,7 @@
  * state), a workspace to browse and evidence to read; a terminal appears when
  * the Core lists one for the task, and a browser when its session is open.
  */
-import type { AppKind } from "./prefs.ts";
+import { APP_KINDS, type AppKind } from "./prefs.ts";
 
 export interface TaskLike {
   taskId: string;
@@ -32,6 +32,15 @@ export function artifactsOf(task: TaskLike | undefined, ctx: ArtifactContext): A
   if (ctx.browsingTaskId === task.taskId) out.push("browser");
   if (started) out.push("files", "evidence");
   return out;
+}
+
+/**
+ * The panes a task has a toggle for in the title bar (MWS-05), in tab order: what it has something to show in, and the Browser
+ * once it has a workspace, because that pane is where a browser session is opened from.
+ */
+export function panesOf(artifacts: readonly AppKind[]): AppKind[] {
+  const started = artifacts.includes("files");
+  return APP_KINDS.filter((k) => artifacts.includes(k) || (k === "browser" && started));
 }
 
 /** The task the panel shows: the selected one if it has artifacts, else the most recent task that does. */

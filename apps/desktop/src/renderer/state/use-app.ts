@@ -466,8 +466,13 @@ export function useApp() {
     },
     [confirm, helpOpen, reviewing, browsing, requestNav],
   );
+  // The listener reads what the latest render holds, not what held when an effect last ran: a key that arrives between a
+  // commit and its effects (Escape pressed the moment the review opens by itself) is answered for the screen that is showing.
+  const keyState = useRef({ runKeyCommand, reviewing, confirm, browsing });
+  keyState.current = { runKeyCommand, reviewing, confirm, browsing };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const { runKeyCommand, reviewing, confirm, browsing } = keyState.current;
       // A control that handled its own key keeps it (the queue tray's arrows, an open menu's).
       if (e.defaultPrevented || (e.target as Element | null)?.closest?.('[role="menu"]')) return;
       // A modal layer (the palette, the shortcut help) owns the keyboard while it is open (PX-045).
@@ -485,7 +490,7 @@ export function useApp() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [runKeyCommand, reviewing, confirm, browsing]);
+  }, []);
   const tasks = useMemo(() => [...model.tasks.values()], [model]);
   // PX-023: the screen states, each derived from what the Core said.
   const fleet = useMemo(() => fleetState({ core, loaded: screen === "loading" ? "loading" : screen === "empty" ? "empty" : "populated", error, recovery: recovery ? { bootGeneration: Number(recovery.bootGeneration), eventsVerified: Number(recovery.eventsVerified), aggregatesVerified: Number(recovery.aggregatesVerified), sessions: Number(recovery.sessions), tasks: Number(recovery.tasks), projectionsRebuilt: recovery.projectionsRebuilt, notes: recovery.notes, recoveryMs: Number(recovery.recoveryMs) } : null, recoveredBanner: recovered !== null, tasks }), [core, screen, error, recovery, recovered, tasks]);
