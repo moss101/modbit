@@ -113,6 +113,7 @@ fn gateway(kind: ProviderKind, models: Vec<ModelCapability>) -> ProviderGateway 
         max_retries: 0,
         auth: Default::default(),
         extra_body: Default::default(),
+        omit_fields: Vec::new(),
         max_concurrency: 0,
     }])
 }
