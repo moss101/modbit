@@ -36981,7 +36981,7 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-069",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "commit:7fcd48ad",
     "run:38990216920",
@@ -36995,7 +36995,12 @@
     "artifact:evidence/m10/PX-069/mutation-checks-2026-11-09.txt",
     "artifact:evidence/m10/PX-069/TASK_CARD.md",
     "test:services/modbit-core/tests/px_computer.rs::qual_px_069_real_helper_a_document_and_a_modal_dialog_are_driven_by_accessibility_alone",
-    "test:services/modbit-core/tests/px_computer.rs::qual_px_069_real_helper_killed_after_delivery_latches_until_a_new_session_observes"
+    "test:services/modbit-core/tests/px_computer.rs::qual_px_069_real_helper_killed_after_delivery_latches_until_a_new_session_observes",
+    "run:42975633561",
+    "commit:cafa01fff8965bfa80fad5a0224722cb11104893",
+    "artifact:evidence/m10/PX-069/ci-run-42975633561.json",
+    "artifact:evidence/m10/PX-069/ci-hosted-macos-42975633561.txt",
+    "commit:29af453aa600672d940a5b12cda41a062ea13245"
    ],
    "notes": [
     {
@@ -37012,7 +37017,7 @@
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-11-09T18:00:02Z"
+   "status_changed_on": "2026-11-12T05:20:11Z"
   },
   {
    "id": "PX-070",

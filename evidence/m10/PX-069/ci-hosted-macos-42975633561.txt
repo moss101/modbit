@@ -1,0 +1,159 @@
+# PX-069 on the hosted macOS runner: CI run 42975633561 (attempt 2), job 130411961037, head cafa01ff (main, after #194)
+# Excerpt: the real-Mac suite (services/modbit-actuator-macos/scripts/ax-tests.sh) as this job ran it.
+# The "ignored" lines are the ordinary suite (no grant assumed); the "... ok" lines for the same names are the real-Mac step, which ran them with this runner's Accessibility grant. That step reports but does not fail the job (.github/workflows/ci.yml), so the retained owner-Mac run (real-mac-run-2026-11-09.txt) remains the gating real-Mac evidence.
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.35s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.91s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.74s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.30s
+test session::tests::the_actuators_own_events_are_not_a_person_but_a_person_during_them_is ... ok
+test a_frame_is_the_canvas_the_secure_field_is_black_and_a_coordinate_click_lands_where_it_was_aimed ... ignored, needs Accessibility + Screen Recording and an unlocked screen: services/modbit-actuator-macos/scripts/ax-tests.sh
+test a_press_runs_in_the_background_and_the_real_cursor_does_not_move ... ignored, needs Accessibility + Screen Recording and an unlocked screen: services/modbit-actuator-macos/scripts/ax-tests.sh
+test a_stale_snapshot_is_refused_and_nothing_is_actuated ... ignored, needs Accessibility + Screen Recording and an unlocked screen: services/modbit-actuator-macos/scripts/ax-tests.sh
+test a_swapped_identity_is_not_the_approved_application ... ignored, needs Accessibility + Screen Recording and an unlocked screen: services/modbit-actuator-macos/scripts/ax-tests.sh
+test a_value_is_set_through_the_tree_and_a_secure_field_is_refused_every_way ... ignored, needs Accessibility + Screen Recording and an unlocked screen: services/modbit-actuator-macos/scripts/ax-tests.sh
+test an_unlocked_screen_with_the_permissions_reports_them_and_a_denied_one_refuses_every_call ... ignored, needs Accessibility + Screen Recording and an unlocked screen: services/modbit-actuator-macos/scripts/ax-tests.sh
+test closing_the_connection_stops_injection_within_500_ms ... ignored, needs Accessibility + Screen Recording and an unlocked screen: services/modbit-actuator-macos/scripts/ax-tests.sh
+test stop_halts_an_input_in_flight_within_500_ms_and_the_application_sees_no_more_keys ... ignored, needs Accessibility + Screen Recording and an unlocked screen: services/modbit-actuator-macos/scripts/ax-tests.sh
+test text_is_typed_into_the_focused_field_without_taking_the_keyboard ... ignored, needs Accessibility + Screen Recording and an unlocked screen: services/modbit-actuator-macos/scripts/ax-tests.sh
+test the_core_going_away_stops_the_helper_mid_input_and_killing_the_helper_mid_input_is_noticed ... ignored, needs Accessibility + Screen Recording and an unlocked screen: services/modbit-actuator-macos/scripts/ax-tests.sh
+test the_helpers_own_events_are_never_a_person_and_anothers_count_as_the_hardware_counter_says ... ignored, needs Accessibility + Screen Recording and an unlocked screen: services/modbit-actuator-macos/scripts/ax-tests.sh
+test the_tree_lists_the_known_elements_is_bounded_and_stable_and_never_carries_a_secret ... ignored, needs Accessibility + Screen Recording and an unlocked screen: services/modbit-actuator-macos/scripts/ax-tests.sh
+test a_binary_that_is_not_a_helper_never_gets_a_welcome_the_core_accepts ... ok
+test a_helper_that_cannot_control_this_platform_says_so_and_never_crashes ... ok
+test a_protocol_major_the_helper_does_not_speak_is_refused_with_the_typed_reason ... ok
+test a_killed_helper_is_noticed_calls_say_nothing_was_delivered_and_a_restart_serves_again ... ok
+test the_welcome_reports_the_permissions_the_helper_holds_and_never_a_guess ... ok
+test the_core_closing_the_stream_stops_the_helper_at_once ... ok
+test a_modified_helper_is_refused_before_it_is_executed ... ok
+test a_helper_that_fails_verification_rolls_back_to_the_previous_pinned_one ... ok
+test a_helper_for_a_newer_core_or_another_protocol_is_skipped_with_the_typed_reason ... ok
+test a_pinned_helper_is_verified_launched_and_its_process_identity_matches_the_pin ... ok
+test qual_px_179_gui_tasks_through_the_real_core_and_fixture_actuator_a_rerun_matches_the_baseline_and_a_regression_fails_naming_the_tasks ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 51.46s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 14.79s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.94s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.67s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 14.99s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.75s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.12s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.52s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.06s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.60s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.90s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test actuator::tests::a_connection_that_closes_with_a_call_in_flight_loses_the_call ... ok
+test actuator::tests::a_welcome_that_proves_the_token_is_accepted_and_calls_are_matched_by_id ... ok
+test actuator::tests::a_welcome_with_the_wrong_proof_pid_or_major_is_refused ... ok
+test actuator::tests::a_silent_actuator_times_out_after_the_write_and_a_dead_one_is_not_delivered ... ok
+test frame::tests::a_region_padded_by_the_core_is_not_counted_against_an_actuator_that_masked_the_interior ... ok
+test frame::tests::a_secure_region_the_actuator_did_not_mask_is_masked_by_the_core ... ok
+test runtime::tests::an_identity_the_policy_forbids_or_the_list_never_allows_is_refused_before_any_actuator_call ... ok
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.04s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.37s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.33s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.29s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.55s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.16s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.73s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 31.09s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.20s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.99s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 11.52s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 21.25s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.53s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.31s
+test qual_px_069_a_core_killed_with_a_session_and_an_input_in_flight_leaves_nothing_held ... ok
+test qual_px_069_a_second_controller_is_refused_until_the_first_lets_go ... ok
+test qual_px_069_a_crash_after_delivery_latches_and_only_a_new_session_observing_reconciles ... ok
+test qual_px_069_an_accessibility_first_task_completes_and_leaves_its_audit ... ok
+test qual_px_069_real_helper_a_document_and_a_modal_dialog_are_driven_by_accessibility_alone ... ignored, needs Accessibility + Screen Recording for this process and an unlocked screen: services/modbit-actuator-macos/scripts/ax-tests.sh
+test qual_px_069_real_helper_killed_after_delivery_latches_until_a_new_session_observes ... ignored, needs Accessibility + Screen Recording for this process and an unlocked screen: services/modbit-actuator-macos/scripts/ax-tests.sh
+test qual_px_069_real_helper_refusals_are_typed_and_the_application_sees_nothing ... ignored, needs Accessibility + Screen Recording for this process and an unlocked screen: services/modbit-actuator-macos/scripts/ax-tests.sh
+test qual_px_069_real_helper_two_simultaneous_inputs_run_one_at_a_time ... ignored, needs Accessibility + Screen Recording for this process and an unlocked screen: services/modbit-actuator-macos/scripts/ax-tests.sh
+test qual_px_069_killing_the_actuator_mid_action_leaves_the_outcome_unknown_and_the_latch_holds ... ok
+test qual_px_069_the_emergency_stop_halts_control_and_stays_in_force ... ok
+test qual_px_069_text_is_typed_into_the_focused_field_of_a_focused_window ... ok
+test qual_px_069_every_refusal_is_typed_with_its_escalation_and_actuates_nothing ... ok
+test qual_px_069_the_on_screen_stop_halts_the_actuator_and_is_sticky_for_the_turn ... ok
+test qual_px_069_the_stop_is_recorded_before_the_in_flight_result_however_slow_the_actuator ... ok
+test qual_px_069_the_watchdog_times_an_input_out_into_an_unknown_outcome_and_stops_the_actuator ... ok
+test qual_px_069_the_tools_are_offered_only_with_an_attached_actuator_a_trusted_profile_and_a_mode_that_carries_them ... ok
+test qual_px_071_the_real_core_drives_a_real_application_through_the_real_helper ... ignored, needs Accessibility + Screen Recording for this process and an unlocked screen: services/modbit-actuator-macos/scripts/ax-tests.sh
+test qual_px_071_the_real_helper_serves_the_real_core_and_a_missing_permission_is_a_typed_refusal ... ignored, macOS real-helper test (needs no permission); run serially by services/modbit-actuator-macos/scripts/ax-tests.sh so it cannot starve the timing-sensitive Stop tests of this suite
+test qual_px_072_the_core_launches_only_a_helper_the_signed_manifest_pins_and_rolls_back ... ignored, macOS real-helper test (needs no permission); run serially by services/modbit-actuator-macos/scripts/ax-tests.sh so it cannot starve the timing-sensitive Stop tests of this suite
+test qual_px_069_the_faults_an_actuator_can_raise_are_typed_with_their_escalations ... ok
+test qual_px_076_the_core_masks_when_the_actuator_did_not ... ok
+test qual_px_178_a_run_whose_actuator_is_killed_is_an_environment_failure ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.45s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.27s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.50s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.75s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test store::tests::sha_helper_is_stable ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.20s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.57s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.24s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.20s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.96s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.76s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.28s
+test a_repository_credential_helper_never_runs ... ok
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.28s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.74s
+test result::tests::a_payload_that_is_not_base64_never_becomes_media ... ok
+test result::tests::a_tool_error_is_an_application_failure_the_host_reports ... ok
+test result::tests::an_embedded_resource_keeps_its_uri_without_being_fetched ... ok
+test result::tests::an_unknown_block_kind_is_dropped_by_kind ... ok
+test result::tests::parts_and_bytes_are_bounded ... ok
+test result::tests::structured_output_is_carried_and_a_shapeless_result_is_an_error ... ok
+test result::tests::text_and_image_blocks_are_kept_as_typed_parts ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 56.93s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.35s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.07s
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+test with_no_port_every_call_answers_actuator_unavailable ... ok
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.01s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.48s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.77s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 16.50s
+test qual_px_071_the_real_helper_serves_the_real_core_and_a_missing_permission_is_a_typed_refusal ... ok
+test qual_px_072_the_core_launches_only_a_helper_the_signed_manifest_pins_and_rolls_back ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 48 filtered out; finished in 23.29s
+test qual_px_071_the_real_core_drives_a_real_application_through_the_real_helper ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 49 filtered out; finished in 10.85s
+test qual_px_069_real_helper_a_document_and_a_modal_dialog_are_driven_by_accessibility_alone ... ok
+test qual_px_069_real_helper_killed_after_delivery_latches_until_a_new_session_observes ... ok
+test qual_px_069_real_helper_refusals_are_typed_and_the_application_sees_nothing ... ok
+test qual_px_069_real_helper_two_simultaneous_inputs_run_one_at_a_time ... ok
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 28.37s
+test the_core_going_away_stops_the_helper_mid_input_and_killing_the_helper_mid_input_is_noticed ... ok
+test the_helpers_own_events_are_never_a_person_and_anothers_count_as_the_hardware_counter_says ... ok
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 20.16s
