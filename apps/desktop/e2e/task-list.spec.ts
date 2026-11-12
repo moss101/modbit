@@ -582,7 +582,16 @@ test("PX-199: the keyboard alone reaches every row, pins, archives with undo and
     const rowBox = (await agentRow(page, ids.ready).boundingBox())!;
     const cardBox = (await card.boundingBox())!;
     const listBox = await box(page, "region-agents");
-    expect(Math.abs(cardBox.y - rowBox.y), "level with its row").toBeLessThanOrEqual(1);
+    // PX-218 made the card one line taller (the assistant's last line). Where the window has room under the row's top the card is
+    // level with its row; where it has not (a short window, as on a small display) the card's own rule turns it over and it ends
+    // level with the row's foot, inside the window. Which of the two applies is decided here from the window's height, not allowed either way.
+    if (header.lastLine) await expect(card.getByTestId("agent-preview-last")).toContainText(header.lastLine);
+    const windowHeight = await page.evaluate(() => window.innerHeight);
+    if (rowBox.y + cardBox.height <= windowHeight) expect(Math.abs(cardBox.y - rowBox.y), "level with its row").toBeLessThanOrEqual(1);
+    else {
+      expect(Math.abs(cardBox.y + cardBox.height - (rowBox.y + rowBox.height)), `no room under the row's top (row at ${rowBox.y}, card ${cardBox.height} high, window ${windowHeight}): the card ends level with the row's foot`).toBeLessThanOrEqual(1);
+      expect(cardBox.y, "and stays inside the window").toBeGreaterThanOrEqual(0);
+    }
     expect(cardBox.x, "beside the list, over the centre").toBeGreaterThanOrEqual(listBox.x + listBox.width - GEOMETRY.rowInset - 1);
     expect(cardBox.x).toBeLessThanOrEqual(listBox.x + listBox.width);
     await accessible(page, "the preview card", '[data-testid="agent-preview"]');
