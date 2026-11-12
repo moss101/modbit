@@ -4220,8 +4220,8 @@
     },
     {
       "path": "evidence/m10/PX-200/TASK_CARD.md",
-      "bytes": 23855,
-      "sha256": "d5697c0980160c4f13e2f82ea5d3dfafda006ed7a378661b3f3da7cba636fe02"
+      "bytes": 24999,
+      "sha256": "90c79d0fb67fd8e1eae641ac46fb7d506e19166e5f347df453c87a2d1517f16f"
     },
     {
       "path": "evidence/m10/PX-200/after/approval-destructive-asks-twice-dark-comfortable.png",
@@ -4350,8 +4350,8 @@
     },
     {
       "path": "evidence/m10/PX-200/evidence.json",
-      "bytes": 6321,
-      "sha256": "2a7447fe26863e0bd17e6b113e5a5295842f53f91cfe8657bcdf2f2a657e2432"
+      "bytes": 6799,
+      "sha256": "b59732825c02e8598e000ae2e25498e0dd1204601e30cc2260a74180a057d275"
     },
     {
       "path": "evidence/m10/PX-210/TASK_CARD.md",

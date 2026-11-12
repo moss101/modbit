@@ -50,7 +50,8 @@
     "apps/desktop/src/main/hardening-guard.test.ts",
     "apps/desktop/src/renderer/conversation/model.test.ts",
     "apps/desktop/src/renderer/approvals/model.test.ts",
-    "apps/desktop/src/renderer/shell/shell.test.ts"
+    "apps/desktop/src/renderer/shell/shell.test.ts",
+    "apps/desktop/e2e/review-escape.spec.ts"
   ],
   "unit": "@modbit/desktop 373 of 373; pnpm typecheck clean.",
   "proof": "Whole desktop e2e suite, local, macOS 27.0.1 arm64, node 26.11.1, real Core (the prebuilt modbit-core, modbit-execd, modbit-cli and modbit-actuator-fixture of research/desktop-2/bin, built from main's Rust; this change has no Rust), scripted models. Run 1 on 03ce8f12: 203 passed, 1 failed, 2 skipped in 19.3m; the failure (computer-surface.spec.ts:177) stopped at its first step before anything this change touches and was not reproduced (9 of 9 on rerun, and passed in run 2). Run 2 on the final build: 204 passed, 0 failed, 2 skipped in 17.8m. The 2 skipped are the live-provider specs.",
@@ -83,6 +84,7 @@
     "sha256": "c5ec630a2c92680ceaccf3dc72a663ecf0e3f369c3e1309e146a691807234fcb"
   },
   "ci": {
-    "run_1": "43167558623 on f4dbb1f7 (pull request 199): all jobs passed except desktop E2E, one failure per system: macos-latest 203 passed, 1 failed (task-list.spec.ts:492, the preview card turned over in a short window because it is one line taller: caused by this change; the spec now decides the placement from the window's height); ubuntu-latest 203 passed, 1 failed (context.spec.ts:45, not explained); windows-latest 199 passed, 1 failed, 6 skipped (task-list.spec.ts:492 at line 546, not explained)."
+    "run_1": "43167558623 on f4dbb1f7 (pull request 199): all jobs passed except desktop E2E, one failure per system: macos-latest 203 passed, 1 failed (task-list.spec.ts:492, the preview card turned over in a short window because it is one line taller: caused by this change; the spec now decides the placement from the window's height); ubuntu-latest 203 passed, 1 failed (context.spec.ts:45, not explained); windows-latest 199 passed, 1 failed, 6 skipped (task-list.spec.ts:492 at line 546, not explained).",
+    "run_2": "43181893787 on 6bae237d: desktop E2E passed on macos-latest and windows-latest; ubuntu-latest 204 passed, 1 failed (wave4.spec.ts:176, Escape did not close the review that had just opened by itself: a race in renderer/state/use-app.ts, reproduced locally, fixed, and kept as e2e/review-escape.spec.ts); rust CI_COMPATIBLE (ubuntu-latest) failed in run_control::qual_px_153 (no Rust in this change; passed in run 1)."
   }
 }
