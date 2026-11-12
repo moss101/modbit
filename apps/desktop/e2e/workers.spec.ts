@@ -19,7 +19,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { closeApp } from "./support/close-app.ts";
-import { agentRow, expectTaskState, openTaskDetails, queueTask, runTask } from "./support/new-task.ts";
+import { agentRow, expectTaskState, openTaskMore, queueTask, runTask } from "./support/new-task.ts";
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const coreBin = process.env.MODBIT_CORE_BIN ?? resolve(appDir, "..", "..", "target", "debug", process.platform === "win32" ? "modbit-core.exe" : "modbit-core");
@@ -387,7 +387,7 @@ test("browser view killed (REQ-EV-0081): the view's process dies under the agent
     const { app, page } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url });
     const taskId = await queueTask(page, "read the greeter twice", repo);
     await expect(agentRow(page, taskId)).toContainText("read the greeter twice", { timeout: 30_000 });
-    await (await openTaskDetails(page)).getByTestId("task-browser").click();
+    await (await openTaskMore(page)).getByTestId("task-browser").click();
     const panel = page.getByTestId("browser");
     await expect(panel).toHaveAttribute("data-browser-session-id", /^[0-9a-f]{32}$/, { timeout: 30_000 });
     const bsid = (await panel.getAttribute("data-browser-session-id"))!;

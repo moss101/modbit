@@ -6,7 +6,7 @@
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { GEOMETRY } from "@modbit/design-tokens";
-import { computeLayout, ratioForPanel, clampListWidth, clampPanelRatio } from "./layout.ts";
+import { computeLayout, ratioForPanel, clampListWidth, clampPanelRatio, DETAILS_RAIL, type Layout } from "./layout.ts";
 import { Splitter } from "./splitter.tsx";
 import type { UiPrefs } from "./prefs.ts";
 
@@ -19,7 +19,12 @@ export interface ShellFrameProps {
   /** The panel's content; null when no task has an artifact (the region is then absent). */
   panel: ReactNode | null;
   agents: (rail: boolean) => ReactNode;
-  topBar: ReactNode;
+  /** The top bar; as a function it is given the layout (whether the details rail fits and is shown). */
+  topBar: ReactNode | ((layout: Layout) => ReactNode);
+  /** MWS-09: a task's conversation is in the centre and the person has the details rail on. It is drawn where the layout has room for it. */
+  details?: boolean | undefined;
+  /** The rail's element, for the conversation to fill; null while the rail is not drawn. */
+  detailsRef?: ((el: HTMLElement | null) => void) | undefined;
   /** PX-074: what must always be on screen while the machine is controlled (the presence bar and its Stop); above everything in the centre. */
   banner?: ReactNode | undefined;
   statusRow: ReactNode;
@@ -31,7 +36,7 @@ export interface ShellFrameProps {
   contentElement?: "main" | "div" | undefined;
 }
 
-export function ShellFrame({ prefs, onPrefs, panelOpen, panel, agents, topBar, banner, statusRow, tray, children, fixedWidth, contentElement = "main" }: ShellFrameProps) {
+export function ShellFrame({ prefs, onPrefs, panelOpen, panel, agents, topBar, details, detailsRef, banner, statusRow, tray, children, fixedWidth, contentElement = "main" }: ShellFrameProps) {
   const root = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(fixedWidth ?? (typeof window === "undefined" ? GEOMETRY.windowDefault.width : window.innerWidth));
   const [segment, setSegment] = useState<"conversation" | "apps">("conversation");
@@ -45,7 +50,7 @@ export function ShellFrame({ prefs, onPrefs, panelOpen, panel, agents, topBar, b
     return () => ro.disconnect();
   }, [fixedWidth]);
   const hasPanel = panel !== null;
-  const layout = computeLayout({ width: fixedWidth ?? width, listWidth: prefs.listWidth, listCollapsed: prefs.listCollapsed, panelRatio: prefs.panelRatio, panelOpen: hasPanel && panelOpen });
+  const layout = computeLayout({ width: fixedWidth ?? width, listWidth: prefs.listWidth, listCollapsed: prefs.listCollapsed, panelRatio: prefs.panelRatio, panelOpen: hasPanel && panelOpen, detailsOpen: details === true });
   const showApps = layout.stacked && segment === "apps";
   useEffect(() => {
     if (!layout.stacked && segment !== "conversation") setSegment("conversation");
@@ -57,7 +62,7 @@ export function ShellFrame({ prefs, onPrefs, panelOpen, panel, agents, topBar, b
 
   const Content = contentElement;
   return (
-    <div ref={root} className="shell" data-testid="shell" data-list-px={layout.listPx} data-center-px={layout.centerPx} data-panel-px={layout.panelPx} data-rail={layout.rail} data-stacked={layout.stacked} data-single-pane={layout.singlePane} style={fixedWidth === undefined ? undefined : { width: fixedWidth }}>
+    <div ref={root} className="shell" data-testid="shell" data-list-px={layout.listPx} data-center-px={layout.centerPx} data-panel-px={layout.panelPx} data-rail={layout.rail} data-stacked={layout.stacked} data-single-pane={layout.singlePane} data-details-px={layout.detailsPx} style={fixedWidth === undefined ? undefined : { width: fixedWidth }}>
       <nav className="shell-list" aria-label="Agents" data-testid="region-agents" data-rail={layout.rail} style={{ width: layout.listPx }}>
         <div className="shell-scroll">{agents(layout.rail)}</div>
         {!layout.rail && (
@@ -78,7 +83,7 @@ export function ShellFrame({ prefs, onPrefs, panelOpen, panel, agents, topBar, b
       <div className="shell-center" data-testid="region-conversation">
         <div className="shell-frame">
           {banner}
-          {topBar}
+          {typeof topBar === "function" ? topBar(layout) : topBar}
           {layout.stacked && (
             <nav aria-label="Conversation or apps" className="shell-segments" data-testid="stack-segments">
               <button type="button" className="mb-btn" data-variant="secondary" data-size="sm" aria-pressed={!showApps} data-testid="segment-conversation" onClick={() => setSegment("conversation")}>
@@ -89,9 +94,13 @@ export function ShellFrame({ prefs, onPrefs, panelOpen, panel, agents, topBar, b
               </button>
             </nav>
           )}
-          <Content className="shell-content" data-testid="shell-content">
-            {showApps ? panel : children}
-          </Content>
+          <div className="shell-main">
+            <Content className="shell-content" data-testid="shell-content">
+              {showApps ? panel : children}
+            </Content>
+            {/* MWS-09: the details rail, beside the conversation and inside the task area; the open conversation fills it. */}
+            {layout.detailsPx > 0 && !showApps && <aside ref={detailsRef} className="details-rail" aria-label="Task details" data-testid="details-rail" style={{ width: layout.detailsPx, minWidth: DETAILS_RAIL.min }} />}
+          </div>
           {tray}
           {statusRow}
         </div>

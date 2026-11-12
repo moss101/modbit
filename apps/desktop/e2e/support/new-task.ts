@@ -48,11 +48,25 @@ export async function openTask(page: Page, taskId: string): Promise<void> {
   await expect(page.getByTestId("conversation")).toHaveAttribute("data-task-id", taskId);
 }
 
-/** The open conversation's details (state, phase, risk, evidence, context, economics, density, undo all, browser, cancel). */
+/** The title bar's More, opened: the conversation's density, undo all, browser and cancel, and the details rail's body where the task area has no room for the rail (MWS-09). */
+export async function openTaskMore(page: Page): Promise<Locator> {
+  const more = page.getByTestId("task-more");
+  if (!(await more.isVisible())) await page.getByTestId("task-details-toggle").click();
+  await expect(more).toBeVisible();
+  return more;
+}
+
+/**
+ * The open task's details (state, phase, agents, generation, attachments, risk, security, next action, the context inspector and the
+ * economics), opened behind Details in the rail's head. The rail's body is beside the conversation, or under More where the task
+ * area is 800 px or narrower (More is then opened, and stays open). The density, Undo all, Browser and Cancel task are `openTaskMore`'s.
+ */
 export async function openTaskDetails(page: Page): Promise<Locator> {
+  if ((await page.getByTestId("details-rail").count()) === 0) await openTaskMore(page);
   const panel = page.getByTestId("task-details");
-  if (!(await panel.isVisible())) await page.getByTestId("task-details-toggle").click();
-  await expect(panel).toBeVisible();
+  const toggle = page.getByTestId("rail-details-toggle");
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
+  await expect(panel).toHaveAttribute("data-open", "true");
   return panel;
 }
 

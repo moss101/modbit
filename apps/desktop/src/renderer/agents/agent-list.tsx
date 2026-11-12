@@ -89,6 +89,8 @@ export function AgentList({ sessionId, connected, selectedTaskId, onSelect, onHe
     onHeaders?.({ total: agents.headers.length, attention: agents.headers.filter((h) => h.statusClass === "NEEDS_ATTENTION").length });
   }, [agents.headers, onHeaders]);
   useEffect(() => onHeaderList?.(agents.headers), [agents.headers, onHeaderList]);
+  // A list that is not on screen reads nothing: the shell must not go on showing what it last read (the details rail then reads the header itself).
+  useEffect(() => () => onHeaderList?.([]), [onHeaderList]);
 
   useEffect(() => {
     if (!note) return;

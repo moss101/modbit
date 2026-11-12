@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { COMPACT, GEOMETRY, TYPE, densityMetrics, densityVariables, sharedVariables, themeVariables, type Density } from "@modbit/design-tokens";
 import { nodeTerminal } from "./support/apps-harness.ts";
-import { gearMenu, openTaskDetails, runTask, setDensity } from "./support/new-task.ts";
+import { gearMenu, openTaskMore, runTask, setDensity } from "./support/new-task.ts";
 import { streamingModel } from "./support/stream-model.ts";
 import { accessible, box, closeApp, git, launch, liftMinimumSize, makeRepo, setContentSize } from "./support/ui-harness.ts";
 
@@ -196,9 +196,10 @@ async function workspaceDrift(page: Page, density: Density = "comfortable"): Pro
   const bad: string[] = [];
   const m = densityMetrics(density);
   for (const id of REMOVED) if ((await page.getByTestId(id).count()) !== 0) bad.push(`removed surface ${id} is back`);
-  // The top bar: title, state, branch, overflow; no toolbar under it.
-  for (const id of ["top-bar-title", "top-bar-state", "task-details-toggle"]) if ((await page.getByTestId("top-bar").getByTestId(id).count()) !== 1) bad.push(`${id} is not in the top bar`);
-  if (await page.getByTestId("conv-density").isVisible()) bad.push("density is on the surface, not in the task's details");
+  // The top bar: title, the toggles, More; no toolbar under it. The state and the branch are the details rail's (MWS-09), so with More closed the bar holds neither.
+  for (const id of ["top-bar-title", "task-details-toggle"]) if ((await page.getByTestId("top-bar").getByTestId(id).count()) !== 1) bad.push(`${id} is not in the top bar`);
+  if ((await page.getByTestId("task-more").count()) === 0) for (const id of ["top-bar-state", "top-bar-branch"]) if ((await page.getByTestId("top-bar").getByTestId(id).count()) !== 0) bad.push(`${id} is in the top bar, not in the details rail`);
+  if (await page.getByTestId("conv-density").isVisible()) bad.push("density is on the surface, not under More");
   // MWS-01: one column, 768 at most, with its text inset to 736: the composer takes the column, the message and the rows the
   // text's width, and both are centred on the same line. Where the centre is narrower than the text they are one width.
   const scroll = await box(page, "conv-scroll");
@@ -444,15 +445,14 @@ async function composerDrift(page: Page): Promise<string[]> {
   const lineHeight = await page.getByTestId("composer-input").evaluate((el) => parseFloat(getComputedStyle(el).lineHeight));
   if ((await page.getByTestId("composer-input").inputValue()) === "" && (input.height > lineHeight + 12 || outer.height > lineHeight + 30)) bad.push(`composer: an empty box is ${outer.height} high with a ${input.height} text area: more than one line`);
   if (Math.abs(end.width - 28) > 1 || Math.abs(end.height - 28) > 1) bad.push(`composer: ${endId} is ${end.width} x ${end.height}`);
-  // Under the box and at its right: after where the task runs, in a row that ends at the box's right edge (a narrow centre has no room for "the right half").
-  const where = await page.getByTestId("conv-location").boundingBox();
+  // Under the box and at its right: a row that ends at the box's right edge (a narrow centre has no room for "the right half"). Where the task runs is the details rail's (MWS-09), not this bar's.
+  if ((await page.getByTestId("composer-foot").getByTestId("conv-location").count()) !== 0) bad.push("composer: where the task runs is under the box, not in the details rail");
   let last = 0;
   for (const id of ["mode-chip", "model-chip", "runmode-button", "context-ring"]) {
     const b = await page.getByTestId("composer-foot").getByTestId(id).boundingBox();
     if (!b) bad.push(`composer: ${id} is not in the bar under the box`);
     else {
       if (b.y < outer.y + outer.height - 1) bad.push(`composer: ${id} is not under the box (${b.y}; the box ends at ${outer.y + outer.height})`);
-      if (where && b.x < where.x + where.width) bad.push(`composer: ${id} is not under the box at the right (it is before where the task runs)`);
       last = Math.max(last, b.x + b.width);
     }
   }
@@ -478,11 +478,65 @@ async function approvalDrift(page: Page): Promise<string[]> {
   return bad;
 }
 
+/**
+ * What breaks the details rail of MWS-09 and section 5.1 (empty when it holds). Where the task area is wider than 800 and no pane is
+ * open: the rail is 320 wide and never under 280, on the editor surface with a 1 px edge at 8 %, beside the conversation and
+ * inside the task area, and nothing of it is over the composer. Where the task area is 800 or narrower, or a pane is open, there
+ * is no rail and no Details toggle to ask for one that cannot be shown. The details popover is gone everywhere.
+ */
+async function railDrift(page: Page): Promise<string[]> {
+  const bad: string[] = [];
+  const shell = page.getByTestId("shell");
+  const area = Number(await shell.getAttribute("data-center-px"));
+  const paneOpen = (await page.getByTestId("region-apps").count()) === 1 || (await shell.getAttribute("data-stacked")) === "true";
+  // The popover: a dialog of the task's details, anywhere, or the state and branch back in the title bar.
+  if ((await page.locator('[role="dialog"][data-testid="task-details"], .task-details').count()) !== 0) bad.push("rail: the details popover is back");
+  const rails = await page.getByTestId("details-rail").count();
+  if (area <= 800 || paneOpen) {
+    if (rails !== 0) bad.push(`rail: present at a task area of ${area}${paneOpen ? " with a pane open" : ""}`);
+    // With a pane open the toggle may stand, not pressed: asking for the rail closes the pane. Where the rail cannot be shown at all it is not offered.
+    if (paneOpen && (await page.getByTestId("details-toggle").count()) === 1 && (await page.getByTestId("details-toggle").getAttribute("aria-pressed")) !== "false") bad.push("rail: its toggle says shown while a pane is open");
+    if (!paneOpen && (await page.getByTestId("details-toggle").count()) !== 0) bad.push(`rail: the Details toggle is offered at a task area of ${area}, where the rail cannot be shown`);
+    return bad;
+  }
+  const on = (await page.getByTestId("details-toggle").getAttribute("aria-pressed")) === "true";
+  if (!on) return rails === 0 ? bad : [...bad, "rail: shown while its toggle says hidden"];
+  if (rails !== 1) return [...bad, `rail: ${rails} rails at a task area of ${area}`];
+  const rail = await box(page, "details-rail");
+  const style = await page.getByTestId("details-rail").evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return { min: cs.minWidth, bg: cs.backgroundColor, edge: cs.borderLeftWidth, edgeColor: cs.borderLeftColor, edgeStyle: cs.borderLeftStyle };
+  });
+  if (Math.abs(rail.width - 320) > 0.5) bad.push(`rail: ${rail.width} wide, not 320`);
+  if (style.min !== "280px") bad.push(`rail: its minimum is ${style.min}, not 280px`);
+  if (squash(style.bg) !== squash(await resolved(page, "--color-panel", "background-color"))) bad.push(`rail: on ${style.bg}, not the editor surface`);
+  if (style.edge !== "1px" || style.edgeStyle !== "solid" || squash(style.edgeColor) !== squash(await resolved(page, "--color-tab-border", "border-top-color"))) bad.push(`rail: its edge is ${style.edge} ${style.edgeStyle} ${style.edgeColor}`);
+  const centre = await box(page, "region-conversation");
+  const conversation = await box(page, "conversation");
+  const bar = await box(page, "top-bar");
+  if (Math.abs(rail.x + rail.width - (centre.x + centre.width)) > 1) bad.push("rail: not at the right edge of the task area");
+  if (Math.abs(rail.x - (conversation.x + conversation.width)) > 1) bad.push(`rail: not beside the conversation (the conversation ends at ${conversation.x + conversation.width}, the rail starts at ${rail.x})`);
+  if (rail.y < bar.y + bar.height - 1) bad.push("rail: over the title bar");
+  const composer = await box(page, "composer");
+  if (composer.x + composer.width > rail.x + 1) bad.push(`rail: over the composer (the composer ends at ${composer.x + composer.width}, the rail starts at ${rail.x})`);
+  if (conversation.width < GEOMETRY.centerMin) bad.push(`rail: the conversation beside it is ${conversation.width} wide, under the centre's minimum`);
+  // The sections stand in the record's order with a hairline between them.
+  const sections = await page.getByTestId("details-rail").locator("section").evaluateAll((els) => els.map((e) => ({ id: e.getAttribute("data-testid") ?? "", line: getComputedStyle(e).borderTopWidth })));
+  const order = ["rail-environment", "rail-approvals", "rail-context", "rail-tool-servers", "rail-changes", "rail-evidence", "rail-background", "rail-cost"];
+  const got = sections.map((s) => s.id);
+  if (got.join(" ") !== order.filter((id) => got.includes(id)).join(" ") || got.some((id) => !order.includes(id))) bad.push(`rail: sections are ${got.join(" ")}`);
+  for (const id of ["rail-environment", "rail-approvals", "rail-context"]) if (!got.includes(id)) bad.push(`rail: no ${id}`);
+  if (sections.some((s) => s.line !== "1px")) bad.push("rail: a section has no hairline above it");
+  for (const id of ["top-bar-state", "rail-details-toggle"]) if ((await page.getByTestId("details-rail").getByTestId(id).count()) !== 1) bad.push(`rail: ${id} is not in the rail's head`);
+  return bad;
+}
+
 /** What breaks the conversation's column where the centre has room for it (MWS-01): the composer 768, its text 736, inset 16 on each side. */
 async function columnDrift(page: Page): Promise<string[]> {
   const bad: string[] = [];
-  const centre = await box(page, "region-conversation");
-  if (centre.width < GEOMETRY.column + 48) return [`the centre is ${centre.width} wide: too narrow to measure the column`];
+  // The conversation itself: the task area less the details rail, where the rail is shown (MWS-09).
+  const centre = await box(page, "conversation");
+  if (centre.width < GEOMETRY.column + 48) return [`the conversation is ${centre.width} wide: too narrow to measure the column`];
   const composer = await box(page, "composer");
   const user = await box(page, "conv-user");
   if (Math.abs(composer.width - GEOMETRY.column) > 1) bad.push(`column: the composer is ${composer.width}, not ${GEOMETRY.column}`);
@@ -555,9 +609,10 @@ test("PX-194, PX-198: a scripted task with tool steps, an edit, a terminal and a
 
     // The finished conversation in Compact, with the Changes app open beside it.
     await expect(page.getByTestId("conversation")).toHaveAttribute("data-task-id", taskId);
-    await openTaskDetails(page);
+    await openTaskMore(page);
     await page.getByTestId("conv-density").selectOption("COMPACT");
     await page.getByTestId("task-details-toggle").click();
+    await expect(page.getByTestId("task-more")).toHaveCount(0);
     await expect(page.getByTestId("conv-group").first()).toBeVisible();
     await expect(page.locator('[data-testid="conv-footer"][data-outcome="COMPLETED"]').first()).toBeAttached();
     await page.getByTestId("pane-toggle-changes").click();
@@ -615,9 +670,13 @@ test("PX-194, PX-198: a scripted task with tool steps, an edit, a terminal and a
     expect(await failsWorkspace(".apps-panel { padding-top: 40px !important; }", "panel tabs"), "tabs pushed down fail").toBe(true);
     expect(await workspaceDrift(page), "clean again").toEqual([]);
 
-    // MWS-01: with the panel closed the centre has room, and the column is 768 with its text at 736. The superseded columns fail.
+    // MWS-09: while the pane is open the rail gives way, and the popover is gone.
+    expect(await railDrift(page), "the rail with a pane open").toEqual([]);
+    // MWS-01: with the panel closed and the window wide enough for the conversation beside its details rail, the column is 768 with its text at 736. The superseded columns fail.
     await page.getByTestId("toggle-apps-panel").click();
     await expect(page.getByTestId("region-apps")).toHaveCount(0);
+    await setContentSize(app, page, 1440, 800);
+    await expect(page.getByTestId("details-rail")).toBeVisible();
     for (const density of DENSITIES) {
       await setDensity(page, density);
       expect(await columnDrift(page), `the column in ${density}`).toEqual([]);
@@ -633,6 +692,62 @@ test("PX-194, PX-198: a scripted task with tool steps, an edit, a terminal and a
     expect((await failsColumn(".conv-inner { max-width: 840px !important; } .cmp > * { max-width: 840px !important; }")).length, "AWL-07's 840 column fails").toBeGreaterThan(0);
     expect((await failsColumn(":root { --mb-column-text: 768px; }")).length, "text that is not inset fails").toBeGreaterThan(0);
     expect(await columnDrift(page), "clean again").toEqual([]);
+
+    // MWS-09 and section 5.1: the rail is 320 beside the conversation in both densities and both themes, absent at a task area of 800, and the popover is gone.
+    for (const density of DENSITIES) {
+      await setDensity(page, density);
+      for (const theme of ["light", "dark"] as const) {
+        await setTheme(page, theme);
+        expect(await railDrift(page), `${theme} rail in ${density}`).toEqual([]);
+      }
+      // Compact is the tokens: a rail row is the density's row height, and its text the chrome's size.
+      const row = await page.getByTestId("details-rail").locator(".rail-row").first().evaluate((el) => ({ h: el.getBoundingClientRect().height, font: getComputedStyle(el).fontSize }));
+      expect([row.h, row.font], `a rail row in ${density}`).toEqual([densityMetrics(density).row, `${density === "compact" ? COMPACT.type.chrome.size : TYPE.chrome.size}px`]);
+    }
+    await setDensity(page, "comfortable");
+    await setTheme(page, "light");
+    for (const theme of ["light", "dark", "high-contrast"] as const) {
+      await setTheme(page, theme);
+      await accessible(page, `the details rail in ${theme}`, '[data-testid="details-rail"]');
+    }
+    await setTheme(page, "light");
+    const list = Number(await page.getByTestId("shell").getAttribute("data-list-px"));
+    await setContentSize(app, page, list + 801, 800);
+    await expect(page.getByTestId("details-rail")).toHaveCount(1);
+    expect(await railDrift(page), "a task area of 801").toEqual([]);
+    await setContentSize(app, page, list + 800, 800);
+    await expect(page.getByTestId("details-rail")).toHaveCount(0);
+    expect(await railDrift(page), "a task area of 800").toEqual([]);
+    // The retained mutations, each failing: a rail drawn at 800, the popover back, and (wide again) a rail at another width, without its minimum, off the editor surface, without its edge, and over the composer.
+    const inject = (html: string, into: string) => page.evaluate(([h, sel]) => {
+      const host = document.createElement("div");
+      host.id = "awl-rail-mutation";
+      host.innerHTML = h!;
+      document.querySelector(sel!)!.appendChild(host);
+    }, [html, into]);
+    const eject = () => page.evaluate(() => document.getElementById("awl-rail-mutation")?.remove());
+    await inject('<aside data-testid="details-rail" aria-label="mutation" style="width:320px"></aside>', ".shell-main");
+    expect(await railDrift(page), "a rail at a task area of 800 fails").toEqual(["rail: present at a task area of 800"]);
+    await eject();
+    await inject('<div role="dialog" aria-label="mutation" data-testid="task-details"></div>', '[data-testid="top-bar"]');
+    expect(await railDrift(page), "the popover back fails").toEqual(["rail: the details popover is back"]);
+    await eject();
+    expect(await railDrift(page), "clean again at 800").toEqual([]);
+    await setContentSize(app, page, 1440, 800);
+    await expect(page.getByTestId("details-rail")).toHaveCount(1);
+    const failsRail = async (css: string, needle: string) => {
+      await mutate(css);
+      const drift = await railDrift(page);
+      await restore();
+      return drift.some((d) => d.includes(needle));
+    };
+    expect(await failsRail(".details-rail { width: 260px !important; min-width: 0 !important; }", "wide, not 320"), "a 260 rail fails").toBe(true);
+    expect(await failsRail(".details-rail { min-width: 0 !important; }", "its minimum is"), "a rail with no minimum fails").toBe(true);
+    expect(await failsRail(".details-rail { background: var(--color-sidebar) !important; }", "not the editor surface"), "a rail on the sidebar surface fails").toBe(true);
+    expect(await failsRail(".details-rail { border-left: 0 !important; }", "its edge is"), "a rail with no edge fails").toBe(true);
+    expect(await failsRail(".details-rail { position: absolute !important; right: 0; top: 45px; bottom: 0; }", "over the composer"), "a rail floating over the composer fails").toBe(true);
+    expect(await failsRail(".rail-sec { border-top: 0 !important; }", "no hairline"), "sections with no hairline fail").toBe(true);
+    expect(await railDrift(page), "clean again").toEqual([]);
   } finally {
     await closeApp(app);
     model.server.close();

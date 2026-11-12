@@ -211,8 +211,21 @@ export function RingButton({ accounting, open, onToggle }: { accounting: Account
   );
 }
 
-/** The context ring for the open task from the Core's numbers the caller already reads: it shows the usage and docks the breakdown tray on a click. */
-export function ContextRingView({ taskId, accounting, economics }: { taskId: string; accounting: AccountingInfo | null; economics: TaskEconomicsSummary | null }) {
+/** The breakdown tray of the open task: whether it is docked, and the toggle the ring and the details rail share. */
+export interface ContextTray {
+  open: boolean;
+  toggle: () => void;
+}
+
+/** How the one mounted host docks the tray with the numbers it holds; null while no conversation is open. */
+let dock: (() => void) | null = null;
+
+/**
+ * The tray's owner, mounted once per open conversation with the Core's numbers: it docks the breakdown when asked and keeps a
+ * docked one following the numbers. It draws nothing, and it alone listens to the tray store here, so a tray coming or going
+ * never re-renders the conversation around it.
+ */
+export function ContextTrayHost({ taskId, accounting, economics }: { taskId: string; accounting: AccountingInfo | null; economics: TaskEconomicsSummary | null }) {
   const [setting, setSetting] = useState<UsageSetting>(loadUsageSetting);
   const snap = useSyncExternalStore(trays.subscribe, trays.getSnapshot, trays.getSnapshot);
   const open = snap.trays.some((t) => t.id === TRAY_ID);
@@ -220,15 +233,30 @@ export function ContextRingView({ taskId, accounting, economics }: { taskId: str
     setSetting(s);
     saveUsageSetting(s);
   }, []);
+  const present = useCallback(() => trays.present({ id: TRAY_ID, tone: "info", title: `Context: ${ringLabel(accounting)}`, priority: 10, body: <ContextBreakdown accounting={accounting} economics={economics} setting={setting} onSetting={set} /> }), [accounting, economics, setting, set]);
   // While the tray is docked it follows the numbers.
   useEffect(() => {
-    if (!open) return;
-    trays.present({ id: TRAY_ID, tone: "info", title: `Context: ${ringLabel(accounting)}`, priority: 10, body: <ContextBreakdown accounting={accounting} economics={economics} setting={setting} onSetting={set} /> });
-  }, [open, accounting, economics, setting, set]);
+    if (open) present();
+  }, [open, present]);
+  useEffect(() => {
+    dock = present;
+    return () => {
+      if (dock === present) dock = null;
+    };
+  }, [present]);
   useEffect(() => () => trays.dismiss(TRAY_ID), [taskId]);
-  const toggle = () => {
-    if (open) trays.dismiss(TRAY_ID);
-    else trays.present({ id: TRAY_ID, tone: "info", title: `Context: ${ringLabel(accounting)}`, priority: 10, body: <ContextBreakdown accounting={accounting} economics={economics} setting={setting} onSetting={set} /> });
-  };
-  return <RingButton accounting={accounting} open={open} onToggle={toggle} />;
+  return null;
+}
+
+/** Whether the breakdown is docked, and its toggle: for the ring and for the details rail's Context row. */
+export function useContextTray(): ContextTray {
+  const snap = useSyncExternalStore(trays.subscribe, trays.getSnapshot, trays.getSnapshot);
+  const open = snap.trays.some((t) => t.id === TRAY_ID);
+  return { open, toggle: () => (open ? trays.dismiss(TRAY_ID) : dock?.()) };
+}
+
+/** The context ring for the open task from the Core's numbers the caller already reads: it shows the usage and docks the breakdown tray on a click. */
+export function ContextRingView({ accounting }: { accounting: AccountingInfo | null }) {
+  const tray = useContextTray();
+  return <RingButton accounting={accounting} open={tray.open} onToggle={tray.toggle} />;
 }

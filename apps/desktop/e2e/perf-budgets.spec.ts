@@ -32,7 +32,7 @@ import { closeApp, launch, makeRepo, setContentSize } from "./support/ui-harness
 import { dist, pacedModel, retain, type Dist, type Part } from "./support/perf.ts";
 import { Gate } from "./support/stream-model.ts";
 import { createTask, openConversation, sessionOf } from "./support/conversation-harness.ts";
-import { openTaskDetails, toNewTask } from "./support/new-task.ts";
+import { openTaskMore, toNewTask } from "./support/new-task.ts";
 
 const PROFILE = process.env.MODBIT_PERF_PROFILE ?? "ci";
 const ENFORCE = PROFILE === "reference";
@@ -339,7 +339,7 @@ test("PERF PX-047: a long transcript scrolls; the frame distribution is recorded
     }
     await openConversation(page, taskId);
     // Nothing folds in the detailed density: the rows the Core projected are the rows on the page.
-    await openTaskDetails(page);
+    await openTaskMore(page);
     await page.getByTestId("conv-density").selectOption("DETAILED");
     await expect(page.getByTestId("conversation")).toHaveAttribute("data-density", "DETAILED");
     const total = await page.evaluate((t) => window.modbit.transcript(t, { density: "DETAILED", limit: 1 }).then((v) => v.totalRows), taskId);

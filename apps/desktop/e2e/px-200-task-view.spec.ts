@@ -147,8 +147,12 @@ test("PX-200: the plan card follows the Core's work graph, the composer is one l
     await page.keyboard.press("Escape");
     await page.getByTestId("context-ring").click();
     await expect(page.getByTestId("context-tray")).toBeVisible();
-    await page.getByTestId("context-ring").click();
-    await expect(page.getByTestId("context-tray")).toHaveCount(0);
+    // A click that lands while the ring re-renders can be lost (wave4.spec.ts notes it from PR 115; seen here on the Windows
+    // runner, CI run 43198251756): closing is retried only while the tray is still open, so a tray that never closes still fails.
+    await expect(async () => {
+      if ((await page.getByTestId("context-tray").count()) > 0) await page.getByTestId("context-ring").click();
+      await expect(page.getByTestId("context-tray")).toHaveCount(0, { timeout: 2_000 });
+    }).toPass({ timeout: 20_000 });
     await page.getByTestId("runmode-button").click();
     await expect(page.getByTestId("runmode-dialog")).toBeVisible();
     await page.getByTestId("runmode-close").click();
