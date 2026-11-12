@@ -9,7 +9,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { expectTaskState, runTask } from "./support/new-task.ts";
+import { expectTaskState, openPane, runTask } from "./support/new-task.ts";
 import { closeApp, launch, makeRepo, scriptedModel, setContentSize } from "./support/ui-harness.ts";
 
 const SCRIPT = [
@@ -45,12 +45,12 @@ test("the panel keeps its own tab for each task, by the task's id, across select
 
     // Task A: Terminal. Task B: Evidence.
     await row(page, a).click();
-    if ((await page.getByTestId("region-apps").count()) === 0) await page.getByTestId("toggle-apps-panel").click();
+    await openPane(page);
     await expect(page.getByTestId("apps-panel")).toHaveAttribute("data-task-id", a);
     await page.getByTestId("tab-terminal").click();
     await expect(page.getByTestId("app-terminal-empty")).toBeVisible();
     await row(page, b).click();
-    if ((await page.getByTestId("region-apps").count()) === 0) await page.getByTestId("toggle-apps-panel").click();
+    await openPane(page);
     await expect(page.getByTestId("apps-panel")).toHaveAttribute("data-task-id", b);
     await expect(page.getByTestId("tab-terminal"), "task B starts with its own default tab, not task A's").toHaveAttribute("aria-selected", "false");
     await page.getByTestId("tab-evidence").click();

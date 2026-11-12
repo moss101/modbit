@@ -98,6 +98,12 @@ import {
   GetTranscriptSchema,
   TranscriptPageSchema,
   type TranscriptPage,
+  GetWorkGraphSchema,
+  WorkGraphViewSchema,
+  type WorkGraphView,
+  GetPlanSchema,
+  PlanViewSchema,
+  type PlanView,
   TranscriptDensity,
   GetAgentHeadersSchema,
   SearchConversationsSchema,
@@ -600,6 +606,23 @@ export class CoreClient {
     );
     const ack = await this.command("GetTranscript", payload);
     return fromBinary(TranscriptPageSchema, ack.result);
+  }
+
+  /**
+   * The task's work graph (REQ-PX-200, DR-PX-2026-11-11-021 MWS-06): the steps of its plan with the state the Core holds for each
+   * (PENDING, READY, ACTIVE, BLOCKED, DONE, FAILED, CANCELLED), a projection of the task's log. A read: nothing is leased or changed.
+   */
+  async getWorkGraph(taskId: string): Promise<WorkGraphView> {
+    const payload = toBinary(GetWorkGraphSchema, create(GetWorkGraphSchema, { taskId: { value: unhex(taskId) } }));
+    const ack = await this.command("GetWorkGraph", payload);
+    return fromBinary(WorkGraphViewSchema, ack.result);
+  }
+
+  /** The task's plan versions as the Core recorded them (REQ-PX-200): the outcome each states, who wrote it and the versions turns ran under. A read. */
+  async getPlan(taskId: string): Promise<PlanView> {
+    const payload = toBinary(GetPlanSchema, create(GetPlanSchema, { taskId: { value: unhex(taskId) } }));
+    const ack = await this.command("GetPlan", payload);
+    return fromBinary(PlanViewSchema, ack.result);
   }
 
   /** PX-042: the header of every task of a session; the status class is the Core's. */

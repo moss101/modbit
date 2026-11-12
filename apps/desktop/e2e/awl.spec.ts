@@ -503,8 +503,8 @@ test("PX-194, PX-198: a scripted task with tool steps, an edit, a terminal and a
     await page.getByTestId("task-details-toggle").click();
     await expect(page.getByTestId("conv-group").first()).toBeVisible();
     await expect(page.locator('[data-testid="conv-footer"][data-outcome="COMPLETED"]').first()).toBeAttached();
-    await page.getByTestId("toggle-apps-panel").click();
-    await page.getByTestId("tab-changes").click();
+    await page.getByTestId("pane-toggle-changes").click();
+    await expect(page.getByTestId("tab-changes")).toHaveAttribute("aria-selected", "true");
     await expect(page.getByTestId("app-changes")).toBeVisible({ timeout: 30_000 });
     for (const density of DENSITIES) {
       await setDensity(page, density);

@@ -1,18 +1,19 @@
 /**
- * The approval stack's card and deck (REQ-PX-058; docs/65 AFW-F01..F13), docked
- * in the tray host. The card shows the exact intent: the tool, the command or
- * paths, the effect class, why the Core asked (its typed reason) and the intent
- * hash a decision must name. Decisions are typed preload calls made by the
- * container; this component draws and reads the keys. Nothing here approves
- * anything by itself, and a decision is bound to the hash of the card on screen.
+ * The approval stack's card and deck (REQ-PX-058, REQ-PX-200; docs/65 AFW-F01..F13; DR-PX-2026-11-11-021 MWS-08), docked
+ * in the tray host. The card says what the effect will do in plain words, shows the exact command and why the Core asked
+ * (its typed reason), then Skip, Always allow and Allow once. Always allow opens one menu holding the prefix and the place a
+ * rule would apply. The tool's own name, the exact arguments and the intent hash a decision must name sit behind one
+ * disclosure; closed, they stay in the accessibility tree. Decisions are typed preload calls made by the container; this
+ * component draws and reads the keys. Nothing here approves anything by itself, and a decision is bound to the hash of the
+ * card on screen.
  */
-import { useMemo, useRef } from "react";
-import { Badge, Button, Kbd, useKeyScope } from "@modbit/ui";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { Badge, Button, Icon, Kbd, useKeyScope, useLayer, useOutsidePress } from "@modbit/ui";
 import type { KeyScope } from "@modbit/ui/logic";
 import type { DockApprovalView } from "../../shared/control-types.ts";
 import { ComputerApprovalBody } from "../computer/approval-body.tsx";
 import { approvalTitle } from "../computer/model.ts";
-import { alwaysAvailable, askClassLabel, cardKey, commandLine, effectWords, humanTitle, isIrreversible, prefixLadder, stepIndex, whyAsked, type CardKey, type KeyFacts } from "./model.ts";
+import { alwaysAvailable, askClassLabel, cardKey, commandLine, effectWords, humanTitle, isIrreversible, prefixLadder, prefixWords, SCOPE_WORDS, stepIndex, whyAsked, type CardKey, type KeyFacts } from "./model.ts";
 
 export interface DeckProps {
   approvals: readonly DockApprovalView[];
@@ -89,6 +90,33 @@ export function ApprovalDeck(props: DeckProps) {
   );
   useKeyScope(approvals.length > 0, scope);
 
+  // The one disclosure and the one menu belong to the card on screen: another card starts with both closed.
+  const exactId = useId();
+  const alwaysId = useId();
+  const [exactOpen, setExactOpen] = useState(false);
+  const [alwaysOpen, setAlwaysOpen] = useState(false);
+  const alwaysTrigger = useRef<HTMLButtonElement>(null);
+  const alwaysPop = useRef<HTMLDivElement>(null);
+  const chosenPrefix = useRef<HTMLInputElement>(null);
+  const closeAlways = (restoreFocus: boolean) => {
+    setAlwaysOpen(false);
+    if (restoreFocus) alwaysTrigger.current?.focus({ preventScroll: true });
+  };
+  const shownId = a?.approvalId ?? null;
+  useEffect(() => {
+    setExactOpen(false);
+    setAlwaysOpen(false);
+  }, [shownId]);
+  useEffect(() => {
+    if (confirming || busy) setAlwaysOpen(false);
+  }, [confirming, busy]);
+  // A layer: Escape closes the menu and nothing else, before the card's key scope can read it as Skip.
+  useLayer(alwaysOpen, "approval-always", false, () => closeAlways(true));
+  useOutsidePress(alwaysPop, alwaysOpen, () => closeAlways(false), alwaysTrigger);
+  useEffect(() => {
+    if (alwaysOpen) chosenPrefix.current?.focus({ preventScroll: true });
+  }, [alwaysOpen]);
+
   if (!a) return null;
   const why = whyAsked(a.reason);
   const foreign = a.taskId !== props.openTaskId;
@@ -98,6 +126,7 @@ export function ApprovalDeck(props: DeckProps) {
   const ladder = !cc && a.intent.argv ? prefixLadder(a.intent.argv) : [];
   const prefixKey = props.prefix.join("\u0000");
   const n = approvals.length;
+  const command = a.intent.argv ? commandLine(a.intent.argv) : a.intent.command;
   return (
     <div ref={root} className="appr" tabIndex={-1} role="group" aria-label={`Approval request ${index + 1} of ${n}`} data-testid="approval-card" data-approval-id={a.approvalId} data-intent-hash={a.intentHash} data-effect-class={a.effectClass} data-ask-reason={a.reason.code}>
       <div className={n > 1 ? "appr-deckbar" : "appr-deckbar mb-sr-only"} data-testid="approval-deck">
@@ -125,94 +154,104 @@ export function ApprovalDeck(props: DeckProps) {
           .
         </p>
       )}
+      {/* The headline is what will happen, in words; the tool's own name is behind the disclosure. */}
       <h2 className="appr-title" data-testid="approval-title">
-        {cc ? approvalTitle(cc.tool, cc.kind) : humanTitle(a.toolName)} <code data-testid="approval-tool">{a.toolName}</code>
+        <span className="appr-title-words">{cc ? approvalTitle(cc.tool, cc.kind) : `${humanTitle(a.toolName)}?`}</span>
         <Badge tone={irreversible ? "danger" : "warn"}>{effectWords(a.effectClass)}</Badge>
       </h2>
       {cc && <ComputerApprovalBody taskId={a.taskId} intent={cc} expiresAtMs={a.expiresAtMs} />}
-      {!cc && <dl className="appr-intent" data-testid="approval-intent">
-        {a.intent.argv ? (
-          <>
-            <dt>Command</dt>
-            <dd>
-              <code className="appr-command" data-testid="approval-command">
-                {commandLine(a.intent.argv)}
-              </code>
-            </dd>
-          </>
-        ) : a.intent.command ? (
-          <>
-            <dt>Command</dt>
-            <dd>
-              <code className="appr-command" data-testid="approval-command">
-                {a.intent.command}
-              </code>
-            </dd>
-          </>
-        ) : null}
-        {a.intent.cwd && (
-          <>
-            <dt>Working directory</dt>
-            <dd data-testid="approval-cwd">{a.intent.cwd}</dd>
-          </>
-        )}
-        {a.intent.paths.length > 0 && (
-          <>
-            <dt>Paths</dt>
-            <dd data-testid="approval-paths">{a.intent.paths.join(", ")}</dd>
-          </>
-        )}
-        {a.intent.hosts.length > 0 && (
-          <>
-            <dt>Contacts</dt>
-            <dd data-testid="approval-hosts">{a.intent.hosts.join(", ")}</dd>
-          </>
-        )}
-        {a.intent.escalation && a.intent.escalation !== "none" && (
-          <>
-            <dt>Asks for</dt>
-            <dd data-testid="approval-escalation">more access: {a.intent.escalation}</dd>
-          </>
-        )}
-        <dt>Effect</dt>
-        <dd className="mb-sr-only" data-testid="approval-effect">
-          {effectWords(a.effectClass)}
-          {a.reason.contained ? ", contained in a sandbox" : ", not sandboxed"}
-        </dd>
-        {a.reason.askClasses.length > 0 && (
-          <>
-            <dt>Always asks</dt>
-            <dd data-testid="approval-classes">{a.reason.askClasses.map(askClassLabel).join(", ")}</dd>
-          </>
-        )}
-      </dl>}
-      {!cc && !a.intent.found && (
-        <p className="appr-fine" data-testid="approval-no-args">
-          The call's arguments could not be read from the Core's record. The decision is still bound to the intent hash below.
-        </p>
-      )}
-      {!cc && a.intent.found && (
-        <details className="appr-args">
-          <summary data-testid="approval-args-toggle">Exact arguments{a.intent.truncated ? " (long values clipped)" : ""}</summary>
-          <pre data-testid="approval-args">{a.intent.argsPreview}</pre>
-        </details>
-      )}
       {!cc && (
-        <p className="appr-why" data-testid="approval-why">
-          {why.headline} <span className="mb-sr-only">{why.detail}</span>
-        </p>
+        <div className="appr-body">
+          {command && (
+            <p className="appr-command-line">
+              <span className="mb-sr-only">Command: </span>
+              <code className="appr-command" data-testid="approval-command">
+                {command}
+              </code>
+            </p>
+          )}
+          <dl className="appr-intent" data-testid="approval-intent">
+            {a.intent.paths.length > 0 && (
+              <>
+                <dt>Paths</dt>
+                <dd data-testid="approval-paths">{a.intent.paths.join(", ")}</dd>
+              </>
+            )}
+            {a.intent.hosts.length > 0 && (
+              <>
+                <dt>Contacts</dt>
+                <dd data-testid="approval-hosts">{a.intent.hosts.join(", ")}</dd>
+              </>
+            )}
+            {a.intent.escalation && a.intent.escalation !== "none" && (
+              <>
+                <dt>Asks for</dt>
+                <dd data-testid="approval-escalation">more access: {a.intent.escalation}</dd>
+              </>
+            )}
+            {a.reason.askClasses.length > 0 && (
+              <>
+                <dt>Always asks</dt>
+                <dd data-testid="approval-classes">{a.reason.askClasses.map(askClassLabel).join(", ")}</dd>
+              </>
+            )}
+          </dl>
+          <p className="appr-why" data-testid="approval-why">
+            {why.headline} <span className="mb-sr-only">{why.detail}</span>
+            {a.reason.runMode && (
+              <>
+                {" "}
+                <button type="button" className="agents-link" onClick={props.onChangeMode} data-testid="approval-change-mode">
+                  Change run mode
+                </button>
+              </>
+            )}
+          </p>
+        </div>
       )}
-      <p className="appr-fine">
-        Intent <code data-testid="approval-intent-hash" title={a.intentHash}>{a.intentHash.slice(0, 16)}</code>. <span className="mb-sr-only">{cc ? "Approving it once approves exactly this; the same action asked again asks again." : "Running it once runs exactly this; the same command asked again asks again."}</span>
-        {!cc && a.reason.runMode && (
-          <>
-            {" "}<span className="mb-sr-only">Run mode: <span data-testid="approval-mode">{a.reason.runMode.replace(/_/g, " ").toLowerCase()}</span>.</span>{" "}
-            <button type="button" className="agents-link" onClick={props.onChangeMode} data-testid="approval-change-mode">
-              Change run mode
-            </button>
-          </>
-        )}
-      </p>
+      {/* One disclosure for the exact intent. Closed, its content is clipped from sight and stays in the accessibility tree: the decision names this hash. */}
+      <div className="appr-exact-wrap">
+        <button type="button" className="appr-disc" aria-expanded={exactOpen} aria-controls={exactId} onClick={() => setExactOpen((o) => !o)} data-testid="approval-args-toggle">
+          <Icon name={exactOpen ? "chevron-down" : "chevron-right"} size={14} />
+          {cc ? "Exact intent" : `Exact arguments and intent${a.intent.truncated ? " (long values clipped)" : ""}`}
+        </button>
+        <div id={exactId} className={exactOpen ? "appr-exact" : "appr-exact mb-sr-only"} data-testid="approval-exact" data-open={exactOpen}>
+          <dl className="appr-exact-list">
+            <dt>Tool</dt>
+            <dd>
+              <code data-testid="approval-tool">{a.toolName}</code>
+            </dd>
+            <dt>Intent</dt>
+            <dd>
+              <code data-testid="approval-intent-hash" title={a.intentHash}>
+                {a.intentHash.slice(0, 16)}
+              </code>{" "}
+              <span className="mb-sr-only">{cc ? "Approving it once approves exactly this; the same action asked again asks again." : "Allowing it once runs exactly this; the same command asked again asks again."}</span>
+            </dd>
+            {!cc && a.intent.cwd && (
+              <>
+                <dt>Working directory</dt>
+                <dd data-testid="approval-cwd">{a.intent.cwd}</dd>
+              </>
+            )}
+            <dt>Effect</dt>
+            <dd data-testid="approval-effect">
+              {effectWords(a.effectClass)}
+              {cc ? "" : a.reason.contained ? ", contained in a sandbox" : ", not sandboxed"}
+            </dd>
+            {!cc && a.reason.runMode && (
+              <>
+                <dt>Run mode</dt>
+                <dd data-testid="approval-mode">{a.reason.runMode.replace(/_/g, " ").toLowerCase()}</dd>
+              </>
+            )}
+          </dl>
+          {!cc && !a.intent.found && <p data-testid="approval-no-args">The call's arguments could not be read from the Core's record. The decision is still bound to the intent hash above.</p>}
+          {!cc && a.intent.found && (
+            <pre data-testid="approval-args">{a.intent.argsPreview}</pre>
+          )}
+        </div>
+      </div>
       {props.note && (
         <p className="appr-note" role="status" data-testid="approval-note" data-kind={props.note.kind}>
           {props.note.text}
@@ -231,36 +270,64 @@ export function ApprovalDeck(props: DeckProps) {
         </div>
       ) : (
         <div className="appr-foot">
-          <Button size="sm" onClick={props.onSkip} disabled={busy} data-testid="approval-skip" aria-label="Skip this effect (it does not run)">
+          <Button size="sm" variant="ghost" onClick={props.onSkip} disabled={busy} data-testid="approval-skip" aria-label="Skip this effect (it does not run)">
             Skip <Kbd chord="esc" />
           </Button>
           <span className="appr-spacer" />
           {alwaysOk && ladder.length > 0 && (
-            <>
-              <label className="meta" htmlFor={`prefix-${a.approvalId}`}>
-                Allow prefix
-              </label>
-              <select id={`prefix-${a.approvalId}`} className="appr-prefix" value={prefixKey} onChange={(e) => props.onPrefix(e.target.value.split("\u0000"))} disabled={busy} data-testid="approval-prefix">
-                {ladder.map((p) => (
-                  <option key={p.join("\u0000")} value={p.join("\u0000")}>
-                    {commandLine(p)}
-                  </option>
-                ))}
-              </select>
-              <label className="meta" htmlFor={`scope-${a.approvalId}`}>
-                in
-              </label>
-              <select id={`scope-${a.approvalId}`} className="appr-prefix" value={props.scope} onChange={(e) => props.onScope(e.target.value === "TASK" ? "TASK" : "REPO")} disabled={busy} data-testid="approval-scope">
-                <option value="REPO">this repository</option>
-                <option value="TASK">this task</option>
-              </select>
-              <Button size="sm" onClick={props.onAlways} disabled={busy} data-testid="approval-always">
-                Always <Kbd chord="shift+enter" />
+            <span className="appr-always-host">
+              <Button ref={alwaysTrigger} size="sm" aria-haspopup="dialog" aria-expanded={alwaysOpen} aria-controls={alwaysOpen ? alwaysId : undefined} onClick={() => setAlwaysOpen((o) => !o)} disabled={busy} data-testid="approval-always">
+                Always allow <Icon name="chevron-down" size={12} />
               </Button>
-            </>
+              {alwaysOpen && (
+                <div ref={alwaysPop} id={alwaysId} className="appr-always" role="dialog" aria-label="Always allow: which commands, and where" data-testid="approval-always-menu">
+                  <fieldset className="appr-always-group" data-testid="approval-prefix" data-value={commandLine(props.prefix)}>
+                    <legend>Allow without asking</legend>
+                    {ladder.map((p, i) => {
+                      const key = p.join("\u0000");
+                      const words = prefixWords(p, a.intent.argv ?? []);
+                      return (
+                        <label key={key} className="appr-always-item" data-checked={key === prefixKey}>
+                          <input ref={key === prefixKey ? chosenPrefix : undefined} type="radio" name={`${alwaysId}-prefix`} value={key} checked={key === prefixKey} onChange={() => props.onPrefix(p)} disabled={busy} data-testid="approval-prefix-option" data-prefix={commandLine(p)} data-index={i} />
+                          <span className="appr-always-a">{commandLine(p)}</span>
+                          <span className="appr-always-b">{words}</span>
+                        </label>
+                      );
+                    })}
+                  </fieldset>
+                  <fieldset className="appr-always-group" data-testid="approval-scope" data-value={props.scope}>
+                    <legend>Where</legend>
+                    {(["REPO", "TASK"] as const).map((sc) => (
+                      <label key={sc} className="appr-always-item" data-checked={props.scope === sc}>
+                        <input type="radio" name={`${alwaysId}-scope`} value={sc} checked={props.scope === sc} onChange={() => props.onScope(sc)} disabled={busy} data-testid="approval-scope-option" data-scope={sc} />
+                        <span className="appr-always-a appr-always-plain">{SCOPE_WORDS[sc].label}</span>
+                        <span className="appr-always-b">{SCOPE_WORDS[sc].detail}</span>
+                      </label>
+                    ))}
+                  </fieldset>
+                  <div className="appr-always-foot">
+                    <Button size="sm" variant="ghost" onClick={() => closeAlways(true)} data-testid="approval-always-cancel">
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={() => {
+                        closeAlways(true);
+                        props.onAlways();
+                      }}
+                      disabled={busy || props.prefix.length === 0}
+                      data-testid="approval-always-confirm"
+                    >
+                      Allow and run
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </span>
           )}
           <Button size="sm" variant="primary" onClick={props.onRun} disabled={busy} data-testid="approval-run">
-            {cc ? "Approve" : "Run"} <Kbd chord="enter" />
+            {cc ? "Approve" : "Allow once"} <Kbd chord="enter" />
           </Button>
         </div>
       )}

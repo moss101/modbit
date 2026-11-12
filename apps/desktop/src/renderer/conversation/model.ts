@@ -330,3 +330,128 @@ export function unfinishedCalls(statuses: readonly string[]): string[] {
   if (notRun > 0) parts.push(`${notRun} not run`);
   return parts;
 }
+
+// ------------------------------------------------------- the plan (REQ-PX-200)
+
+/** A transcript row that records a plan version (`PlanRecorded` / `PlanRevised`): the Core draws it as a `plan.update` step. */
+export const isPlanRow = (r: TranscriptRowView): boolean => r.kind === "TOOL_CARD" && r.facts.type === "tool" && r.facts.toolName.startsWith("plan.");
+
+function withoutPlanRows(rows: readonly TranscriptRowView[]): TranscriptRowView[] {
+  const out: TranscriptRowView[] = [];
+  for (const r of rows) {
+    if (isPlanRow(r)) continue;
+    if (r.children.length === 0 || !r.children.some((c) => isPlanRow(c) || c.children.length > 0)) {
+      out.push(r);
+      continue;
+    }
+    const children = withoutPlanRows(r.children);
+    // A fold that held only plan versions has nothing left to say: the card says it.
+    if (children.length === 0) continue;
+    const removed = r.children.length - children.length;
+    out.push(removed === 0 ? r : { ...r, children, facts: r.facts.type === "group" ? { ...r.facts, steps: Math.max(0, r.facts.steps - removed), others: Math.max(0, r.facts.others - removed) } : r.facts });
+  }
+  return out;
+}
+
+const holdsPlanRow = (r: TranscriptRowView): boolean => isPlanRow(r) || r.children.some(holdsPlanRow);
+
+export interface PlanPlacement {
+  rows: TranscriptRowView[];
+  /** How many of `rows` stand before the card; null when no card is drawn. */
+  cardAt: number | null;
+}
+
+/**
+ * Where the plan card stands (DR-PX-2026-11-11-021 MWS-06). While the Core's work graph has steps, one card says the plan: it
+ * stands where the latest plan version was recorded, and every "updated the plan" step is taken out of the transcript, alone
+ * or inside a fold. A task whose plans named no steps has no card and keeps its plan steps as they were. A graph with steps
+ * and no plan step on the page (a long conversation, a plan a person revised) puts the card at the end.
+ */
+export function withPlanCard(rows: readonly TranscriptRowView[], graphHasSteps: boolean): PlanPlacement {
+  if (!graphHasSteps) return { rows: rows as TranscriptRowView[], cardAt: null };
+  let last = -1;
+  for (let i = 0; i < rows.length; i++) if (holdsPlanRow(rows[i]!)) last = i;
+  if (last < 0) return { rows: rows as TranscriptRowView[], cardAt: rows.length };
+  const before = withoutPlanRows(rows.slice(0, last + 1));
+  return { rows: [...before, ...withoutPlanRows(rows.slice(last + 1))], cardAt: before.length };
+}
+
+export type StepTone = "ok" | "running" | "warn" | "danger" | "idle";
+
+export interface PlanStep {
+  id: string;
+  title: string;
+  /** The Core's state, as it named it. */
+  status: string;
+  tone: StepTone;
+  /** The state in words (the glyph is never the only sign). */
+  words: string;
+  /** What blocks the step, when the Core says so. */
+  blockers: string[];
+  current: boolean;
+}
+
+const STEP_WORDS: Record<string, { tone: StepTone; words: string }> = {
+  DONE: { tone: "ok", words: "Done" },
+  ACTIVE: { tone: "running", words: "In progress" },
+  BLOCKED: { tone: "warn", words: "Blocked" },
+  FAILED: { tone: "danger", words: "Failed" },
+  CANCELLED: { tone: "idle", words: "Dropped" },
+  READY: { tone: "idle", words: "Next" },
+  PENDING: { tone: "idle", words: "Not started" },
+};
+
+/**
+ * The card's steps from the Core's work graph, in the graph's order. The state is the Core's; the only thing added is whether
+ * an active step is moving: a step the Core calls ACTIVE while the task waits on the person or is not running says so instead
+ * of spinning.
+ */
+export function planSteps(steps: readonly { id: string; title: string; status: string; blockers: readonly string[] }[], task: { running: boolean; needsPerson: boolean }): PlanStep[] {
+  return steps.map((s) => {
+    const known = STEP_WORDS[s.status];
+    const blockers = s.blockers.filter((b) => b.trim() !== "");
+    if (!known) return { id: s.id, title: s.title, status: s.status, tone: "idle", words: s.status.replace(/_/g, " ").toLowerCase() || "unknown", blockers, current: false };
+    if (s.status === "ACTIVE" && !task.running) return { id: s.id, title: s.title, status: s.status, tone: task.needsPerson ? "warn" : "idle", words: task.needsPerson ? "In progress, waiting for you" : "In progress, not running now", blockers, current: true };
+    return { id: s.id, title: s.title, status: s.status, tone: known.tone, words: known.words, blockers, current: s.status === "ACTIVE" };
+  });
+}
+
+/** "2 of 5 done", with what else needs saying; dropped steps are not counted as work to do. */
+export function planProgress(steps: readonly { status: string }[]): string {
+  const live = steps.filter((s) => s.status !== "CANCELLED");
+  const n = (st: string) => steps.filter((s) => s.status === st).length;
+  const parts = [`${n("DONE")} of ${live.length} done`];
+  if (n("FAILED") > 0) parts.push(`${n("FAILED")} failed`);
+  if (n("BLOCKED") > 0) parts.push(`${n("BLOCKED")} blocked`);
+  if (n("CANCELLED") > 0) parts.push(`${n("CANCELLED")} dropped`);
+  return parts.join(", ");
+}
+
+// ------------------------------------------------- the status line (REQ-PX-200)
+
+/** `42s`, `3m 12s`, `1h 04m`: how long the turn has run. */
+export function elapsedWords(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ${String(s % 60).padStart(2, "0")}s`;
+  return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m`;
+}
+
+/** `850 tokens`, `18.4k tokens`, `1.2M tokens`; "" when the Core has counted none. */
+export function tokenWords(tokens: bigint): string {
+  if (tokens <= 0n) return "";
+  const n = Number(tokens);
+  if (n < 1000) return `${n} ${n === 1 ? "token" : "tokens"}`;
+  if (n < 1_000_000) return `${(Math.floor(n / 100) / 10).toFixed(1)}k tokens`;
+  return `${(Math.floor(n / 100_000) / 10).toFixed(1)}M tokens`;
+}
+
+/** Phases in which the line says how long the turn has been going: it runs, or it stopped to wait for the person. */
+export const TIMED_PHASES: ReadonlySet<string> = new Set(["RUNNING", "WAITING", "NEEDS_ATTENTION"]);
+
+/** When the turn the tail speaks of began: the person's latest message, else the first thing the task did; 0 when the page has neither. */
+export function turnStartMs(rows: readonly TranscriptRowView[]): number {
+  for (let i = rows.length - 1; i >= 0; i--) if (rows[i]!.kind === "USER_MESSAGE" && rows[i]!.atMs > 0) return rows[i]!.atMs;
+  return rows.find((r) => r.atMs > 0)?.atMs ?? 0;
+}

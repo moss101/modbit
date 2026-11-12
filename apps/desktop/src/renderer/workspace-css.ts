@@ -92,6 +92,8 @@ export const workspaceCss = `
 .agents-preview-reason { margin: 0; color: var(--mb-color-text-muted); overflow-wrap: anywhere; }
 .agents-preview-facts { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--mb-space-0_5) var(--mb-space-3); font-size: var(--mb-type-caption-size); }
 .agents-preview-fact { display: contents; }
+/* MWS-20: the last line the assistant wrote, under the state and its reason; at most three lines of the card. */
+.agents-preview-last { margin: 0; color: var(--mb-color-text-muted); overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
 .agents-preview-fact dt { color: var(--mb-color-text-muted); }
 .agents-preview-fact dd { margin: 0; font-variant-numeric: tabular-nums; }
 .agents-preview-actions { display: flex; gap: var(--mb-space-1_5); }
@@ -143,7 +145,8 @@ export const workspaceCss = `
 .conv-aborted { border: 1px dashed var(--mb-color-warn); background: var(--mb-color-warn-tint); border-radius: var(--radius-md); padding: var(--mb-space-2); }
 .conv-aborted p { margin: 0 0 var(--mb-space-1); }
 .conv-partial { opacity: 0.85; border-left: 2px solid var(--mb-color-warn); padding-left: var(--mb-space-2); }
-.conv-tool, .conv-group > summary { display: flex; align-items: center; gap: 6px; min-height: 18px; color: var(--mb-color-text-muted); font-size: var(--mb-type-chrome-size); line-height: var(--mb-type-chrome-line); }
+/* MWS-06: a step or fold is one line at the transcript's size. */
+.conv-tool, .conv-group > summary { display: flex; align-items: center; gap: 6px; min-height: 18px; color: var(--mb-color-text-muted); font-size: var(--mb-type-body-size); line-height: var(--mb-type-body-line); }
 .conv-tool { flex-wrap: wrap; padding: 0; content-visibility: visible; }
 .conv-tool > svg, .conv-group > summary > svg { flex: none; }
 .conv-tool-class { color: var(--mb-color-text); }
@@ -173,7 +176,23 @@ export const workspaceCss = `
 .conv-boundary { align-self: center; text-align: center; padding: var(--mb-space-1) 0; }
 .conv-divider { display: flex; align-items: center; gap: var(--mb-space-2); color: var(--mb-color-accent-text); font-size: var(--mb-type-caption-size); font-weight: 600; max-width: none; }
 .conv-divider::before, .conv-divider::after { content: ""; flex: 1 1 0; border-top: 1px solid var(--mb-color-accent); }
-.conv-tail { flex: none; display: flex; align-items: center; gap: var(--mb-space-2); padding: var(--mb-space-1) 0; font-size: var(--mb-type-chrome-size); }
+/* MWS-06: the plan is one card of steps with their state, on the conversation's surface with a hairline. */
+.conv-plan { flex: none; display: flex; flex-direction: column; gap: var(--mb-space-2); padding: 12px 16px; border: 1px solid var(--color-tab-border); border-radius: var(--radius-xl); background: var(--mb-surface-conversation); font-size: var(--mb-type-body-size); line-height: var(--mb-type-body-line); }
+.conv-plan-head { display: flex; align-items: baseline; gap: var(--mb-space-2); }
+.conv-plan-title { margin: 0; font-size: var(--mb-type-chrome-size); line-height: var(--mb-type-chrome-line); font-weight: 600; }
+.conv-plan-progress { font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); }
+.conv-plan-outcome { margin: 0; color: var(--mb-color-text-muted); overflow-wrap: anywhere; }
+.conv-plan-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--mb-space-2); }
+.conv-plan-step { display: flex; align-items: baseline; gap: var(--mb-space-2); color: var(--mb-color-text-muted); }
+.conv-plan-step > .mb-dot { flex: none; align-self: center; }
+.conv-plan-step[data-current="true"], .conv-plan-step[data-status="FAILED"], .conv-plan-step[data-status="BLOCKED"] { color: var(--mb-color-text); }
+.conv-plan-step[data-status="CANCELLED"] .conv-plan-step-title { text-decoration: line-through; }
+.conv-plan-step-title { min-width: 0; overflow-wrap: anywhere; }
+.conv-plan-step-state { flex: none; max-width: 50%; font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); }
+/* MWS-06: the line under the last block says what is running, for how long and the tokens used. */
+.conv-tail { flex: none; display: flex; align-items: center; gap: var(--mb-space-3); padding: var(--mb-space-1) 0; font-size: var(--mb-type-body-size); line-height: var(--mb-type-body-line); color: var(--mb-color-text-muted); }
+.conv-tail-say { display: inline-flex; align-items: center; gap: var(--mb-space-2); min-width: 0; }
+.conv-tail-meta { flex: none; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .conv-tail[data-stall="2"], .conv-tail[data-stall="3"] { font-weight: 600; }
 .conv-notice { flex: none; width: 100%; max-width: var(--mb-column); margin: 0 auto var(--mb-space-1); box-sizing: border-box; border: 1px solid var(--mb-color-border-control); border-radius: var(--radius-lg); background: var(--mb-surface-conversation); padding: var(--mb-space-1) var(--mb-space-3); }
 .conv-notice[data-kind="error"] { border-color: var(--mb-color-danger); }

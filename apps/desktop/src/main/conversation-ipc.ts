@@ -8,10 +8,10 @@
  * decides the status class, the density grouping, the unread marker and the
  * search hits, and the renderer shows them.
  */
-import type { AgentHeader, AgentHeaders, ConversationSearchResults, TranscriptPage, TranscriptRow } from "@modbit/surface-protocol";
+import type { AgentHeader, AgentHeaders, ConversationSearchResults, PlanView, TranscriptPage, TranscriptRow, WorkGraphView } from "@modbit/surface-protocol";
 import { AgentStatusClass, SnippetSource, TranscriptDensity, TranscriptRowKind } from "@modbit/surface-protocol";
 import type { CoreClient } from "@modbit/ide-adapter-core";
-import { DENSITIES, STATUS_CLASSES, type PendingApprovalView, type OpenStreamView, type AgentHeadersView, type ConversationSearchView, type Density, type RowFacts, type RowKind, type StatusClass, type TranscriptPageView, type TranscriptRowView } from "../shared/conversation-types.ts";
+import { DENSITIES, STATUS_CLASSES, type PendingApprovalView, type OpenStreamView, type AgentHeadersView, type ConversationSearchView, type Density, type RowFacts, type RowKind, type StatusClass, type PlanInfo, type TranscriptPageView, type TranscriptRowView, type WorkGraphInfo } from "../shared/conversation-types.ts";
 
 const hexOf = (b: Uint8Array | undefined): string => Buffer.from(b ?? []).toString("hex");
 const msOf = (t: { seconds: bigint; nanos: number } | undefined): number => (t ? Number(t.seconds) * 1000 + Math.floor(t.nanos / 1_000_000) : 0);
@@ -224,6 +224,32 @@ export function openStreamsOf(taskId: string): OpenStreamView[] {
   return [...openStreams.values()].filter((s) => s.taskId === taskId).map((s) => ({ ...s }));
 }
 
+/** The Core's work graph as the plan card reads it (REQ-PX-200): the steps and their state as the Core holds them, nothing derived. */
+export function workGraphInfo(taskId: string, v: WorkGraphView): WorkGraphInfo {
+  return {
+    taskId,
+    steps: v.nodes.map((n) => ({ id: n.id, title: n.title, status: n.status, dependsOn: [...n.dependsOn], blockers: [...n.blockers], evidenceRefs: n.evidenceRefs.length, attempts: n.attempts, owned: (n.ownerAgentId?.value.length ?? 0) > 0, planVersion: n.planVersion })),
+    ready: [...v.ready],
+    planVersion: v.planVersion,
+  };
+}
+
+/** How many steps a recorded plan version names; a version whose record cannot be read names none. */
+function stepCount(stepsJson: string): number {
+  try {
+    const v: unknown = JSON.parse(stepsJson || "[]");
+    return Array.isArray(v) ? v.length : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** The plan in force (REQ-PX-200): the latest recorded version is the current one; a task with no plan has version 0 and no words. */
+export function planInfo(taskId: string, v: PlanView): PlanInfo {
+  const cur = [...v.versions].reverse().find((x) => x.version === v.currentVersion) ?? v.versions[v.versions.length - 1];
+  return { taskId, currentVersion: v.currentVersion, outcome: cur?.outcome ?? "", provenance: cur?.provenance ?? "", reason: cur?.reason ?? "", versions: v.versions.length, stepsInVersion: cur ? stepCount(cur.stepsJson) : 0, executedVersions: [...v.executedVersions] };
+}
+
 export interface Registrar {
   handle: (channel: string, fn: (...args: unknown[]) => unknown) => void;
   client: () => CoreClient;
@@ -248,6 +274,15 @@ export function registerConversationHandlers(r: Registrar): void {
     if (typeof o !== "object" || Array.isArray(o)) bad("options must be an object");
     const page = await r.client().getTranscript(tid, { density: validDensity(o.density), afterRow: count(o.afterRow, "afterRow", 1_000_000), limit: count(o.limit, "limit", 500), asOfOffset: offsetOf(o.asOfOffset, "asOfOffset") });
     return pageView(tid, page);
+  });
+  // REQ-PX-200: two reads over projections of the task's log. A task id and nothing else crosses; nothing is leased or changed.
+  r.handle("conversation:workGraph", async (...a) => {
+    const tid = r.taskId(a[0]);
+    return workGraphInfo(tid, await r.client().getWorkGraph(tid));
+  });
+  r.handle("conversation:plan", async (...a) => {
+    const tid = r.taskId(a[0]);
+    return planInfo(tid, await r.client().getPlan(tid));
   });
   r.handle("conversation:approvals", async (...a) => {
     const sid = r.sessionId(a[0]);

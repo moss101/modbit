@@ -27,7 +27,11 @@ const PINS = {
   // validated by main), which forwards the one typed Core command SuggestNextPrompt and returns the suggestion or the Core's
   // refusal code; and two type-only additions (the header's last line of PX-218 rides the existing headers channel; the
   // economics summary gains a count). Nothing generic, no path, no command name and no text crosses the bridge for it.
-  preloadSha256: "53b8a3b171b33f6b093d5115647453a544dcb62ed8948406c97bbf10d68f162e",
+  // PX-200 (2026-11-12, for review with its pull request): two read channels, `conversation:workGraph` and `conversation:plan`
+  // (a task id each, validated by main), which forward the Core's existing reads GetWorkGraph and GetPlan and return the
+  // steps with their state and the plan version in force as plain data. Reads only: nothing is leased, written or sent,
+  // and no path, command name or free text crosses the bridge for them.
+  preloadSha256: "77809483595ce6c91861bdf0303f8767beb0c49882405d7cff1cf1a39c73a251",
   cspSha256: "e8c3fcc4286ba170b02ea95b02189f132b16228341d2002412facfec6eb929d1",
   webPreferencesSha256: "28515878dc43e119f2360de779e5a3733283d120b31a113837f7f7a6cf2356ee",
   windowOptionKeys: ["width", "height", "minWidth", "minHeight", "show", "webPreferences"],

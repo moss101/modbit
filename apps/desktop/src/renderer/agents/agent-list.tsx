@@ -23,6 +23,14 @@ import type { ProjectsState } from "../projects/use-projects.ts";
 export const UNDO_MS = 12_000;
 const SEARCH_DEBOUNCE_MS = 250;
 
+/** What the open task's title menu can do through the list (MWS-05): the list owns pins, the archive confirmation and its undo. */
+export interface TaskActions {
+  pins: readonly string[];
+  pin: (taskId: string) => void;
+  unpin: (taskId: string) => void;
+  archive: (taskId: string) => void;
+}
+
 export interface AgentListProps {
   sessionId: string | null;
   connected: boolean;
@@ -50,9 +58,11 @@ export interface AgentListProps {
   onSearch?: (() => void) | undefined;
   /** Starts a new task in a group's folder. */
   onNewTaskIn?: ((root: string) => void) | undefined;
+  /** Hands the shell the list's pin and archive, for the open task's title menu; null when the list goes away. */
+  onTaskActions?: ((actions: TaskActions | null) => void) | undefined;
 }
 
-export function AgentList({ sessionId, connected, selectedTaskId, onSelect, onHeaders, onHeaderList, facts, projects, selectedProjectId = null, onOpenProject, onProjectArchived, parents, density, onSearch, onNewTaskIn }: AgentListProps) {
+export function AgentList({ sessionId, connected, selectedTaskId, onSelect, onHeaders, onHeaderList, facts, projects, selectedProjectId = null, onOpenProject, onProjectArchived, parents, density, onSearch, onNewTaskIn, onTaskActions }: AgentListProps) {
   const [prefs, setPrefs] = useState<ListPrefs>(loadListPrefs);
   const update = useCallback((f: (p: ListPrefs) => ListPrefs) => setPrefs((p) => f(p)), []);
   useEffect(() => saveListPrefs(prefs), [prefs]);
@@ -261,6 +271,14 @@ export function AgentList({ sessionId, connected, selectedTaskId, onSelect, onHe
     update((p) => ({ ...p, pins: unpinTask(p.pins, taskId) }));
     follow(taskId);
   };
+
+  // The title menu of the open task pins and archives through the same functions the rows use.
+  const rowActions = useRef({ onPin, onUnpin, requestArchive });
+  rowActions.current = { onPin, onUnpin, requestArchive };
+  useEffect(() => {
+    onTaskActions?.({ pins: prefs.pins, pin: (id) => rowActions.current.onPin(id), unpin: (id) => rowActions.current.onUnpin(id), archive: (id) => rowActions.current.requestArchive(id) });
+  }, [prefs.pins, onTaskActions]);
+  useEffect(() => () => onTaskActions?.(null), [onTaskActions]);
 
   return (
     <>
