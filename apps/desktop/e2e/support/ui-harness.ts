@@ -13,6 +13,7 @@ import { createServer, type Server } from "node:http";
 import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { packagedExecutable } from "../packaged-app.ts";
 
 export const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const coreBin = process.env.MODBIT_CORE_BIN ?? resolve(appDir, "..", "..", "target", "debug", process.platform === "win32" ? "modbit-core.exe" : "modbit-core");
@@ -32,12 +33,23 @@ export interface LaunchOptions {
   env?: Record<string, string>;
 }
 
+/**
+ * M10.2: with MODBIT_E2E_PACKAGED=1 (set by playwright.packaged.config.ts) the same specs drive the UNSIGNED packaged
+ * executable instead of the checkout's Electron and `dist/`: no main script argument, and no MODBIT_CORE_BIN or
+ * MODBIT_EXECD_BIN, so the only Core that can connect is the one the package carries in its resources.
+ */
+export const PACKAGED = process.env.MODBIT_E2E_PACKAGED === "1";
+
 export async function launch(dataDir: string, opts: LaunchOptions = {}): Promise<{ app: ElectronApplication; page: Page }> {
-  const app = await electron.launch({
-    // A window the OS reports as covered gets no animation frames, and xterm.js paints its rows in one: the run must not depend on the runner's window stacking.
-    args: ["--disable-features=CalculateNativeWinOcclusion", "--disable-backgrounding-occluded-windows", "--disable-renderer-backgrounding", join(appDir, opts.outDir ?? "dist", "main", "main.cjs")],
-    env: { ...process.env, MODBIT_DATA_DIR: dataDir, MODBIT_CORE_BIN: coreBin, OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "", MODBIT_SUPPRESS_OS_NOTIFICATIONS: "1", MODBIT_QUIT_PROMPT: "off", ...opts.env },
-  });
+  // A window the OS reports as covered gets no animation frames, and xterm.js paints its rows in one: the run must not depend on the runner's window stacking.
+  const flags = ["--disable-features=CalculateNativeWinOcclusion", "--disable-backgrounding-occluded-windows", "--disable-renderer-backgrounding"];
+  const env: Record<string, string> = { ...(process.env as Record<string, string>), MODBIT_DATA_DIR: dataDir, MODBIT_CORE_BIN: coreBin, OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "", MODBIT_SUPPRESS_OS_NOTIFICATIONS: "1", MODBIT_QUIT_PROMPT: "off", ...opts.env };
+  if (PACKAGED) {
+    if (opts.outDir) throw new Error(`a packaged run has no ${opts.outDir}/ build to launch`);
+    delete env.MODBIT_CORE_BIN;
+    delete env.MODBIT_EXECD_BIN;
+  }
+  const app = await electron.launch(PACKAGED ? { executablePath: packagedExecutable().exe, args: flags, env } : { args: [...flags, join(appDir, opts.outDir ?? "dist", "main", "main.cjs")], env });
   const page = await app.firstWindow();
   app.process().stderr?.on("data", (d: Buffer) => process.stderr.write(`[electron] ${d}`));
   await installRendererProbe(page);

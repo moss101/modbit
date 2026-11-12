@@ -19,8 +19,12 @@ use prost::Message;
 use px_common::*;
 use serde_json::{Value, json};
 
-const WALL_CAP_MS: u64 = 3_000;
-const PARKED_MS: u64 = 3_500;
+// The cap leaves room for the run's own unparked time (start, three scripted
+// turns, one command) on a loaded hosted runner: 3 s was exceeded at 3.1 s on
+// macos-latest. The parked time stays longer than the cap and than the call's
+// 1.5 s timeout, so charging it would still end the task and fail the check.
+const WALL_CAP_MS: u64 = 8_000;
+const PARKED_MS: u64 = 9_000;
 
 fn script(shell_args: Value) -> Vec<Value> {
     vec![

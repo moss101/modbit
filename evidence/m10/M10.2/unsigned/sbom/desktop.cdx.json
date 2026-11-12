@@ -1,0 +1,369 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:4f8e4b2b-74ae-42d4-bc5d-0479d6190d06",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-11-07T19:11:34.818Z",
+    "lifecycles": [
+      {
+        "phase": "build"
+      }
+    ],
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "name": "pnpm",
+          "version": "11.8.0"
+        }
+      ]
+    },
+    "component": {
+      "type": "application",
+      "name": "desktop",
+      "version": "0.0.0",
+      "purl": "pkg:npm/%40modbit/desktop@0.0.0",
+      "bom-ref": "pkg:npm/%40modbit/desktop@0.0.0",
+      "group": "@modbit",
+      "authors": [
+        {
+          "name": "Modbit"
+        }
+      ],
+      "description": "Electron main, preload and React renderer behind SurfaceProtocol (docs/32); hardened shell, Fleet and New Task screens against a real local Core"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "design-tokens",
+      "version": "0.0.0",
+      "purl": "pkg:npm/%40modbit/design-tokens@0.0.0",
+      "bom-ref": "pkg:npm/%40modbit/design-tokens@0.0.0",
+      "group": "@modbit",
+      "description": "design tokens shared by desktop surfaces"
+    },
+    {
+      "type": "library",
+      "name": "ide-adapter-core",
+      "version": "0.0.0",
+      "purl": "pkg:npm/%40modbit/ide-adapter-core@0.0.0",
+      "bom-ref": "pkg:npm/%40modbit/ide-adapter-core@0.0.0",
+      "group": "@modbit",
+      "description": "shared thin-client library and conformance suite for SurfaceProtocol clients (desktop main, IDE adapters)"
+    },
+    {
+      "type": "library",
+      "name": "surface-protocol",
+      "version": "0.0.0",
+      "purl": "pkg:npm/%40modbit/surface-protocol@0.0.0",
+      "bom-ref": "pkg:npm/%40modbit/surface-protocol@0.0.0",
+      "group": "@modbit",
+      "description": "generated SurfaceProtocol/API TypeScript types (generation arrives with M0.3)"
+    },
+    {
+      "type": "library",
+      "name": "ui",
+      "version": "0.0.0",
+      "purl": "pkg:npm/%40modbit/ui@0.0.0",
+      "bom-ref": "pkg:npm/%40modbit/ui@0.0.0",
+      "group": "@modbit",
+      "description": "reusable React primitives, layer/key-scope/tray/command registries and component styles for the desktop renderer (REQ-PX-044)"
+    },
+    {
+      "type": "library",
+      "name": "addon-fit",
+      "version": "0.10.0",
+      "purl": "pkg:npm/%40xterm/addon-fit@0.10.0",
+      "bom-ref": "pkg:npm/%40xterm/addon-fit@0.10.0",
+      "group": "@xterm",
+      "authors": [
+        {
+          "name": "The xterm.js authors"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@xterm/addon-fit/-/addon-fit-0.10.0.tgz",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "5056240e6e0751a85fda59c4c87be2a39d5334688b2baea6a8fd89a004f2ee14597976863110ebd34262485ee6eb7bd1e562804c5eb4e721208092acc3426931"
+            }
+          ]
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/xtermjs/xterm.js/tree/master#readme"
+        },
+        {
+          "type": "vcs",
+          "url": "git+https://github.com/xtermjs/xterm.js.git#master"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "xterm",
+      "version": "5.5.0",
+      "purl": "pkg:npm/%40xterm/xterm@5.5.0",
+      "bom-ref": "pkg:npm/%40xterm/xterm@5.5.0",
+      "group": "@xterm",
+      "description": "Full xterm terminal, in your browser",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@xterm/xterm/-/xterm-5.5.0.tgz",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "86a24761a41be4ea6d36e9e7c809e41f233c6828d9d4c1080d342ed6221b6d30ffc68a6cf75341e72ab564afdd0b62436d55ad176df352d97d244d8dab04fcec"
+            }
+          ]
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/xtermjs/xterm.js#readme"
+        },
+        {
+          "type": "vcs",
+          "url": "git+https://github.com/xtermjs/xterm.js.git"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "protobuf",
+      "version": "2.14.1",
+      "purl": "pkg:npm/%40bufbuild/protobuf@2.14.1",
+      "bom-ref": "pkg:npm/%40bufbuild/protobuf@2.14.1",
+      "group": "@bufbuild",
+      "description": "Protocol Buffers for ECMAScript. Fully compliant with the Protobuf conformance tests.",
+      "licenses": [
+        {
+          "expression": "(Apache-2.0 AND BSD-3-Clause)"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@bufbuild/protobuf/-/protobuf-2.14.1.tgz",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "6a04499f7f8424351ef00bf14f1fcb9c703f184aef2c4eb6a5269293bf8cc053ad3aff1e581bbfa82ab6aa8663063559dc2d9a885242bdeb92b35eca3246063b"
+            }
+          ]
+        },
+        {
+          "type": "website",
+          "url": "https://protobufes.com/"
+        },
+        {
+          "type": "vcs",
+          "url": "git+https://github.com/bufbuild/protobuf-es.git"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "react",
+      "version": "19.2.8",
+      "purl": "pkg:npm/react@19.2.8",
+      "bom-ref": "pkg:npm/react@19.2.8",
+      "description": "React is a JavaScript library for building user interfaces.",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/react/-/react-19.2.8.tgz",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "3d66980352ffabdbb6bbbc58422f98dcbdd87e789eed7c8b79a248095d4c183e8ba6bb01c5c02a1a3632af4798de9f9076c03ec7f22b92de1089ff03eb7f926f"
+            }
+          ]
+        },
+        {
+          "type": "website",
+          "url": "https://react.dev/"
+        },
+        {
+          "type": "vcs",
+          "url": "git+https://github.com/react/react.git"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "react-dom",
+      "version": "19.2.8",
+      "purl": "pkg:npm/react-dom@19.2.8",
+      "bom-ref": "pkg:npm/react-dom@19.2.8",
+      "description": "React package for working with the DOM.",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/react-dom/-/react-dom-19.2.8.tgz",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "ad5a6b8a67c6046dc347e4ead08406d834f93f12ad8755881839a3e723e6973af86017bbbb213e0eee2856a4c35d948718619746d4c910649278fc9008c06095"
+            }
+          ]
+        },
+        {
+          "type": "website",
+          "url": "https://react.dev/"
+        },
+        {
+          "type": "vcs",
+          "url": "git+https://github.com/react/react.git"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "scheduler",
+      "version": "0.27.0",
+      "purl": "pkg:npm/scheduler@0.27.0",
+      "bom-ref": "pkg:npm/scheduler@0.27.0",
+      "description": "Cooperative scheduler for the browser environment.",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/scheduler/-/scheduler-0.27.0.tgz",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "78dbfe5ab55b2aed5fdef6d8253ff1b62179b320391cf20cb5ff48818fe72a0d2c5aacc0504bea63fc66ece71973fa9a7cbc7f88ef4580e99e480a78bf9b62fd"
+            }
+          ]
+        },
+        {
+          "type": "website",
+          "url": "https://react.dev/"
+        },
+        {
+          "type": "vcs",
+          "url": "git+https://github.com/facebook/react.git"
+        }
+      ]
+    },
+    {
+      "type": "framework",
+      "bom-ref": "pkg:npm/electron@44.3.0",
+      "name": "electron",
+      "version": "44.3.0",
+      "purl": "pkg:npm/electron@44.3.0",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "description": "The runtime the packager copies into every desktop artifact; Chromium and Node.js are inside it."
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "pkg:npm/%40modbit/desktop@0.0.0",
+      "dependsOn": [
+        "pkg:npm/%40modbit/design-tokens@0.0.0",
+        "pkg:npm/%40modbit/ide-adapter-core@0.0.0",
+        "pkg:npm/%40modbit/surface-protocol@0.0.0",
+        "pkg:npm/%40modbit/ui@0.0.0",
+        "pkg:npm/%40bufbuild/protobuf@2.14.1",
+        "pkg:npm/%40xterm/addon-fit@0.10.0",
+        "pkg:npm/%40xterm/xterm@5.5.0",
+        "pkg:npm/react@19.2.8",
+        "pkg:npm/react-dom@19.2.8"
+      ]
+    },
+    {
+      "ref": "pkg:npm/%40modbit/design-tokens@0.0.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/%40modbit/ide-adapter-core@0.0.0",
+      "dependsOn": [
+        "pkg:npm/%40modbit/surface-protocol@0.0.0"
+      ]
+    },
+    {
+      "ref": "pkg:npm/%40modbit/surface-protocol@0.0.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/%40modbit/ui@0.0.0",
+      "dependsOn": [
+        "pkg:npm/%40modbit/design-tokens@0.0.0"
+      ]
+    },
+    {
+      "ref": "pkg:npm/%40xterm/addon-fit@0.10.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/%40xterm/xterm@5.5.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/%40bufbuild/protobuf@2.14.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/react@19.2.8",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/react-dom@19.2.8",
+      "dependsOn": [
+        "pkg:npm/scheduler@0.27.0"
+      ]
+    },
+    {
+      "ref": "pkg:npm/scheduler@0.27.0",
+      "dependsOn": []
+    }
+  ]
+}

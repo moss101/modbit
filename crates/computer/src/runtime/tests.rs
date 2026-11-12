@@ -596,3 +596,197 @@ async fn a_death_notice_between_the_call_and_its_outcome_still_closes_the_sessio
         "{closed:?}"
     );
 }
+
+/// A window in front of the application's real one (macOS 27 gives an
+/// application with a text view an untitled Siri panel): the window server's
+/// list has no focus state and puts the panel first; the session goes to the
+/// window the actuator's resolution of that one process says is focused.
+#[tokio::test]
+async fn a_session_starts_on_the_focused_window_not_the_front_most_one() {
+    fn win(id: &str, title: &str, focused: bool) -> wire::WindowInfo {
+        wire::WindowInfo {
+            window_id: id.into(),
+            title: title.into(),
+            bounds: Some(wire::Rect {
+                x: 0,
+                y: 0,
+                width: 400,
+                height: 300,
+            }),
+            focused,
+            ..Default::default()
+        }
+    }
+    fn with(windows: Vec<wire::WindowInfo>) -> wire::ApplicationInfo {
+        wire::ApplicationInfo {
+            identity: Some(ident("org.example.doc", 21)),
+            windows,
+            elevated: false,
+        }
+    }
+    let acquired: Arc<Mutex<Vec<String>>> = Arc::default();
+    let seen = Arc::clone(&acquired);
+    let handler: Handler = Box::new(move |c| match c {
+        // The window server's view: no focus, the panel in front.
+        Call::ListApplications(_) => Ok(Reply::ListApplications(wire::ListApplicationsResponse {
+            applications: vec![with(vec![
+                win("w-panel", "", false),
+                win("w-doc", "Document", false),
+            ])],
+        })),
+        // The accessibility view of that one process: the document is focused.
+        Call::ResolveApplication(_) => Ok(Reply::ResolveApplication(
+            wire::ResolveApplicationResponse {
+                application: Some(with(vec![
+                    win("w-panel", "", false),
+                    win("w-doc", "Document", true),
+                ])),
+            },
+        )),
+        Call::Acquire(a) => {
+            seen.lock().unwrap().push(a.window_id.clone());
+            Ok(Reply::Acquire(wire::AcquireResponse {
+                control_id: a.control_id.clone(),
+                lease_generation: 1,
+                application: Some(with(vec![
+                    win("w-panel", "", false),
+                    win("w-doc", "Document", true),
+                ])),
+            }))
+        }
+        _ => Err(CallError::Protocol("unscripted".into())),
+    });
+    let (events, _) = broadcast::channel(8);
+    let a = Arc::new(Fake {
+        info: ActuatorInfo {
+            name: "fake".into(),
+            version: "0".into(),
+            pid: 1,
+            platform: "fake".into(),
+            capabilities: vec![],
+            permissions: vec![],
+        },
+        handler,
+        delay: Duration::ZERO,
+        log: Arc::default(),
+        events,
+        alive: AtomicBool::new(true),
+    });
+    let rt = runtime();
+    rt.install(a);
+    let c = ctx(TaskId::new());
+    let op = parse("computer.start", &json!({"application": "org.example.doc"})).unwrap();
+    let started = rt.invoke(&c, "computer.start", op).await.unwrap();
+    assert_eq!(
+        started.output["window"]["id"], "w-doc",
+        "{}",
+        started.output
+    );
+    assert_eq!(*acquired.lock().unwrap(), ["w-doc"]);
+}
+
+/// A sheet makes its window modal; an input into the sheet answers it and
+/// runs, an input to the rest of the window is refused MODAL_BLOCKING and
+/// never sent.
+#[tokio::test]
+async fn a_sheet_is_answered_and_the_window_it_blocks_is_refused() {
+    fn with_modal() -> wire::ApplicationInfo {
+        let mut a = app("org.example.dialog", 31);
+        a.windows[0].modal = true;
+        a
+    }
+    fn node(id: &str, parent: &str, role: &str, name: &str) -> wire::AxNode {
+        wire::AxNode {
+            element_id: id.into(),
+            parent_id: parent.into(),
+            role: role.into(),
+            name: name.into(),
+            enabled: true,
+            actions: if role == "button" {
+                vec!["press".into()]
+            } else {
+                vec![]
+            },
+            ..Default::default()
+        }
+    }
+    let log: Arc<Mutex<Vec<String>>> = Arc::default();
+    let handler: Handler = Box::new(move |c| match c {
+        Call::ListApplications(_) => Ok(Reply::ListApplications(wire::ListApplicationsResponse {
+            applications: vec![with_modal()],
+        })),
+        Call::ResolveApplication(_) => Ok(Reply::ResolveApplication(
+            wire::ResolveApplicationResponse {
+                application: Some(with_modal()),
+            },
+        )),
+        Call::Acquire(a) => Ok(Reply::Acquire(wire::AcquireResponse {
+            control_id: a.control_id.clone(),
+            lease_generation: 1,
+            application: Some(with_modal()),
+        })),
+        Call::ReadState(r) => Ok(Reply::ReadState(wire::ReadStateResponse {
+            snapshot_id: r.snapshot_id.clone(),
+            window: Some(with_modal().windows[0].clone()),
+            nodes: vec![
+                node("n0", "", "window", "Main"),
+                node("n1", "n0", "button", "Delete\u{2026}"),
+                node("n2", "n0", "sheet", ""),
+                node("n3", "n2", "group", ""),
+                node("n4", "n3", "button", "Delete"),
+            ],
+            truncated: false,
+            tree_digest: "d".into(),
+        })),
+        Call::Perform(p) => {
+            let id = match &p.action {
+                Some(wire::perform_request::Action::Press(x)) => x.element_id.clone(),
+                _ => String::new(),
+            };
+            Ok(Reply::Perform(wire::PerformResponse {
+                delivery: wire::Delivery::Delivered as i32,
+                modality: format!("ax:{id}"),
+                ..Default::default()
+            }))
+        }
+        _ => Err(CallError::Protocol("unscripted".into())),
+    });
+    let (events, _) = broadcast::channel(8);
+    let a = Arc::new(Fake {
+        info: ActuatorInfo {
+            name: "fake".into(),
+            version: "0".into(),
+            pid: 1,
+            platform: "fake".into(),
+            capabilities: vec![],
+            permissions: vec![],
+        },
+        handler,
+        delay: Duration::ZERO,
+        log: Arc::clone(&log),
+        events,
+        alive: AtomicBool::new(true),
+    });
+    let rt = runtime();
+    rt.install(a);
+    let c = ctx(TaskId::new());
+    let snap = session_with_snapshot(&rt, &c, "org.example.dialog").await;
+    let act = |id: &str| Act::Press {
+        element: ElementRef {
+            snapshot: snap.clone(),
+            id: id.into(),
+        },
+        action: "press".into(),
+    };
+    // The window outside the sheet: refused before any approval is asked.
+    match rt.prepare_act(&c, "computer.press", &act("n1")).await {
+        Err(r) => assert_eq!(r.code, Code::ModalBlocking, "{r:?}"),
+        Ok(v) => panic!("the blocked window was offered for approval: {v}"),
+    }
+    // The sheet's own button: offered for approval, and it runs.
+    let offered = rt.prepare_act(&c, "computer.press", &act("n4")).await;
+    assert!(offered.is_ok(), "{offered:?}");
+    let ok = rt.invoke(&c, "computer.press", Op::Act(act("n4"))).await;
+    assert!(ok.is_ok(), "{ok:?}");
+    assert_eq!(ok.unwrap().output["modality"], "ax:n4");
+}

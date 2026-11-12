@@ -1,0 +1,13 @@
+PX-218 mutation check, 2026-11-11, macOS arm64, branch wip/desktop-2-core-header-suggest at c7dc463d.
+Each line: the product code was changed as described, the named test was run on that build and FAILED at the quoted
+assertion, and the change was reverted (git checkout). After the last one the sources were touched, every binary was
+rebuilt and the tests passed again. Command for both: cargo test -p modbit-core --test stream_transcript qual_px_218
+
+1. An archived task's line is not read as of its archive (crates/event-store/src/digest.rs: the `message_before`
+   result is discarded).
+   FAILED: "the header of an archived task changed"; left "Brought back, this is the line.", right the line it had
+   when it was archived.
+
+2. A stream that has not finished counts (crates/event-store/src/digest.rs: an `AssistantTextDelta` is accepted as
+   a finished message and its text as the line).
+   FAILED: "an unfinished message contributes nothing"; left "It has tw", right "".

@@ -385,6 +385,17 @@ pub type Reply =
 
 /// A scripted server whose reply is computed from the request.
 pub async fn scripted_model_fn(reply_fn: Reply) -> (String, Seen) {
+    scripted_model_metered(reply_fn, None).await
+}
+
+/// How a scripted server counts the prompt it received: the
+/// `usage.prompt_tokens` it reports for a request body.
+pub type Meter = std::sync::Arc<dyn Fn(&serde_json::Value) -> u64 + Send + Sync>;
+
+/// A scripted server whose reply is computed from the request and whose
+/// reported `usage.prompt_tokens` is `meter` of the body it received; without
+/// a meter it reports the bytes of the messages over four.
+pub async fn scripted_model_metered(reply_fn: Reply, meter: Option<Meter>) -> (String, Seen) {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
@@ -397,6 +408,7 @@ pub async fn scripted_model_fn(reply_fn: Reply) -> (String, Seen) {
             };
             let seen = std::sync::Arc::clone(&seen2);
             let reply_fn = std::sync::Arc::clone(&reply_fn);
+            let meter = meter.clone();
             tokio::spawn(async move {
                 let mut buf = Vec::new();
                 let mut tmp = [0u8; 8192];
@@ -433,9 +445,12 @@ pub async fn scripted_model_fn(reply_fn: Reply) -> (String, Seen) {
                     .as_array()
                     .map(|m| m.iter().filter(|x| x["role"] == "tool").count())
                     .unwrap_or(0);
-                let prompt_tokens = serde_json::to_string(&body["messages"])
-                    .map(|m| m.len().div_ceil(4))
-                    .unwrap_or(0);
+                let prompt_tokens = match &meter {
+                    Some(meter) => usize::try_from(meter(&body)).unwrap_or(usize::MAX),
+                    None => serde_json::to_string(&body["messages"])
+                        .map(|m| m.len().div_ceil(4))
+                        .unwrap_or(0),
+                };
                 let reply = reply_fn(&body, results);
                 seen.lock().unwrap().push(body);
                 // A reply may wait on the test: `{"wait_file": path, ...}` is held until
@@ -486,7 +501,13 @@ pub async fn scripted_model_fn(reply_fn: Reply) -> (String, Seen) {
                 }
                 let calls = reply["calls"].as_array().cloned().unwrap_or_default();
                 for (i, c) in calls.iter().enumerate() {
-                    frames.push(serde_json::json!({"id":"c","model":"scripted-1","choices":[{"index":0,"delta":{"tool_calls":[{"index":i,"id":format!("call_{results}_{i}"),"type":"function","function":{"name":c["name"],"arguments":c["args"].to_string()}}]},"finish_reason":null}]}).to_string());
+                    let mut call = serde_json::json!({"index":i,"id":format!("call_{results}_{i}"),"type":"function","function":{"name":c["name"],"arguments":c["args"].to_string()}});
+                    // A call may carry what a provider attaches to it
+                    // (`extra_content`, where Gemini puts its signature).
+                    if let Some(extra) = c.get("extra_content") {
+                        call["extra_content"] = extra.clone();
+                    }
+                    frames.push(serde_json::json!({"id":"c","model":"scripted-1","choices":[{"index":0,"delta":{"tool_calls":[call]},"finish_reason":null}]}).to_string());
                 }
                 let finish = if calls.is_empty() {
                     "stop"

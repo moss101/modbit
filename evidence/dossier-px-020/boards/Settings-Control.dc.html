@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings: computer use, browser sites, shortcuts</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="modbit.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="mb app" style="grid-template-columns:minmax(0,1fr)">
+  <main class="card main" style="border-left:0">
+    <header class="pagehead" style="padding-left:84px"><button class="ibtn" aria-label="Back to tasks"><span class="ms" aria-hidden="true">arrow_back</span></button><h2>Settings</h2><span class="grow"></span><div class="search" style="width:280px;height:30px"><span class="ms" aria-hidden="true">search</span><input aria-label="Search settings" placeholder="Search settings"></div></header>
+    <div style="display:flex;flex:1;min-height:0">
+      <nav class="subnav" aria-label="Settings sections" style="width:240px">
+        <button><span class="ms" aria-hidden="true">settings</span>General</button>
+        <button><span class="ms" aria-hidden="true">palette</span>Appearance</button>
+        <button><span class="ms" aria-hidden="true">shield</span>Run modes and rules</button>
+        <button><span class="ms" aria-hidden="true">payments</span>Models and budgets</button>
+        <button><span class="ms" aria-hidden="true">dns</span>Environments</button>
+        <button><span class="ms" aria-hidden="true">language</span>Browser</button>
+        <button class="on"><span class="ms" aria-hidden="true">desktop_windows</span>Computer use</button>
+        <button><span class="ms" aria-hidden="true">notifications</span>Notifications</button>
+        <button><span class="ms" aria-hidden="true">keyboard</span>Shortcuts</button>
+        <button><span class="ms" aria-hidden="true">info</span>About</button>
+      </nav>
+      <div class="pagebody" style="display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:28px;align-content:start">
+        <div>
+          <div style="display:flex;align-items:center;gap:12px"><p class="h1p" style="margin:0">Computer use</p><span class="grow"></span><span class="c-dim">On</span><span class="switch on" role="img" aria-label="On"></span></div>
+          <p class="subp" style="margin-top:4px">Lets the agent see and control apps on this Mac. Each action still follows the task’s run mode, and you can stop it at any time.</p>
+          <div class="banner info" style="margin-bottom:14px"><span class="ms" aria-hidden="true">info</span><span>macOS has granted Accessibility and Screen Recording.</span><span class="grow"></span><button class="btn soft sm">Open System Settings</button></div>
+          <p class="label" style="margin:0 0 8px 2px">What the agent may do in each app</p>
+          <div class="list-card">
+            <div class="hrow"><span class="ms" aria-hidden="true">language</span><div class="tt"><b>Browsers</b><span>Safari, Chrome, Arc</span></div><div class="segctl"><button class="on">View only</button><button>Click</button><button>Full</button></div></div>
+            <div class="hrow"><span class="ms" aria-hidden="true">terminal</span><div class="tt"><b>Terminals and editors</b><span>Terminal, iTerm, Xcode</span></div><div class="segctl"><button>View only</button><button class="on">Click</button><button>Full</button></div></div>
+            <div class="hrow"><span class="ms" aria-hidden="true">apps</span><div class="tt"><b>Everything else</b><span>Apps not listed here</span></div><div class="segctl"><button>View only</button><button>Click</button><button class="on">Full</button></div></div>
+            <div class="hrow"><span class="ms c-bad" aria-hidden="true">block</span><div class="tt"><b>Never</b><span>Password managers, banking, System Settings</span></div><button class="btn soft sm">Edit list</button></div>
+          </div>
+
+          <p class="label" style="margin:26px 0 8px 2px">Sites the agent may open in the browser pane</p>
+          <div class="list-card">
+            <div class="hrow"><span class="ms" aria-hidden="true">public</span><div class="tt"><b>localhost and 127.0.0.1</b><span>Your own dev servers</span></div><span class="tagx ok">Always allow</span></div>
+            <div class="hrow"><span class="ms" aria-hidden="true">public</span><div class="tt"><b>docs.rs</b><span>Allowed 2026-11-02</span></div><span class="tagx ok">Always allow</span><button class="ibtn" aria-label="Remove"><span class="ms" aria-hidden="true">delete</span></button></div>
+            <div class="hrow"><span class="ms" aria-hidden="true">public</span><div class="tt"><b>Every other site</b><span>Asks once per site</span></div><span class="tagx">Ask</span></div>
+          </div>
+        </div>
+
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><p class="label" style="margin:0 0 0 2px">Shortcuts</p><span class="grow"></span><span class="c-dim" style="font-size:12.5px">Show this list anywhere</span><span class="keys"><kbd>⌘</kbd><kbd>/</kbd></span></div>
+          <div class="list-card">
+            <div class="hrow" style="padding:9px 14px"><div class="tt"><b>New task</b></div><span class="keys"><kbd>⌘</kbd><kbd>N</kbd></span></div>
+            <div class="hrow" style="padding:9px 14px"><div class="tt"><b>Search tasks, files and actions</b></div><span class="keys"><kbd>⌘</kbd><kbd>K</kbd></span></div>
+            <div class="hrow" style="padding:9px 14px"><div class="tt"><b>Show or hide the sidebar</b></div><span class="keys"><kbd>⌘</kbd><kbd>B</kbd></span></div>
+            <div class="hrow" style="padding:9px 14px"><div class="tt"><b>Next or previous task</b></div><span class="keys"><kbd>⌥</kbd><kbd>J</kbd><kbd>K</kbd></span></div>
+            <div class="hrow" style="padding:9px 14px"><div class="tt"><b>Changes pane</b></div><span class="keys"><kbd>⇧</kbd><kbd>⌘</kbd><kbd>D</kbd></span></div>
+            <div class="hrow" style="padding:9px 14px"><div class="tt"><b>Terminal pane</b></div><span class="keys"><kbd>⌃</kbd><kbd>`</kbd></span></div>
+            <div class="hrow" style="padding:9px 14px"><div class="tt"><b>Browser pane</b></div><span class="keys"><kbd>⇧</kbd><kbd>⌘</kbd><kbd>B</kbd></span></div>
+            <div class="hrow" style="padding:9px 14px"><div class="tt"><b>Close the focused pane</b></div><span class="keys"><kbd>⌘</kbd><kbd>\</kbd></span></div>
+            <div class="hrow" style="padding:9px 14px"><div class="tt"><b>Open a task in split view</b></div><span class="keys"><kbd>⌥</kbd><kbd>click</kbd></span></div>
+            <div class="hrow" style="padding:9px 14px"><div class="tt"><b>Change run mode</b></div><span class="keys"><kbd>⇧</kbd><kbd>⌘</kbd><kbd>M</kbd></span></div>
+            <div class="hrow" style="padding:9px 14px"><div class="tt"><b>Allow once, or send</b></div><span class="keys"><kbd>↵</kbd></span></div>
+            <div class="hrow" style="padding:9px 14px"><div class="tt"><b>Queue a message for later</b></div><span class="keys"><kbd>⌘</kbd><kbd>↵</kbd></span></div>
+            <div class="hrow" style="padding:9px 14px"><div class="tt"><b>Skip an approval, or stop the task</b></div><span class="keys"><kbd>Esc</kbd></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

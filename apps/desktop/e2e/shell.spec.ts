@@ -14,7 +14,7 @@ import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PALETTES } from "../../../packages/design-tokens/src/index.ts";
-import { agentRow, expectTaskState, openTask, runTask } from "./support/new-task.ts";
+import { agentRow, expectTaskState, openTask, runTask, setDensity } from "./support/new-task.ts";
 import { accessible, appDir, box, closeApp, focusedTestId, launch, liftMinimumSize, makeRepo, MOD, scriptedModel, setContentSize } from "./support/ui-harness.ts";
 
 /** `#rrggbb` as the browser reports a computed colour. The window-root colour of each theme is read from the one token source (DR-PX-2026-10-24-016 changed the palette). */
@@ -87,39 +87,41 @@ test("AFW-A10: Settings replaces the left column with its own navigation, holds 
   }
 });
 
-test("PX-045: geometry at 1280 x 800, keyboard-resizable splits inside 210..400, persisted across a restart", async () => {
+test("PX-045, PX-198: geometry at 1280 x 800, keyboard-resizable splits inside 200..420, the layout and the density persisted across a restart", async () => {
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-shell-geom-"));
   let { app, page } = await launch(dataDir);
   try {
     await setContentSize(app, page, 1280, 800);
-    near((await box(page, "region-agents")).width, 260, 2, "agent list");
-    near((await box(page, "top-bar")).height, 40, 1, "top bar");
+    near((await box(page, "region-agents")).width, 288, 2, "agent list");
+    near((await box(page, "top-bar")).height, 45, 1, "top bar");
     expect(await page.getByTestId("region-apps").count(), "the apps panel is absent until a task has an artifact").toBe(0);
-    await expect(page.getByTestId("toggle-apps-panel")).toHaveAttribute("aria-disabled", "true");
+    // MWS-05: a toggle stands for a pane the open task can show; with no task there is none (the one disabled "Apps panel" toggle is gone).
+    await expect(page.getByTestId("pane-toggles")).toHaveCount(0);
+    await expect(page.getByTestId("toggle-apps-panel")).toHaveCount(0);
     expect((await box(page, "region-conversation")).width).toBeGreaterThanOrEqual(424);
 
     const sep = page.getByTestId("splitter-list");
     await expect(sep).toHaveAttribute("role", "separator");
-    await expect(sep).toHaveAttribute("aria-valuenow", "260");
-    await expect(sep).toHaveAttribute("aria-valuemin", "210");
-    await expect(sep).toHaveAttribute("aria-valuemax", "400");
+    await expect(sep).toHaveAttribute("aria-valuenow", "288");
+    await expect(sep).toHaveAttribute("aria-valuemin", "200");
+    await expect(sep).toHaveAttribute("aria-valuemax", "420");
     await sep.focus();
     for (let i = 0; i < 3; i++) await page.keyboard.press("ArrowRight");
-    await expect(sep).toHaveAttribute("aria-valuenow", "308");
+    await expect(sep).toHaveAttribute("aria-valuenow", "336");
     await page.keyboard.press("Home");
-    await expect(sep).toHaveAttribute("aria-valuenow", "210");
+    await expect(sep).toHaveAttribute("aria-valuenow", "200");
     await page.keyboard.press("ArrowLeft");
-    await expect(sep, "the minimum holds").toHaveAttribute("aria-valuenow", "210");
+    await expect(sep, "the minimum holds").toHaveAttribute("aria-valuenow", "200");
     await page.keyboard.press("End");
-    await expect(sep).toHaveAttribute("aria-valuenow", "400");
+    await expect(sep).toHaveAttribute("aria-valuenow", "420");
     await page.keyboard.press("ArrowRight");
-    await expect(sep, "the maximum holds").toHaveAttribute("aria-valuenow", "400");
-    near((await box(page, "region-agents")).width, 400, 2, "agent list at its maximum");
+    await expect(sep, "the maximum holds").toHaveAttribute("aria-valuenow", "420");
+    near((await box(page, "region-agents")).width, 420, 2, "agent list at its maximum");
     await page.keyboard.press("Enter");
-    await expect(sep, "Enter restores the default").toHaveAttribute("aria-valuenow", "260");
+    await expect(sep, "Enter restores the default").toHaveAttribute("aria-valuenow", "288");
     await page.keyboard.press("ArrowRight");
     await page.keyboard.press("ArrowRight");
-    await expect(sep).toHaveAttribute("aria-valuenow", "292");
+    await expect(sep).toHaveAttribute("aria-valuenow", "320");
     // A pointer drag moves it too.
     const b = (await sep.boundingBox())!;
     await page.mouse.move(b.x + b.width / 2, b.y + 100);
@@ -127,19 +129,41 @@ test("PX-045: geometry at 1280 x 800, keyboard-resizable splits inside 210..400,
     await page.mouse.move(b.x + b.width / 2 + 40, b.y + 100, { steps: 4 });
     await page.mouse.up();
     const dragged = Number(await sep.getAttribute("aria-valuenow"));
-    expect(dragged).toBeGreaterThan(292);
-    expect(dragged).toBeLessThanOrEqual(400);
+    expect(dragged).toBeGreaterThan(320);
+    expect(dragged).toBeLessThanOrEqual(420);
     await sep.focus();
     await page.keyboard.press("Home");
     await page.keyboard.press("ArrowRight");
-    await expect(sep).toHaveAttribute("aria-valuenow", "226");
+    await expect(sep).toHaveAttribute("aria-valuenow", "216");
 
-    // The layout survives an app restart: it is a renderer-local preference, not task state.
+    // MWS-03: the density is one setting under Settings, Appearance, stored with the layout and separate from zoom.
+    await setDensity(page, "compact");
+    near((await box(page, "top-bar")).height, 40, 1, "top bar in Compact");
+    near((await box(page, "agents-new-task")).height, 30, 0.5, "navigation row in Compact");
+    expect(await page.evaluate(() => getComputedStyle(document.body).fontSize), "chrome text in Compact").toBe("13px");
+    expect(await page.evaluate(() => document.documentElement.style.zoom), "the density is not the zoom").toBe("");
+    near((await box(page, "region-agents")).width, 216, 2, "the density leaves the list's width alone");
+
+    // The layout and the density survive an app restart: they are renderer-local preferences, not task state.
     await closeApp(app);
     ({ app, page } = await launch(dataDir));
     await setContentSize(app, page, 1280, 800);
-    await expect(page.getByTestId("splitter-list")).toHaveAttribute("aria-valuenow", "226");
-    near((await box(page, "region-agents")).width, 226, 2, "agent list after the restart");
+    await expect(page.getByTestId("splitter-list")).toHaveAttribute("aria-valuenow", "216");
+    near((await box(page, "region-agents")).width, 216, 2, "agent list after the restart");
+    await expect(page.locator("html"), "the density after the restart").toHaveAttribute("data-density", "compact");
+    near((await box(page, "top-bar")).height, 40, 1, "top bar after the restart");
+    near((await box(page, "agents-new-task")).height, 30, 0.5, "navigation row after the restart");
+    await page.getByTestId("open-settings").click();
+    await expect(page.getByTestId("settings-density-compact")).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByTestId("settings-density-comfortable")).toHaveAttribute("aria-checked", "false");
+    await accessible(page, "Settings with the density control, in Compact", '[data-testid="settings-section-appearance"]');
+    // Back to Comfortable: the override leaves the root, and the measured numbers return.
+    await page.getByTestId("settings-density-comfortable").click();
+    await expect(page.locator("html")).not.toHaveAttribute("data-density", /.+/);
+    await page.getByTestId("nav-back").click();
+    near((await box(page, "top-bar")).height, 45, 1, "top bar back in Comfortable");
+    near((await box(page, "agents-new-task")).height, 32, 0.5, "navigation row back in Comfortable");
+    expect(await page.evaluate(() => getComputedStyle(document.body).fontSize), "chrome text in Comfortable").toBe("14px");
   } finally {
     await closeApp(app);
   }
@@ -167,20 +191,20 @@ test("PX-045: below a 448 centre the shell is single-pane with the 40 px rail; t
     await page.getByTestId("rail-expand").focus();
     await page.keyboard.press("Enter");
     await expect(page.getByTestId("agent-rail")).toHaveCount(0);
-    near((await box(page, "region-agents")).width, 260, 2, "the expanded list");
+    near((await box(page, "region-agents")).width, 288, 2, "the expanded list");
   } finally {
     await closeApp(app);
   }
 });
 
-test("PX-045: at 1000 x 700 and 900 x 600 the list keeps 260, the top bar 40 and the centre stays above the single-pane threshold with nothing overflowing", async () => {
+test("PX-045: at 1000 x 700 and 900 x 600 the list keeps 288, the top bar 45 and the centre stays above the single-pane threshold with nothing overflowing", async () => {
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-shell-sizes-"));
   const { app, page } = await launch(dataDir);
   try {
     for (const [w, h] of [[1000, 700], [900, 600]] as const) {
       await setContentSize(app, page, w, h);
-      near((await box(page, "region-agents")).width, 260, 2, `agent list at ${w}`);
-      near((await box(page, "top-bar")).height, 40, 1, `top bar at ${w}`);
+      near((await box(page, "region-agents")).width, 288, 2, `agent list at ${w}`);
+      near((await box(page, "top-bar")).height, 45, 1, `top bar at ${w}`);
       expect((await box(page, "region-conversation")).width, `centre at ${w}`).toBeGreaterThanOrEqual(448);
       await expect(page.getByTestId("agent-rail"), `no rail at ${w}`).toHaveCount(0);
       await expect(page.getByTestId("shell")).not.toHaveAttribute("data-single-pane", "true");
@@ -334,13 +358,51 @@ test("PX-045: the command palette and the shortcut registry by keyboard alone; E
   }
 });
 
+test("PX-045: a modal keeps focus: the home composer's deferred focus cannot pull it out of a palette opened before it fires", async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-shell-palette-race-"));
+  const { app, page } = await launch(dataDir);
+  try {
+    await setContentSize(app, page, 1280, 800);
+    await page.keyboard.press(`${MOD}+n`);
+    await page.keyboard.type("Palette race task");
+    for (let i = 0; i < 4; i++) await page.keyboard.press("Tab");
+    expect(await focusedTestId(page)).toBe("run");
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("conversation")).toHaveAttribute("data-task-id", /.+/, { timeout: 30_000 });
+    const taskId = (await page.getByTestId("conversation").getAttribute("data-task-id"))!;
+
+    // Leaving a conversation for home focuses the goal one task later. Open the palette in the same task as the
+    // click, before that deferred focus runs, as a slow machine does between two real inputs.
+    await page.evaluate((mac) => {
+      document.querySelector<HTMLElement>('[data-testid="agents-new-task"]')!.click();
+      document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "k", code: "KeyK", metaKey: mac, ctrlKey: !mac, bubbles: true, cancelable: true }));
+    }, process.platform === "darwin");
+    await expect(page.getByTestId("palette")).toBeVisible();
+    // Let the deferred focus (and anything else queued by the click) run.
+    await page.evaluate(() => new Promise((r) => setTimeout(r, 100)));
+    expect(await focusedTestId(page), "focus stays in the modal palette").toBe("palette-input");
+    await expect(page.getByTestId("goal"), "nothing typed reached the composer behind the palette").toHaveValue("");
+
+    await page.keyboard.type("race");
+    await expect(page.getByTestId("palette-input")).toHaveValue("race");
+    await expect(page.getByTestId("palette-option").first()).toHaveAttribute("data-id", `agent:${taskId}`);
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("palette")).toHaveCount(0);
+    await expect(page.getByTestId("conversation")).toHaveAttribute("data-task-id", taskId);
+  } finally {
+    await closeApp(app);
+  }
+});
+
 test("PX-044/045: themes, high contrast and reduced motion; the send button meets AA; axe on every region in every theme", async () => {
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-shell-theme-"));
   const { app, page } = await launch(dataDir);
   try {
     await setContentSize(app, page, 1280, 800);
+    // Buttons transition their colours: measure the settled colours, never a frame mid-transition.
     const ratio = () =>
-      page.evaluate(() => {
+      page.evaluate(async () => {
+        await Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined)));
         const lum = (css: string) => {
           const m = css.match(/\d+(\.\d+)?/g)!.slice(0, 3).map(Number);
           const lin = m.map((v) => ((v / 255) <= 0.04045 ? v / 255 / 12.92 : (((v / 255) + 0.055) / 1.055) ** 2.4));
@@ -407,7 +469,9 @@ test("PX-045: the apps panel appears for a task with an artifact, within the geo
     await expect(page.getByTestId("review")).toHaveCount(0);
     await expect(page.getByTestId("conversation")).toHaveAttribute("data-task-id", taskId);
     await expect(page.getByTestId("top-bar-title")).toContainText("Edit the notes");
-    await expect(page.getByTestId("toggle-apps-panel")).toHaveAttribute("aria-disabled", "false");
+    // MWS-05: the task has run, so it has a toggle per pane it can show, each saying it is closed; the terminal has none because the Core lists no terminal.
+    for (const kind of ["changes", "browser", "files", "evidence"]) await expect(page.getByTestId(`pane-toggle-${kind}`), kind).toHaveAttribute("aria-pressed", "false");
+    await expect(page.getByTestId("pane-toggle-terminal")).toHaveCount(0);
     expect(await page.getByTestId("region-apps").count()).toBe(0);
 
     // The changes chord opens the panel; the geometry holds: centre >= 424, panel >= 384.

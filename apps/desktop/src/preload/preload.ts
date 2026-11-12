@@ -3,9 +3,9 @@
  * renderer needs, over Electron's validated IPC. No Node, no fs, no shell.
  */
 import { contextBridge, ipcRenderer, webUtils } from "electron";
-import type { AgentHeaderView, AgentHeadersView, ConversationSearchView, OpenStreamView, PendingApprovalView, SearchOptions, TranscriptOptions, TranscriptPageView } from "../shared/conversation-types.ts";
+import type { AgentHeaderView, AgentHeadersView, ConversationSearchView, OpenStreamView, PendingApprovalView, PlanInfo, SearchOptions, TranscriptOptions, TranscriptPageView, WorkGraphInfo } from "../shared/conversation-types.ts";
 import type { TerminalFrameJson, TerminalViewJson } from "../main/terminal-host.ts";
-import type { AttachmentResult, InterruptView, ModeChangedView, ModelCatalogView, PostureView, PreferencePatch, PreferenceSetView, QueuedChangeView, QueueView, SendBehaviorState, SideAnswerView, SlashInventoryView, TaskModeId, InputModeId } from "../shared/composer-types.ts";
+import type { AttachmentResult, InterruptView, ModeChangedView, ModelCatalogView, PostureView, PreferencePatch, PreferenceSetView, QueuedChangeView, QueueView, SendBehaviorState, SideAnswerView, SlashInventoryView, SuggestionView, TaskModeId, InputModeId } from "../shared/composer-types.ts";
 import type { AutoDetail, AutoEnableInput, AutoKillReport, AutoList, AutoRepoLoad, AutoRun, AutoRunInput, AutoRunStarted, AutoValidation, AutoView } from "../shared/automation-types.ts";
 import type { ApplyAckInfo, ApplyInputArgs, CleanupReportInfo, ProjectChangedInfo, ProjectInput, ProjectListInfo, ProjectPatch, WorktreeListInfo, WorktreeRemovalInfo } from "../shared/project-types.ts";
 import type { CustomizeHooksView, HookEnabledInfo, MemoryForgetInfo, MemoryPromoteInfo, MemoryRememberInfo, MemoryShareInfo, MemoryView, ImportReportInfo, SkillsView, SkillTrustInfo } from "../shared/customize-types.ts";
@@ -15,6 +15,16 @@ import type { AccountingInfo, AddRuleInput, AllowRuleInfo, CheckpointListInfo, C
 
 export type { TerminalFrameJson, TerminalViewJson };
 
+export interface UpdateViewDto {
+  enabled: boolean;
+  disabledReason?: string;
+  version: string;
+  channel: string;
+  feedUrl?: string;
+  status: { state: string; version?: string; reason?: string; code?: string; detail?: string; mandatory?: boolean; requiresBackup?: boolean };
+  lastApply?: { ok: boolean; version: string; error?: string };
+  canRollback: boolean;
+}
 export interface ReviewHunk {
   index: number;
   header: string;
@@ -208,6 +218,8 @@ export interface TaskEconomicsSummary {
   prefixCacheMisses: number;
   compactionEpochs: number;
   contextTokensInjected: string;
+  /** REQ-PX-210: of modelCalls, the next-prompt suggestion calls charged to the task. */
+  suggestionCalls: number;
 }
 
 /** One thing a person must act on (REQ-EV-0151 / 0275), from the Core. */
@@ -268,6 +280,10 @@ export interface ModbitBridge {
   agentHeaders(sessionId: string, includeArchived?: boolean): Promise<AgentHeadersView>;
   /** PX-047: one page of a task's conversation, projected by the Core in one of three densities. */
   transcript(taskId: string, options?: TranscriptOptions): Promise<TranscriptPageView>;
+  /** REQ-PX-200: the steps of the task's plan with the state the Core's work graph holds for each. A read. */
+  workGraph(taskId: string): Promise<WorkGraphInfo>;
+  /** REQ-PX-200: the plan version in force as the Core recorded it. A read. */
+  plan(taskId: string): Promise<PlanInfo>;
   /** PX-047: the protected effects of the session still waiting for a decision, with the exact intent each decision must name. */
   pendingApprovals(sessionId: string): Promise<PendingApprovalView[]>;
   /** PX-047: the text of the task's assistant streams that are still open, as main has seen them (a transcript carries a stream's text only once it completes). */
@@ -326,6 +342,11 @@ export interface ModbitBridge {
   /** Show a skill's or an extension's source folder (the path is the Core's listing, not the renderer's). */
   customizeOpenSource(kind: "skill" | "extension", key: string, sessionId?: string, taskId?: string): Promise<{ opened: string }>;
   coreStatus(): Promise<unknown>;
+  /** M10.2: the updater's state and the three things a person can ask of it. */
+  updateView(): Promise<UpdateViewDto>;
+  updateCheck(): Promise<UpdateViewDto>;
+  updateInstall(): Promise<UpdateViewDto>;
+  updateRollback(): Promise<UpdateViewDto>;
   localState(): Promise<{ sessionId?: string; platform?: { os: string; arch: string; state: string; statement: string } }>;
   languages(): Promise<{ language: string; tier: string; label: string; fixture: string; proven: string[]; provisional: string[]; notClaimed: string[]; note: string }[]>;
   contextInspector(taskId: string): Promise<ContextInspectorSummary>;
@@ -437,6 +458,8 @@ export interface ModbitBridge {
   composerSendBehavior(taskId: string): Promise<SendBehaviorState>;
   composerSetSendBehavior(sessionId: string, taskId: string, whileRunning: string, sendNow: string): Promise<SendBehaviorState>;
   composerSideQuestion(taskId: string, text: string): Promise<SideAnswerView>;
+  /** REQ-PX-210: one suggested next message for a task whose turn has ended with nothing queued, or the Core's refusal code. The Core charges the task; nothing is sent for the person. */
+  composerSuggest(sessionId: string, taskId: string): Promise<SuggestionView>;
   reviewBundle(taskId: string): Promise<ReviewBundleView>;
   codeView(taskId: string, path: string, expectedFileRevision?: string): Promise<CodeView>;
   decideReview(sessionId: string, taskId: string, decision: "ACCEPT" | "RETURN", rejected: { path: string; index: number }[], note: string, expectedWorkspaceRevision: string): Promise<{ taskState: string; commit: string; reverted: string[]; workspaceRevision: string }>;
@@ -511,6 +534,8 @@ export interface ModbitBridge {
 const bridge: ModbitBridge = {
   agentHeaders: (sessionId, includeArchived) => ipcRenderer.invoke("agents:headers", sessionId, includeArchived ?? false),
   transcript: (taskId, options) => ipcRenderer.invoke("conversation:transcript", taskId, options ?? {}),
+  workGraph: (taskId) => ipcRenderer.invoke("conversation:workGraph", taskId),
+  plan: (taskId) => ipcRenderer.invoke("conversation:plan", taskId),
   pendingApprovals: (sessionId) => ipcRenderer.invoke("conversation:approvals", sessionId),
   openStreams: (taskId) => ipcRenderer.invoke("conversation:openStreams", taskId),
   searchConversations: (sessionId, query, options) => ipcRenderer.invoke("conversation:search", sessionId, query, options ?? {}),
@@ -550,6 +575,10 @@ const bridge: ModbitBridge = {
   discardWorktree: (sessionId, taskId, reason, confirm) => ipcRenderer.invoke("worktrees:discard", sessionId, taskId, reason, confirm),
   coreStatus: () => ipcRenderer.invoke("core:status"),
   localState: () => ipcRenderer.invoke("core:localState"),
+  updateView: () => ipcRenderer.invoke("update:view"),
+  updateCheck: () => ipcRenderer.invoke("update:check"),
+  updateInstall: () => ipcRenderer.invoke("update:install"),
+  updateRollback: () => ipcRenderer.invoke("update:rollback"),
   languages: () => ipcRenderer.invoke("languages:list"),
   contextInspector: (taskId: string) => ipcRenderer.invoke("context:inspector", taskId),
   taskEconomics: (taskId: string) => ipcRenderer.invoke("task:economics", taskId),
@@ -642,6 +671,7 @@ const bridge: ModbitBridge = {
   composerSendBehavior: (taskId) => ipcRenderer.invoke("composer:sendBehavior", taskId),
   composerSetSendBehavior: (sessionId, taskId, whileRunning, sendNow) => ipcRenderer.invoke("composer:setSendBehavior", sessionId, taskId, whileRunning, sendNow),
   composerSideQuestion: (taskId, text) => ipcRenderer.invoke("composer:sideQuestion", taskId, text),
+  composerSuggest: (sessionId, taskId) => ipcRenderer.invoke("composer:suggest", sessionId, taskId),
   reviewBundle: (taskId) => ipcRenderer.invoke("review:bundle", taskId),
   codeView: (taskId, path, expectedFileRevision) => ipcRenderer.invoke("review:codeView", taskId, path, expectedFileRevision ?? ""),
   decideReview: (sessionId, taskId, decision, rejected, note, expectedWorkspaceRevision) => ipcRenderer.invoke("review:decide", sessionId, taskId, decision, rejected, note, expectedWorkspaceRevision),

@@ -1,0 +1,43 @@
+PX-152 local run, macOS arm64, base b0da79c5 + run_control.rs write-outside-root case
+== cargo test -p modbit-core --test run_control
+test qual_px_145_a_killed_core_resumes_with_the_notice_the_model_had_and_the_same_permissions ... ok
+test qual_px_145_a_broken_typescript_build_is_verified_by_the_core_after_the_edit_and_completes ... ok
+test qual_px_145_sequential_build_failures_are_repaired_through_the_cores_own_verifications ... ok
+test qual_px_059_without_a_provider_count_the_total_is_the_estimate_and_says_so ... ok
+test qual_px_050_the_core_applies_the_send_behavior_a_client_only_chooses ... ok
+test qual_px_050_stop_ends_the_turn_as_a_user_interrupt_pauses_the_run_and_resume_continues ... ok
+test qual_px_050_the_queue_survives_sigkill_and_drains_in_order_after_recovery ... ok
+test qual_px_059_rules_and_memory_the_request_carries_are_counted_in_their_own_categories ... ok
+test qual_px_050_send_now_cancels_a_long_shell_command_through_the_broker ... ok
+test qual_px_050_send_now_set_to_steer_records_a_steer_and_no_interrupt ... ok
+test qual_px_050_send_now_cuts_a_live_stream_as_a_user_interrupt_and_starts_the_new_turn_once ... ok
+test qual_px_146_an_autonomous_run_that_makes_no_progress_is_not_extended ... ok
+test qual_px_059_the_categories_sum_to_the_provider_reported_total_and_the_window_is_the_models ... ok
+test qual_px_144_a_rule_made_in_the_default_mode_takes_effect_and_ask_still_ignores_rules ... ok
+test qual_px_050_queue_commands_are_fenced_and_refuse_what_cannot_change ... ok
+test qual_px_059_after_a_compaction_epoch_the_summary_grows_and_the_conversation_falls ... ok
+test qual_px_050_queue_edit_delete_and_reorder_take_effect_and_drain_in_order_as_separate_turns ... ok
+test qual_px_146_an_autonomous_task_a_crash_cut_short_is_offered_for_resumption_and_nothing_else_is ... ok
+test qual_px_146_a_subagent_does_not_inherit_autonomous_or_a_budget_window ... ok
+test qual_px_057_always_ask_classes_ask_under_run_everything_and_run_everything_dies_with_the_process ... ok
+test qual_px_153_the_count_survives_a_restart_because_it_is_folded_from_the_log ... ok
+test qual_px_144_autonomous_installs_dependencies_without_asking_and_keeps_the_rest_gated ... ok
+test qual_px_153_a_model_that_changes_approach_after_a_refusal_is_never_parked ... ok
+test qual_px_153_three_refusals_in_a_row_park_the_task_once_and_the_notice_survives_a_restart ... ok
+test qual_px_152_a_refusal_by_the_sandbox_reaches_the_model_typed_and_a_failing_command_does_not ... ok
+test qual_px_146_an_exhausted_budget_is_a_window_a_person_or_an_autonomous_run_can_continue ... ok
+test qual_px_057_ask_allowlist_rules_scope_expiry_and_revocation_against_the_real_approval_flow ... ok
+test result: ok. 27 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 18.98s
+== cargo test -p modbit-execd --test px_150_152_review_sandbox
+test qual_px_150_a_hostile_working_directory_name_cannot_change_the_profile ... ok
+test qual_px_152_a_refused_network_operation_returns_the_typed_denial ... ok
+test qual_px_152_an_ordinary_failure_is_never_a_sandbox_denial ... ok
+test qual_px_150_the_macos_profile_keeps_credential_stores_git_and_modbit_out_of_reach ... ok
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.54s
+== cargo clippy -p modbit-core -p modbit-execd -p modbit-tools --all-targets -D warnings
+clippy exit=0
+
+Mutation: crates/tools/src/direct.rs `else if x.sandbox_denied.is_some()` -> `... && false`
+  qual_px_152_a_refusal_by_the_sandbox_reaches_the_model_typed_and_a_failing_command_does_not FAILED (killed):
+  "the log carries the failure once, with the typed code: left [\"NON_ZERO_EXIT\"], right [\"SANDBOX_DENIED\"]"
+Reverted with `git checkout --`; `git diff crates/tools/src` empty.

@@ -2995,6 +2995,24 @@ async fn qual_px_146_an_autonomous_run_that_makes_no_progress_is_not_extended() 
     assert_eq!(st.failure_code, "NO_PROGRESS", "{st:?}");
     let events = replay(&core, &session).await;
     assert!(kinds(&events, "BudgetWindowExtended").is_empty());
+
+    // The window runs out while the run is already stalled, before the
+    // no-progress bound is reached: the Core stops on the budget and opens no
+    // window, so the stall is a person's to judge.
+    let t2 = create_task(&mut c, &session, g, &root, 0x12, "local_trusted", "think").await;
+    set_mode(&mut c, &t2, g, "AUTONOMOUS", true).await.unwrap();
+    start_with(&mut c, &t2, g, 2, 0).await;
+    let st = wait_task(&mut c, &t2, 60).await;
+    assert_eq!(st.state, "Waiting", "{st:?}");
+    assert!(
+        st.attention_reason.contains("max_turns"),
+        "a stalled run ends on its budget: {st:?}"
+    );
+    let events = replay(&core, &session).await;
+    assert!(
+        kinds(&events, "BudgetWindowExtended").is_empty(),
+        "a stalled run was given another window"
+    );
 }
 
 /// A subagent keeps the capsule it was admitted under: a parent a person put
@@ -3192,6 +3210,14 @@ async fn qual_px_146_an_autonomous_task_a_crash_cut_short_is_offered_for_resumpt
         offered,
         vec![auto.clone()],
         "only the autonomous task the crash cut short"
+    );
+    // Offered is not resumed: with no client and no lease the Core runs
+    // nothing of its own accord, however long it is left.
+    tokio::time::sleep(Duration::from_millis(1_500)).await;
+    let st = status_of(&mut c, &auto).await;
+    assert!(
+        !st.loop_alive && st.state != "ReadyForReview",
+        "the restarted Core resumed the task by itself: {st:?}"
     );
     // Resumption is the ordinary StartTask under a fresh lease.
     let g1 = lease_again(&mut c, &s1).await;
@@ -3945,6 +3971,9 @@ async fn qual_px_153_three_refusals_in_a_row_park_the_task_once_and_the_notice_s
     let out = std::path::Path::new(&root).join("out.txt");
 
     start(&mut c, &t, g, "gpt-5-mini", 10).await;
+    // Each refusal is of a call not refused yet (a denied approval can still be
+    // listed as pending for a moment).
+    let mut decided: Vec<Vec<u8>> = Vec::new();
     for n in 1..=3 {
         let deadline = Instant::now() + Duration::from_secs(60);
         let asked = loop {
@@ -3952,6 +3981,14 @@ async fn qual_px_153_three_refusals_in_a_row_park_the_task_once_and_the_notice_s
                 .await
                 .into_iter()
                 .filter(|a| a.task_id.as_ref() == Some(&t))
+                .filter(|a| {
+                    !decided.contains(
+                        &a.approval_id
+                            .as_ref()
+                            .map(|i| i.value.clone())
+                            .unwrap_or_default(),
+                    )
+                })
                 .collect();
             if !asked.is_empty() {
                 break asked;
@@ -3959,6 +3996,13 @@ async fn qual_px_153_three_refusals_in_a_row_park_the_task_once_and_the_notice_s
             assert!(Instant::now() < deadline, "refusal {n} was never asked");
             tokio::time::sleep(Duration::from_millis(50)).await;
         };
+        decided.push(
+            asked[0]
+                .approval_id
+                .as_ref()
+                .map(|i| i.value.clone())
+                .unwrap_or_default(),
+        );
         decide(&mut c, &asked[0], false, g).await;
     }
     let st = wait_task(&mut c, &t, 60).await;
@@ -4088,6 +4132,11 @@ async fn qual_px_153_the_count_survives_a_restart_because_it_is_folded_from_the_
     let t = task_for(&mut c, &session, g, &root, 0x11, "g-refused").await;
 
     start(&mut c, &t, g, "gpt-5-mini", 10).await;
+    // An approval just denied can still be listed as pending for a moment: the
+    // next call is one this test has not decided yet, never the last one again
+    // (taking it for the third call killed the Core before the second refusal
+    // was on the log, and the run never parked).
+    let mut decided: Vec<Vec<u8>> = Vec::new();
     for n in 1..=3 {
         let deadline = Instant::now() + Duration::from_secs(60);
         let asked = loop {
@@ -4095,6 +4144,14 @@ async fn qual_px_153_the_count_survives_a_restart_because_it_is_folded_from_the_
                 .await
                 .into_iter()
                 .filter(|a| a.task_id.as_ref() == Some(&t))
+                .filter(|a| {
+                    !decided.contains(
+                        &a.approval_id
+                            .as_ref()
+                            .map(|i| i.value.clone())
+                            .unwrap_or_default(),
+                    )
+                })
                 .collect();
             if !asked.is_empty() {
                 break asked;
@@ -4103,6 +4160,13 @@ async fn qual_px_153_the_count_survives_a_restart_because_it_is_folded_from_the_
             tokio::time::sleep(Duration::from_millis(50)).await;
         };
         if n < 3 {
+            decided.push(
+                asked[0]
+                    .approval_id
+                    .as_ref()
+                    .map(|i| i.value.clone())
+                    .unwrap_or_default(),
+            );
             decide(&mut c, &asked[0], false, g).await;
             continue;
         }
@@ -4158,6 +4222,15 @@ fn confined_model() -> Script {
             "g-confined-network" => Step::call(
                 "shell.exec",
                 json!({"argv": ["python3", "-c", "import socket; socket.create_connection(('127.0.0.1', 9), timeout=2)"]}),
+            ),
+            // A write outside the worktree that the shell classifier cannot
+            // see (a redirect to /etc is a protected write the policy refuses
+            // before anything runs), so it reaches the file confinement of
+            // the macOS review sandbox (Linux's seccomp sandbox confines the
+            // network only, PX-150).
+            "g-confined-write" => Step::call(
+                "shell.exec",
+                json!({"argv": ["python3", "-c", "import os; open(os.path.join('/', 'etc', 'modbit-px152-probe'), 'w')"]}),
             ),
             // A command that fails for its own reasons.
             "g-confined-failing" => Step::call(
@@ -4232,6 +4305,46 @@ async fn qual_px_152_a_refusal_by_the_sandbox_reaches_the_model_typed_and_a_fail
     );
     assert!(!result.contains("NON_ZERO_EXIT"), "{result}");
     assert!(result.contains("\"sandbox_denied\""), "{result}");
+
+    // ---- a write outside the worktree (PX-E2E-152), where the sandbox
+    // confines files
+    if cfg!(target_os = "macos") {
+        let tw = create_task(
+            &mut c,
+            &session,
+            g,
+            &root,
+            0x13,
+            "review_isolated",
+            "g-confined-write",
+        )
+        .await;
+        set_mode(&mut c, &tw, g, "ALLOWLIST_SANDBOX", true)
+            .await
+            .unwrap();
+        start(&mut c, &tw, g, "gpt-5-mini", 10).await;
+        wait_task(&mut c, &tw, 60).await;
+        let events = replay(&core, &session).await;
+        assert_eq!(
+            failed_codes(&events, &tw),
+            vec!["SANDBOX_DENIED".to_owned()],
+            "the refused write is logged once, typed"
+        );
+        let shown = shown_tool_results(&seen);
+        let result = shown
+            .iter()
+            .find(|r| r.contains("SANDBOX_DENIED") && r.contains("modbit-px152-probe"))
+            .unwrap_or_else(|| panic!("the model never saw the refused write: {shown:#?}"));
+        assert!(
+            result.contains("do not retry the same command unchanged"),
+            "{result}"
+        );
+        assert!(!result.contains("NON_ZERO_EXIT"), "{result}");
+        assert!(
+            !std::path::Path::new("/etc/modbit-px152-probe").exists(),
+            "nothing was written"
+        );
+    }
 
     // ---- the ordinary failure
     let t2 = create_task(

@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Design system: foundations and components</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="modbit.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="mb sys" style="background:var(--canvas);gap:40px">
+  <header>
+    <h1>Modbit design system</h1>
+    <p class="lede">One token set, two themes, two densities. Comfortable follows the sizes measured in Claude desktop 4.23118.1, and Compact follows Devin 3.12.43. Colours, type choices, icons and wording are Modbit’s own.</p>
+  </header>
+
+  <section>
+    <h3>Colour</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(520px,100%),1fr));gap:16px">
+      <div class="mb themeband" style="box-shadow:var(--shadow-card)">
+        <p style="font-weight:500;margin-bottom:12px">Light</p>
+        <div class="swgrid">
+          <div class="sw"><i style="background:var(--canvas)"></i><div><b>sidebar</b><span>#F1F1F1</span></div></div>
+          <div class="sw"><i style="background:var(--paper)"></i><div><b>main</b><span>#FCFCFC</span></div></div>
+          <div class="sw"><i style="background:var(--raised)"></i><div><b>raised</b><span>#FFFFFF</span></div></div>
+          <div class="sw"><i style="background:var(--selected)"></i><div><b>selected</b><span>#E2E2E2</span></div></div>
+          <div class="sw"><i style="background:var(--ink)"></i><div><b>ink</b><span>#171717</span></div></div>
+          <div class="sw"><i style="background:var(--ink3)"></i><div><b>muted</b><span>#626262</span></div></div>
+          <div class="sw"><i style="background:var(--line2)"></i><div><b>edge</b><span>#CFCFCF</span></div></div>
+          <div class="sw"><i style="background:var(--accent)"></i><div><b>accent</b><span>#145FB4</span></div></div>
+          <div class="sw"><i style="background:var(--warn)"></i><div><b>needs you</b><span>#8A5100</span></div></div>
+          <div class="sw"><i style="background:var(--ok)"></i><div><b>ready</b><span>#17703F</span></div></div>
+          <div class="sw"><i style="background:var(--bad)"></i><div><b>danger</b><span>#B51F3F</span></div></div>
+          <div class="sw"><i style="background:var(--purple)"></i><div><b>branch</b><span>#6A4FC0</span></div></div>
+        </div>
+      </div>
+      <div class="mb dark themeband">
+        <p style="font-weight:500;margin-bottom:12px">Dark</p>
+        <div class="swgrid">
+          <div class="sw"><i style="background:var(--canvas)"></i><div><b>sidebar</b><span>#181818</span></div></div>
+          <div class="sw"><i style="background:var(--paper)"></i><div><b>main</b><span>#131313</span></div></div>
+          <div class="sw"><i style="background:var(--raised)"></i><div><b>raised</b><span>#1D1D1D</span></div></div>
+          <div class="sw"><i style="background:var(--selected)"></i><div><b>selected</b><span>#2E2E2E</span></div></div>
+          <div class="sw"><i style="background:var(--ink)"></i><div><b>ink</b><span>#ECECEC</span></div></div>
+          <div class="sw"><i style="background:var(--ink3)"></i><div><b>muted</b><span>#9A9A9A</span></div></div>
+          <div class="sw"><i style="background:var(--line2)"></i><div><b>edge</b><span>#3C3C3C</span></div></div>
+          <div class="sw"><i style="background:var(--accent)"></i><div><b>accent</b><span>#64A8F0</span></div></div>
+          <div class="sw"><i style="background:var(--warn)"></i><div><b>needs you</b><span>#E8B162</span></div></div>
+          <div class="sw"><i style="background:var(--ok)"></i><div><b>ready</b><span>#5FC488</span></div></div>
+          <div class="sw"><i style="background:var(--bad)"></i><div><b>danger</b><span>#F2768F</span></div></div>
+          <div class="sw"><i style="background:var(--purple)"></i><div><b>branch</b><span>#A593F5</span></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(520px,100%),1fr));gap:16px">
+    <div class="demo">
+      <h3 style="margin:0">Type</h3>
+      <div class="spec"><span class="sk" style="width:170px">Page title · 22 / 600</span><span style="font-size:22px;font-weight:600;letter-spacing:-.01em">Automations</span></div>
+      <div class="spec"><span class="sk" style="width:170px">Transcript · 15 on 21</span><span class="prose">The entry is in, and a test now pins it.</span></div>
+      <div class="spec"><span class="sk" style="width:170px">Title · 14 / 500</span><span style="font-size:14px;font-weight:500">Add glm-5.3-flash to the price catalog</span></div>
+      <div class="spec"><span class="sk" style="width:170px">UI · 13.5 / 400</span><span>Rows, buttons and menus</span></div>
+      <div class="spec"><span class="sk" style="width:170px">Meta · 12 to 13</span><span style="font-size:12.5px;color:var(--ink3)">3m 12s · 18.4k tokens</span></div>
+      <div class="spec"><span class="sk" style="width:170px">Code · mono 12.5</span><span class="mono" style="font-size:12.5px">git remote add origin1 …</span></div>
+    </div>
+    <div class="demo">
+      <h3 style="margin:0">Measured sizes</h3>
+      <table class="tbl" style="font-size:13.5px"><tbody>
+        <tr><td>Sidebar</td><td>288 wide, 200 to 420 when resized. Rows 32 high, 2 apart, 8 radius.</td></tr>
+        <tr><td>Bars</td><td>45 high for the title bar and every pane header.</td></tr>
+        <tr><td>Transcript</td><td>768 column with the text inset to 736, centred. 15 on 21.</td></tr>
+        <tr><td>Composer</td><td>768 wide, 14 radius, one line growing to 40% of the window.</td></tr>
+        <tr><td>Details rail</td><td>320 wide here, never under 280. Hidden when the task area is 800 or narrower.</td></tr>
+        <tr><td>Controls</td><td>24, 28 and 40 high. Icon buttons 28. Icons 20, or 16 when small.</td></tr>
+        <tr><td>Home composer</td><td>700 wide, 20 radius, 12 padding, text area from 54. Controls in one row under the text.</td></tr>
+        <tr><td>Compact density</td><td>13 on 18 text, rows 30, bars 40, transcript 14 on 20, controls 24, 28 and 32, icons 16.</td></tr>
+        <tr><td>Radius</td><td>7 chips, 8 rows and buttons, 12 cards, 14 composer, 22 tray.</td></tr>
+      </tbody></table>
+    </div>
+  </section>
+
+  <section>
+    <h3>Buttons: five kinds, five states</h3>
+    <div class="demo">
+      <div class="rowwrap"><span class="cap" style="width:70px">Primary</span><button class="btn pri">Allow once</button><button class="btn pri is-hover">Hover</button><button class="btn pri is-focus">Focus</button><button class="btn pri is-press">Pressed</button><button class="btn pri is-off">Disabled</button><button class="btn pri sm">Small</button><button class="btn pri lg">Large</button></div>
+      <div class="rowwrap"><span class="cap" style="width:70px">Soft</span><button class="btn soft">Create PR</button><button class="btn soft is-hover">Hover</button><button class="btn soft is-focus">Focus</button><button class="btn soft is-press">Pressed</button><button class="btn soft is-off">Disabled</button><button class="btn soft sm">Small</button><button class="btn soft lg">Large</button></div>
+      <div class="rowwrap"><span class="cap" style="width:70px">Outline</span><button class="btn sec">Stage all</button><button class="btn sec is-hover">Hover</button><button class="btn sec is-focus">Focus</button><button class="btn sec is-press">Pressed</button><button class="btn sec is-off">Disabled</button><button class="btn sec sm">Small</button><button class="btn sec lg">Large</button></div>
+      <div class="rowwrap"><span class="cap" style="width:70px">Ghost</span><button class="btn ghost">Skip</button><button class="btn ghost is-hover">Hover</button><button class="btn ghost is-focus">Focus</button><button class="btn ghost is-press">Pressed</button><button class="btn ghost is-off">Disabled</button><button class="ibtn" aria-label="Icon button"><span class="ms" aria-hidden="true">terminal</span></button><button class="ibtn on" aria-label="Icon button, on"><span class="ms" aria-hidden="true">difference</span></button></div>
+      <div class="rowwrap"><span class="cap" style="width:70px">Danger</span><button class="btn bad">Delete files</button><button class="btn bad is-focus">Focus</button><button class="btn bad is-off">Disabled</button><span class="cap">Used only for destructive confirmation.</span></div>
+    </div>
+  </section>
+
+  <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(520px,100%),1fr));gap:16px">
+    <div class="demo">
+      <h3 style="margin:0">Inputs and selection</h3>
+      <div class="rowwrap"><input class="field" aria-label="Text field" value="Commit message" style="max-width:200px"><input class="field is-focus" aria-label="Focused field" value="Focused" style="max-width:140px"><input class="field err" aria-label="Field with an error" value="Not a path" style="max-width:140px"></div>
+      <div class="search" style="max-width:320px"><span class="ms" aria-hidden="true">search</span><input aria-label="Search" placeholder="Search skills, rules, hooks, tool servers"></div>
+      <div class="rowwrap"><span class="check on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span class="check"></span><span class="radio on"></span><span class="radio"></span><span class="switch on"></span><span class="switch"></span>
+        <div class="segctl"><button>Cloud</button><button class="on">This Mac</button></div></div>
+    </div>
+    <div class="demo">
+      <h3 style="margin:0">Chips, tags, badges, keys</h3>
+      <div class="rowwrap"><button class="chip solid"><span class="ms" aria-hidden="true">all_inclusive</span>Agent</button><button class="chip solid"><span class="ms" aria-hidden="true">laptop_mac</span>This Mac<span class="ms s16" aria-hidden="true">expand_more</span></button><button class="chip solid"><span class="switch on"></span>Own worktree</button></div>
+      <div class="rowwrap"><span class="tagx">Draft</span><span class="tagx info">Working</span><span class="tagx warn">Protected write</span><span class="tagx bad">Destructive</span><span class="tagx ok">Verified</span><span class="badge">5</span><span class="badge warn">2</span><span class="udot"></span><span class="udot idle"></span></div>
+      <div class="rowwrap"><span class="keys"><kbd>⌘</kbd><kbd>K</kbd></span><span class="keys"><kbd>↵</kbd></span><span class="keys"><kbd>Esc</kbd></span><span class="ring" style="--p:38"></span><span class="meter" style="--p:75%;width:88px"><i></i></span><span class="tip">Changes<span class="kbd">⇧⌘D</span></span></div>
+    </div>
+  </section>
+
+  <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:16px">
+    <div class="demo" style="background:var(--canvas);padding:12px 0">
+      <h3 style="margin:0 18px">Sidebar rows</h3>
+      <div>
+        <button class="nv" style="width:calc(100% - 16px);margin:0 8px"><span class="ms" aria-hidden="true">inbox</span>Inbox<span class="badge warn">2</span></button>
+        <button class="nv on" style="width:calc(100% - 16px);margin:0 8px"><span class="ms" aria-hidden="true">schedule</span>Selected</button>
+        <button class="grp">modbit<span class="ms" aria-hidden="true">expand_more</span></button>
+        <button class="srow"><span class="t">Needs you</span><span class="ms fill c-warn s16" aria-hidden="true">error</span></button>
+        <button class="srow"><span class="t">Working</span><span class="ms c-acc s16 spin" aria-hidden="true">progress_activity</span></button>
+        <button class="srow kid"><span class="ms tree" aria-hidden="true">subdirectory_arrow_right</span><span class="t">Child task</span><span class="ms c-acc s16 spin" aria-hidden="true">progress_activity</span></button>
+        <button class="srow"><span class="t">Ready, 5 files, unread</span><span class="ms c-ok s16" aria-hidden="true">merge</span><span class="n">5</span><span class="udot"></span></button>
+        <button class="srow"><span class="t">Failed</span><span class="ms fill c-bad s16" aria-hidden="true">cancel</span></button>
+        <button class="srow is-hover"><span class="t">Hover shows pin and archive</span><span class="ms s16 c-dim" aria-hidden="true">push_pin</span><span class="ms s16 c-dim" aria-hidden="true">archive</span></button>
+        <button class="srow two"><span class="t"><span>Two-line row, an option in the view menu</span><small>Step 3 of 4 · 3m ago</small></span><span class="ms c-acc s16 spin" aria-hidden="true">progress_activity</span></button>
+      </div>
+    </div>
+    <div class="demo">
+      <h3 style="margin:0">Menu, dialog, toast</h3>
+      <div class="menu flat">
+        <button class="mi row"><span class="ms" aria-hidden="true">push_pin</span>Pin<span class="sc">⌥P</span></button>
+        <button class="mi row is-hover"><span class="ms" aria-hidden="true">vertical_split</span>Open in split view</button>
+        <button class="mi row"><span class="ms" aria-hidden="true">cloud_upload</span>Move to cloud</button>
+        <div class="sepr"></div>
+        <button class="mi row"><span class="ms" aria-hidden="true">archive</span>Archive<span class="sc">⌘⌫</span></button>
+      </div>
+      <div class="dlg" style="width:auto">
+        <h2>Delete 14 untracked files?</h2>
+        <p>git clean -fd removes them from the worktree. A checkpoint is taken first, so this can be restored.</p>
+        <div class="dft"><button class="btn ghost">Cancel</button><button class="btn bad">Delete files</button></div>
+      </div>
+      <div class="toast">Archived “Clean the build output”<button class="btn sm">Undo</button></div>
+    </div>
+    <div class="demo">
+      <h3 style="margin:0">Transcript parts</h3>
+      <div class="msg-user" style="align-self:flex-end">A message from you</div>
+      <p class="prose">A reply reads as plain text at 15 point.</p>
+      <button class="tline">Edited <b>catalog.rs</b><span class="num"><span class="add">+6</span><span class="del">−1</span></span><span class="ms" aria-hidden="true">chevron_right</span></button>
+      <p class="chap">A chapter marks a new phase</p>
+      <div class="tasks"><div class="tk"><span class="ms fill" aria-hidden="true">check_circle</span>Done step</div><div class="tk now"><span class="ms spin c-acc" aria-hidden="true">progress_activity</span>Current step</div><div class="tk"><span class="ms" aria-hidden="true">radio_button_unchecked</span>Next step</div></div>
+      <div class="statusline"><span class="ms spin c-acc s16" aria-hidden="true">progress_activity</span><span class="shimmer">Running cargo test</span><span>12s</span></div>
+      <div class="banner warn"><span class="ms" aria-hidden="true">warning</span><span><b>Core disconnected.</b> Reconnecting, your tasks keep their state.</span></div>
+      <div class="banner bad"><span class="ms" aria-hidden="true">error</span><span><b>Task failed.</b> The provider refused the request.</span><span class="grow"></span><button class="btn soft sm">Retry</button></div>
+    </div>
+  </section>
+
+  <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(520px,100%),1fr));gap:16px">
+    <div class="demo">
+      <h3 style="margin:0">Composer: in a task, and on Home</h3>
+      <div class="composer line"><button class="ibtn" aria-label="Attach"><span class="ms" aria-hidden="true">add</span></button><span class="grow c-dim" style="font-size:15px">↵ to send, ⌘↵ to queue for later</span><button class="send stop" aria-label="Stop"><span class="ms fill" aria-hidden="true">stop</span></button></div>
+      <div class="cfoot"><span>Auto balance</span><span>Supervised</span><span class="ring" style="--p:38"></span></div>
+      <div class="menu flat" style="width:auto">
+        <div class="h" style="text-transform:none;letter-spacing:0">Typing / opens skills and commands</div>
+        <button class="mi row is-hover"><span class="mono">/review</span><span class="sc">skill · trusted</span></button>
+        <button class="mi row"><span class="mono">/compact</span><span class="sc">summarise the context</span></button>
+        <button class="mi row"><span class="mono">@ledger.rs</span><span class="sc">crates/providers/src</span></button>
+      </div>
+    </div>
+    <div class="demo">
+      <h3 style="margin:0">Loading and empty</h3>
+      <div style="display:flex;flex-direction:column;gap:8px"><div class="skel" style="height:14px;width:62%"></div><div class="skel" style="height:14px;width:88%"></div><div class="skel" style="height:14px;width:45%"></div></div>
+      <div class="empty"><span class="ms s20 c-dim" aria-hidden="true">schedule</span><h2>No automations yet</h2><p>Run a task on a schedule or when something happens in a repository.</p><button class="btn pri">New automation</button></div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2500}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

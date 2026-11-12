@@ -206,6 +206,7 @@ pub fn samples() -> Vec<Sample> {
             attention_items: 0,
             project_id: id(0x63),
             checkout_root: "/repo".into(),
+            last_line: "The check passes now: 2 files changed.".into(),
         }],
         last_offset: 90,
         events_read: 0,
@@ -1433,7 +1434,8 @@ pub fn samples() -> Vec<Sample> {
                     "linesAdded": 14, "linesRemoved": 3, "lastCheckpointAt": null,
                     "subagent": false, "archived": false, "executionLocation": "local",
                     "origin": "cli", "taskState": "ReadyForReview", "lastOffset": "90",
-                    "readOffset": "40", "attentionItems": 0, "projectId": idhex(0x63), "checkoutRoot": "/repo"
+                    "readOffset": "40", "attentionItems": 0, "projectId": idhex(0x63), "checkoutRoot": "/repo",
+                    "lastLine": "The check passes now: 2 files changed."
                 }],
                 "lastOffset": "90", "eventsRead": "0", "objectsRead": "0"
             }),
@@ -2417,6 +2419,38 @@ pub fn samples() -> Vec<Sample> {
                 "offset": "43"
             }),
             decode: reencode::<ModeProposalDecided>,
+        },
+        // REQ-PX-210: the next-prompt suggestion request and its answer.
+        Sample {
+            name: "suggest_next_prompt",
+            type_name: "modbit.v1.SuggestNextPrompt",
+            bytes: SuggestNextPrompt { task_id: id(0x21) }.encode_to_vec(),
+            expected: json!({ "taskId": idhex(0x21) }),
+            decode: reencode::<SuggestNextPrompt>,
+        },
+        Sample {
+            name: "next_prompt_suggestion",
+            type_name: "modbit.v1.NextPromptSuggestion",
+            bytes: NextPromptSuggestion {
+                text: "Add a test for the empty case".into(),
+                task_offset: 9_007_199_254_740_993,
+                input_tokens: 412,
+                output_tokens: 9,
+                cost_known: true,
+                cost_minor: 2,
+                endpoint: "openai".into(),
+                model: "gpt-5-mini".into(),
+                snapshot_messages: 8,
+                usage_offset: 9_007_199_254_740_995,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "text": "Add a test for the empty case",
+                "taskOffset": "9007199254740993", "inputTokens": "412", "outputTokens": "9",
+                "costKnown": true, "costMinor": "2", "endpoint": "openai", "model": "gpt-5-mini",
+                "snapshotMessages": 8, "usageOffset": "9007199254740995"
+            }),
+            decode: reencode::<NextPromptSuggestion>,
         },
     ]
 }

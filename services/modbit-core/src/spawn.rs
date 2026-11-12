@@ -241,6 +241,23 @@ pub(crate) async fn spawn(
             ));
         }
     }
+    // PX-178: completion evidence is the parent's declaration of what the
+    // child's done looks like; one that cannot be evaluated as written is
+    // refused here, before anything is admitted.
+    if let Some(v) = &req.spec.completion_evidence {
+        let checked =
+            serde_json::from_value::<modbit_verification::gui::CompletionEvidence>(v.clone())
+                .map_err(|e| e.to_string())
+                .and_then(|e| e.validate());
+        if let Err(why) = checked {
+            let detail = format!(
+                "completion_evidence: {why}; declare {{kind: accessibility, app, role?, name, value}}, {{kind: file, path, contains}} or {{kind: recorded, event_type, field, equals}}"
+            );
+            let r = refuse("COMPLETION_EVIDENCE_INVALID", detail, "SPEC", vec![]);
+            record_and_return(core, parent, lt, &req.idempotency_key, actor, r.clone()).await;
+            return Err(r);
+        }
+    }
     let record_refusal = |core: &Core, r: &SpawnRefused| {
         let store = core.store.clone();
         let ev = typed(
@@ -1486,6 +1503,15 @@ pub(crate) fn child_holds_in(
         if let Some(scan) = e.envelope.task_id.and_then(|t| scans.get_mut(&t)) {
             let payload = store.payload(&e.envelope).unwrap_or_default();
             scan.observe(&e.envelope, &payload);
+        } else if e.envelope.event_type == crate::usage::SUGGESTION_USAGE {
+            // REQ-PX-210: a suggestion call made for a child is the child's
+            // spend, charged from a record kept off its log.
+            let payload = store.payload(&e.envelope).unwrap_or_default();
+            if let Some(scan) = crate::usage::off_log_task(&e.envelope.event_type, &payload)
+                .and_then(|t| scans.get_mut(&t))
+            {
+                scan.observe_off_log(&payload);
+            }
         }
     }
     nodes
@@ -1581,6 +1607,17 @@ pub(crate) async fn regrant(
         let registry = core.gateway.registry();
         let mut caps = modbit_core_runtime::Budgets::default();
         let mut scan = crate::usage::SpendScan::new(registry.as_ref());
+        // REQ-PX-210: the parent's own suggestion calls are its spend too.
+        for e in events
+            .iter()
+            .filter(|e| e.envelope.event_type == crate::usage::SUGGESTION_USAGE)
+        {
+            let payload = store.payload(&e.envelope).unwrap_or_default();
+            if crate::usage::off_log_task(&e.envelope.event_type, &payload) == Some(parent.task_id)
+            {
+                scan.observe_off_log(&payload);
+            }
+        }
         for e in events
             .iter()
             .filter(|e| e.envelope.task_id == Some(parent.task_id))

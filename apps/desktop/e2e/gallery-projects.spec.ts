@@ -34,11 +34,14 @@ test("PX-063/064/068: the project, worktree and apply-back states render from fi
     const status = await page.evaluate(() => window.modbit.coreStatus());
     expect((status as { state: string }).state, "no Core is connected to this page").not.toBe("connected");
 
-    // The Projects group is separate from the repositories and holds its tasks; its heading has the New project button.
+    // The projects are groups of their own, apart from the repositories, and hold their tasks; the Tasks head's More menu has New project.
     const list = page.getByTestId("gallery-projects-list");
-    await expect(list.locator('[data-testid="agents-section"][data-section="projects"]')).toBeVisible();
+    await expect(list.getByTestId("agents-head")).toBeVisible();
     await expect(list.getByTestId("project-row")).toHaveCount(3);
+    await list.getByTestId("agents-more").click();
     await expect(list.getByTestId("agents-new-project")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(list.getByTestId("agents-new-project")).toHaveCount(0);
     await expect(list.getByTestId("project-row").first().getByTestId("project-rollup")).toContainText("3 tasks · 1 needs attention");
     await expect(list.getByTestId("agents-note")).toContainText("A draft cannot join a project yet.");
     // Under the Project grouping the live projects (one empty) and the tasks of no project are the sections.

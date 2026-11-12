@@ -9,9 +9,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TrayHost, chordMatches, isMacPlatform, useEscapeLayers, useKeyDispatch, useKeyScope, type MenuItem } from "@modbit/ui";
 import type { KeyScope } from "@modbit/ui/logic";
-import { GEOMETRY, THEME_LABEL, THEME_PREFERENCES, type ThemePreference } from "@modbit/design-tokens";
+import { GEOMETRY, THEME_LABEL, THEME_PREFERENCES, type Density, type ThemePreference } from "@modbit/design-tokens";
 import type { AppState } from "../state/use-app.ts";
-import { AgentList } from "../agents/agent-list.tsx";
+import { AgentList, type TaskActions } from "../agents/agent-list.tsx";
 import { ProjectDetail } from "../projects/project-detail.tsx";
 import { useProjects } from "../projects/use-projects.ts";
 import { WorktreesPanel } from "../worktrees/worktrees-panel.tsx";
@@ -34,7 +34,7 @@ import { useTerminals } from "../apps/use-terminals.ts";
 import { recoverySummary } from "../../main/lifecycle.ts";
 import { AppsPanel } from "./apps-panel.tsx";
 import { Automations } from "../automations/automations.tsx";
-import { artifactsOf, panelTaskFor } from "./artifacts.ts";
+import { artifactsOf, panelTaskFor, panesOf } from "./artifacts.ts";
 import { shellRegistry, type ShellActions } from "./commands.ts";
 import { CommandPalette, type PaletteItem } from "./palette.tsx";
 import { clampZoom, loadUiPrefs, saveUiPrefs, ZOOM_STEP, type AppKind, type PanelState, type UiPrefs } from "./prefs.ts";
@@ -42,7 +42,7 @@ import { clampPanelRatio, PANEL_MAX_RATIO } from "./layout.ts";
 import { ShellFrame } from "./shell-frame.tsx";
 import { ShortcutHelp } from "./shortcut-help.tsx";
 import { TrayDirector } from "../context/tray-director.tsx";
-import { TopBar } from "./top-bar.tsx";
+import { TopBar, type PaneToggle } from "./top-bar.tsx";
 import { PermissionsDialog } from "../computer/permissions-dialog.tsx";
 import { PresenceBar, STOP_CHORD, useComputerStop } from "../computer/presence-bar.tsx";
 import { holdsMachine, permissionsNeeded } from "../computer/model.ts";
@@ -66,6 +66,13 @@ function applyTheme(theme: ThemePreference): void {
   else root.dataset.theme = theme;
 }
 
+/** Comfortable is the token stylesheet's own block; Compact is its override block, chosen by this attribute (MWS-03). */
+function applyDensity(density: Density): void {
+  const root = document.documentElement;
+  if (density === "comfortable") delete root.dataset.density;
+  else root.dataset.density = density;
+}
+
 export function Shell({ app }: { app: AppState }) {
   const { core, platform, model, tasks, cols, reviewing, browsing, dashboardOpen, setDashboardOpen, setReviewing, setBrowsing, openBrowser, selectedTaskId, setSelectedTaskId, helpOpen, setHelpOpen, runKeyCommand, confirm, startTask, setConfirm, attentionItems, navRequest, setWorkspaceRoot } = app;
   const [prefs, setPrefsState] = useState<UiPrefs>(loadUiPrefs);
@@ -87,6 +94,9 @@ export function Shell({ app }: { app: AppState }) {
   const [leftConversation, setLeftConversation] = useState<string | null>(null);
   const [headers, setHeaders] = useState<readonly AgentHeaderView[]>([]);
   const [topSlot, setTopSlot] = useState<HTMLSpanElement | null>(null);
+  const [topEndSlot, setTopEndSlot] = useState<HTMLSpanElement | null>(null);
+  // MWS-05: the open task's title menu pins and archives through the task list, which owns both.
+  const [taskActions, setTaskActions] = useState<TaskActions | null>(null);
   const [userName, setUserName] = useState("");
   const [branchByTask, setBranchByTask] = useState<Record<string, string>>({});
   const noteBranch = useCallback((taskId: string, branch: string) => setBranchByTask((m) => (m[taskId] === branch ? m : { ...m, [taskId]: branch })), []);
@@ -153,6 +163,7 @@ export function Shell({ app }: { app: AppState }) {
 
   useEffect(() => saveUiPrefs(prefs), [prefs]);
   useEffect(() => applyTheme(prefs.theme), [prefs.theme]);
+  useEffect(() => applyDensity(prefs.density), [prefs.density]);
   useEffect(() => {
     document.documentElement.style.zoom = prefs.zoom === 1 ? "" : String(prefs.zoom);
   }, [prefs.zoom]);
@@ -412,11 +423,25 @@ export function Shell({ app }: { app: AppState }) {
 
   const overlayTitle = reviewing ? model.tasks.get(reviewing)?.goalText : browsing ? model.tasks.get(browsing.taskId)?.goalText : conversation ? model.tasks.get(conversation.taskId)?.goalText : undefined;
   const openedProject = projectPage ? projects.projects.find((p) => p.projectId === projectPage) : undefined;
-  const title = settingsOpen ? "Settings" : customizeOpen ? "Customize" : inboxOpen ? "Approvals" : automationsOpen ? "Automations" : dashboardOpen ? "Dashboard" : reviewing || browsing ? (overlayTitle ?? "Task") : projectPage ? (openedProject?.name ?? "Project") : worktreesOpen ? "Worktrees" : (overlayTitle ?? "New task");
-  const repositories = useMemo(() => [...new Set(headers.filter((h) => !h.archived).map((h) => h.checkoutRoot || h.workspaceRoot).filter((r) => r !== ""))].slice(0, 5), [headers]);
+  const title = settingsOpen ? "Settings" : customizeOpen ? "Customize" : inboxOpen ? "Inbox" : automationsOpen ? "Automations" : dashboardOpen ? "Dashboard" : reviewing || browsing ? (overlayTitle ?? "Task") : projectPage ? (openedProject?.name ?? "Project") : worktreesOpen ? "Worktrees" : (overlayTitle ?? "New task");
   const openedHeader = conversation ? headers.find((h) => h.taskId === conversation.taskId) : undefined;
   const panelRefreshKey = useThrottled(`${panelTask?.state ?? ""}:${panelTask?.lastOffset ?? ""}`, 1200);
-  const panelUnavailable = panelTaskId === null ? "no task has an artifact yet" : null;
+  // MWS-05: one toggle per pane the task in the centre can show, each with its state. A page that is not a task, and a task that has not started, have none.
+  const shownTaskId = settingsOpen || customizeOpen || inboxOpen || automationsOpen || dashboardOpen ? null : (reviewing ?? browsing?.taskId ?? (projectPage || worktreesOpen ? null : (conversation?.taskId ?? null)));
+  const panes = useMemo<PaneToggle[]>(() => (shownTaskId !== null && shownTaskId === panelTaskId ? panesOf(artifacts).map((kind) => ({ kind, open: panelOpen && panelState.tab === kind })) : []), [shownTaskId, panelTaskId, artifacts, panelOpen, panelState.tab]);
+  const onPane = (kind: AppKind) => {
+    if (!panelTaskId) return;
+    setPanelState(panelTaskId, panelOpen && panelState.tab === kind ? { ...panelState, open: false } : { open: true, tab: kind });
+  };
+  // The title is the task's while its conversation is what the centre shows; then it opens the task's menu.
+  const menuTaskId = conversation && shownTaskId === conversation.taskId && !reviewing && !browsing ? conversation.taskId : null;
+  const taskMenu = useMemo<MenuItem[] | undefined>(() => {
+    if (!menuTaskId || !taskActions) return undefined;
+    const pinned = taskActions.pins.includes(menuTaskId);
+    const items: MenuItem[] = [{ id: "task-pin", label: pinned ? "Unpin" : "Pin", onSelect: () => (pinned ? taskActions.unpin(menuTaskId) : taskActions.pin(menuTaskId)) }];
+    if (openedHeader && !openedHeader.archived) items.push({ id: "task-archive", label: "Archive", separatorBefore: true, onSelect: () => taskActions.archive(menuTaskId) });
+    return items;
+  }, [menuTaskId, taskActions, openedHeader]);
   // REQ-PX-049: what the Core recovered at start, as counts of its own task states, shown once its snapshot and attention list are in.
   const [recoveryNote, setRecoveryNote] = useState<{ boot: string; text: string } | null>(null);
   useEffect(() => {
@@ -474,7 +499,7 @@ export function Shell({ app }: { app: AppState }) {
               document.getElementById(`settings-${id}`)?.scrollIntoView({ block: "start" });
             }}
             onBack={() => setSettingsOpen(false)}
-            foot={<PersonRow userName={userName} coreLabel={coreLabel} coreStatus={coreStatus} menuItems={menuItems} settingsOpen onOpenSettings={() => setSettingsOpen(false)} />}
+            foot={<PersonRow userName={userName} coreLabel={coreLabel} coreStatus={coreStatus} menuItems={menuItems} settingsOpen onOpenSettings={() => setSettingsOpen(false)} onOpenHelp={() => setHelpOpen(true)} />}
           />
         ) : (
           <AgentRegion
@@ -483,6 +508,7 @@ export function Shell({ app }: { app: AppState }) {
             taskCount={tasks.length}
             attentionCount={cols.needsAttention.length}
             onNewTask={() => actions.focusNewTask()}
+            homeOpen={!actions.canGoBack()}
             onExpand={() => actions.toggleAgentList()}
             onToggleAgentList={() => actions.toggleAgentList()}
             canGoBack={actions.canGoBack()}
@@ -491,7 +517,6 @@ export function Shell({ app }: { app: AppState }) {
             onForward={() => {
               if (leftConversation) openConversation(leftConversation);
             }}
-            onSearch={() => setPaletteOpen(true)}
             automationsOpen={automationsOpen}
             automationsDisabled={core.state !== "connected"}
             onToggleAutomations={() => (automationsOpen ? setAutomationsOpen(false) : actions.openAutomations())}
@@ -508,18 +533,39 @@ export function Shell({ app }: { app: AppState }) {
               closePages();
               setCustomizeOpen(open);
             }}
-            repositories={repositories}
-            onOpenRepository={(root) => {
-              setWorkspaceRoot(root);
-              actions.focusNewTask();
-            }}
             userName={userName}
             coreLabel={coreLabel}
             coreStatus={coreStatus}
             menuItems={menuItems}
             settingsOpen={settingsOpen}
             onOpenSettings={() => actions.openSettings()}
-            list={rail ? undefined : <AgentList sessionId={model.sessionId} connected={core.state === "connected"} selectedTaskId={conversation?.taskId ?? null} onSelect={openConversation} onHeaderList={setHeaders} facts={rowFacts} projects={projects} selectedProjectId={projectPage} onOpenProject={openProject} onProjectArchived={(id, archived) => { if (archived && projectPage === id) setProjectPage(null); }} />}
+            onOpenHelp={() => setHelpOpen(true)}
+            list={
+              rail ? undefined : (
+                <AgentList
+                  sessionId={model.sessionId}
+                  connected={core.state === "connected"}
+                  selectedTaskId={conversation?.taskId ?? null}
+                  onSelect={openConversation}
+                  onHeaderList={setHeaders}
+                  facts={rowFacts}
+                  projects={projects}
+                  selectedProjectId={projectPage}
+                  onOpenProject={openProject}
+                  onProjectArchived={(id, archived) => {
+                    if (archived && projectPage === id) setProjectPage(null);
+                  }}
+                  parents={model.parents}
+                  density={prefs.density}
+                  onSearch={() => setPaletteOpen(true)}
+                  onNewTaskIn={(root) => {
+                    setWorkspaceRoot(root);
+                    actions.focusNewTask();
+                  }}
+                  onTaskActions={setTaskActions}
+                />
+              )
+            }
           />
         )}
         banner={
@@ -533,7 +579,7 @@ export function Shell({ app }: { app: AppState }) {
           />
         }
         topBar={
-          <TopBar title={title} slotRef={setTopSlot} panelOpen={panelOpen} panelUnavailable={panelUnavailable} onTogglePanel={() => actions.togglePanel()} />
+          <TopBar title={title} taskMenu={taskMenu} slotRef={setTopSlot} endSlotRef={setTopEndSlot} panes={panes} onPane={onPane} />
         }
         tray={conversation && !reviewing && !browsing && !dashboardOpen ? null : <TrayHost />}
         statusRow={
@@ -561,6 +607,8 @@ export function Shell({ app }: { app: AppState }) {
               onTheme={(theme) => setPrefs((p) => ({ ...p, theme }))}
               zoom={prefs.zoom}
               onZoom={(delta) => actions.zoom(delta)}
+              density={prefs.density}
+              onDensity={(density) => setPrefs((p) => ({ ...p, density }))}
               onCustomize={() => {
                 closePages();
                 setCustomizeOpen(true);
@@ -612,6 +660,7 @@ export function Shell({ app }: { app: AppState }) {
               onOpenTask={(id) => openConversation(id)}
               titleOf={(id) => model.tasks.get(id)?.goalText ?? "another task"}
               topSlot={topSlot}
+              topEndSlot={topEndSlot}
               subtasks={childrenOf(model, conversation.taskId)}
               screenState={model.tasks.has(conversation.taskId) ? taskState({ card: model.tasks.get(conversation.taskId)!, core, attention: attentionItems }) : null}
               worktree={Boolean(openedHeader?.checkoutRoot)}

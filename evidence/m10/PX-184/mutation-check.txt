@@ -1,0 +1,26 @@
+PX-184 mutation check (local, macOS arm64, 2026-11-07, base 9915c074 + the PX-184 change)
+
+1. Gate disabled
+   File: benchmarks/agent-engineering/src/axes.rs (Gate::passes)
+   Exact-string mutation:  `current + 1e-9 >= self.floor(baseline)`  ->  `{ let _ = (baseline, current); true }`
+   Command: cargo test -p modbit-bench-agent-engineering --test four_axis -- --test-threads=4
+   Result (exit 101):
+     test qual_px_184_the_report_refuses_cost_not_derived_from_recorded_usage_and_a_gate_that_cannot_fail ... FAILED
+       panicked at benchmarks/agent-engineering/tests/four_axis.rs:315:9 (the synthetic injected regression no longer fails its axis)
+     test qual_px_184_forty_tasks_through_the_real_core_a_rerun_matches_the_baseline_and_a_memory_regression_fails_only_memory ... FAILED
+       panicked at benchmarks/agent-engineering/tests/four_axis.rs:1053:5 (the real-Core memory regression: compare exited 0, expected 3)
+     test result: FAILED. 3 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 127.05s
+   Reverted by copying the saved file back (the file is new, so `git checkout --` would not restore it);
+   SHA-256 before and after: 4e95132dbf0a9dae66d9d1a65f75950389facd4605990a7026d1b71c0debd489
+
+2. Verifier verdict disabled
+   File: benchmarks/agent-engineering/src/verifier.rs (evaluate)
+   Exact-string mutation:  `let passed = !checks.is_empty() && checks.iter().all(|c| c.passed);`  ->  `let passed = true;`
+   Command: cargo test -p modbit-bench-agent-engineering --test four_axis -- --skip forty_tasks
+   Result (exit 101):
+     test qual_px_184_a_verifier_reads_the_workspace_and_the_cores_records_never_the_models_claim ... FAILED
+       panicked at benchmarks/agent-engineering/tests/four_axis.rs:616:9 (a wrong file content passed)
+     test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.01s
+   Reverted the same way; SHA-256 before and after: b6f477af9d326a85f0c3c57737ce15a57ac99c1810df0b313a98da091a571f2f
+
+With both files restored the full crate suite passes (18 tests, see TASK_CARD.md).

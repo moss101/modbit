@@ -92,14 +92,16 @@ test("live: the approval deck with a real model: a card for a command no rule co
         const canAlways = !alwaysDone && (await page.getByTestId("approval-always").count()) > 0 && entry.effect.toLowerCase().includes("protected write");
         if (canAlways) {
           // The widest prefix the Core accepts (`git remote`), scoped to this task.
-          const prefix = page.getByTestId("approval-prefix");
-          const values = await prefix.locator("option").evaluateAll((os) => os.map((o) => (o as HTMLOptionElement).value));
+          // MWS-08: the prefix and the scope are in the one Always allow menu.
+          await page.getByTestId("approval-always").click();
+          const options = page.getByTestId("approval-prefix").getByTestId("approval-prefix-option");
+          const values = await options.evaluateAll((os) => os.map((o) => (o as HTMLInputElement).value));
           // A bare `git` names no sub-command and the Core refuses it as too broad; the narrowest useful one is two words.
           const shortest = [...values].filter((v) => v.split("\u0000").length >= 2).sort((a, b) => a.split("\u0000").length - b.split("\u0000").length)[0];
-          if (shortest !== undefined) await prefix.selectOption(shortest);
-          entry.prefix = ((await prefix.locator("option:checked").textContent()) ?? "").trim();
-          await page.getByTestId("approval-scope").selectOption("TASK");
-          await page.getByTestId("approval-always").click();
+          if (shortest !== undefined) await options.nth(values.indexOf(shortest)).check();
+          entry.prefix = ((await page.getByTestId("approval-prefix").getAttribute("data-value")) ?? "").trim();
+          await page.getByTestId("approval-scope").locator('[data-scope="TASK"]').check();
+          await page.getByTestId("approval-always-confirm").click();
           entry.answer = "always";
           alwaysDone = true;
           // Always makes the rule and approves this one effect (the card says so); nothing more to click.

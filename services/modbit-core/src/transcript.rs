@@ -16,7 +16,9 @@
 //!   recomputes it. It loads no event of any transcript: the figures come
 //!   from the task projection and grouped aggregates over the session's
 //!   events (`EventStore::task_digests`); the only events it reads are those
-//!   `attention` derives the needs-attention class from.
+//!   `attention` derives the needs-attention class from. The last line of
+//!   the latest finished message (PX-218) is the completion record's own
+//!   field, read by the same aggregates.
 
 use std::collections::HashMap;
 
@@ -1541,6 +1543,54 @@ pub(crate) fn title_of(t: &Task) -> String {
     bounded(t.goal_text.lines().next().unwrap_or_default().trim(), 120).0
 }
 
+/// The lines of messages finished before the completion record carried one
+/// (PX-218), by the hash of the message's text object. The object is
+/// content-addressed, so a line read once is that object's line for good;
+/// this only saves reading the same object again on every header read.
+static OLD_RECORD_LINES: std::sync::OnceLock<std::sync::Mutex<HashMap<String, String>>> =
+    std::sync::OnceLock::new();
+/// Lines kept at most; past it the map starts again.
+const OLD_RECORD_LINES_MAX: usize = 4096;
+
+/// The last non-empty line of the task's latest finished assistant message
+/// (PX-218, DR-PX-2026-11-11-021 MWS-20), "" when it has not answered.
+///
+/// The line is the completion record's own, written from the redacted text
+/// when the message finished, so the header shows what the transcript shows
+/// and reads no object. A record written before the field existed has the
+/// line only in its text object: that object is read, once per Core process.
+/// Either way the result is held to the bound here, whatever wrote the log.
+fn last_line_of(store: &EventStore, digest: &modbit_event_store::digest::TaskDigest) -> String {
+    let Some(message) = &digest.last_message else {
+        return String::new();
+    };
+    if let Some(line) = &message.last_line {
+        return modbit_domain::stream::last_line(line);
+    }
+    if message.text_hash.is_empty() {
+        return String::new();
+    }
+    let lines = OLD_RECORD_LINES.get_or_init(Default::default);
+    if let Some(line) = lines
+        .lock()
+        .ok()
+        .and_then(|l| l.get(&message.text_hash).cloned())
+    {
+        return line;
+    }
+    let Ok(bytes) = store.objects().get(&message.text_hash) else {
+        return String::new();
+    };
+    let line = modbit_domain::stream::last_line(&String::from_utf8_lossy(&bytes));
+    if let Ok(mut l) = lines.lock() {
+        if l.len() >= OLD_RECORD_LINES_MAX {
+            l.clear();
+        }
+        l.insert(message.text_hash.clone(), line.clone());
+    }
+    line
+}
+
 fn subtitle_of(root: &str) -> String {
     std::path::Path::new(root)
         .file_name()
@@ -1667,6 +1717,7 @@ pub(crate) fn headers(
                 .as_deref()
                 .and_then(checkout_of)
                 .unwrap_or_default(),
+            last_line: last_line_of(store, d),
         });
     }
     out.sort_by(|a, b| {
@@ -1858,5 +1909,83 @@ mod tests {
             short_text(&serde_json::json!({"argv": ["git", "grep", "x"]})),
             "git grep x"
         );
+    }
+
+    /// PX-218 on a real store: a message finished by a Core older than the
+    /// field has its line only in its text object. The header reads that
+    /// object once, holds the line to the bound, and does not read it again;
+    /// a record that carries its line is served without reading any object.
+    #[test]
+    fn the_last_line_of_a_record_older_than_the_field_is_read_from_its_object_once() {
+        use modbit_domain::event::{Actor, AggregateType};
+        use modbit_domain::stream::LAST_LINE_MAX_CHARS;
+        use modbit_domain::{RunId, RunStepId, SessionId, StreamId, TaskId, TenantId, TurnId};
+        use modbit_event_store::{AppendRequest, NewEvent};
+
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = EventStore::open(dir.path()).unwrap();
+        let session = SessionId::new();
+        let mut finish = |task: TaskId, text: &str, line: Option<&str>| {
+            let id = StreamId::new();
+            let hash = store.objects().put(text.as_bytes()).unwrap();
+            let delta = json!({
+                "event_type": "AssistantTextDelta", "stream_id": id, "kind": "TEXT", "sequence": 1,
+                "run_id": RunId::new(), "turn_id": TurnId::new(), "step_id": RunStepId::new(),
+                "text": "x", "provenance": "MODEL_OUTPUT", "retention": "COLLAPSIBLE_ON_COMPLETE"
+            });
+            let mut done = json!({
+                "event_type": "AssistantMessageCompleted", "stream_id": id, "kind": "TEXT",
+                "delta_count": 1, "text_ref": {"object_hash": hash, "byte_length": text.len()},
+                "content_hash": "00"
+            });
+            if let Some(line) = line {
+                done["last_line"] = json!(line);
+            }
+            store
+                .append(AppendRequest {
+                    tenant_id: TenantId::from_bytes([7; 16]),
+                    session_id: session,
+                    task_id: Some(task),
+                    run_id: None,
+                    turn_id: None,
+                    step_id: None,
+                    aggregate_type: AggregateType::AssistantStream,
+                    aggregate_id: *id.as_bytes(),
+                    expected_sequence: None,
+                    events: vec![
+                        NewEvent::new("AssistantTextDelta", delta, Actor::Core("test".into())),
+                        NewEvent::new(
+                            "AssistantMessageCompleted",
+                            done,
+                            Actor::Core("test".into()),
+                        ),
+                    ],
+                })
+                .unwrap();
+        };
+        let (old, new, silent) = (TaskId::new(), TaskId::new(), TaskId::new());
+        let long = "é".repeat(LAST_LINE_MAX_CHARS + 40);
+        finish(old, &format!("an old answer\n{long}\n\n"), None);
+        finish(
+            new,
+            "a new answer\nits own last line",
+            Some("its own last line"),
+        );
+        let digests = store.task_digests(&session).unwrap();
+        let of = |t: TaskId| digests.iter().find(|d| d.task_id == t);
+
+        // A record with its line: no object is read.
+        let before = store.objects().reads();
+        assert_eq!(last_line_of(&store, of(new).unwrap()), "its own last line");
+        assert_eq!(store.objects().reads(), before);
+        // An old record: its object is read, once, and the line is bounded.
+        let line = last_line_of(&store, of(old).unwrap());
+        assert_eq!(line.chars().count(), LAST_LINE_MAX_CHARS);
+        assert!(line.ends_with('\u{2026}') && long.starts_with(line.trim_end_matches('\u{2026}')));
+        assert_eq!(store.objects().reads(), before + 1);
+        assert_eq!(last_line_of(&store, of(old).unwrap()), line);
+        assert_eq!(store.objects().reads(), before + 1, "read again");
+        // A task that has not answered has none.
+        assert!(of(silent).is_none());
     }
 }

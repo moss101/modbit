@@ -1,0 +1,36 @@
+     Running unittests src/lib.rs (target/debug/deps/modbit_bench_agent_engineering-68eb56eb1c95adc4)
+test profile::tests::a_variant_is_repaired_twice_and_the_third_repair_is_refused ... ok
+test profile::tests::a_variant_is_conditioned_on_the_task_deterministic_and_within_bounds ... ok
+test workspace::tests::python_byproducts_are_not_part_of_a_trial_workspace ... ok
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+     Running unittests src/bin/competence_baseline.rs (target/debug/deps/competence_baseline-ef02c8b59ac3429c)
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/four_axis.rs (target/debug/deps/four_axis-a6a16f03cd3bf647)
+test qual_px_184_the_report_refuses_cost_not_derived_from_recorded_usage_and_a_gate_that_cannot_fail ... ok
+test qual_px_184_the_suite_has_ten_tagged_tasks_per_axis_each_with_its_own_verifier ... ok
+test qual_px_184_the_retained_baseline_is_a_valid_four_axis_bundle_of_this_suite ... ok
+test qual_px_184_a_verifier_reads_the_workspace_and_the_cores_records_never_the_models_claim ... ok
+test qual_px_184_forty_tasks_through_the_real_core_a_rerun_matches_the_baseline_and_a_memory_regression_fails_only_memory has been running for over 60 seconds
+test qual_px_184_forty_tasks_through_the_real_core_a_rerun_matches_the_baseline_and_a_memory_regression_fails_only_memory ... ok
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 194.85s
+     Running tests/harness.rs (target/debug/deps/harness-b6ed36f18c83e6c3)
+test protected_tests_are_intact_when_named_tests_are_unchanged_and_additions_are_allowed ... ok
+test event_scoring_counts_the_doc_63_signals_from_the_log ... ok
+test bundle_validation_refuses_what_the_frozen_protocol_forbids_and_no_target_precedes_a_baseline ... ok
+test a_bundle_is_referenced_by_the_digest_of_its_file_bytes ... ok
+test a_fixture_copy_links_installed_modules_by_absolute_path_even_from_a_relative_source ... ok
+test the_internal_suite_is_frozen_and_its_digest_covers_hidden_acceptance ... ok
+test merge_combines_per_task_bundles_under_one_protocol_and_refuses_mismatches ... ok
+test qual_ev_0246_the_third_repair_is_refused_and_the_known_good_fallback_still_verifies ... ok
+test the_binary_drives_a_real_task_through_the_real_cli_and_core_and_scores_it ... ok
+test qual_ev_0244_a_generated_profile_runs_only_in_shadow_and_never_as_the_baseline ... ok
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 31.98s
+     Running tests/memory_ranking.rs (target/debug/deps/memory_ranking-5e4b29c5eb4a7de3)
+test qual_px_186_the_corpus_is_designed_before_measurement_and_refuses_a_defective_gold ... ok
+test qual_px_186_keep_needs_more_recall_at_the_same_budget_and_the_default_must_follow_the_decision ... ok
+test qual_px_186_a_comparison_at_unequal_budgets_nondeterministic_or_offering_a_sensitive_item_is_refused ... ok
+test qual_px_186_the_retained_comparison_is_recomputed_from_its_retained_passes ... ok
+test qual_px_186_through_the_real_core_the_reverted_candidate_is_refused_and_the_current_ranking_reproduces_the_decision has been running for over 60 seconds
+test qual_px_186_through_the_real_core_the_reverted_candidate_is_refused_and_the_current_ranking_reproduces_the_decision ... ok
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 160.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

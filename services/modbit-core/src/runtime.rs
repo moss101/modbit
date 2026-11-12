@@ -150,6 +150,13 @@ pub(crate) enum TranscriptEntry {
     Assistant {
         text: String,
         tool_calls: Vec<(String, String, String)>, // (call_id, name, arguments_json)
+        /// Per call id, the opaque data the provider attached to the call
+        /// and requires back on replay (Gemini 3's thought signature),
+        /// endpoint-scoped by the gateway. Persisted with the message so a
+        /// resumed run replays it; absent when no call carried any, which
+        /// keeps every other entry byte-identical to before.
+        #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+        provider_data: std::collections::BTreeMap<String, serde_json::Value>,
     },
     /// What the model saw for one requested call.
     ToolResult {
@@ -1735,6 +1742,18 @@ pub(crate) async fn rebuild(
     // its runs have used (first to last event of each run).
     let registry = core.gateway.registry();
     let mut spend = crate::usage::SpendScan::new(registry.as_ref());
+    // REQ-PX-210: the next-prompt suggestion calls made for the task are
+    // charged to it from records kept off its log; they count against its
+    // cost cap like its own calls.
+    for ev in events
+        .iter()
+        .filter(|e| e.envelope.event_type == crate::usage::SUGGESTION_USAGE)
+    {
+        let payload = store.payload(&ev.envelope).unwrap_or_default();
+        if crate::usage::off_log_task(&ev.envelope.event_type, &payload) == Some(task.task_id) {
+            spend.observe_off_log(&payload);
+        }
+    }
     for ev in events
         .iter()
         .filter(|e| e.envelope.task_id == Some(task.task_id))
@@ -1928,6 +1947,7 @@ pub(crate) async fn rebuild(
                         "depth": c.depth,
                         "objective": c.spec.objective,
                         "write_scope": c.spec.write_scope,
+                        "completion_evidence": c.spec.completion_evidence,
                         "read_scope": c.spec.read_scope,
                         "private_context_refs": c.private_context_refs,
                         "budget": {
@@ -2313,6 +2333,7 @@ pub(crate) fn dangling_calls(transcript: &[Message]) -> Vec<(String, String, Str
                 call_id,
                 name,
                 arguments_json,
+                ..
             } if !answered.contains(&call_id.as_str()) => {
                 Some((call_id.clone(), name.clone(), arguments_json.clone()))
             }
@@ -2416,6 +2437,118 @@ fn media_parts(call_id: &str, media: &[MediaRef]) -> Vec<ContentPart> {
         .collect()
 }
 
+/// The longest call arguments a frame record names, in characters.
+const FRAME_RECORD_TARGET_CHARS: usize = 300;
+
+/// The window in force for `task`: the policy snapshot of its round.
+fn frames_kept(core: &Core, task: &Task) -> usize {
+    crate::computer::frames_kept(&core.tools.configurations.for_task(
+        task.task_id,
+        &core.data_dir,
+        task.workspace_root.as_deref(),
+    ))
+}
+
+/// PX-174: the screenshot window. The model is sent the last `keep` frames a
+/// computer-use run took (the media of `computer.*` results) as images; in
+/// place of each older frame its tool result carries a text record of the
+/// step - the action, the target it was called with, the outcome - and the
+/// digest the frame stays readable by. Only this view changes: the stored
+/// transcript, the step outputs it is rebuilt from, the object store and the
+/// log keep every frame. Media of any other tool is untouched.
+fn frame_window(transcript: &[Message], keep: usize) -> std::borrow::Cow<'_, [Message]> {
+    use std::collections::{HashMap, HashSet};
+    let mut calls: HashMap<&str, (&str, &str)> = HashMap::new();
+    let mut frames: Vec<(usize, usize)> = Vec::new();
+    for (mi, m) in transcript.iter().enumerate() {
+        for (pi, p) in m.parts.iter().enumerate() {
+            match p {
+                ContentPart::ToolCall {
+                    call_id,
+                    name,
+                    arguments_json,
+                    ..
+                } => {
+                    calls.insert(call_id, (name, arguments_json));
+                }
+                ContentPart::Media {
+                    call_id: Some(c), ..
+                } if calls
+                    .get(c.as_str())
+                    .is_some_and(|(n, _)| n.starts_with("computer.")) =>
+                {
+                    frames.push((mi, pi));
+                }
+                _ => {}
+            }
+        }
+    }
+    if frames.len() <= keep {
+        return std::borrow::Cow::Borrowed(transcript);
+    }
+    let older: HashSet<(usize, usize)> = frames[..frames.len() - keep].iter().copied().collect();
+    let touched: HashSet<usize> = older.iter().map(|(mi, _)| *mi).collect();
+    let mut out = transcript.to_vec();
+    for (mi, m) in out.iter_mut().enumerate() {
+        if !touched.contains(&mi) {
+            continue;
+        }
+        // The frames this message no longer carries: (call, object, mime).
+        let mut dropped: Vec<(String, String, String)> = Vec::new();
+        let mut parts = Vec::with_capacity(m.parts.len());
+        for (pi, p) in std::mem::take(&mut m.parts).into_iter().enumerate() {
+            match p {
+                ContentPart::Media {
+                    source_ref,
+                    mime,
+                    call_id: Some(c),
+                    ..
+                } if older.contains(&(mi, pi)) => dropped.push((c, source_ref, mime)),
+                other => parts.push(other),
+            }
+        }
+        for p in &mut parts {
+            let ContentPart::ToolResult {
+                call_id, content, ..
+            } = p
+            else {
+                continue;
+            };
+            let outcome = content
+                .lines()
+                .next()
+                .and_then(|l| l.strip_prefix("status: "))
+                .unwrap_or("UNKNOWN")
+                .trim()
+                .to_owned();
+            for (_, object, mime) in dropped.iter().filter(|(c, ..)| c == call_id) {
+                let (action, args) = calls.get(call_id.as_str()).copied().unwrap_or_default();
+                let target = serde_json::from_str::<serde_json::Value>(args)
+                    .ok()
+                    .filter(|v| v.to_string().chars().count() <= FRAME_RECORD_TARGET_CHARS)
+                    .unwrap_or_else(|| {
+                        serde_json::Value::String(
+                            args.chars().take(FRAME_RECORD_TARGET_CHARS).collect(),
+                        )
+                    });
+                let record = serde_json::json!({
+                    "window": keep,
+                    "call": call_id,
+                    "action": action,
+                    "target": target,
+                    "outcome": outcome,
+                    "object": object,
+                    "mime": mime,
+                    "kept": "older than the frames shown as images; the frame stays in the run's record (object store and log) under this digest",
+                });
+                content.push_str(&format!("\nframe_not_shown: {record}\n"));
+            }
+        }
+        m.parts = parts;
+    }
+    std::borrow::Cow::Owned(out)
+}
+
 /// Fill the media parts of a transcript copy with the bytes of their egress
 /// copies, or drop them when the model cannot take that modality. The stored
 /// transcript keeps references only, so nothing here changes what was logged.
@@ -2508,16 +2641,22 @@ pub(crate) fn b64(bytes: &[u8]) -> String {
 
 fn apply_entry(transcript: &mut Vec<Message>, state: &mut HarnessState, entry: TranscriptEntry) {
     match entry {
-        TranscriptEntry::Assistant { text, tool_calls } => {
+        TranscriptEntry::Assistant {
+            text,
+            tool_calls,
+            mut provider_data,
+        } => {
             let mut parts = Vec::new();
             if !text.is_empty() {
                 parts.push(ContentPart::Text { text });
             }
             for (call_id, name, arguments_json) in tool_calls {
+                let data = provider_data.remove(&call_id);
                 parts.push(ContentPart::ToolCall {
                     call_id,
                     name,
                     arguments_json,
+                    provider_data: data,
                 });
             }
             transcript.push(Message {
@@ -4015,6 +4154,9 @@ async fn run_loop(
                     .gateway
                     .capability(&cfg.endpoint, &cfg.model)
                     .is_some_and(|c| c.vision);
+                // PX-174: how many of a computer-use run's frames the model
+                // is shown as images; older ones reach it as text.
+                let kept = frames_kept(&core, &task);
                 // The model-facing state is bounded (audit C defect 2): the
                 // lists that grow with the run keep a top-N and a marker.
                 let mut harness_json = state.prompt_view();
@@ -4107,6 +4249,7 @@ async fn run_loop(
                         &chain,
                         &task.goal_text,
                         task.workspace_root.as_deref(),
+                        crate::memory::configured_ranking(),
                     )
                     .await
                 };
@@ -4193,7 +4336,7 @@ async fn run_loop(
                         harness_state: harness_json.clone(),
                         transcript: {
                             // The bytes enter the request, never the log or the ledger.
-                            let mut t = transcript.clone();
+                            let mut t = frame_window(&transcript, kept).into_owned();
                             hydrate_media(&core, &mut t, vision, &mut bridge).await;
                             t
                         },
@@ -4223,7 +4366,8 @@ async fn run_loop(
                 // not transcript: the provider's own count calibrates the
                 // estimate, and the compaction trigger counts the transcript
                 // against the window less this overhead.
-                let request_estimate = estimate_request_tokens(&request);
+                let image_rule = ImageRule::of(&core, &cfg.endpoint);
+                let request_estimate = estimate_request_tokens(&request, image_rule);
                 // PX-059: what each part of this request is estimated to cost,
                 // kept with the compile step; the provider's own count joins
                 // it when the turn's usage arrives.
@@ -4241,9 +4385,11 @@ async fn run_loop(
                 );
                 overhead_tokens = calibration.apply(
                     request_estimate.saturating_sub(
-                        transcript
+                        frame_window(&transcript, kept)
                             .iter()
-                            .map(|m| message_tokens(m, modbit_compaction::estimate_tokens_v2))
+                            .map(|m| {
+                                message_tokens(m, modbit_compaction::estimate_tokens_v2, image_rule)
+                            })
                             .sum(),
                     ),
                 );
@@ -4535,6 +4681,8 @@ async fn run_loop(
                 };
                 let mut text = String::new();
                 let mut calls: Vec<(String, String, String)> = Vec::new();
+                let mut call_data: std::collections::BTreeMap<String, serde_json::Value> =
+                    std::collections::BTreeMap::new();
                 // Usage is unknown until the provider reports it: a stream that drops
                 // or is cancelled leaves the cost unknown, never zero (docs/38).
                 let mut usage = modbit_providers::Usage::default();
@@ -4602,7 +4750,13 @@ async fn run_loop(
                                     call_id,
                                     name,
                                     arguments_json,
-                                } => calls.push((call_id, name, arguments_json)),
+                                    provider_data,
+                                } => {
+                                    if let Some(d) = provider_data {
+                                        call_data.insert(call_id.clone(), d);
+                                    }
+                                    calls.push((call_id, name, arguments_json));
+                                }
                                 ModelEvent::Usage { usage: u } => {
                                     usage = u;
                                     usage_reported = true;
@@ -5021,6 +5175,7 @@ async fn run_loop(
                 let assistant = TranscriptEntry::Assistant {
                     text: text.clone(),
                     tool_calls: calls.clone(),
+                    provider_data: call_data,
                 };
                 let assistant_ref = {
                     let store = core.store.lock().await;
@@ -6682,6 +6837,33 @@ async fn run_loop(
     // A program still running when the loop ends is ended with it: it stops
     // at its next interrupt poll or binding call.
     programs.cancel_all();
+    // PX-178: a GUI task's run is judged from the evidence its setter declared
+    // and from its log - before its control session closes, so the evidence
+    // is read as the run left it.
+    if let Some(evidence) = crate::gui_evidence::declared(state.capsule.as_ref()) {
+        let run_end = match &end {
+            LoopEnd::Fenced { .. } => "FENCED".to_owned(),
+            LoopEnd::ReadyForReview => "READY_FOR_REVIEW".to_owned(),
+            LoopEnd::NeedsInput(_) => "NEEDS_INPUT".to_owned(),
+            LoopEnd::NeedsAttention { code, .. } => format!("NEEDS_ATTENTION:{code}"),
+            LoopEnd::Cancelled => "CANCELLED".to_owned(),
+            LoopEnd::BudgetExhausted(_) => "BUDGET_EXHAUSTED".to_owned(),
+            LoopEnd::ProviderFailed(code, _) => format!("PROVIDER_FAILED:{code}"),
+            LoopEnd::NoProgress(_) => "NO_PROGRESS".to_owned(),
+            LoopEnd::CapacityLost(_) => "CAPACITY_LOST".to_owned(),
+            LoopEnd::Parked => "PARKED".to_owned(),
+        };
+        crate::gui_evidence::judge_run_end(
+            &core,
+            &task,
+            lt,
+            &actor,
+            &run_id.to_string(),
+            &evidence,
+            &run_end,
+        )
+        .await;
+    }
     // PX-069: a control session and its observation grant end with the turn
     // (CUC-C02); the machine is given back whatever way the run ended.
     core.tools
@@ -7704,11 +7886,11 @@ async fn compaction_core_facts(core: &Core, task: &Task) -> Vec<modbit_compactio
 
 /// Estimated tokens of a whole request: its messages and the tool schemas it
 /// projects, in the units of `estimate_tokens_v2`.
-fn estimate_request_tokens(request: &modbit_providers::ModelRequest) -> u32 {
+fn estimate_request_tokens(request: &modbit_providers::ModelRequest, rule: ImageRule) -> u32 {
     let messages: u32 = request
         .messages
         .iter()
-        .map(|m| message_tokens(m, modbit_compaction::estimate_tokens_v2))
+        .map(|m| message_tokens(m, modbit_compaction::estimate_tokens_v2, rule))
         .sum();
     let tools = modbit_compaction::estimate_tokens_v2(
         &serde_json::to_string(&request.tool_projection).unwrap_or_default(),
@@ -7717,10 +7899,10 @@ fn estimate_request_tokens(request: &modbit_providers::ModelRequest) -> u32 {
 }
 
 /// Estimated tokens of the model-visible transcript.
-fn transcript_tokens(transcript: &[Message]) -> u32 {
+fn transcript_tokens(transcript: &[Message], rule: ImageRule) -> u32 {
     transcript
         .iter()
-        .map(|m| message_tokens(m, modbit_compaction::estimate_tokens))
+        .map(|m| message_tokens(m, modbit_compaction::estimate_tokens, rule))
         .sum()
 }
 
@@ -7797,10 +7979,12 @@ async fn install_epoch(
     compaction_id: &str,
     mode: &str,
     summarizer_usage: Vec<serde_json::Value>,
+    rule: ImageRule,
 ) {
-    let tokens_after = manifest
-        .projection_tokens
-        .saturating_add(transcript_tokens(&transcript[cut.min(transcript.len())..]));
+    let tokens_after = manifest.projection_tokens.saturating_add(transcript_tokens(
+        &transcript[cut.min(transcript.len())..],
+        rule,
+    ));
     let manifest_ref = {
         let store = core.store.lock().await;
         store
@@ -7983,18 +8167,23 @@ struct CompactionCtx<'a> {
 /// override and the fallback.
 fn measured_tokens(
     transcript: &[Message],
+    keep: usize,
     th: &crate::compaction_model::Thresholds,
     calibration: &modbit_compaction::Calibration,
+    rule: ImageRule,
 ) -> u32 {
+    // PX-174: the trigger counts what the model is sent, so frames outside
+    // the window are not charged as images.
+    let transcript = &*frame_window(transcript, keep);
     if th.model_aware() {
         calibration.apply(
             transcript
                 .iter()
-                .map(|m| message_tokens(m, modbit_compaction::estimate_tokens_v2))
+                .map(|m| message_tokens(m, modbit_compaction::estimate_tokens_v2, rule))
                 .sum(),
         )
     } else {
-        transcript_tokens(transcript)
+        transcript_tokens(transcript, rule)
     }
 }
 
@@ -8081,6 +8270,7 @@ async fn compaction_step(
 ) {
     let th = crate::compaction_model::thresholds(core, ctx.endpoint, ctx.model, ctx.overhead);
     let budget = th.hard;
+    let kept = frames_kept(core, task);
     // 1. harvest
     if worker.as_ref().is_some_and(|w| w.handle.is_finished()) {
         let w = worker.take().expect("checked");
@@ -8100,12 +8290,27 @@ async fn compaction_step(
                 ) {
                     Ok(()) => {
                         install_epoch(
-                            core, task, lt, actor, transcript, epoch, manifest, w.cut, &w.id,
-                            "ASYNC", summarizer,
+                            core,
+                            task,
+                            lt,
+                            actor,
+                            transcript,
+                            epoch,
+                            manifest,
+                            w.cut,
+                            &w.id,
+                            "ASYNC",
+                            summarizer,
+                            ImageRule::of(core, ctx.endpoint),
                         )
                         .await;
-                        *ctx.rearm_floor =
-                            th.rearm_floor(measured_tokens(transcript, &th, &ctx.calibration));
+                        *ctx.rearm_floor = th.rearm_floor(measured_tokens(
+                            transcript,
+                            kept,
+                            &th,
+                            &ctx.calibration,
+                            ImageRule::of(core, ctx.endpoint),
+                        ));
                     }
                     Err(rejected) => {
                         reject_compaction(
@@ -8139,7 +8344,13 @@ async fn compaction_step(
             }
         }
     }
-    let tokens = measured_tokens(transcript, &th, &ctx.calibration);
+    let tokens = measured_tokens(
+        transcript,
+        kept,
+        &th,
+        &ctx.calibration,
+        ImageRule::of(core, ctx.endpoint),
+    );
     let Some(cut) = compaction_cut(transcript) else {
         return;
     };
@@ -8208,7 +8419,7 @@ async fn compaction_step(
                     window_tokens: th.window,
                     budget_tokens: budget,
                     budget_source: th.source.label().to_owned(),
-                    tokens_before: transcript_tokens(transcript),
+                    tokens_before: transcript_tokens(transcript, ImageRule::of(core, ctx.endpoint)),
                 },
                 actor.clone(),
             )],
@@ -8265,10 +8476,16 @@ async fn compaction_step(
                     &id,
                     "SYNC_FALLBACK",
                     summarizer,
+                    ImageRule::of(core, ctx.endpoint),
                 )
                 .await;
-                *ctx.rearm_floor =
-                    th.rearm_floor(measured_tokens(transcript, &th, &ctx.calibration));
+                *ctx.rearm_floor = th.rearm_floor(measured_tokens(
+                    transcript,
+                    kept,
+                    &th,
+                    &ctx.calibration,
+                    ImageRule::of(core, ctx.endpoint),
+                ));
                 // The prefix a worker in flight is summarising has just been
                 // replaced under it. Nothing changes for it here — its result
                 // is judged by `accept_async` at the next boundary either way
@@ -8325,15 +8542,87 @@ async fn compaction_step(
     });
 }
 
-/// The text of a message, for the token estimate and the compaction source.
-/// Tokens an image costs the model, charged by its size (PX-158): about one
-/// token per 750 pixels, floored at a small image's cost and capped where the
-/// providers resize. An image whose size the result did not name is charged
-/// a mid-size default rather than nothing.
-fn image_tokens(mime: &str, alt: &str) -> u32 {
-    const MIN: u64 = 85;
-    const MAX: u64 = 1600;
-    const UNKNOWN: u64 = 1200;
+/// How a provider charges an image (PX-158): each family's published rule.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ImageRule {
+    /// Anthropic Messages: the image is resized so its long edge is at most
+    /// 1568 px and it holds at most about 1.15 megapixels, then costs
+    /// `width * height / 750` tokens (about 1600 at most).
+    Area,
+    /// OpenAI Chat Completions. The adapter leaves `detail` unset, so the
+    /// provider applies `auto`; the estimate charges it as the `high` class,
+    /// the dearer of the two (`low` is a flat 85): fit inside 2048x2048,
+    /// scale the short side to 768, then 85 + 170 per 512 px tile.
+    TilesHigh,
+}
+
+impl ImageRule {
+    /// The rule for an endpoint's family; an endpoint the gateway does not
+    /// know is charged by area, the larger of the two at screenshot sizes.
+    pub(crate) fn of(core: &Core, endpoint: &str) -> Self {
+        match core
+            .gateway
+            .endpoints()
+            .into_iter()
+            .find(|e| e.name == endpoint)
+            .map(|e| e.kind)
+        {
+            Some(modbit_providers::ProviderKind::OpenAi) => Self::TilesHigh,
+            _ => Self::Area,
+        }
+    }
+
+    /// Tokens for an image of `w` x `h` pixels.
+    fn tokens(self, w: u64, h: u64) -> u64 {
+        match self {
+            Self::Area => {
+                let (mut w, mut h) = (w.max(1) as f64, h.max(1) as f64);
+                let long = w.max(h);
+                if long > 1568.0 {
+                    let k = 1568.0 / long;
+                    w *= k;
+                    h *= k;
+                }
+                let mp = w * h;
+                if mp > 1_150_000.0 {
+                    let k = (1_150_000.0 / mp).sqrt();
+                    w *= k;
+                    h *= k;
+                }
+                ((w * h) / 750.0).ceil() as u64
+            }
+            Self::TilesHigh => {
+                let (mut w, mut h) = (w.max(1) as f64, h.max(1) as f64);
+                let long = w.max(h);
+                if long > 2048.0 {
+                    let k = 2048.0 / long;
+                    w *= k;
+                    h *= k;
+                }
+                let short = w.min(h);
+                if short > 768.0 {
+                    let k = 768.0 / short;
+                    w *= k;
+                    h *= k;
+                }
+                let tiles = (w / 512.0).ceil() * (h / 512.0).ceil();
+                85 + 170 * tiles as u64
+            }
+        }
+    }
+
+    /// What an image whose size the result did not name is charged: the
+    /// rule's cost for a full-HD screenshot, rather than nothing.
+    fn unknown(self) -> u64 {
+        self.tokens(1920, 1080)
+    }
+}
+
+/// Tokens an image costs the model, charged by its size and its provider's
+/// rule (PX-158). The size is read from the media part's description
+/// (`WIDTHxHEIGHT`); an image whose size is not named is charged a full-HD
+/// screenshot's cost.
+fn image_tokens(mime: &str, alt: &str, rule: ImageRule) -> u32 {
     if !mime.starts_with("image/") {
         return 0;
     }
@@ -8350,25 +8639,27 @@ fn image_tokens(mime: &str, alt: &str) -> u32 {
         left.reverse();
         let right = digits(&mut bytes[i + 1..].iter())?;
         let n = |d: Vec<u8>| String::from_utf8(d).ok()?.parse::<u64>().ok();
-        Some(n(left)?.saturating_mul(n(right)?))
+        Some((n(left)?, n(right)?))
     });
-    size.map_or(UNKNOWN, |px| (px / 750).clamp(MIN, MAX)) as u32
+    u32::try_from(size.map_or_else(|| rule.unknown(), |(w, h)| rule.tokens(w, h)))
+        .unwrap_or(u32::MAX)
 }
 
 /// Estimated tokens of one message: its text through `estimate`, plus the
 /// size-charged cost of each image it carries.
-fn message_tokens(m: &Message, estimate: fn(&str) -> u32) -> u32 {
+fn message_tokens(m: &Message, estimate: fn(&str) -> u32, rule: ImageRule) -> u32 {
     let images: u32 = m
         .parts
         .iter()
         .map(|p| match p {
-            ContentPart::Media { mime, alt, .. } => image_tokens(mime, alt),
+            ContentPart::Media { mime, alt, .. } => image_tokens(mime, alt, rule),
             _ => 0,
         })
         .sum();
     estimate(&message_text(m)).saturating_add(images)
 }
 
+/// The text of a message, for the token estimate and the compaction source.
 fn message_text(m: &Message) -> String {
     m.parts
         .iter()
@@ -9234,6 +9525,25 @@ async fn handle_complete(
             reasons: unverified,
         });
     }
+    // PX-178: a GUI task is done when the evidence its setter declared holds,
+    // as the Core reads it now - never on the model's word. Missing or
+    // failing evidence blocks completion; a pass only lets the other gates run.
+    if precheck.is_ok()
+        && let Some(evidence) = crate::gui_evidence::declared(state.capsule.as_ref())
+        && let Some(reason) = crate::gui_evidence::completion_blocker(
+            core,
+            task,
+            lt,
+            actor,
+            &lt.run.map(|r| r.to_string()).unwrap_or_default(),
+            &evidence,
+        )
+        .await
+    {
+        precheck = Err(HarnessRefusal::CompletionBlocked {
+            reasons: vec![reason],
+        });
+    }
     // FIX-16: a parent is not done while a child it spawned is not over —
     // its work would be abandoned mid-flight or merged by nobody. The model
     // is told each child by name and status, and what it can do about it.
@@ -9712,6 +10022,9 @@ async fn execute_tool_call(
                 });
             obs.text.push_str(&diagnostic.render());
         }
+        if name == modbit_tools::handover::NAME && r.status == ToolStatus::Success {
+            core.tools.computer.handed_back(task.task_id);
+        }
         // PX-176: a computer-use child hears every step as one structured record.
         if let Some(record) =
             core.tools
@@ -9794,7 +10107,13 @@ async fn execute_tool_call(
                         | "computer.scroll"
                 )
                 || name.starts_with("lsp.")
-                || name.starts_with("git.worktree"))
+                || name.starts_with("git.worktree")
+                // PX-119: staging, committing or abandoning a child's merge,
+                // or applying a worktree back, changes the parent's tree or
+                // its recorded integration state: integrating children is
+                // work, and a parent that merges several in a row is not stalled.
+                || name.starts_with("git.merge.")
+                || name.starts_with("git.apply."))
             // PX-176: a computer-use child's command result is a new
             // observation of the work, as an interface read of the screen is.
             || (name == "shell.exec" && core.tools.computer.is_child(task.task_id));
@@ -11116,14 +11435,24 @@ mod tests {
     /// PX-158: an image is charged by its size, never by its caption.
     #[test]
     fn image_tokens_follow_the_size_the_result_named() {
-        let small = image_tokens("image/png", "image/png read from a.png, 32x16; x");
-        let screen = image_tokens("image/png", "image/png read from a.png, 1024x768; x");
-        let huge = image_tokens("image/png", "image/png read from a.png, 9000x9000; x");
-        assert_eq!(small, 85, "a tiny image costs the floor");
-        assert_eq!(screen, 786_432 / 750);
-        assert_eq!(huge, 1600, "capped where providers resize");
-        assert_eq!(image_tokens("image/png", "no size named"), 1200);
-        assert_eq!(image_tokens("application/pdf", "10x10"), 0);
+        let a = |alt: &str| image_tokens("image/png", alt, ImageRule::Area);
+        let t = |alt: &str| image_tokens("image/png", alt, ImageRule::TilesHigh);
+        // Anthropic: width * height / 750 after the resize to a 1568 px long
+        // edge and about 1.15 megapixels.
+        assert_eq!(a("image/png read from a.png, 32x16; x"), 1);
+        assert_eq!(a("image/png read from a.png, 1024x768; x"), 1049);
+        assert_eq!(a("1280x800"), 1366);
+        assert_eq!(a("9000x9000"), 1534, "resized before it is charged");
+        // OpenAI at the high class: 85 + 170 per 512 px tile after the fit to
+        // 2048 and the short side to 768.
+        assert_eq!(t("32x16"), 255, "one tile");
+        assert_eq!(t("1024x768"), 765);
+        assert_eq!(t("1920x1080"), 1105);
+        assert_eq!(t("9000x9000"), 765);
+        // An unnamed size is a full-HD screenshot under the provider's rule.
+        assert_eq!(a("no size named"), 1534);
+        assert_eq!(t("no size named"), 1105);
+        assert_eq!(image_tokens("application/pdf", "10x10", ImageRule::Area), 0);
     }
 
     #[test]
@@ -11133,7 +11462,7 @@ mod tests {
             .iter()
             .map(|m| modbit_compaction::estimate_tokens(&message_text(m)))
             .sum();
-        let charged = transcript_tokens(&frames);
+        let charged = transcript_tokens(&frames, ImageRule::Area);
         assert!(by_text < 3_000, "captions alone are cheap: {by_text}");
         assert!(
             charged > 40 * 1_000,
@@ -11147,14 +11476,117 @@ mod tests {
             }],
         }];
         assert_eq!(
-            transcript_tokens(&text),
+            transcript_tokens(&text, ImageRule::Area),
             modbit_compaction::estimate_tokens("hello there")
         );
     }
 
     use super::{
-        ContentPart, b64, image_tokens, media_parts, media_refs, message_text, transcript_tokens,
+        ContentPart, ImageRule, b64, image_tokens, media_parts, media_refs, message_text,
+        transcript_tokens,
     };
+
+    /// A turn that called `name` and the tool message answering it with one image.
+    fn imaged_call(id: &str, name: &str, args: &str) -> Vec<Message> {
+        vec![
+            Message {
+                role: modbit_providers::Role::Assistant,
+                parts: vec![ContentPart::ToolCall {
+                    call_id: id.into(),
+                    name: name.into(),
+                    arguments_json: args.into(),
+                    provider_data: None,
+                }],
+            },
+            Message {
+                role: modbit_providers::Role::Tool,
+                parts: vec![
+                    ContentPart::ToolResult {
+                        call_id: id.into(),
+                        content: format!("status: SUCCESS\n{{\"frame\": \"tok-{id}\"}}"),
+                        is_error: false,
+                    },
+                    ContentPart::Media {
+                        source_ref: format!("{id:0>64}"),
+                        mime: "image/png".into(),
+                        alt: "image/png read from computer:app, 1280x800; untrusted data".into(),
+                        call_id: Some(id.into()),
+                        data_base64: modbit_providers::MediaPayload(String::new()),
+                    },
+                ],
+            },
+        ]
+    }
+
+    fn images(t: &[Message]) -> Vec<String> {
+        t.iter()
+            .flat_map(|m| &m.parts)
+            .filter_map(|p| match p {
+                ContentPart::Media {
+                    call_id: Some(c), ..
+                } => Some(c.clone()),
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// PX-174: only the last `keep` computer frames stay images; each older
+    /// one becomes a text record of its step on its own tool result, media of
+    /// other tools is untouched, and the stored transcript is not changed.
+    #[test]
+    fn the_frame_window_keeps_the_last_frames_and_records_the_older_steps_as_text() {
+        let mut t = Vec::new();
+        t.extend(imaged_call("r1", "fs.read", r#"{"path":"a.png"}"#));
+        for i in 1..=5 {
+            t.extend(imaged_call(
+                &format!("s{i}"),
+                "computer.screenshot",
+                &format!(r#"{{"window":"w{i}"}}"#),
+            ));
+        }
+        let before = format!("{t:?}");
+        let shown = super::frame_window(&t, 2);
+        assert_eq!(
+            format!("{t:?}"),
+            before,
+            "the stored transcript is unchanged"
+        );
+        assert_eq!(images(&shown), ["r1", "s4", "s5"]);
+        for i in 1..=5 {
+            let content = shown
+                .iter()
+                .flat_map(|m| &m.parts)
+                .find_map(|p| match p {
+                    ContentPart::ToolResult {
+                        call_id, content, ..
+                    } if *call_id == format!("s{i}") => Some(content.clone()),
+                    _ => None,
+                })
+                .unwrap();
+            assert!(content.starts_with("status: SUCCESS\n"), "{content}");
+            let record = content
+                .lines()
+                .find_map(|l| l.strip_prefix("frame_not_shown: "))
+                .map(|r| serde_json::from_str::<serde_json::Value>(r).unwrap());
+            if i <= 3 {
+                let r = record.unwrap_or_else(|| panic!("no record for s{i}: {content}"));
+                assert_eq!(r["window"], 2);
+                assert_eq!(r["call"], format!("s{i}"));
+                assert_eq!(r["action"], "computer.screenshot");
+                assert_eq!(r["target"]["window"], format!("w{i}"));
+                assert_eq!(r["outcome"], "SUCCESS");
+                assert_eq!(r["object"], format!("{:0>64}", format!("s{i}")));
+            } else {
+                assert!(record.is_none(), "{content}");
+            }
+        }
+        // Within the window nothing changes, and N=1 keeps the newest only.
+        assert!(matches!(
+            super::frame_window(&t, 5),
+            std::borrow::Cow::Borrowed(_)
+        ));
+        assert_eq!(images(&super::frame_window(&t, 1)), ["r1", "s5"]);
+    }
 
     #[test]
     fn base64_matches_the_standard_alphabet_and_padding() {
@@ -11224,6 +11656,7 @@ mod tests {
                     call_id: (*id).into(),
                     name: "fs.read".into(),
                     arguments_json: "{}".into(),
+                    provider_data: None,
                 })
                 .collect(),
         }

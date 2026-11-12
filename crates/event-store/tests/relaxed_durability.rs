@@ -40,6 +40,7 @@ fn completed(id: StreamId, deltas: u64) -> StreamEvent {
             byte_length: 1,
         },
         content_hash: "00".into(),
+        last_line: None,
     }
 }
 

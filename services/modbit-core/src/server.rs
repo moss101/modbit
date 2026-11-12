@@ -834,6 +834,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "CompensateEffect",
                     "UndoToolCall",
                     "AskSideQuestion",
+                    "SuggestNextPrompt",
                     "ListQuestions",
                     "RespondToQuestion",
                     "IngestAttachment",
@@ -1137,6 +1138,63 @@ async fn sending_terminal_frames(
     }
 }
 
+/// The queries a connection answers while it keeps delivering its subscription's events (PX-041, PX-046; docs/65
+/// AFW-K01). Each folds a task's or a session's log and takes tens of milliseconds, and the desktop asks for them on
+/// most events of a running task: answered inline, every event appended meanwhile (a streamed delta among them) waited
+/// for the answer. Every one of them only reads (none appends an event or changes state), so delivering events while
+/// it runs reorders no effect: an event may now reach the client before the query's ack, as if the query had been read
+/// a moment later, and each answer still names what it was read at. A command that changes anything is answered as
+/// before: its ack first, then the events it caused.
+fn delivers_events_while_running(command_type: &str) -> bool {
+    matches!(
+        command_type,
+        "GetTranscript"
+            | "GetAgentHeaders"
+            | "GetTaskEconomics"
+            | "GetContextAccounting"
+            | "GetContextInspector"
+    )
+}
+
+/// Run a read-only query (see [`delivers_events_while_running`]) while the connection keeps writing its
+/// subscription's events to the client in offset order, as the plain loop of [`serve_frames`] does. The store's lock
+/// is taken in the same `select!` that drives the query, never while the query is set aside, so a query that holds the
+/// store across an await is never waited on by the delivery that paused it; the store is read under the lock and
+/// released before anything is written. Frames are written only between polls of the query, never interleaved.
+async fn delivering_events(
+    core: &Arc<Core>,
+    stream: &mut tokio::io::WriteHalf<BoxedStream>,
+    subscription: &mut Option<(SessionId, u64)>,
+    rx: &mut watch::Receiver<u64>,
+    command: impl std::future::Future<Output = CommandAck>,
+) -> Result<CommandAck> {
+    let mut command = std::pin::pin!(command);
+    let Some((session, after)) = subscription.as_mut() else {
+        return Ok(command.await);
+    };
+    // An append the loop has not drained yet may be waiting already.
+    let mut due = true;
+    let mut watching = true;
+    loop {
+        tokio::select! {
+            ack = &mut command => return Ok(ack),
+            changed = rx.changed(), if watching && !due => {
+                // A Core that is stopping notifies no more; the query still finishes and the loop sees the end.
+                if changed.is_err() { watching = false; } else { due = true; }
+            }
+            store = core.store.lock(), if due => {
+                let batch = store.read_session(session, *after, BATCH)?;
+                drop(store);
+                due = batch.len() == BATCH;
+                for ev in &batch {
+                    write_frame(stream, &SurfaceFrame { body: Some(Body::Event(to_wire(ev))) }).await?;
+                    *after = ev.offset;
+                }
+            }
+        }
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn serve_frames(
     core: &Arc<Core>,
@@ -1312,6 +1370,11 @@ async fn serve_frames(
                     // PX-082..086: the automation ledger and its kill switches.
                     _ if crate::automation::is_command(&env.command_type) => {
                         crate::automation::handle(core, env).await
+                    }
+                    // PX-041 / PX-046: a query that only reads keeps the subscription flowing while it runs.
+                    _ if delivers_events_while_running(&env.command_type) => {
+                        delivering_events(core, stream, subscription, rx, handle_command(core, env))
+                            .await?
                     }
                     _ => handle_command(core, env).await,
                 };
@@ -1560,6 +1623,9 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         // write to steer the agent — the same class of decision as trusting
         // the repository.
         "SetTaskBudgets" => "task.author",
+        // REQ-PX-210: a next-prompt suggestion spends the task's budget on
+        // the person's behalf, so it is the author's to ask for.
+        "SuggestNextPrompt" => "task.author",
         // REQ-PX-049: quitting is the person's act, held by the client that
         // acts for one.
         "EndSession" => "task.author",
@@ -6432,6 +6498,10 @@ pub(crate) async fn handle_command_as(
         }
         "SetTaskBudgets" => {
             crate::budgets::set(core, cid, &env, record("SetTaskBudgets"), actor).await
+        }
+        // REQ-PX-210: one suggested next message, charged to the task.
+        "SuggestNextPrompt" => {
+            crate::suggest::handle(core, cid, &env, record("SuggestNextPrompt"), actor).await
         }
         "ListSkills" | "TrustSkill" | "UntrustSkill" => {
             crate::skills::handle(core, cid, &env, actor).await

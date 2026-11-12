@@ -82,6 +82,130 @@ trials, not the run — then merges the parts and retains
 Core and prints the processes holding the most memory, so a starved runner
 can be read from the log.
 
+## Four-axis agent benchmark (PX-184)
+
+`suites/four-axis/tasks.json` (id `four-axis`) runs on the same harness,
+bundle format and protocol, over its own fixture
+(`suites/four-axis/fixtures/inventory`). Forty tasks, ten on each axis, each
+tagged by `axis` and carrying its own `verifier`:
+
+| axis | what the task exercises through the real Core | what its verifier checks |
+|---|---|---|
+| `tool_use` | `fs.read`, `search.exact`, `fs.glob`, `fs.list`, `shell.exec`, `change.apply` (create/edit), `change.batch` | workspace files; the named tool's result as the Core stored it (`ToolCallSucceeded.result_ref` in the profile's object store, copied to `trials/*/tool-results/`) |
+| `memory` | curated memory seeded through `memory propose`/`promote` (one seed then `forget`), recalled by injection or `memory.query`; new items recorded with `memory.propose` | workspace files; `MemoryUsed` or a `memory.query` result naming the seeded item's id; a forgotten item reaching the task fails; `MemoryProposed` by an `agent:` author with the stated topic and type |
+| `skill_use` | a skill written to the profile and trusted with `skill trust name@hash`, read with `skill.load` | workspace files following the skill's rule; a `skill.load` result (or `SkillSelected`) with that name and the trusted content hash |
+| `subagent` | `agent.spawn` of one or two children with disjoint write scopes, `agent.wait`, `git.merge.prepare`/`commit` of each child | the children's files in the parent's workspace; `SubagentAdmitted`, `SubagentResultRecorded` and `MergeTransactionRecorded` (`COMMITTED`) counts on the parent |
+
+The harness puts seeds in place through the CLI before the run and resolves
+each seed key to the id or content hash the Core assigned; the suite sets
+`run_mode: RUN_EVERYTHING` on every task (`run-mode set --ack`, as a person
+would), which lets a parent integrate its children without an approval; the
+always-ask classes still ask and no task needs one. A trial's
+`acceptance_passed` includes its verifier's verdict, so `verified_success`
+needs the Core's completion gating and the task's own check.
+
+Validation refuses a task without an axis or without its own verifier (a
+unique id and checks no other task shares), a verifier that checks nothing,
+an axis with fewer than ten tasks (the suite cannot lower the floor), and a
+gate that cannot fail. For such a suite the run also writes `axes.json`:
+verified success per axis with its 95% Wilson interval, and the output-token
+cost per thousand tasks (and USD at catalog list prices when priced),
+computed only from recorded usage — per trial, `task economics` of the task
+and every child it admitted, which must equal the `ModelUsageRecorded` events
+of the trial's log; a trial without recorded usage, or whose two records
+disagree, refuses the report.
+
+```bash
+target/debug/competence-baseline \
+  --suite benchmarks/agent-engineering/suites/four-axis/tasks.json \
+  --fixtures benchmarks/agent-engineering/suites/four-axis/fixtures \
+  --out target/four-axis --endpoint openai --model <id> [--trials N] [--jobs 4]
+target/debug/competence-baseline compare \
+  --baseline benchmarks/agent-engineering/baselines/four-axis --current target/four-axis
+```
+
+`compare` checks each `axes.json` against its bundle (figures not derived from
+the bundle's recorded usage are refused), reports the per-axis and cost
+difference in `comparison.json`, and exits 3 when an axis fails its gate: its
+verified-success rate is more than `max_drop` (0.05) below the baseline's —
+with ten single-trial tasks, any one regressed task. `--jobs N` runs trials
+at once, each on its own profile and Core. `merge` does not write `axes.json`.
+
+`baselines/four-axis/` is the retained baseline: the bundle, its digest,
+`axes.json` and `summary.md` of a run with the scripted model of
+`suites/four-axis/scripted-model.json` (event logs and tool results are not
+retained; the bundle keeps each log's digest and offsets). It measures the
+harness and the Core's capability paths end to end, not a model's competence;
+a live model's run is compared the same way. `tests/four_axis.rs` runs the
+forty tasks, compares the re-run with that baseline, then injects a
+regression on the memory axis (the model stops recalling and writes stale
+values) and shows that only the memory gate fails;
+`PX184_RETAIN_BASELINE=1` refreshes the baseline from its clean run after a
+change to the suite or harness.
+
+## GUI regression suite (PX-179)
+
+`suites/gui/tasks.json` (id `gui-regression`) runs on the same harness,
+bundle, report and compare. Twenty-four Modbit-owned GUI tasks over the
+fixture desktop, twelve on each of two axes:
+
+| axis | what the computer-use child does through the real Core |
+|---|---|
+| `gui_element` | accessibility-first element actions: `computer.set_value`, `computer.press`, a modal dialog read with `computer.state {window}`, two applications in one task |
+| `gui_input` | raw input: `computer.type` (with `then: enter`), `computer.key` chords, `computer.click` at a screenshot coordinate on an element with no accessible action |
+
+Each task names its desktop (`suites/gui/desktops/*.json`, digested with the
+suite): the trial's Core gets `MODBIT_COMPUTER_ACTUATOR` set to the fixture
+actuator (`--actuator`, default the sibling `modbit-actuator-fixture`) over
+that desktop with `--state-out`, so the application's state after every input
+is written by the actuator itself. The parent spawns a `computer-use` child
+with the task's `completion_evidence`; the approvals protocol
+`approve-computer-inputs` has the harness act as the person at the fixture
+desktop — every `computer.*` input the Core asks about is approved with the
+intent it was asked under, every other protected effect is denied — since a
+computer input is never allowlistable.
+
+A task's verifier (`gui`) is the GUI verifier row (PX-178), read from the
+Core's own records: a `GuiEvidenceEvaluated` at completion, on a child the
+task admitted, with status `PASS` for exactly the suite's predicate (a child
+declared with an easier one does not count), and that child's
+`GuiOutcomeJudged` `VERIFIED`. On the fixture desktop the application's state
+after the run (`desktop-state.json` in the trial) must also hold the task's
+element values. Validation refuses a GUI task without a `gui` verifier, a
+`gui` verifier without a desktop, a desktop path outside the suite, a GUI
+suite under another approvals protocol and an evidence value that is not a
+completion-evidence predicate; `tests/gui_suite.rs` also checks that no
+task's evidence holds on its desktop before the run.
+
+The suite declares its axes (`axes.names`) and the per-task gate
+(`gate.per_task`): `axes.json` keeps each task's verified trials, and
+`compare` names every task that verified in the baseline and does not now
+(`regressed_tasks`, which fails the gate whatever the axis rates) and every
+task that recovered. `baselines/gui/` is the retained baseline of a
+scripted-model run. `tests/gui_suite.rs` runs all twenty-four tasks through
+the real CLI, Core and fixture actuator, compares the re-run with the
+baseline (no difference), then regresses three named tasks (the child stops
+before the input that has the effect and still claims it is done) and shows
+`compare` exiting 3 with exactly those tasks named. The test runs in the
+`rust` CI job on macOS, Linux and Windows, so a regression of the fixture set
+fails the merge. `PX179_RETAIN_BASELINE=1` refreshes the baseline.
+
+```bash
+cargo build -p modbit-core -p modbit-cli -p modbit-execd -p modbit-actuator-fixture -p modbit-bench-agent-engineering
+target/debug/competence-baseline \
+  --suite benchmarks/agent-engineering/suites/gui/tasks.json \
+  --fixtures benchmarks/agent-engineering/suites/gui/fixtures \
+  --out target/gui --endpoint openai --model <id> --trials 1 --jobs 4
+target/debug/competence-baseline compare \
+  --baseline benchmarks/agent-engineering/baselines/gui --current target/gui
+```
+
+The real-application half of PX-179 (a small set of real macOS apps on a
+prepared machine) is not part of this suite: it needs the macOS helper of
+PX-071 attached to the Core with Accessibility and Screen Recording granted on
+an owner-prepared machine, and a live model; see
+`evidence/m10/PX-179/TASK_CARD.md`.
+
 ## What this does not do
 
 The public benchmark half of PX-020 (SWE-bench Verified under the frozen

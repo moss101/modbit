@@ -1,0 +1,104 @@
+{
+ "display": {
+  "x": 0,
+  "y": 0,
+  "width": 1920,
+  "height": 1200
+ },
+ "apps": [
+  {
+   "bundle_id": "org.modbit.bench.notes",
+   "name": "Notes",
+   "pid": 5102,
+   "executable_path": "/Applications/Modbit Bench Notes.app/Contents/MacOS/Notes",
+   "signing_identity": "MODBIT:bench-notes",
+   "windows": [
+    {
+     "id": "w-note",
+     "title": "Untitled note",
+     "bounds": {
+      "x": 0,
+      "y": 0,
+      "width": 1280,
+      "height": 800
+     },
+     "elements": [
+      {
+       "id": "bold",
+       "role": "button",
+       "name": "Bold",
+       "actions": [
+        "press"
+       ],
+       "bounds": {
+        "x": 40,
+        "y": 20,
+        "width": 80,
+        "height": 30
+       },
+       "behaviors": {
+        "press": [
+         {
+          "op": "SetValue",
+          "target": "style",
+          "value": "bold"
+         }
+        ]
+       }
+      },
+      {
+       "id": "body",
+       "role": "textarea",
+       "name": "Document",
+       "value": "",
+       "settable": true,
+       "focused": true,
+       "actions": [
+        "focus"
+       ],
+       "bounds": {
+        "x": 40,
+        "y": 80,
+        "width": 1200,
+        "height": 500
+       },
+       "behaviors": {
+        "key:cmd+s": [
+         {
+          "op": "SetValue",
+          "target": "saved",
+          "value": "saved"
+         }
+        ]
+       }
+      },
+      {
+       "id": "style",
+       "role": "label",
+       "name": "Style",
+       "value": "plain",
+       "bounds": {
+        "x": 40,
+        "y": 600,
+        "width": 300,
+        "height": 30
+       }
+      },
+      {
+       "id": "saved",
+       "role": "label",
+       "name": "Saved state",
+       "value": "unsaved",
+       "bounds": {
+        "x": 400,
+        "y": 600,
+        "width": 300,
+        "height": 30
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

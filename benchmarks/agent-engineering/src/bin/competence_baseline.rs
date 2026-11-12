@@ -16,6 +16,12 @@
 //!   [--task <id>]... [--trial-timeout-secs 900] [--keep] [--cli <bin>] [--core <bin>]
 //! ```
 //!
+//! A GUI suite (PX-179) runs the same way with the Core's computer actuator
+//! set to the fixture actuator (`--actuator`, default the sibling
+//! `modbit-actuator-fixture`) over each task's desktop; the harness acts as
+//! the person at that desktop and approves each `computer.*` input the Core
+//! asks about, and denies every other protected effect.
+//!
 //! `competence-baseline merge --out <dir> <bundle dir>...` combines per-task
 //! bundles produced by separate jobs of the same commit and protocol into one
 //! bundle (the hosted workflow runs one job per task so a lost runner loses
@@ -36,6 +42,9 @@ use modbit_bench_agent_engineering::{
     TaskSpec, TrialOutcome, count, metrics, parse_events, protected_intact, sha256_hex,
 };
 
+#[path = "competence_baseline/memory_ranking.rs"]
+mod memory_ranking;
+
 struct Args {
     suite: PathBuf,
     fixtures: PathBuf,
@@ -53,11 +62,15 @@ struct Args {
     profile: Option<PathBuf>,
     /// Generate, repair and fall back per task (IMP-EV-0244/0246, shadow).
     adaptive: bool,
+    /// Trials run at once, each on its own profile and Core (PX-184).
+    jobs: usize,
+    /// The computer actuator a GUI task's Core launches (PX-179).
+    actuator: PathBuf,
 }
 
 fn usage() -> ! {
     eprintln!(
-        "usage: competence-baseline --suite <tasks.json> --fixtures <dir> --out <dir> --endpoint <openai|anthropic> [--model <id>] [--trials N] [--max-turns N] [--task <id>]... [--trial-timeout-secs N] [--keep] [--cli <bin>] [--core <bin>] [--profile <file> | --adaptive]"
+        "usage: competence-baseline --suite <tasks.json> --fixtures <dir> --out <dir> --endpoint <openai|anthropic> [--model <id>] [--trials N] [--max-turns N] [--task <id>]... [--trial-timeout-secs N] [--keep] [--cli <bin>] [--core <bin>] [--profile <file> | --adaptive] [--jobs N] [--actuator <bin>]\n       competence-baseline merge --out <dir> <bundle dir>...\n       competence-baseline compare --baseline <bundle dir> --current <bundle dir> [--out <file>]\n       competence-baseline memory-ranking --corpus <corpus.json> --fixtures <dir> --out <dir> --endpoint <p> --model <id> [--current <version>] --candidate <version>"
     );
     std::process::exit(1)
 }
@@ -79,6 +92,8 @@ fn parse_args() -> Args {
         core: PathBuf::new(),
         profile: None,
         adaptive: false,
+        jobs: 1,
+        actuator: PathBuf::new(),
     };
     let mut i = 0;
     let value = |i: &mut usize| -> String {
@@ -104,6 +119,14 @@ fn parse_args() -> Args {
             "--core" => a.core = PathBuf::from(value(&mut i)),
             "--profile" => a.profile = Some(PathBuf::from(value(&mut i))),
             "--adaptive" => a.adaptive = true,
+            "--actuator" => a.actuator = PathBuf::from(value(&mut i)),
+            "--jobs" => {
+                a.jobs = value(&mut i)
+                    .parse::<usize>()
+                    .ok()
+                    .filter(|n| *n > 0)
+                    .unwrap_or_else(|| usage());
+            }
             _ => usage(),
         }
         i += 1;
@@ -136,7 +159,92 @@ fn parse_args() -> Args {
         a.core =
             env_nonempty("MODBIT_CORE_BIN").map_or_else(|| sibling("modbit-core"), PathBuf::from);
     }
+    if a.actuator.as_os_str().is_empty() {
+        a.actuator = sibling(&format!(
+            "modbit-actuator-fixture{}",
+            std::env::consts::EXE_SUFFIX
+        ));
+    }
     a
+}
+
+/// The person at the fixture desktop (PX-179): while a GUI task runs, every
+/// `computer.*` approval the Core asks is approved with the intent it was
+/// asked under, and every other protected effect is denied. Returns the
+/// approved and denied counts when `stop` is set.
+fn spawn_approver(
+    cli_bin: PathBuf,
+    data_dir: PathBuf,
+    env: Vec<(String, String)>,
+    session: String,
+    log: PathBuf,
+    stop: std::sync::Arc<std::sync::atomic::AtomicBool>,
+) -> std::thread::JoinHandle<(u32, u32)> {
+    std::thread::spawn(move || {
+        let Ok(log) = std::fs::File::create(&log) else {
+            return (0, 0);
+        };
+        let mut cli = Cli {
+            bin: &cli_bin,
+            data_dir,
+            env,
+            log,
+        };
+        let short = Duration::from_secs(60);
+        let mut done = std::collections::BTreeSet::new();
+        let (mut approved, mut denied) = (0u32, 0u32);
+        while !stop.load(std::sync::atomic::Ordering::SeqCst) {
+            let list = cli.call(&["approval", "list", "--session", &session], short);
+            for line in list.stdout.lines() {
+                let Some(id) = first_word_after(line, "approval ") else {
+                    continue;
+                };
+                let status = kv(line, "status").unwrap_or_default();
+                if !matches!(status.as_str(), "REQUESTED" | "PENDING") || done.contains(&id) {
+                    continue;
+                }
+                let tool = kv(line, "tool").unwrap_or_default();
+                let intent = kv(line, "intent").unwrap_or_default();
+                let computer = tool.starts_with("computer.");
+                let (verb, reason) = if computer {
+                    (
+                        "approve",
+                        "benchmark protocol: the person at the fixture desktop approves this input",
+                    )
+                } else {
+                    (
+                        "deny",
+                        "benchmark protocol: protected effects other than computer inputs are denied",
+                    )
+                };
+                let r = cli.call(
+                    &[
+                        "approval",
+                        "resolve",
+                        "--session",
+                        &session,
+                        "--approval",
+                        &id,
+                        "--intent",
+                        &intent,
+                        verb,
+                        reason,
+                    ],
+                    short,
+                );
+                if r.code == 0 {
+                    done.insert(id);
+                    if computer {
+                        approved += 1;
+                    } else {
+                        denied += 1;
+                    }
+                }
+            }
+            std::thread::sleep(Duration::from_millis(150));
+        }
+        (approved, denied)
+    })
 }
 
 fn env_nonempty(name: &str) -> Option<String> {
@@ -395,19 +503,45 @@ fn run_trial(
         .trim_start_matches(r"\\?\")
         .to_owned();
     let flaky_state = scratch.join("flaky-state");
+    let mut cli_env: Vec<(String, String)> = vec![
+        (
+            "MODBIT_CORE_BIN".into(),
+            args.core.to_string_lossy().into_owned(),
+        ),
+        (
+            "FIXTURE_FLAKY_STATE".into(),
+            flaky_state.to_string_lossy().into_owned(),
+        ),
+    ];
+    // PX-179: a GUI task's Core launches the actuator over the task's own
+    // desktop, which writes what the applications hold after every input.
+    let desktop_state = scratch.join("desktop-state.json");
+    if let Some(g) = &task.gui {
+        let desktop = scratch.join("desktop.json");
+        let src = suite_path
+            .parent()
+            .unwrap_or_else(|| Path::new("."))
+            .join(&g.desktop);
+        std::fs::write(&desktop, Suite::hidden_bytes(&src)?).map_err(|e| e.to_string())?;
+        cli_env.push((
+            "MODBIT_COMPUTER_ACTUATOR".into(),
+            args.actuator.to_string_lossy().into_owned(),
+        ));
+        cli_env.push((
+            "MODBIT_COMPUTER_ACTUATOR_ARGS".into(),
+            serde_json::to_string(&[
+                "--desktop",
+                &desktop.to_string_lossy(),
+                "--state-out",
+                &desktop_state.to_string_lossy(),
+            ])
+            .map_err(|e| e.to_string())?,
+        ));
+    }
     let mut cli = Cli {
         bin: &args.cli,
         data_dir: data_dir.clone(),
-        env: vec![
-            (
-                "MODBIT_CORE_BIN".into(),
-                args.core.to_string_lossy().into_owned(),
-            ),
-            (
-                "FIXTURE_FLAKY_STATE".into(),
-                flaky_state.to_string_lossy().into_owned(),
-            ),
-        ],
+        env: cli_env.clone(),
         log: std::fs::File::create(trial_dir.join("cli.log")).map_err(|e| e.to_string())?,
     };
     let short = Duration::from_secs(120);
@@ -429,6 +563,28 @@ fn run_trial(
     );
     let task_id = first_word_after(&r.stdout, "task ")
         .ok_or_else(|| format!("task create: {}{}", r.stdout, r.stderr))?;
+    // PX-184: what the task needs is put in place through the product, as a
+    // person would — curated memory and owner-trusted skills — and the ids
+    // and content hashes the Core assigned are what the verifier checks.
+    let (memory_ids, skill_hashes) = seed_trial(&mut cli, &data_dir, &session, &task_id, task)?;
+    if let Some(mode) = &suite.protocol.run_mode {
+        let r = cli.call(
+            &[
+                "run-mode",
+                "set",
+                "--session",
+                &session,
+                "--task",
+                &task_id,
+                "--ack",
+                mode.as_str(),
+            ],
+            short,
+        );
+        if r.code != 0 {
+            return Err(format!("run-mode set {mode}: {}{}", r.stdout, r.stderr));
+        }
+    }
     // The trial's budgets are its profile's (the known-good profile's are
     // the frozen protocol's `--max-turns` alone).
     let mut owned: Vec<String> = [
@@ -450,6 +606,22 @@ fn run_trial(
     owned.push("--wait".into());
     let run_args: Vec<&str> = owned.iter().map(String::as_str).collect();
     let started = Instant::now();
+    // PX-179: the person at the fixture desktop answers the Core's approvals
+    // while the run is in progress (`task run --wait` does not return while a
+    // run waits on one).
+    let approver_stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let approver = (suite.protocol.approvals
+        == modbit_bench_agent_engineering::APPROVE_COMPUTER_INPUTS)
+        .then(|| {
+            spawn_approver(
+                args.cli.clone(),
+                data_dir.clone(),
+                cli_env.clone(),
+                session.clone(),
+                trial_dir.join("approvals.log"),
+                std::sync::Arc::clone(&approver_stop),
+            )
+        });
     let mut r = cli.call(&run_args, args.trial_timeout);
     let mut interactions = 0u32;
     let mut state = kv(&r.stdout, "state").unwrap_or_default();
@@ -520,6 +692,14 @@ fn run_trial(
         state = kv(&r.stdout, "state").unwrap_or(state);
         timed_out = r.timed_out;
     }
+    approver_stop.store(true, std::sync::atomic::Ordering::SeqCst);
+    if let Some(h) = approver {
+        let (approved, denied) = h.join().unwrap_or((0, 0));
+        interactions += approved + denied;
+        notes.push(format!(
+            "approvals by protocol: {approved} computer input(s) approved as the person at the fixture desktop, {denied} other protected effect(s) denied"
+        ));
+    }
     if timed_out {
         notes.push(format!(
             "trial timed out after {}s; task cancelled",
@@ -577,8 +757,40 @@ fn run_trial(
             let _ = std::fs::copy(&src, reports_dir.join(format!("{hash}.json")));
         }
     }
+    // PX-184: the tool results the Core stored for this task travel with the
+    // trial and are what a verifier's tool checks read.
+    let tool_results = collect_tool_results(&events, &task_id, &data_dir, &trial_dir);
+    let usage = trial_usage(&mut cli, &events, &task_id, &economics, short);
     let diff = git(&workspace, &["diff", "HEAD"]).unwrap_or_default();
     std::fs::write(trial_dir.join("diff.patch"), &diff).map_err(|e| e.to_string())?;
+    // PX-179: what the fixture desktop's applications hold after the run, as
+    // the fixture actuator wrote it, travels with the trial.
+    let desktop: Option<serde_json::Value> = task.gui.as_ref().and_then(|_| {
+        let bytes = std::fs::read(&desktop_state).ok()?;
+        let _ = std::fs::write(trial_dir.join("desktop-state.json"), &bytes);
+        serde_json::from_slice(&bytes).ok()
+    });
+    // The task's own verifier runs before any hidden file is placed: it reads
+    // what the run left in the workspace and in the Core's records.
+    let verifier = task.verifier.as_ref().map(|v| {
+        let o = modbit_bench_agent_engineering::evaluate(
+            v,
+            &modbit_bench_agent_engineering::Observed {
+                events: &events,
+                task: &task_id,
+                tool_results: &tool_results,
+                workspace: &workspace,
+                memory_ids: &memory_ids,
+                skill_hashes: &skill_hashes,
+                desktop: desktop.as_ref(),
+            },
+        );
+        let _ = std::fs::write(
+            trial_dir.join("verifier.json"),
+            serde_json::to_vec_pretty(&o).unwrap_or_default(),
+        );
+        o
+    });
     // Acceptance: hidden files placed only now, commands must all pass,
     // protected tests must be byte-identical (DI-3 scored by the harness too).
     let mut acceptance_log = String::new();
@@ -618,6 +830,20 @@ fn run_trial(
             acceptance_passed = false;
         }
     }
+    if let Some(v) = &verifier {
+        for c in &v.checks {
+            acceptance_log.push_str(&format!(
+                "verifier {}: {} [{}] {}\n",
+                v.id,
+                c.check,
+                if c.passed { "pass" } else { "FAIL" },
+                c.detail
+            ));
+        }
+        if !v.passed {
+            acceptance_passed = false;
+        }
+    }
     std::fs::write(trial_dir.join("acceptance.log"), &acceptance_log).map_err(|e| e.to_string())?;
     // docs/63: a named test modified, deleted, skipped or weakened fails the
     // trial; a test added beside the named ones does not.
@@ -653,6 +879,9 @@ fn run_trial(
         diff_sha256: sha256_hex(diff.as_bytes()),
         interactions,
         notes,
+        axis: task.axis.clone(),
+        verifier,
+        usage,
     };
     // The trial's Core idle-exits on its own, but nothing of a trial may
     // outlive it on a shared runner: the profile's Core is asked to stop now
@@ -737,6 +966,209 @@ fn parse_economics(text: &str) -> Economics {
     }
 }
 
+type SeedIds = (BTreeMap<String, String>, BTreeMap<String, String>);
+
+/// Put a task's seeds in place through the CLI (PX-184): each memory seed is
+/// proposed and promoted (and forgotten when the seed says so); each skill is
+/// written to the profile's skill directory and trusted by the owner's
+/// content-hash decision. Returns memory key → id and skill name → hash.
+fn seed_trial(
+    cli: &mut Cli<'_>,
+    data_dir: &Path,
+    session: &str,
+    task_id: &str,
+    task: &TaskSpec,
+) -> Result<SeedIds, String> {
+    let short = Duration::from_secs(120);
+    let mut memory_ids = BTreeMap::new();
+    for m in &task.seed.memory {
+        let r = cli.call(
+            &[
+                "memory",
+                "propose",
+                "--session",
+                session,
+                "--task",
+                task_id,
+                "--scope",
+                &m.scope,
+                "--type",
+                &m.record_type,
+                "--topic",
+                &m.topic,
+                &m.content,
+            ],
+            short,
+        );
+        let id = first_word_after(&r.stdout, "proposed ")
+            .ok_or_else(|| format!("memory propose {}: {}{}", m.key, r.stdout, r.stderr))?;
+        let r = cli.call(
+            &[
+                "memory",
+                "promote",
+                "--session",
+                session,
+                "--task",
+                task_id,
+                &id,
+            ],
+            short,
+        );
+        if r.code != 0 {
+            return Err(format!(
+                "memory promote {}: {}{}",
+                m.key, r.stdout, r.stderr
+            ));
+        }
+        if m.forget {
+            let r = cli.call(
+                &[
+                    "memory",
+                    "forget",
+                    "--session",
+                    session,
+                    "--task",
+                    task_id,
+                    &id,
+                ],
+                short,
+            );
+            if r.code != 0 {
+                return Err(format!("memory forget {}: {}{}", m.key, r.stdout, r.stderr));
+            }
+        }
+        memory_ids.insert(m.key.clone(), id);
+    }
+    let mut skill_hashes = BTreeMap::new();
+    if !task.seed.skills.is_empty() {
+        for s in &task.seed.skills {
+            let dir = data_dir.join("skills").join(&s.name);
+            std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+            std::fs::write(
+                dir.join("SKILL.md"),
+                modbit_bench_agent_engineering::Seed::skill_file(s),
+            )
+            .map_err(|e| e.to_string())?;
+        }
+        let inv = cli.call(&["skill", "inventory"], short);
+        for s in &task.seed.skills {
+            let line = inv
+                .stdout
+                .lines()
+                .find(|l| l.starts_with(&format!("skill {} ", s.name)))
+                .ok_or_else(|| {
+                    format!("skill {} is not in the inventory: {}", s.name, inv.stdout)
+                })?;
+            let hash = kv(line, "content_hash")
+                .ok_or_else(|| format!("skill {}: no content hash in {line:?}", s.name))?;
+            let r = cli.call(&["skill", "trust", &format!("{}@{hash}", s.name)], short);
+            if r.code != 0 || !r.stdout.contains("trust=TRUSTED_BY_OWNER") {
+                return Err(format!("skill trust {}: {}{}", s.name, r.stdout, r.stderr));
+            }
+            skill_hashes.insert(s.name.clone(), hash);
+        }
+    }
+    Ok((memory_ids, skill_hashes))
+}
+
+/// The tool results the Core stored for `task_id`'s calls
+/// (`ToolCallSucceeded` / `ToolCallFailed` → `result_ref` in its object
+/// store), copied under the trial's `tool-results/`.
+fn collect_tool_results(
+    events: &[modbit_bench_agent_engineering::Event],
+    task_id: &str,
+    data_dir: &Path,
+    trial_dir: &Path,
+) -> Vec<modbit_bench_agent_engineering::ToolResultRecord> {
+    let want = task_id.replace('-', "").to_ascii_lowercase();
+    let out_dir = trial_dir.join("tool-results");
+    let mut out = Vec::new();
+    for e in events {
+        if e.event_type != "ToolCallSucceeded" && e.event_type != "ToolCallFailed" {
+            continue;
+        }
+        if e.task_id
+            .as_deref()
+            .is_none_or(|t| t.replace('-', "").to_ascii_lowercase() != want)
+        {
+            continue;
+        }
+        let Some(hash) = e.payload["result_ref"].as_str() else {
+            continue;
+        };
+        if hash.len() < 3 {
+            continue;
+        }
+        let src = data_dir
+            .join("core/objects")
+            .join(&hash[..2])
+            .join(&hash[2..]);
+        let Ok(bytes) = std::fs::read(&src) else {
+            continue;
+        };
+        let _ = std::fs::create_dir_all(&out_dir);
+        let _ = std::fs::write(out_dir.join(format!("{hash}.json")), &bytes);
+        if let Ok(r) = serde_json::from_slice(&bytes) {
+            out.push(r);
+        }
+    }
+    out
+}
+
+/// Usage the Core recorded for the trial (PX-184): `task economics` of the
+/// task and of every child it admitted, beside the `ModelUsageRecorded`
+/// events of the trial's log.
+fn trial_usage(
+    cli: &mut Cli<'_>,
+    events: &[modbit_bench_agent_engineering::Event],
+    task_id: &str,
+    economics: &Economics,
+    timeout: Duration,
+) -> Option<modbit_bench_agent_engineering::TrialUsage> {
+    let want = task_id.replace('-', "").to_ascii_lowercase();
+    let children: Vec<String> = events
+        .iter()
+        .filter(|e| {
+            e.event_type == "SubagentAdmitted"
+                && e.task_id
+                    .as_deref()
+                    .is_some_and(|t| t.replace('-', "").to_ascii_lowercase() == want)
+        })
+        .filter_map(|e| {
+            e.payload["child_task_id"]
+                .as_str()
+                .map(|c| c.replace('-', ""))
+        })
+        .collect();
+    let mut u = modbit_bench_agent_engineering::TrialUsage {
+        tasks: vec![task_id.to_owned()],
+        model_calls: economics.model_calls,
+        input_tokens: economics.input_tokens,
+        output_tokens: economics.output_tokens,
+        cost_usd: economics.cost_usd,
+        ..Default::default()
+    };
+    for child in children {
+        let r = cli.call(&["task", "economics", "--task", &child], timeout);
+        if r.code != 0 {
+            return None;
+        }
+        let e = parse_economics(&r.stdout);
+        u.model_calls += e.model_calls;
+        u.input_tokens += e.input_tokens;
+        u.output_tokens += e.output_tokens;
+        u.cost_usd = match (u.cost_usd, e.cost_usd) {
+            (Some(a), Some(b)) => Some(a + b),
+            _ => None,
+        };
+        u.tasks.push(child);
+    }
+    let (calls, out) = modbit_bench_agent_engineering::axes::recorded_usage(events);
+    u.recorded_model_calls = calls;
+    u.recorded_output_tokens = out;
+    Some(u)
+}
+
 fn base_host(endpoint: &str) -> String {
     let default = match endpoint {
         "anthropic" => "api.anthropic.com",
@@ -793,6 +1225,12 @@ fn main() {
     if std::env::args().nth(1).as_deref() == Some("merge") {
         std::process::exit(merge_main());
     }
+    if std::env::args().nth(1).as_deref() == Some("compare") {
+        std::process::exit(compare_main());
+    }
+    if std::env::args().nth(1).as_deref() == Some("memory-ranking") {
+        std::process::exit(memory_ranking::main());
+    }
     let args = parse_args();
     let (suite, task_list_digest) = Suite::load(&args.suite).unwrap_or_else(|e| {
         eprintln!("competence-baseline: {e}");
@@ -809,7 +1247,12 @@ fn main() {
         eprintln!("competence-baseline: no task matches {:?}", args.tasks);
         std::process::exit(1);
     }
-    for bin in [&args.cli, &args.core] {
+    let gui = selected.iter().any(|t| t.gui.is_some());
+    let mut bins = vec![&args.cli, &args.core];
+    if gui {
+        bins.push(&args.actuator);
+    }
+    for bin in bins {
         if !bin.is_file() {
             eprintln!("competence-baseline: binary not found: {}", bin.display());
             std::process::exit(1);
@@ -822,13 +1265,15 @@ fn main() {
     let build_digest = {
         let core = std::fs::read(&args.core).unwrap_or_default();
         let cli = std::fs::read(&args.cli).unwrap_or_default();
-        sha256_hex(
-            &[
-                sha256_hex(&core).into_bytes(),
-                sha256_hex(&cli).into_bytes(),
-            ]
-            .concat(),
-        )
+        let mut parts = vec![
+            sha256_hex(&core).into_bytes(),
+            sha256_hex(&cli).into_bytes(),
+        ];
+        // PX-179: a GUI run's build includes the actuator it drove.
+        if gui {
+            parts.push(sha256_hex(&std::fs::read(&args.actuator).unwrap_or_default()).into_bytes());
+        }
+        sha256_hex(&parts.concat())
     };
     let environment = Environment {
         modbit_revision: cmd_output("git", &["rev-parse", "HEAD"]),
@@ -903,49 +1348,92 @@ fn main() {
     );
     let mut outcomes = Vec::new();
     let mut attempts: Vec<serde_json::Value> = Vec::new();
-    for task in &selected {
-        for trial in 1..=trials {
+    let work: Vec<(&TaskSpec, u32)> = selected
+        .iter()
+        .flat_map(|t| (1..=trials).map(move |n| (*t, n)))
+        .collect();
+    let line = |task: &TaskSpec, trial: u32, o: &TrialOutcome, secs: u64| {
+        eprintln!(
+            "competence-baseline: {} trial {}/{}: state={} core_verified={} acceptance={} integrity={} verified={} repairs={} interactions={} cost={:?} ({}s)",
+            task.id,
+            trial,
+            trials,
+            o.state,
+            o.core_verified,
+            o.acceptance_passed,
+            o.test_integrity_ok,
+            o.verified_success,
+            o.counts.repair_attempts,
+            o.interactions,
+            o.economics.cost_usd,
+            secs
+        );
+    };
+    let fail = |task: &TaskSpec, trial: u32, e: &str| -> ! {
+        eprintln!(
+            "competence-baseline: {} trial {trial}: harness error: {e}",
+            task.id
+        );
+        std::process::exit(1)
+    };
+    if args.adaptive || args.jobs <= 1 {
+        for (task, trial) in &work {
             let started = Instant::now();
             let result = if args.adaptive {
-                adaptive_trial(&args, &suite, task, trial, &known_good, &mut attempts)
+                adaptive_trial(&args, &suite, task, *trial, &known_good, &mut attempts)
             } else {
                 run_trial(
                     &args,
                     &suite,
                     &args.suite,
                     task,
-                    trial,
+                    *trial,
                     fixed.as_ref().unwrap_or(&known_good),
                     "",
                 )
             };
             match result {
                 Ok(r) => {
-                    let o = r.outcome;
-                    eprintln!(
-                        "competence-baseline: {} trial {}/{}: state={} core_verified={} acceptance={} integrity={} verified={} repairs={} interactions={} cost={:?} ({}s)",
-                        task.id,
-                        trial,
-                        trials,
-                        o.state,
-                        o.core_verified,
-                        o.acceptance_passed,
-                        o.test_integrity_ok,
-                        o.verified_success,
-                        o.counts.repair_attempts,
-                        o.interactions,
-                        o.economics.cost_usd,
-                        started.elapsed().as_secs()
-                    );
-                    outcomes.push(o);
+                    line(task, *trial, &r.outcome, started.elapsed().as_secs());
+                    outcomes.push(r.outcome);
                 }
-                Err(e) => {
-                    eprintln!(
-                        "competence-baseline: {} trial {trial}: harness error: {e}",
-                        task.id
-                    );
-                    std::process::exit(1);
-                }
+                Err(e) => fail(task, *trial, &e),
+            }
+        }
+    } else {
+        // PX-184: independent trials at once — each has its own scratch
+        // directory, profile and Core — and the bundle keeps task order.
+        let next = std::sync::atomic::AtomicUsize::new(0);
+        let done: std::sync::Mutex<Vec<Option<Result<TrialOutcome, String>>>> =
+            std::sync::Mutex::new(work.iter().map(|_| None).collect());
+        let profile = fixed.as_ref().unwrap_or(&known_good);
+        std::thread::scope(|s| {
+            for _ in 0..args.jobs.min(work.len()) {
+                s.spawn(|| {
+                    loop {
+                        let i = next.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                        let Some((task, trial)) = work.get(i) else {
+                            break;
+                        };
+                        let started = Instant::now();
+                        let r = run_trial(&args, &suite, &args.suite, task, *trial, profile, "")
+                            .map(|r| r.outcome);
+                        if let Ok(o) = &r {
+                            line(task, *trial, o, started.elapsed().as_secs());
+                        }
+                        if let Ok(mut d) = done.lock() {
+                            d[i] = Some(r);
+                        }
+                    }
+                });
+            }
+        });
+        let done = done.into_inner().unwrap_or_default();
+        for ((task, trial), r) in work.iter().zip(done) {
+            match r {
+                Some(Ok(o)) => outcomes.push(o),
+                Some(Err(e)) => fail(task, *trial, &e),
+                None => fail(task, *trial, "the trial did not run"),
             }
         }
     }
@@ -999,13 +1487,109 @@ fn main() {
         format!("{digest}  baseline.json\n"),
     )
     .expect("write digest");
-    let summary = render_summary(&bundle, &digest);
+    let mut summary = render_summary(&bundle, &digest);
+    // PX-184: a four-axis suite's report — per-axis scores and the cost per
+    // thousand tasks from recorded usage — or the refusal that fails it.
+    let mut refused = None;
+    if let Some(axes) = &suite.protocol.axes {
+        match modbit_bench_agent_engineering::report_axes(
+            &bundle,
+            &digest,
+            axes.gate,
+            axes.min_tasks_per_axis,
+            &axes.axis_names(),
+        ) {
+            Ok(r) => {
+                std::fs::write(
+                    args.out.join("axes.json"),
+                    serde_json::to_vec_pretty(&r).unwrap_or_default(),
+                )
+                .expect("write axes.json");
+                summary.push_str(&modbit_bench_agent_engineering::axes::render(&r));
+            }
+            Err(e) => refused = Some(e),
+        }
+    }
     std::fs::write(args.out.join("summary.md"), &summary).expect("write summary");
     print!("{summary}");
     println!(
         "\nbundle: {} (sha256 {digest})",
         args.out.join("baseline.json").display()
     );
+    if let Some(e) = refused {
+        eprintln!("competence-baseline: four-axis report refused: {e}");
+        std::process::exit(1);
+    }
+}
+
+/// `compare --baseline <dir> --current <dir> [--out <file>]` (PX-184): the
+/// re-run against the retained baseline, axis by axis. Each directory holds
+/// a bundle and its `axes.json`; each report is checked against its bundle
+/// (figures not derived from the recorded usage are refused). Writes
+/// `comparison.json` (default: in the current directory) and exits 0 when
+/// every axis passes its gate, 3 when one fails, 1 on a refusal.
+fn compare_main() -> i32 {
+    let argv: Vec<String> = std::env::args().skip(2).collect();
+    let mut baseline = None;
+    let mut current = None;
+    let mut out = None;
+    let mut i = 0;
+    while i < argv.len() {
+        let v = argv.get(i + 1).cloned();
+        match (argv[i].as_str(), v) {
+            ("--baseline", Some(v)) => baseline = Some(PathBuf::from(v)),
+            ("--current", Some(v)) => current = Some(PathBuf::from(v)),
+            ("--out", Some(v)) => out = Some(PathBuf::from(v)),
+            _ => usage(),
+        }
+        i += 2;
+    }
+    let (Some(baseline), Some(current)) = (baseline, current) else {
+        usage()
+    };
+    let load = |dir: &Path| -> Result<modbit_bench_agent_engineering::AxisReport, String> {
+        let bytes = std::fs::read(dir.join("baseline.json"))
+            .map_err(|e| format!("{}: {e}", dir.join("baseline.json").display()))?;
+        let bundle: Bundle = serde_json::from_slice(&bytes)
+            .map_err(|e| format!("{}: {e}", dir.join("baseline.json").display()))?;
+        bundle
+            .validate()
+            .map_err(|e| format!("{}: {e}", dir.display()))?;
+        let digest = modbit_bench_agent_engineering::digest_of(&bytes);
+        let report: modbit_bench_agent_engineering::AxisReport = serde_json::from_slice(
+            &std::fs::read(dir.join("axes.json"))
+                .map_err(|e| format!("{}: {e}", dir.join("axes.json").display()))?,
+        )
+        .map_err(|e| format!("{}: {e}", dir.join("axes.json").display()))?;
+        report
+            .verify_against(&bundle, &digest)
+            .map_err(|e| format!("{}: {e}", dir.display()))?;
+        Ok(report)
+    };
+    let (b, c) = match (load(&baseline), load(&current)) {
+        (Ok(b), Ok(c)) => (b, c),
+        (Err(e), _) | (_, Err(e)) => {
+            eprintln!("competence-baseline compare: {e}");
+            return 1;
+        }
+    };
+    let cmp = match modbit_bench_agent_engineering::compare(&b, &c) {
+        Ok(cmp) => cmp,
+        Err(e) => {
+            eprintln!("competence-baseline compare: refused: {e}");
+            return 1;
+        }
+    };
+    let out = out.unwrap_or_else(|| current.join("comparison.json"));
+    if let Err(e) = std::fs::write(&out, serde_json::to_vec_pretty(&cmp).unwrap_or_default()) {
+        eprintln!("competence-baseline compare: {}: {e}", out.display());
+        return 1;
+    }
+    print!(
+        "{}",
+        modbit_bench_agent_engineering::axes::render_comparison(&cmp)
+    );
+    if cmp.passed { 0 } else { 3 }
 }
 
 /// One trial the adaptive way (IMP-EV-0244/0246): the task-conditioned

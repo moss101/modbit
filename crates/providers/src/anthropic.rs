@@ -131,6 +131,7 @@ pub fn request_body(req: &ModelRequest) -> Value {
                             call_id,
                             name,
                             arguments_json,
+                            ..
                         } => json!({"type": "tool_use", "id": call_id, "name": name, "input": serde_json::from_str::<Value>(arguments_json).unwrap_or(json!({}))}),
                         ContentPart::ToolResult { .. } | ContentPart::Media { .. } => Value::Null,
                     })
@@ -373,6 +374,7 @@ impl Decoder {
                         call_id: id,
                         name,
                         arguments_json: if args.is_empty() { "{}".into() } else { args },
+                        provider_data: None,
                     });
                 }
             }

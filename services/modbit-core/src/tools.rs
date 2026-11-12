@@ -557,6 +557,8 @@ impl ToolHost {
             .map_err(|e| anyhow::anyhow!("{e}"))?;
         modbit_tools::computer::register_computer(&mut registry)
             .map_err(|e| anyhow::anyhow!("{e}"))?;
+        modbit_tools::handover::register_handover(&mut registry)
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
         // M9.4: the read declarations the host publishes are shared with the
         // registered `external.call`, so the effect class it presents to the
         // kernel is always the host's current judgement.
@@ -634,6 +636,63 @@ impl ToolHost {
     /// are compared and never recorded.
     pub(crate) fn secrets_in_custody(&self) -> Vec<String> {
         self.broker().custody_for_screening()
+    }
+
+    /// PX-178: the Core's own state read of a task's open control session,
+    /// for the completion evidence its setter declared. It goes through the
+    /// computer runtime as an observation under the task's mode and the
+    /// administrative policy (never an input, never a new session), so it
+    /// sees exactly what the task could see, and nothing the model said.
+    pub(crate) async fn verification_state_read(
+        &self,
+        store: &Arc<Mutex<EventStore>>,
+        task_id: TaskId,
+        session_id: modbit_domain::SessionId,
+        run_id: &str,
+        workspace_root: Option<&str>,
+        emergency_stopped: bool,
+    ) -> std::result::Result<serde_json::Value, String> {
+        let config = self
+            .configurations
+            .try_for_task(task_id, &self.data_dir, workspace_root)
+            .map_err(|e| format!("{}: {e}", crate::config::ConfigError::CODE))?;
+        let mode = {
+            let st = store.lock().await;
+            self.tasking
+                .mode_in_force(&st, task_id)
+                .map_err(|e| format!("MODE_UNREADABLE: {e}"))?
+        };
+        let redactor = self.redactor();
+        let ctx = modbit_computer::CallCtx {
+            task_id,
+            session_id,
+            run_id: run_id.to_owned(),
+            tool_call_id: String::new(),
+            approval_id: String::new(),
+            intent_hash: String::new(),
+            mode: mode.name().to_owned(),
+            emergency_stopped,
+            policy: crate::computer::policy_of(&config),
+            redact: Arc::new(move |s| redactor.error_text(s)),
+            stop_on_blockers: false,
+        };
+        let answer = self
+            .computer
+            .runtime
+            .invoke(
+                &ctx,
+                "computer.state",
+                modbit_computer::ops::Op::State {
+                    window: None,
+                    max_nodes: None,
+                },
+            )
+            .await
+            .map_err(|f| match f {
+                modbit_computer::Failure::Refused(r) => r.to_string(),
+                modbit_computer::Failure::Unknown { reason, .. } => reason,
+            })?;
+        Ok(answer.output)
     }
 
     pub(crate) async fn workspace(

@@ -10,10 +10,11 @@
  * and what a side question answers are the Core's.
  */
 import { createHash } from "node:crypto";
+import { RejectedError } from "@modbit/ide-adapter-core";
 import type { ExecutionPreferenceView, RoutingOutcomeView, SlashEntry } from "@modbit/surface-protocol";
 import { ObjectiveProfile, TaskMode } from "@modbit/surface-protocol";
 import { checkAttachment, labelOf, MAX_ATTACHMENT_BYTES } from "../shared/attachments.ts";
-import { INPUT_MODES, OBJECTIVES, TASK_MODES, type AttachmentResult, type InputModeId, type InterruptView, type ModeChangedView, type ModelCatalogView, type ObjectiveId, type PostureView, type PreferencePatch, type PreferenceSetView, type QueuedChangeView, type QueueView, type SendBehaviorState, type SideAnswerView, type SlashInventoryView, type TaskModeId } from "../shared/composer-types.ts";
+import { INPUT_MODES, OBJECTIVES, TASK_MODES, type AttachmentResult, type InputModeId, type InterruptView, type ModeChangedView, type ModelCatalogView, type ObjectiveId, type PostureView, type PreferencePatch, type PreferenceSetView, type QueuedChangeView, type QueueView, type SendBehaviorState, type SideAnswerView, type SlashInventoryView, type SuggestionView, type TaskModeId } from "../shared/composer-types.ts";
 import type { Registrar } from "./conversation-ipc.ts";
 
 export interface ComposerRegistrar extends Registrar {
@@ -52,6 +53,12 @@ export function requireSkillNames(v: unknown): string[] {
   if (v === undefined || v === null) return [];
   if (!Array.isArray(v) || v.length > 8 || v.some((s) => typeof s !== "string" || !SKILL_NAME.test(s))) return bad("skills must be up to 8 plain skill names");
   return v as string[];
+}
+
+/** The Core's typed refusal of a command (a rejected command, as the client reports one), or null for any other failure: a lost connection or a malformed argument is not the Core's answer about the task. */
+export function suggestionRefusal(e: unknown): { code: string; reason: string } | null {
+  if (!(e instanceof RejectedError) || !e.code) return null;
+  return { code: e.code, reason: e.message.startsWith(`${e.code}: `) ? e.message.slice(e.code.length + 2) : e.message };
 }
 
 const isEffort = (s: string) => ["low", "medium", "high", "default"].includes(s);
@@ -271,6 +278,24 @@ export function registerComposerHandlers(r: ComposerRegistrar): void {
   r.handle("composer:sideQuestion", async (...a): Promise<SideAnswerView> => {
     const v = await r.client().askSideQuestion(r.taskId(a[0]), requireText(a[1], "question"));
     return { text: v.text, inputTokens: v.inputTokens.toString(), outputTokens: v.outputTokens.toString(), snapshotMessages: v.snapshotMessages, lastOffset: v.lastOffset.toString() };
+  });
+
+  // REQ-PX-210: one suggested next message, asked for when a turn has ended with nothing queued. The Core decides whether the call is made
+  // (it refuses during a turn, with an input queued, at the budget's cap, or when it is turned off) and charges the task; main forwards the
+  // request and hands back the suggestion or the Core's own refusal code. Nothing is sent for the person and nothing is kept here.
+  r.handle("composer:suggest", async (...a): Promise<SuggestionView> => {
+    const sid = r.sessionId(a[0]);
+    const tid = r.taskId(a[1]);
+    const c = r.client();
+    try {
+      await r.lease(c, sid);
+      const v = await c.suggestNextPrompt(sid, tid);
+      return { text: v.text, refusal: "", reason: "", taskOffset: v.taskOffset.toString(), costKnown: v.costKnown, costMinor: v.costMinor.toString() };
+    } catch (e) {
+      const refusal = suggestionRefusal(e);
+      if (!refusal) throw e;
+      return { text: "", refusal: refusal.code, reason: refusal.reason, taskOffset: "0", costKnown: false, costMinor: "0" };
+    }
   });
 
   // ---- attachments (AFW-D09): every byte goes through the Core's IngestAttachment ----

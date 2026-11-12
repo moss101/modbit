@@ -1,11 +1,14 @@
 /**
- * The composer (REQ-PX-054, -055, -056; docs/65 AFW-D01..D14, AFW-E01..E09,
- * AFW-H01, AFW-H02): a rounded container at the bottom of the conversation
- * with an add-context button, the mode chip, the model chip, send (and a stop
- * square while a turn runs), the typed @ and / menus, attachments through the
- * Core's ingest, input history and a local draft, and the trays that dock
- * above it (queue, education, stopped, policy-blocked, background terminals,
- * side question).
+ * The composer (REQ-PX-054, -055, -056, -200; docs/65 AFW-D01..D14,
+ * AFW-E01..E09, AFW-H01, AFW-H02; DR-PX-2026-11-11-021 MWS-07): one box at the
+ * bottom of the conversation holding add context, the text, then stop or send;
+ * under it, at the right, the mode, the model, the run mode and the context
+ * ring, each opening the menu it always opened. The typed @ and / menus,
+ * attachments through the Core's ingest, input history and a local draft are
+ * the box's; the trays dock above it (queue, education, stopped,
+ * policy-blocked, background terminals, side question). After a turn it may show one suggested next message as the
+ * box's placeholder (REQ-PX-210): Tab puts it in the box, typing dismisses
+ * it, and it is never sent for the person.
  *
  * The renderer holds no authority (docs/81). The mode shown is the Core's
  * field; one the Core has not acknowledged is drawn "unconfirmed". The queue,
@@ -15,8 +18,7 @@
  * sent without the person pressing send.
  */
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Button, Icon, IconButton, Menu, trays, useLayer, type IconName, type MenuItem } from "@modbit/ui";
-import { ContextRing } from "../context/ring.tsx";
+import { Button, Icon, IconButton, Kbd, Menu, trays, useLayer, type IconName, type MenuItem } from "@modbit/ui";
 import type { AttachmentResult, TaskModeId } from "../../shared/composer-types.ts";
 import { MAX_ATTACHMENTS_PER_MESSAGE, MAX_ATTACHMENT_BYTES } from "../../shared/attachments.ts";
 import type { TaskCard } from "../model.ts";
@@ -45,6 +47,11 @@ import {
   reorderTarget,
   runningTerminals,
   saveStore,
+  SUGGEST_ATTEMPTS,
+  SUGGEST_RETRY_MS,
+  suggestionDue,
+  suggestionShows,
+  tabTakesSuggestion,
   triggerAt,
   walkHistory,
   withDraft,
@@ -62,8 +69,11 @@ import { EducationTray, PolicyTray, QueueTray, SendBehaviorPanel, SideQuestionPa
 export const MODE_ICON: Record<TaskModeId, IconName> = { AGENT: "infinity", PLAN: "list-tree", DEBUG: "bug", MULTITASK: "layers", ASK: "circle-question-mark" };
 
 export interface ComposerProps {
-  /** The line under the box: where the task runs and its run mode. */
+  /** Under the box, at the left: where the task runs. */
   foot?: ReactNode | undefined;
+  /** Under the box, at the right, after the mode and the model: the run-mode control and the context ring. */
+  runMode?: ReactNode | undefined;
+  ring?: ReactNode | undefined;
   /** The task is ready for review: the box offers the review. */
   onReview?: (() => void) | undefined;
   taskId: string;
@@ -131,6 +141,8 @@ export function Composer(props: ComposerProps) {
   const [pickerTick, setPickerTick] = useState(0);
   const [pickerWanted, setPickerWanted] = useState(false);
   const [announce, setAnnounce] = useState("");
+  // REQ-PX-210: the Core's suggested next message, shown as the placeholder until it is taken, typed over or out of date.
+  const [suggestion, setSuggestion] = useState<string | null>(null);
   const area = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   // One id per message text: a retry of the same send replays in the Core; edited text is a different message.
@@ -154,6 +166,52 @@ export function Composer(props: ComposerProps) {
   const rows = useMemo(() => queueRows(queue?.items ?? []), [queue]);
   const running_terminals = useMemo(() => runningTerminals(core.terminals), [core.terminals]);
   const catalogState = useCatalog(taskId, pickerWanted, `${posture?.preference.offset ?? ""}:${pickerTick}`);
+
+  // ---- the next-prompt suggestion (REQ-PX-210, DR-PX-2026-11-11-021 MWS-16)
+  // Asked for once, when this composer sees a turn end by itself with nothing queued and nothing typed; never on opening a conversation,
+  // never after the person stopped the turn or the model was refused, and never with the setting off. The Core decides again on its own
+  // facts and charges the task; a refusal means there is no suggestion.
+  const suggestCtx = { enabled: store.suggestions, connected, hasSession: !!sessionId, ended, running, queued: rows.length, text, interrupted: stopped !== null || policy !== null };
+  const suggestCtxRef = useRef(suggestCtx);
+  suggestCtxRef.current = suggestCtx;
+  const wasRunning = useRef(false);
+  const askSeq = useRef(0);
+  useEffect(() => {
+    const turnEnded = wasRunning.current && !running;
+    wasRunning.current = running;
+    if (running) {
+      // A new turn: what was suggested is about a state that is gone, and an answer still on its way is not shown.
+      askSeq.current += 1;
+      setSuggestion(null);
+      return;
+    }
+    if (!turnEnded || !sessionId || !suggestionDue(suggestCtxRef.current)) return;
+    const seq = (askSeq.current += 1);
+    void (async () => {
+      for (let attempt = 0; attempt < SUGGEST_ATTEMPTS; attempt += 1) {
+        const v = await window.modbit.composerSuggest(sessionId, taskId).catch(() => null);
+        if (seq !== askSeq.current) return;
+        if (v && v.refusal === "" && suggestionShows(suggestCtxRef.current, v.text)) {
+          setSuggestion(v.text);
+          setAnnounce(`Suggested next message: ${v.text}. Press Tab to put it in the message box.`);
+          return;
+        }
+        if (!v || v.refusal !== "TURN_RUNNING") return;
+        await new Promise((r) => setTimeout(r, SUGGEST_RETRY_MS));
+        if (seq !== askSeq.current || !suggestionDue(suggestCtxRef.current)) return;
+      }
+    })();
+  }, [running, sessionId, taskId]);
+  // A suggestion stands only while the facts it was made for hold: a queued message, the setting turned off, a lost Core or an ended task withdraw it.
+  useEffect(() => {
+    if (suggestion !== null && (!store.suggestions || !connected || ended || rows.length > 0 || stopped !== null || policy !== null)) setSuggestion(null);
+  }, [suggestion, store.suggestions, connected, ended, rows.length, stopped, policy]);
+  useEffect(
+    () => () => {
+      askSeq.current += 1;
+    },
+    [],
+  );
 
   // ---- the draft is a local convenience that survives navigation and a reload
   const persist = useCallback((next: ComposerStore) => {
@@ -198,6 +256,13 @@ export function Composer(props: ComposerProps) {
     ta.setSelectionRange(at, at);
   });
   const live = useMemo(() => liveMentions(text, mentions), [text, mentions]);
+  // MWS-07: the box is one line and grows with its text (the stylesheet stops it at 40 % of the window's height, where it scrolls).
+  useLayoutEffect(() => {
+    const ta = area.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = `${ta.scrollHeight}px`;
+  }, [text, suggestion]);
 
   const chooseMention = (o: MentionOption) => {
     if (!trigger || o.disabledReason) return;
@@ -392,6 +457,14 @@ export function Composer(props: ComposerProps) {
         }
       }
     }
+    if (tabTakesSuggestion(e, suggestion, text)) {
+      // The suggestion goes into the box for the person to read, change and send; nothing is sent here.
+      e.preventDefault();
+      setTextAndCaret(suggestion!, suggestion!.length);
+      setSuggestion(null);
+      setAnnounce("The suggestion is in the message box. Nothing was sent.");
+      return;
+    }
     if (e.key === "Tab" && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
       e.preventDefault();
       applyMode(nextMode(shownMode));
@@ -453,6 +526,20 @@ export function Composer(props: ComposerProps) {
     { id: "mention-changes", label: "Mention the changes on this branch", onSelect: () => insertAt("@changes") },
     { id: "side", label: "Ask a side question", separatorBefore: true, onSelect: () => setSideOpen(true) },
     { id: "behavior", label: "Send behavior…", onSelect: () => setBehaviorOpen(true) },
+    {
+      id: "suggest-next",
+      label: "Suggest the next message",
+      checked: store.suggestions,
+      onSelect: () => {
+        const on = !storeRef.current.suggestions;
+        persist({ ...storeRef.current, suggestions: on });
+        if (!on) {
+          askSeq.current += 1;
+          setSuggestion(null);
+        }
+        setAnnounce(on ? "Suggestions are on: after a turn the agent may suggest your next message." : "Suggestions are off: no suggestion is asked for.");
+      },
+    },
     ...MODE_CYCLE.map((m, i): MenuItem => ({ id: `mode-${m.toLowerCase()}`, label: `${MODE_DEFS[m].label} mode`, radio: true, checked: shownMode === m, separatorBefore: i === 0, onSelect: () => applyMode(m) })),
   ];
   function insertAt(s: string) {
@@ -651,7 +738,7 @@ export function Composer(props: ComposerProps) {
         )}
       </div>
 
-      <div className="cmp-box" data-testid="composer" data-mode={shownMode} data-tint={tint} data-mode-status={status}>
+      <div className="cmp-box cmp-one" data-testid="composer" data-mode={shownMode} data-tint={tint} data-mode-status={status}>
         {(live.length > 0 || skill || attached.length > 0) && (
           <div className="cmp-attach-row" data-testid="composer-chips">
             {skill && (
@@ -685,7 +772,9 @@ export function Composer(props: ComposerProps) {
             </ul>
           </div>
         )}
-        <div className="cmp-row">
+        {/* The one line: add context, the text, then stop or send. */}
+        <div className="cmp-line" data-testid="composer-line">
+          <Menu label="Add to the message" placement="up" triggerTestId="add-context" triggerClassName="cmp-plus" trigger={<Icon name="plus" size={16} />} items={addItems} />
           <div className="cmp-input">
             <textarea
               ref={area}
@@ -695,8 +784,10 @@ export function Composer(props: ComposerProps) {
               aria-autocomplete={menuOpen ? "list" : undefined}
               aria-controls={menuOpen && optionCount > 0 ? listId : undefined}
               aria-activedescendant={menuOpen && optionCount > 0 ? `${listId}-o${activeIdx}` : undefined}
-              placeholder={placeholder}
-              rows={Math.min(8, Math.max(1, text.split("\n").length))}
+              placeholder={suggestion ?? placeholder}
+              data-suggestion={suggestion !== null ? "true" : undefined}
+              aria-describedby={suggestion !== null && text === "" ? `${listId}-suggestion` : undefined}
+              rows={1}
               maxLength={20_000}
               value={text}
               disabled={!sessionId || !connected}
@@ -704,6 +795,8 @@ export function Composer(props: ComposerProps) {
                 setText(e.target.value);
                 setCaret(e.target.selectionStart);
                 setHistory(HISTORY_START);
+                // Any typing dismisses the suggestion: the person is writing their own message.
+                if (suggestion !== null) setSuggestion(null);
                 if (error) setError("");
               }}
               onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
@@ -718,27 +811,25 @@ export function Composer(props: ComposerProps) {
                 }
               }}
             />
+            {suggestion !== null && text === "" && (
+              <span className="cmp-suggest-hint" id={`${listId}-suggestion`} data-testid="composer-suggestion-hint">
+                <Kbd>Tab</Kbd> to use this suggestion
+              </span>
+            )}
             {mentionOpen && <MentionMenu id={listId} options={mentionSources.options} loading={mentionSources.loading} active={activeIdx} onActive={setActiveIdx} onChoose={chooseMention} />}
             {slashOpen && <SlashMenuView id={listId} items={slash.items} dividerAt={slash.dividerAt} active={activeIdx} onActive={setActiveIdx} onChoose={chooseSlash} loaded={slashInv !== null} />}
           </div>
-        </div>
-        <div className="cmp-bar">
-          <span className="cmp-mode" data-testid="mode-chip" data-mode={shownMode}>
-            <Menu label={`Mode: ${MODE_DEFS[shownMode].label}. Choose another`} placement="up" triggerTestId="mode-chip-button" triggerClassName="cmp-chip cmp-mode-btn" trigger={<><Icon name={MODE_ICON[shownMode]} size={14} /> <span data-testid="mode-label">{MODE_DEFS[shownMode].label}</span>{status === "unconfirmed" && <span className="cmp-dim" data-testid="mode-unconfirmed"> unconfirmed</span>}<Icon name="chevron-down" size={10} /></>} items={modeItems} />
-            {shownMode !== "AGENT" && <IconButton label={`Leave ${MODE_DEFS[shownMode].label} mode`} icon={<Icon name="x" size={12} />} size="sm" onClick={() => applyMode("AGENT")} data-testid="mode-clear" />}
-          </span>
-          <ModelPicker posture={posture} catalog={catalogState.catalog} catalogError={catalogState.error} disabled={!sessionId} onOpen={() => setPickerWanted(true)} onChoose={choose} />
-          <Menu label="Add to the message" placement="up" triggerTestId="add-context" triggerClassName="cmp-plus" trigger={<Icon name="at-sign" size={14} />} items={addItems} />
-          <span className="cmp-spacer" />
-          {connected && <ContextRing key={taskId} taskId={taskId} connected={connected} />}
           {running && (
             <button type="button" className="cmp-stop" aria-label="Stop the turn" title="Stop: ends the turn at a safe point" onClick={() => void stop()} disabled={busy} data-testid="composer-stop">
               <span aria-hidden="true" />
             </button>
           )}
-          <button type="button" className="cmp-send" disabled={!hasText || busy || !sessionId || !connected} onClick={() => void send(false)} data-testid="composer-send" aria-label={running ? "Queue the message" : "Send"} title={running ? "Queue" : "Send"} data-tint={shownMode === "ASK" ? "ask" : undefined}>
-            <Icon name="arrow-up" size={14} />
-          </button>
+          {/* Stop or send: while a turn runs and nothing is typed there is nothing to send, so only Stop stands there. */}
+          {(!running || hasText) && (
+            <button type="button" className="cmp-send" disabled={!hasText || busy || !sessionId || !connected} onClick={() => void send(false)} data-testid="composer-send" aria-label={running ? "Queue the message" : "Send"} title={running ? "Queue" : "Send"} data-tint={shownMode === "ASK" ? "ask" : undefined}>
+              <Icon name="arrow-up" size={14} />
+            </button>
+          )}
         </div>
         {error && (
           <p className="cmp-reason" role="alert" data-testid="composer-error">
@@ -751,11 +842,18 @@ export function Composer(props: ComposerProps) {
           </p>
         )}
       </div>
-      {props.foot && (
-        <div className="cmp-foot" data-testid="composer-foot">
-          {props.foot}
-        </div>
-      )}
+      {/* Under the box: where the task runs at the left; at the right the mode, the model, the run mode and the context ring. */}
+      <div className="cmp-foot cmp-under" data-testid="composer-foot">
+        {props.foot}
+        <span className="cmp-spacer" />
+        <span className="cmp-mode" data-testid="mode-chip" data-mode={shownMode}>
+          <Menu label={`Mode: ${MODE_DEFS[shownMode].label}. Choose another`} placement="up" align="end" triggerTestId="mode-chip-button" triggerClassName="cmp-chip cmp-mode-btn" trigger={<><Icon name={MODE_ICON[shownMode]} size={14} /> <span data-testid="mode-label">{MODE_DEFS[shownMode].label}</span>{status === "unconfirmed" && <span className="cmp-dim" data-testid="mode-unconfirmed"> unconfirmed</span>}<Icon name="chevron-down" size={10} /></>} items={modeItems} />
+          {shownMode !== "AGENT" && <IconButton label={`Leave ${MODE_DEFS[shownMode].label} mode`} icon={<Icon name="x" size={12} />} size="sm" onClick={() => applyMode("AGENT")} data-testid="mode-clear" />}
+        </span>
+        <ModelPicker posture={posture} catalog={catalogState.catalog} catalogError={catalogState.error} disabled={!sessionId} onOpen={() => setPickerWanted(true)} onChoose={choose} />
+        {props.runMode}
+        {props.ring}
+      </div>
       <input ref={fileInput} type="file" multiple hidden tabIndex={-1} aria-hidden="true" data-testid="attach-input" onChange={(e) => { const files = [...(e.target.files ?? [])]; e.target.value = ""; void attach(files); }} />
       <p className="mb-sr-only" role="status" aria-live="polite" data-testid="composer-live">
         {announce}

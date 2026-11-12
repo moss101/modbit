@@ -1,12 +1,12 @@
 /**
- * Renderer-local UI preferences (AFW-A03, A06, A09, A13): list width and
- * collapse, panel ratio, per-task panel state, theme and zoom. A per-viewer
+ * Renderer-local UI preferences (AFW-A03, A06, A09, A13; MWS-03): list width and
+ * collapse, panel ratio, per-task panel state, theme, zoom and density. A per-viewer
  * convenience in the renderer's own storage, like the notification
  * preferences; never task state and never authoritative. Everything read back
  * is validated and clamped, and a missing or hostile value falls back to the
  * default, so a corrupt entry can never break the shell.
  */
-import { GEOMETRY, isThemePreference, type ThemePreference } from "@modbit/design-tokens";
+import { GEOMETRY, isDensity, isThemePreference, type Density, type ThemePreference } from "@modbit/design-tokens";
 import { clampListWidth, clampPanelRatio } from "./layout.ts";
 
 export const APP_KINDS = ["changes", "terminal", "browser", "files", "evidence"] as const;
@@ -25,6 +25,8 @@ export interface UiPrefs {
   theme: ThemePreference;
   /** UI zoom as a multiple of 1, in steps of 0.08 (AFW-A16, PX-094). */
   zoom: number;
+  /** Comfortable or Compact (DR-PX-2026-11-11-021 MWS-03): one setting, separate from zoom. A profile stored before it existed reads as Comfortable. */
+  density: Density;
 }
 
 export const UI_PREFS_KEY = "modbit.ui.v1";
@@ -33,7 +35,7 @@ export const ZOOM_MIN = 0.68;
 export const ZOOM_MAX = 1.64;
 const MAX_TASK_ENTRIES = 200;
 
-export const DEFAULT_UI_PREFS: UiPrefs = { listWidth: GEOMETRY.listDefault, listCollapsed: false, panelRatio: GEOMETRY.panelRatioDefault, panelByTask: {}, theme: "system", zoom: 1 };
+export const DEFAULT_UI_PREFS: UiPrefs = { listWidth: GEOMETRY.listDefault, listCollapsed: false, panelRatio: GEOMETRY.panelRatioDefault, panelByTask: {}, theme: "system", zoom: 1, density: "comfortable" };
 
 export function clampZoom(z: number): number {
   const stepped = 1 + Math.round((z - 1) / ZOOM_STEP) * ZOOM_STEP;
@@ -67,6 +69,7 @@ export function parseUiPrefs(raw: string | null): UiPrefs {
     panelByTask,
     theme: isThemePreference(v.theme) ? v.theme : "system",
     zoom: typeof v.zoom === "number" && Number.isFinite(v.zoom) ? clampZoom(v.zoom) : 1,
+    density: isDensity(v.density) ? v.density : DEFAULT_UI_PREFS.density,
   };
 }
 

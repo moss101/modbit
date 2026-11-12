@@ -1,6 +1,6 @@
 [package]
 name = "modbit-bench-agent-engineering"
-description = "Modbit Eval Harness: the fixed competence baseline (PX-020) measured through the real product on the internal suite and the public benchmark slice (docs/63)"
+description = "Modbit Eval Harness: the fixed competence baseline (PX-020) measured through the real product on the internal suite and the public benchmark slice (docs/63), the four-axis agent benchmark (PX-184) and the GUI regression suite (PX-179)"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -31,4 +31,7 @@ owner = "eval-bench"
 canonical = []
 capabilities = [
   { id = "bench.competence_baseline", requirements = ["REQ-PX-020"] },
+  { id = "bench.four_axis", requirements = ["REQ-PX-184"] },
+  { id = "bench.gui_regression", requirements = ["REQ-PX-179"] },
+  { id = "bench.memory_ranking", requirements = ["REQ-PX-186"] },
 ]

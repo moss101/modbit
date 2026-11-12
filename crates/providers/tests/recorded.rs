@@ -119,7 +119,13 @@ async fn tool_round_trip(gw: &ProviderGateway, ep: &str, model: &str) -> Result<
                 call_id,
                 name,
                 arguments_json,
-            } => Some((call_id.clone(), name.clone(), arguments_json.clone())),
+                provider_data,
+            } => Some((
+                call_id.clone(),
+                name.clone(),
+                arguments_json.clone(),
+                provider_data.clone(),
+            )),
             _ => None,
         })
         .ok_or_else(|| format!("first turn: no tool call: {first:?}"))?;
@@ -138,6 +144,7 @@ async fn tool_round_trip(gw: &ProviderGateway, ep: &str, model: &str) -> Result<
             call_id: call.0.clone(),
             name: call.1.clone(),
             arguments_json: call.2.clone(),
+            provider_data: call.3.clone(),
         }],
     });
     next.push(Message {
@@ -165,7 +172,7 @@ async fn tool_round_trip(gw: &ProviderGateway, ep: &str, model: &str) -> Result<
     }
     let both: Vec<ModelEvent> = first.into_iter().chain(second).collect();
     Ok(RoundTrip {
-        call,
+        call: (call.0, call.1, call.2),
         answer,
         stream_ids: metadata(&both, "provider_request_id"),
         resolved_models: metadata(&both, "resolved_model"),
@@ -210,6 +217,16 @@ async fn live_recorded_tool_round_trip_on_each_configured_wire() {
         let rt = tool_round_trip(&gw, &ep.name, &model)
             .await
             .unwrap_or_else(|e| panic!("{}: {e}", ep.name));
+        // The proxy records an exchange when the upstream body closes; the
+        // adapter is done at the stream's end marker, which a provider may
+        // send before it closes the body (Gemini does). Wait for the
+        // recordings, bounded, then require exactly two.
+        let settle = std::time::Instant::now() + std::time::Duration::from_secs(15);
+        while proxy.exchanges.lock().expect("exchanges").len() < 2
+            && std::time::Instant::now() < settle
+        {
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        }
         let exchanges = proxy.exchanges.lock().expect("exchanges").clone();
         assert_eq!(
             exchanges.len(),
@@ -349,6 +366,7 @@ fn replay_endpoint(kind: ProviderKind, fixture: &Value, base_url: &str) -> Endpo
             AuthScheme::Native
         },
         extra_body: p["extra_body"].as_object().cloned().unwrap_or_default(),
+        omit_fields: Vec::new(),
         max_concurrency: 0,
     }
 }

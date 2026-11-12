@@ -9,7 +9,7 @@
  * judgement (docs/65 AFW-F06).
  */
 import { useCallback, useEffect, useId, useState } from "react";
-import { Badge, Button, Dialog } from "@modbit/ui";
+import { Badge, Button, Dialog, Icon } from "@modbit/ui";
 import type { AddRuleInput, AllowRuleInfo, RunModeInfo } from "../../shared/control-types.ts";
 import { ASK_CLASS_WORDS } from "./model.ts";
 import { EXPIRY_CHOICES, MODE_COPY, SCOPE_WORDS, approvesMore, expiryWords, modeLabel, orderRules, patternFromText, ruleRefusal } from "./run-mode-model.ts";
@@ -285,7 +285,9 @@ export function RunModeControl({ sessionId, taskId, connected, open, onOpenChang
   return (
     <>
       <Button size="sm" variant="ghost" className="rm-btn" onClick={() => onOpenChange(true)} data-testid="runmode-button" data-mode={info?.mode ?? ""} aria-haspopup="dialog">
-        Run mode: <span data-testid="runmode-current">{label}</span>
+        <Icon name="shield-check" size={14} />
+        <span className="mb-sr-only">Run mode: </span>
+        <span data-testid="runmode-current">{label}</span>
       </Button>
       <RunModePanel
         open={open}

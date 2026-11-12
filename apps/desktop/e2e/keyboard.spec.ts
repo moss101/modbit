@@ -166,7 +166,8 @@ test("keyboard: every screen by keyboard only — shortcuts, list and review nav
     // / opens the search over tasks; Escape closes it and focus returns.
     await page.keyboard.press("/");
     await expect(page.getByTestId("palette")).toBeVisible();
-    expect(await focusedTestId(page)).toBe("palette-input");
+    // The dialog moves focus to its input in an effect after it mounts, so it can be visible a frame earlier.
+    await expect.poll(() => focusedTestId(page)).toBe("palette-input");
     await page.keyboard.type("beta");
     await expect(page.getByTestId("palette-option").first()).toContainText("beta task");
     await page.keyboard.press("Escape");

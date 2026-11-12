@@ -20,7 +20,18 @@ const sha256 = (s: string | Buffer): string => createHash("sha256").update(s.toS
 
 /** The pins. Update one only for a reviewed change to the boundary it names. */
 const PINS = {
-  preloadSha256: "d791e491a29f4434738752354612a60b01e8fa2fdb0c08d679c3e685e4d675d4",
+  // M10.2 (reviewed 2026-11-07): four argument-less update channels (view, check, install, rollback). The renderer
+  // chooses nothing: the main process fetches, verifies against the pinned keys, decides and installs only a staged,
+  // verified update; a build with no pinned key refuses every update.
+  // PX-210 (2026-11-11, for review with its pull request): one channel, `composer:suggest` (a session id and a task id, both
+  // validated by main), which forwards the one typed Core command SuggestNextPrompt and returns the suggestion or the Core's
+  // refusal code; and two type-only additions (the header's last line of PX-218 rides the existing headers channel; the
+  // economics summary gains a count). Nothing generic, no path, no command name and no text crosses the bridge for it.
+  // PX-200 (2026-11-12, for review with its pull request): two read channels, `conversation:workGraph` and `conversation:plan`
+  // (a task id each, validated by main), which forward the Core's existing reads GetWorkGraph and GetPlan and return the
+  // steps with their state and the plan version in force as plain data. Reads only: nothing is leased, written or sent,
+  // and no path, command name or free text crosses the bridge for them.
+  preloadSha256: "77809483595ce6c91861bdf0303f8767beb0c49882405d7cff1cf1a39c73a251",
   cspSha256: "e8c3fcc4286ba170b02ea95b02189f132b16228341d2002412facfec6eb929d1",
   webPreferencesSha256: "28515878dc43e119f2360de779e5a3733283d120b31a113837f7f7a6cf2356ee",
   windowOptionKeys: ["width", "height", "minWidth", "minHeight", "show", "webPreferences"],

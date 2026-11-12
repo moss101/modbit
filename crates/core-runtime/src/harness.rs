@@ -1927,6 +1927,15 @@ mod tests {
         c.cost_minor = 100;
         c.open_budget_window();
         assert_eq!(c.check_turn_budget().unwrap_err().budget, "max_cost_minor");
+        let mut w = HarnessState::default();
+        w.budgets.max_wall_ms = Some(1_000);
+        w.wall_ms = 1_000;
+        assert!(w.open_budget_window());
+        assert_eq!(
+            w.check_turn_budget().unwrap_err().budget,
+            "max_wall_ms",
+            "a new window does not give back wall-clock time"
+        );
         const { assert!(DEFAULT_MAX_TURNS <= MAX_TURNS_CEILING) };
         const { assert!(DEFAULT_MAX_TOOL_CALLS <= MAX_TOOL_CALLS_CEILING) };
     }

@@ -10,7 +10,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Dialog, trays } from "@modbit/ui";
 import type { AgentHeaderView, ConversationSearchView } from "../../shared/conversation-types.ts";
 import { AgentListView } from "./agent-list-view.tsx";
-import { deleteView, listItems, nearestSibling, passes, pin as pinTask, saveView, unpin as unpinTask, visibleTaskIds, type FactField, type Filters, type Grouping, type RowFacts, type SortKey, type StoredView, type SubtitleField } from "./list-model.ts";
+import type { Density } from "@modbit/design-tokens";
+import { deleteView, listItems, nearestSibling, passes, pin as pinTask, saveView, unpin as unpinTask, visibleTaskIds, type FactField, type Filters, type Grouping, type RowDetails, type RowFacts, type SortKey, type StoredView, type SubtitleField } from "./list-model.ts";
 import { loadListPrefs, saveListPrefs, type ListPrefs } from "./prefs.ts";
 import { useAgents } from "./use-agents.ts";
 import { NewProjectDialog, RenameProjectDialog, SaveViewDialog } from "../projects/project-dialogs.tsx";
@@ -22,6 +23,14 @@ import type { ProjectsState } from "../projects/use-projects.ts";
 export const UNDO_MS = 12_000;
 const SEARCH_DEBOUNCE_MS = 250;
 
+/** What the open task's title menu can do through the list (MWS-05): the list owns pins, the archive confirmation and its undo. */
+export interface TaskActions {
+  pins: readonly string[];
+  pin: (taskId: string) => void;
+  unpin: (taskId: string) => void;
+  archive: (taskId: string) => void;
+}
+
 export interface AgentListProps {
   sessionId: string | null;
   connected: boolean;
@@ -30,7 +39,7 @@ export interface AgentListProps {
   onSelect: (taskId: string | null, rowId?: string) => void;
   /** Tells the shell the list's current numbers (for the summary line and the palette). */
   onHeaders?: ((n: { total: number; attention: number }) => void) | undefined;
-  /** Tells the shell the headers themselves (the repositories, the open task's worktree). */
+  /** Tells the shell the headers themselves (the open task's worktree and where it runs). */
   onHeaderList?: ((headers: readonly AgentHeaderView[]) => void) | undefined;
   /** What each task is doing and needs, from its card and the Core's attention view. */
   facts?: ReadonlyMap<string, RowFacts> | undefined;
@@ -41,9 +50,19 @@ export interface AgentListProps {
   onOpenProject?: ((projectId: string) => void) | undefined;
   /** A project left the list (archived or renamed away): the page showing it is told. */
   onProjectArchived?: ((projectId: string, archived: boolean) => void) | undefined;
+  /** Child task to parent task, as the session model learned it from the Core's events: a child is listed under its parent. */
+  parents?: ReadonlyMap<string, string> | undefined;
+  /** The shell's density: the rows are laid out with its heights. */
+  density?: Density | undefined;
+  /** Opens the search over tasks, commands and settings. */
+  onSearch?: (() => void) | undefined;
+  /** Starts a new task in a group's folder. */
+  onNewTaskIn?: ((root: string) => void) | undefined;
+  /** Hands the shell the list's pin and archive, for the open task's title menu; null when the list goes away. */
+  onTaskActions?: ((actions: TaskActions | null) => void) | undefined;
 }
 
-export function AgentList({ sessionId, connected, selectedTaskId, onSelect, onHeaders, onHeaderList, facts, projects, selectedProjectId = null, onOpenProject, onProjectArchived }: AgentListProps) {
+export function AgentList({ sessionId, connected, selectedTaskId, onSelect, onHeaders, onHeaderList, facts, projects, selectedProjectId = null, onOpenProject, onProjectArchived, parents, density, onSearch, onNewTaskIn, onTaskActions }: AgentListProps) {
   const [prefs, setPrefs] = useState<ListPrefs>(loadListPrefs);
   const update = useCallback((f: (p: ListPrefs) => ListPrefs) => setPrefs((p) => f(p)), []);
   useEffect(() => saveListPrefs(prefs), [prefs]);
@@ -106,8 +125,8 @@ export function AgentList({ sessionId, connected, selectedTaskId, onSelect, onHe
   /** The rows as the person sees them, for the sibling an archive hands the selection to. */
   const order = useCallback(() => {
     const visible = agents.headers.filter((h) => passes(h, prefs.filters));
-    return visibleTaskIds(listItems({ headers: visible, projects: projects?.projects ?? [], grouping: prefs.grouping, pins: prefs.pins, collapsed, nowMs: Date.now(), sort: prefs.sort, showArchived: prefs.filters.showArchived }));
-  }, [agents.headers, projects?.projects, prefs.filters, prefs.grouping, prefs.pins, prefs.sort, collapsed]);
+    return visibleTaskIds(listItems({ headers: visible, projects: projects?.projects ?? [], grouping: prefs.grouping, pins: prefs.pins, collapsed, nowMs: Date.now(), sort: prefs.sort, showArchived: prefs.filters.showArchived, parents }));
+  }, [agents.headers, projects?.projects, prefs.filters, prefs.grouping, prefs.pins, prefs.sort, collapsed, parents]);
 
   const dismissUndo = useCallback((taskId: string) => {
     const id = `archive:${taskId}`;
@@ -239,11 +258,27 @@ export function AgentList({ sessionId, connected, selectedTaskId, onSelect, onHe
     return null;
   };
 
+  // A pin moves the row to another group: focus follows it there, so the keyboard is never left on a row that is gone.
+  const follow = (taskId: string) => setFocusRequest((f) => ({ taskId, n: (f?.n ?? 0) + 1 }));
   const onPin = (taskId: string) => {
     const r = pinTask(prefs.pins, taskId);
     setNote(r.message);
-    if (!r.message) update((p) => ({ ...p, pins: r.pins }));
+    if (r.message) return;
+    update((p) => ({ ...p, pins: r.pins }));
+    follow(taskId);
   };
+  const onUnpin = (taskId: string) => {
+    update((p) => ({ ...p, pins: unpinTask(p.pins, taskId) }));
+    follow(taskId);
+  };
+
+  // The title menu of the open task pins and archives through the same functions the rows use.
+  const rowActions = useRef({ onPin, onUnpin, requestArchive });
+  rowActions.current = { onPin, onUnpin, requestArchive };
+  useEffect(() => {
+    onTaskActions?.({ pins: prefs.pins, pin: (id) => rowActions.current.onPin(id), unpin: (id) => rowActions.current.onUnpin(id), archive: (id) => rowActions.current.requestArchive(id) });
+  }, [prefs.pins, onTaskActions]);
+  useEffect(() => () => onTaskActions?.(null), [onTaskActions]);
 
   return (
     <>
@@ -268,7 +303,7 @@ export function AgentList({ sessionId, connected, selectedTaskId, onSelect, onHe
         onQuery={setQuery}
         onSelect={(id, rowId) => onSelect(id, rowId)}
         onPin={onPin}
-        onUnpin={(id) => update((p) => ({ ...p, pins: unpinTask(p.pins, id) }))}
+        onUnpin={onUnpin}
         onArchive={requestArchive}
         onToggleSection={(key) => update((p) => ({ ...p, collapsed: { ...p.collapsed, [p.grouping]: (p.collapsed[p.grouping] ?? []).includes(key) ? (p.collapsed[p.grouping] ?? []).filter((k) => k !== key) : [...(p.collapsed[p.grouping] ?? []), key] } }))}
         onGrouping={(g: Grouping) => update((p) => ({ ...p, grouping: g }))}
@@ -277,6 +312,12 @@ export function AgentList({ sessionId, connected, selectedTaskId, onSelect, onHe
         sort={prefs.sort}
         onSort={(s: SortKey) => update((p) => ({ ...p, sort: s }))}
         viewActions={{ views: prefs.views, onApply: applyView, onSaveRequest: () => setSavingView(true), onDelete: (id) => update((p) => ({ ...p, views: deleteView(p.views, id) })) }}
+        rowDetails={prefs.rowDetails}
+        onRowDetails={(d: RowDetails) => update((p) => ({ ...p, rowDetails: d }))}
+        parents={parents}
+        density={density}
+        onSearch={onSearch}
+        onNewTaskIn={onNewTaskIn}
         projects={projects?.projects}
         projectActions={
           projects

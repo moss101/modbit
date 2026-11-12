@@ -1,0 +1,88 @@
+{
+  "kind": "reproducible-build",
+  "commit": "92dd23a48aeef614764e4841267bc0531adf305a",
+  "tree_dirty": false,
+  "inputs": {
+    "source_date_epoch": "1794077621",
+    "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14); binary: rustc; commit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452",
+    "node": "v26.11.1",
+    "cargo_lock_sha256": "59020e6ba6740809a2870e8e53bbc478b6cad9363431e0cd4371e92b8a2aafe9",
+    "pnpm_lock_sha256": "6b3132b5e01970667b2f50efcb8e516b0ffe88770e71bd8e2b3286972be78f01",
+    "platform": "darwin-arm64"
+  },
+  "artifacts": [
+    {
+      "name": "desktop/main/apply-helper.cjs",
+      "a": "3a0966cd51f47090acfd570f4a01acf92c49f6ae7ad7b43c2f8f91278f32859e",
+      "b": "3a0966cd51f47090acfd570f4a01acf92c49f6ae7ad7b43c2f8f91278f32859e",
+      "equal": true
+    },
+    {
+      "name": "desktop/main/apply-helper.cjs.map",
+      "a": "58c0c977586e39420b57bd713d7913688ff23f7cbdfea5fc7185158e9c3bbf6d",
+      "b": "58c0c977586e39420b57bd713d7913688ff23f7cbdfea5fc7185158e9c3bbf6d",
+      "equal": true
+    },
+    {
+      "name": "desktop/main/main.cjs",
+      "a": "ee8eb90f5f5d206f8620a94d3e2eb6891dffd6e54e0f223110fc82f3c3be134d",
+      "b": "ee8eb90f5f5d206f8620a94d3e2eb6891dffd6e54e0f223110fc82f3c3be134d",
+      "equal": true
+    },
+    {
+      "name": "desktop/main/main.cjs.map",
+      "a": "6c390837d6bab1b1b6a74dcba4ffb324d5dc5b672d43d92986f4c2921410604c",
+      "b": "6c390837d6bab1b1b6a74dcba4ffb324d5dc5b672d43d92986f4c2921410604c",
+      "equal": true
+    },
+    {
+      "name": "desktop/preload/preload.cjs",
+      "a": "bfc5dfaca57f8f00d968bf8ca1b68dc3677767e4951d249dd52e413a0bb15b82",
+      "b": "bfc5dfaca57f8f00d968bf8ca1b68dc3677767e4951d249dd52e413a0bb15b82",
+      "equal": true
+    },
+    {
+      "name": "desktop/preload/preload.cjs.map",
+      "a": "b4d2f3eae40e059623fcdc4ca8e6c85549fe1c43d4a7150c4f8222457695c786",
+      "b": "b4d2f3eae40e059623fcdc4ca8e6c85549fe1c43d4a7150c4f8222457695c786",
+      "equal": true
+    },
+    {
+      "name": "desktop/renderer/app.css",
+      "a": "ae48af4aa7ab327313bb33b051cc0a3b9775329c9ee6c073adede292c310d055",
+      "b": "ae48af4aa7ab327313bb33b051cc0a3b9775329c9ee6c073adede292c310d055",
+      "equal": true
+    },
+    {
+      "name": "desktop/renderer/index.html",
+      "a": "076981af4f69c8a87ff07e5bb8b1b079f286280cae1d7a722f9bb8a7ab1680bb",
+      "b": "076981af4f69c8a87ff07e5bb8b1b079f286280cae1d7a722f9bb8a7ab1680bb",
+      "equal": true
+    },
+    {
+      "name": "desktop/renderer/index.js",
+      "a": "91b54b45657a8ad8b86b01349d98e4265fb7bb5ba6e5ec6af1b2d8238902d7e5",
+      "b": "91b54b45657a8ad8b86b01349d98e4265fb7bb5ba6e5ec6af1b2d8238902d7e5",
+      "equal": true
+    },
+    {
+      "name": "desktop/renderer/index.js.map",
+      "a": "95234014d22d016ef24af079633cf77c6a989a97a7c1065439db238ed8b258fd",
+      "b": "95234014d22d016ef24af079633cf77c6a989a97a7c1065439db238ed8b258fd",
+      "equal": true
+    },
+    {
+      "name": "rust/modbit-core",
+      "a": "19877944b364821193d934c24a1b0d7c75fcf6b5068560c3ad95c08e0532c282",
+      "b": "19877944b364821193d934c24a1b0d7c75fcf6b5068560c3ad95c08e0532c282",
+      "equal": true
+    },
+    {
+      "name": "rust/modbit-execd",
+      "a": "59dd04b0452daddb3fafd1aa1e49843234671836bf6249d9e910318035f5e178",
+      "b": "59dd04b0452daddb3fafd1aa1e49843234671836bf6249d9e910318035f5e178",
+      "equal": true
+    }
+  ],
+  "reproducible": true
+}

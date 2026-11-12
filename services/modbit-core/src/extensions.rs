@@ -461,6 +461,7 @@ fn register_providers(core: &Core, ext: &LoadedExtension) -> Vec<String> {
             max_retries: 2,
             auth: Default::default(),
             extra_body: Default::default(),
+            omit_fields: Vec::new(),
             max_concurrency: 0,
         });
         out.push(name);

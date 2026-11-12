@@ -1028,6 +1028,20 @@ export declare type AgentHeader = Message<"modbit.v1.AgentHeader"> & {
    * @generated from field: string checkout_root = 421;
    */
   checkoutRoot: string;
+
+  /**
+   * PX-218 (DR-PX-2026-11-11-021 MWS-20; field numbers 460-469 are the block
+   * PX-218 uses for additions to existing messages): the last non-empty line
+   * of the assistant's latest finished message, for the row's preview card.
+   * It is the text the transcript shows (redacted before it reached the
+   * log), at most 200 characters (a longer line is cut at a character
+   * boundary and ends in an ellipsis), and "" for a task that has not
+   * answered. A message that is still streaming or was aborted contributes
+   * nothing. For an archived task it is the line as of the archive.
+   *
+   * @generated from field: string last_line = 460;
+   */
+  lastLine: string;
 };
 
 /**

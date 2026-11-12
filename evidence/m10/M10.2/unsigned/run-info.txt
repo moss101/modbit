@@ -1,0 +1,7 @@
+M10.2 UNSIGNED packaged build: local proof run
+commit: 92dd23a48aeef614764e4841267bc0531adf305a (branch wip/m10-2-unsigned; no tracked file modified)
+host: Darwin 27.0.0 arm64 (macOS, Apple silicon)
+node: v26.11.1 (the repo pins 26.5.1 in .node-version; CI uses the pin)
+pnpm: 11.8.0   rustc: 1.97.1 (8bab26f4f 2026-07-14)
+started: 2026-11-07T19:04:58Z
+signing: none. CSC_IDENTITY_AUTO_DISCOVERY=false, electron-builder mac.identity null; no Developer ID, no notarization, no update signing key pinned.

@@ -30,3 +30,8 @@
 - The suite is `cfg(unix)` (it runs `sh`); Windows runs the scanner through the other budget suites only. The model is the scripted stand-in.
 - An unbounded wait is still bounded by the existing approval expiry (PX-058), not by this row.
 - Graph status cannot move until PR #148 (which registers PX-156) lands on main.
+
+## 2026-11-08: wall-clock margin widened (CI flake)
+- On macos-latest (moss101/modbit#188, run 42483653881) the parked-call test failed at `px_156_parked_time.rs:170`: `wall_ms_used: 3109` against a 3000 ms cap, with `wall_ms_parked: 3580`. The parked time was excluded as designed; the run's own unparked time (start, three scripted turns, one command) exceeded 3 s on a loaded hosted runner.
+- `WALL_CAP_MS` 3000 → 8000 and `PARKED_MS` 3500 → 9000: the parked time stays longer than the cap and than the call's 1.5 s timeout, so charging it still ends the task and fails the check. Locally the unparked time is about 1.4 s.
+- `margin-2026-11-08.txt`: baseline 2 passed; the mutation that stops subtracting the parked time fails it (`wall_ms_used: 10497`, cap 8000); restored with `git checkout` and rebuilt, 2 passed. No product code changed.

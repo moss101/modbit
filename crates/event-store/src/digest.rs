@@ -61,6 +61,23 @@ pub struct TaskDigest {
     /// mode. A task in `PLAN` mode with a plan recorded is waiting for the
     /// person to accept the plan (leaving PLAN is the acceptance).
     pub mode: Option<String>,
+    /// How the assistant's latest finished message ended (PX-218): the
+    /// completion record of the task's latest text stream. `None` = the task
+    /// has not answered. For an archived task it is the latest message
+    /// finished before the archive, so the header of a put-away task does not
+    /// change under it.
+    pub last_message: Option<LastMessage>,
+}
+
+/// The closing record of a finished assistant message, as far as a header
+/// needs it (PX-218).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LastMessage {
+    /// The record's `last_line`; `None` on a record written before the field
+    /// existed (the line is then in the text object and nowhere else).
+    pub last_line: Option<String>,
+    /// Object hash of the message's full (redacted) text.
+    pub text_hash: String,
 }
 
 /// Digest every task of `session` that has at least one event.
@@ -86,34 +103,46 @@ pub(crate) fn task_digests(conn: &Connection, session: &SessionId) -> Result<Vec
          GROUP BY task_id
          ORDER BY MIN(offset)"
     ))?;
-    let mut out: Vec<TaskDigest> = stmt
+    let out = stmt
         .query_map(params![sid], |r| {
             let archived_at: i64 = r.get(9)?;
             let unarchived_at: i64 = r.get(10)?;
-            Ok(TaskDigest {
-                task_id: TaskId::from_bytes(
-                    r.get::<_, Vec<u8>>(0)?
-                        .try_into()
-                        .map_err(|_| rusqlite::Error::InvalidQuery)?,
-                ),
-                last_offset: r.get::<_, i64>(1)? as u64,
-                last_at: Timestamp(r.get(2)?),
-                visible_offset: r.get::<_, i64>(3)? as u64,
-                files_changed: u32::try_from(r.get::<_, i64>(4)?).unwrap_or(u32::MAX),
-                lines_added: u32::try_from(r.get::<_, i64>(5)?).unwrap_or(u32::MAX),
-                lines_removed: u32::try_from(r.get::<_, i64>(6)?).unwrap_or(u32::MAX),
-                last_checkpoint_at: r.get::<_, Option<i64>>(7)?.map(Timestamp),
-                read_offset: r.get::<_, i64>(8)? as u64,
-                archived: archived_at > unarchived_at,
-                context_tokens: None,
-                model: None,
-                created_offset: r.get::<_, i64>(11)? as u64,
-                attention_events: u32::try_from(r.get::<_, i64>(12)?).unwrap_or(u32::MAX),
-                plan_versions: u32::try_from(r.get::<_, i64>(13)?).unwrap_or(u32::MAX),
-                mode: None,
-            })
+            Ok((
+                archived_at,
+                TaskDigest {
+                    task_id: TaskId::from_bytes(
+                        r.get::<_, Vec<u8>>(0)?
+                            .try_into()
+                            .map_err(|_| rusqlite::Error::InvalidQuery)?,
+                    ),
+                    last_offset: r.get::<_, i64>(1)? as u64,
+                    last_at: Timestamp(r.get(2)?),
+                    visible_offset: r.get::<_, i64>(3)? as u64,
+                    files_changed: u32::try_from(r.get::<_, i64>(4)?).unwrap_or(u32::MAX),
+                    lines_added: u32::try_from(r.get::<_, i64>(5)?).unwrap_or(u32::MAX),
+                    lines_removed: u32::try_from(r.get::<_, i64>(6)?).unwrap_or(u32::MAX),
+                    last_checkpoint_at: r.get::<_, Option<i64>>(7)?.map(Timestamp),
+                    read_offset: r.get::<_, i64>(8)? as u64,
+                    archived: archived_at > unarchived_at,
+                    context_tokens: None,
+                    model: None,
+                    created_offset: r.get::<_, i64>(11)? as u64,
+                    attention_events: u32::try_from(r.get::<_, i64>(12)?).unwrap_or(u32::MAX),
+                    plan_versions: u32::try_from(r.get::<_, i64>(13)?).unwrap_or(u32::MAX),
+                    mode: None,
+                    last_message: None,
+                },
+            ))
         })?
-        .collect::<std::result::Result<_, _>>()?;
+        .collect::<std::result::Result<Vec<(i64, TaskDigest)>, _>>()?;
+    // Where each archived task was put away: its header's last line is read
+    // as of that offset (PX-218).
+    let archived_at: Vec<([u8; 16], i64)> = out
+        .iter()
+        .filter(|(_, d)| d.archived)
+        .map(|(at, d)| (*d.task_id.as_bytes(), *at))
+        .collect();
+    let mut out: Vec<TaskDigest> = out.into_iter().map(|(_, d)| d).collect();
 
     // The latest invocation of each task: its input tokens and its route.
     let index: std::collections::HashMap<[u8; 16], usize> = out
@@ -137,7 +166,72 @@ pub(crate) fn task_digests(conn: &Connection, session: &SessionId) -> Result<Vec
             out[i].mode = Some(mode);
         }
     }
+    // How each task's latest finished message ended (PX-218); an archived
+    // task's is read as of its archive.
+    for (task, message) in latest_messages(conn, sid)? {
+        if let Some(&i) = index.get(&task) {
+            out[i].last_message = Some(message);
+        }
+    }
+    for (task, at) in archived_at {
+        if let Some(&i) = index.get(&task) {
+            out[i].last_message = message_before(conn, sid, &task, at)?;
+        }
+    }
     Ok(out)
+}
+
+/// The columns of a text stream's completion record a header reads.
+const MESSAGE_COLUMNS: &str = "json_extract(payload_inline, '$.last_line'), json_extract(payload_inline, '$.text_ref.object_hash')";
+/// A finished assistant message that is text (a reasoning summary is not one).
+const FINISHED_TEXT: &str =
+    "event_type = 'AssistantMessageCompleted' AND json_extract(payload_inline, '$.kind') = 'TEXT'";
+
+/// Each task's latest finished assistant message.
+fn latest_messages(conn: &Connection, session: &[u8]) -> Result<Vec<([u8; 16], LastMessage)>> {
+    let mut stmt = conn.prepare_cached(&format!(
+        "SELECT task_id, last_line, text_hash
+         FROM (SELECT task_id,
+                      json_extract(payload_inline, '$.last_line') AS last_line,
+                      json_extract(payload_inline, '$.text_ref.object_hash') AS text_hash,
+                      ROW_NUMBER() OVER (PARTITION BY task_id ORDER BY offset DESC) AS rn
+               FROM events
+               WHERE session_id = ?1 AND task_id IS NOT NULL AND {FINISHED_TEXT})
+         WHERE rn = 1"
+    ))?;
+    let rows = stmt.query_map(params![session], |r| {
+        Ok((
+            r.get::<_, Vec<u8>>(0)?
+                .try_into()
+                .map_err(|_| rusqlite::Error::InvalidQuery)?,
+            LastMessage {
+                last_line: r.get::<_, Option<String>>(1)?,
+                text_hash: r.get::<_, Option<String>>(2)?.unwrap_or_default(),
+            },
+        ))
+    })?;
+    Ok(rows.collect::<std::result::Result<_, _>>()?)
+}
+
+/// One task's latest assistant message finished before `offset`.
+fn message_before(
+    conn: &Connection,
+    session: &[u8],
+    task: &[u8; 16],
+    offset: i64,
+) -> Result<Option<LastMessage>> {
+    let mut stmt = conn.prepare_cached(&format!(
+        "SELECT {MESSAGE_COLUMNS} FROM events
+         WHERE session_id = ?1 AND task_id = ?2 AND offset < ?3 AND {FINISHED_TEXT}
+         ORDER BY offset DESC LIMIT 1"
+    ))?;
+    let mut rows = stmt.query_map(params![session, task.as_slice(), offset], |r| {
+        Ok(LastMessage {
+            last_line: r.get::<_, Option<String>>(0)?,
+            text_hash: r.get::<_, Option<String>>(1)?.unwrap_or_default(),
+        })
+    })?;
+    Ok(rows.next().transpose()?)
 }
 
 /// Each task's latest `TaskModeSet` and the mode it set.

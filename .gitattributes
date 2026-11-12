@@ -5,3 +5,9 @@ tests/fixtures/media/** binary
 *.jpeg binary
 *.pdf binary
 *.db binary
+# PX-184: the retained four-axis baseline is digested byte for byte, and the suite's fixtures and goals are compared by
+# content, so every platform checks out exactly the committed bytes (a Windows CRLF checkout changed the bundle digest).
+benchmarks/agent-engineering/baselines/** -text
+benchmarks/agent-engineering/suites/four-axis/** -text
+# PX-186: the memory-ranking corpus is digested byte for byte and the retained comparison names that digest.
+benchmarks/agent-engineering/suites/memory-ranking/** -text

@@ -3,15 +3,15 @@ import assert from "node:assert/strict";
 import { CommandRegistry } from "@modbit/ui/logic";
 import { computeLayout, clampListWidth, ratioForPanel } from "./layout.ts";
 import { DEFAULT_UI_PREFS, parseUiPrefs, serializeUiPrefs, clampZoom, UI_PREFS_KEY } from "./prefs.ts";
-import { artifactsOf, panelTaskFor } from "./artifacts.ts";
+import { artifactsOf, panelTaskFor, panesOf } from "./artifacts.ts";
 import { REQUIRED_CHORDS, buildShellRegistry, shellCommandDefs, shellRegistry, type ShellActions } from "./commands.ts";
 
-const base = { listWidth: 260, listCollapsed: false, panelRatio: 0.5, panelOpen: false };
+const base = { listWidth: 288, listCollapsed: false, panelRatio: 0.5, panelOpen: false };
 
-test("AFW-A01/A03: at 1280 the agent list is 260 and the conversation takes the rest; the panel is absent until opened", () => {
+test("AFW-A01/A03 (MWS-01): at 1280 the task list is 288 and the conversation takes the rest; the panel is absent until opened", () => {
   const l = computeLayout({ ...base, width: 1280 });
-  assert.equal(l.listPx, 260);
-  assert.equal(l.centerPx, 1020);
+  assert.equal(l.listPx, 288);
+  assert.equal(l.centerPx, 992);
   assert.equal(l.panelPx, 0);
   assert.equal(l.rail, false);
   assert.equal(l.stacked, false);
@@ -20,7 +20,7 @@ test("AFW-A01/A03: at 1280 the agent list is 260 and the conversation takes the 
 test("AFW-A06: with the panel open at 1280 the centre keeps 424 and the panel gets the remainder (>= 384)", () => {
   const l = computeLayout({ ...base, width: 1280, panelOpen: true });
   assert.equal(l.centerPx, 424);
-  assert.equal(l.panelPx, 596);
+  assert.equal(l.panelPx, 568);
   assert.ok(l.panelPx >= 384);
   assert.equal(l.listPx + l.centerPx + l.panelPx, 1280);
 });
@@ -31,15 +31,28 @@ test("AFW-A06: a stored ratio that would push the centre under 424 is clamped; o
   assert.equal(small.panelPx, 384);
   const mid = computeLayout({ ...base, width: 1600, panelOpen: true, panelRatio: 0.4 });
   assert.equal(mid.panelPx, 640);
-  assert.equal(mid.centerPx, 1600 - 260 - 640);
+  assert.equal(mid.centerPx, 1600 - 288 - 640);
 });
 
-test("AFW-A03: the agent list is clamped to 210..400 wherever the width comes from", () => {
-  assert.equal(clampListWidth(100), 210);
-  assert.equal(clampListWidth(900), 400);
-  assert.equal(clampListWidth(Number.NaN), 260);
-  assert.equal(computeLayout({ ...base, width: 1280, listWidth: 1000 }).listPx, 400);
-  assert.equal(computeLayout({ ...base, width: 1280, listWidth: 1 }).listPx, 210);
+test("AFW-A03 (MWS-01): the task list is clamped to 200..420 wherever the width comes from", () => {
+  assert.equal(clampListWidth(100), 200);
+  assert.equal(clampListWidth(900), 420);
+  assert.equal(clampListWidth(Number.NaN), 288);
+  assert.equal(computeLayout({ ...base, width: 1280, listWidth: 1000 }).listPx, 420);
+  assert.equal(computeLayout({ ...base, width: 1280, listWidth: 1 }).listPx, 200);
+});
+
+test("MWS-01 migration: a list width stored under the old 210..400 range is inside the new one and is kept as it is", () => {
+  for (const stored of [210, 226, 260, 333, 400]) {
+    assert.equal(parseUiPrefs(JSON.stringify({ listWidth: stored })).listWidth, stored, `a stored ${stored}`);
+    assert.equal(computeLayout({ ...base, width: 1280, listWidth: stored }).listPx, stored);
+  }
+  // Only a width outside the new range moves, to the nearest limit; a profile with none takes the new default.
+  assert.equal(parseUiPrefs(JSON.stringify({ listWidth: 180 })).listWidth, 200);
+  assert.equal(parseUiPrefs(JSON.stringify({ listWidth: 450 })).listWidth, 420);
+  assert.equal(parseUiPrefs(JSON.stringify({})).listWidth, 288);
+  // The superseded default is not the default any more.
+  assert.notEqual(DEFAULT_UI_PREFS.listWidth, 260);
 });
 
 test("AFW-A08: below a 448 centre the shell is single-pane with a 40 px rail; the person can also collapse the list", () => {
@@ -48,9 +61,9 @@ test("AFW-A08: below a 448 centre the shell is single-pane with a 40 px rail; th
   assert.equal(narrow.listPx, 40);
   assert.equal(narrow.centerPx, 560);
   assert.equal(narrow.singlePane, true);
-  const edge = computeLayout({ ...base, width: 260 + 448 });
+  const edge = computeLayout({ ...base, width: 288 + 448 });
   assert.equal(edge.rail, false, "exactly 448 is not below");
-  assert.equal(computeLayout({ ...base, width: 260 + 447 }).rail, true);
+  assert.equal(computeLayout({ ...base, width: 288 + 447 }).rail, true);
   const collapsed = computeLayout({ ...base, width: 1280, listCollapsed: true });
   assert.equal(collapsed.listPx, 40);
   assert.equal(collapsed.centerPx, 1240);
@@ -60,9 +73,9 @@ test("AFW-A08: an open panel that cannot sit beside a 424 centre stacks behind a
   const l = computeLayout({ ...base, width: 900, panelOpen: true });
   assert.equal(l.stacked, true);
   assert.equal(l.panelPx, 0);
-  assert.equal(l.centerPx, 640);
-  assert.equal(computeLayout({ ...base, width: 260 + 424 + 384, panelOpen: true }).stacked, false, "exactly enough room sits side by side");
-  assert.equal(computeLayout({ ...base, width: 260 + 424 + 383, panelOpen: true }).stacked, true);
+  assert.equal(l.centerPx, 612);
+  assert.equal(computeLayout({ ...base, width: 288 + 424 + 384, panelOpen: true }).stacked, false, "exactly enough room sits side by side");
+  assert.equal(computeLayout({ ...base, width: 288 + 424 + 383, panelOpen: true }).stacked, true);
 });
 
 test("a drag stores a ratio of the window width that reproduces the width", () => {
@@ -71,13 +84,14 @@ test("a drag stores a ratio of the window width that reproduces the width", () =
 });
 
 test("persisted UI preferences round-trip, and hostile or corrupt storage falls back to defaults (never throws)", () => {
-  const p = { ...DEFAULT_UI_PREFS, listWidth: 333, listCollapsed: true, panelRatio: 0.42, theme: "dark" as const, zoom: 1.16, panelByTask: { t1: { open: true, tab: "browser" as const } } };
+  const p = { ...DEFAULT_UI_PREFS, listWidth: 333, listCollapsed: true, panelRatio: 0.42, theme: "dark" as const, zoom: 1.16, density: "compact" as const, panelByTask: { t1: { open: true, tab: "browser" as const } } };
   assert.deepEqual(parseUiPrefs(serializeUiPrefs(p)), p);
   assert.deepEqual(parseUiPrefs(null), DEFAULT_UI_PREFS);
   assert.deepEqual(parseUiPrefs("{not json"), DEFAULT_UI_PREFS);
   assert.deepEqual(parseUiPrefs("[1,2]"), DEFAULT_UI_PREFS);
-  const hostile = parseUiPrefs(JSON.stringify({ listWidth: 99999, panelRatio: -4, theme: "<script>", zoom: "big", listCollapsed: "yes", panelByTask: { a: { open: "yes" }, b: { open: true, tab: "nope" }, c: 5 } }));
-  assert.equal(hostile.listWidth, 400);
+  const hostile = parseUiPrefs(JSON.stringify({ listWidth: 99999, panelRatio: -4, theme: "<script>", zoom: "big", density: "<tight>", listCollapsed: "yes", panelByTask: { a: { open: "yes" }, b: { open: true, tab: "nope" }, c: 5 } }));
+  assert.equal(hostile.listWidth, 420);
+  assert.equal(hostile.density, "comfortable");
   assert.equal(hostile.panelRatio, 0.2);
   assert.equal(hostile.theme, "system");
   assert.equal(hostile.zoom, 1);
@@ -88,7 +102,17 @@ test("persisted UI preferences round-trip, and hostile or corrupt storage falls 
 
 test("a layout preference is renderer-local: it never carries task state", () => {
   const keys = Object.keys(JSON.parse(serializeUiPrefs(DEFAULT_UI_PREFS)));
-  assert.deepEqual(keys.sort(), ["listCollapsed", "listWidth", "panelByTask", "panelRatio", "theme", "zoom"]);
+  assert.deepEqual(keys.sort(), ["density", "listCollapsed", "listWidth", "panelByTask", "panelRatio", "theme", "zoom"]);
+});
+
+test("MWS-03: density is one layout preference with a default, separate from zoom, and a profile stored before it reads as Comfortable", () => {
+  assert.equal(DEFAULT_UI_PREFS.density, "comfortable");
+  assert.equal(parseUiPrefs(JSON.stringify({ listWidth: 300, zoom: 1.16 })).density, "comfortable");
+  const compact = parseUiPrefs(JSON.stringify({ density: "compact", zoom: 1.16 }));
+  assert.equal(compact.density, "compact");
+  assert.equal(compact.zoom, 1.16, "choosing a density leaves the zoom alone");
+  assert.equal(parseUiPrefs(JSON.stringify({ density: "compact" })).zoom, 1);
+  for (const junk of ["dense", 2, null, ["compact"]]) assert.equal(parseUiPrefs(JSON.stringify({ density: junk })).density, "comfortable");
 });
 
 test("zoom moves in 8% steps inside its clamp", () => {
@@ -153,4 +177,12 @@ test("AFW-A16: every registered command runs its action, and an unavailable one 
   const blocked = new Proxy(spy, { get: (t, n: string) => (n === "zoomAvailability" ? () => "Zoom is unavailable while the browser view is open" : Reflect.get(t, n)) });
   assert.equal(registry.availability("zoom.in", blocked), "Zoom is unavailable while the browser view is open");
   assert.equal(await registry.run("zoom.in", blocked), false);
+});
+
+test("PX-200 (MWS-05): a task has a toggle for each pane it can show, in tab order; one that has not started has none", () => {
+  assert.deepEqual(panesOf([]), []);
+  assert.deepEqual(panesOf(artifactsOf({ taskId: "a", state: "Queued" }, { browsingTaskId: null })), []);
+  assert.deepEqual(panesOf(artifactsOf({ taskId: "a", state: "Running" }, { browsingTaskId: null })), ["changes", "browser", "files", "evidence"], "the Browser pane is where a session is opened from");
+  assert.deepEqual(panesOf(artifactsOf({ taskId: "a", state: "Running" }, { browsingTaskId: "a", terminalTaskIds: new Set(["a"]) })), ["changes", "terminal", "browser", "files", "evidence"]);
+  assert.deepEqual(panesOf(["terminal"]), ["terminal"], "a terminal alone does not make a workspace");
 });

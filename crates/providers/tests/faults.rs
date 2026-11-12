@@ -56,6 +56,7 @@ fn gateway(server: &FaultServer, wire: Wire) -> ProviderGateway {
         max_retries: 2,
         auth: AuthScheme::Native,
         extra_body: Default::default(),
+        omit_fields: Vec::new(),
         max_concurrency: 0,
     }])
 }

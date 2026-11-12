@@ -189,6 +189,30 @@ macro_rules! tool {
             }
         }
     };
+    // A tool whose body blocks its thread on a child process (git): it runs
+    // through `blocking`, so the async worker it lands on hands its other
+    // tasks to another thread first (PX-161: a batch of reads overlaps
+    // however few workers the Core has).
+    ($ty:ident, $spec:expr, run = blocking, |$ctx:ident, $args:ident| $body:expr) => {
+        struct $ty(ToolSpec);
+        impl Tool for $ty {
+            fn spec(&self) -> &ToolSpec {
+                &self.0
+            }
+            fn invoke<'a>(
+                &'a self,
+                $ctx: &'a InvokeContext,
+                $args: Value,
+            ) -> BoxFuture<'a, ToolOutcome> {
+                Box::pin(async move { blocking(move || $body) })
+            }
+        }
+        impl $ty {
+            fn shared() -> Arc<dyn Tool> {
+                Arc::new(Self($spec))
+            }
+        }
+    };
     ($ty:ident, $spec:expr, |$ctx:ident, $args:ident| $body:expr) => {
         struct $ty(ToolSpec);
         impl Tool for $ty {
@@ -209,6 +233,19 @@ macro_rules! tool {
             }
         }
     };
+}
+
+/// Run work that blocks its thread. On a multi-thread runtime the worker
+/// hands its queued tasks to another thread first ([`tokio::task::block_in_place`]),
+/// so the other calls of a batch, and every other task of the Core, keep
+/// running; elsewhere (a current-thread runtime, no runtime) it runs inline.
+fn blocking<T>(f: impl FnOnce() -> T) -> T {
+    match tokio::runtime::Handle::try_current() {
+        Ok(h) if h.runtime_flavor() == tokio::runtime::RuntimeFlavor::MultiThread => {
+            tokio::task::block_in_place(f)
+        }
+        _ => f(),
+    }
 }
 
 fn no_workspace() -> ToolOutcome {
@@ -799,6 +836,7 @@ tool!(
         &["git.read"],
         Idempotency::Idempotent
     ),
+    run = blocking,
     |ctx, _args| {
         let Some(root) = &ctx.workspace_root else {
             return no_workspace();
@@ -826,6 +864,7 @@ tool!(
         &["git.read"],
         Idempotency::Idempotent
     ),
+    run = blocking,
     |ctx, args| {
         let Some(root) = &ctx.workspace_root else {
             return no_workspace();

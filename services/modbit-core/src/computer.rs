@@ -246,6 +246,12 @@ pub(crate) fn policy_of(config: &ResolvedConfig) -> ComputerPolicy {
     }
 }
 
+/// PX-174: how many of a computer-use run's most recent frames the model is
+/// sent as images under `config`: the policy's number, clamped.
+pub(crate) fn frames_kept(config: &ResolvedConfig) -> usize {
+    policy::frame_window(config.computer_frame_window.as_ref().map(|r| r.value))
+}
+
 impl ComputerHost {
     pub(crate) fn new(data_dir: &Path) -> Self {
         let runtime = ComputerRuntime::new(RuntimeConfig::from_env());
@@ -377,6 +383,19 @@ impl ComputerHost {
                 || out["stderr_truncated"].as_bool().unwrap_or(false),
         });
         Some(format!("\nobservation: {record}\n"))
+    }
+
+    /// PX-177: the person did a step in the target; what the child held of it
+    /// is stale and the next observation starts from nothing.
+    pub(crate) fn handed_back(&self, task: TaskId) {
+        self.runtime.handed_back(task);
+        let mut m = self.stall.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(st) = m.get_mut(&task) {
+            st.frame.clear();
+            st.snapshot.clear();
+            st.tree_full.clear();
+            st.progress += 1;
+        }
     }
 
     /// A model turn of the task ended. When a stall rule trips, the report

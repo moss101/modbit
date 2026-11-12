@@ -72,3 +72,38 @@ export async function openListTools(page: Page): Promise<void> {
   if (!(await page.getByTestId("agents-controls").isVisible())) await page.getByTestId("agents-tools-toggle").click();
   await expect(page.getByTestId("agents-controls")).toBeVisible();
 }
+
+/** The list's More menu (New project, Row details), opened. */
+export async function openListMore(page: Page, within: Locator | Page = page): Promise<void> {
+  const more = within.getByTestId("agents-more");
+  if ((await more.getAttribute("aria-expanded")) !== "true") await more.click();
+  await expect(more).toHaveAttribute("aria-expanded", "true");
+}
+
+/** Chooses the density under Settings, Appearance (DR-PX-2026-11-11-021 MWS-03) with the real control, and returns to the page that was open. */
+export async function setDensity(page: Page, density: "comfortable" | "compact"): Promise<void> {
+  const inSettings = await page.getByTestId("settings-nav").isVisible();
+  if (!inSettings) await gearMenu(page, "settings.open");
+  await page.getByTestId(`settings-density-${density}`).click();
+  await expect(page.getByTestId(`settings-density-${density}`)).toHaveAttribute("aria-checked", "true");
+  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.density ?? "comfortable")).toBe(density);
+  if (!inSettings) {
+    await page.getByTestId("nav-back").click();
+    await expect(page.getByTestId("settings-nav")).toHaveCount(0);
+    // The list and an open conversation are mounted again on the way back from Settings: both have read the Core before anything is measured.
+    await expect(page.getByTestId("agents-loading")).toHaveCount(0);
+    const conversation = page.getByTestId("conversation");
+    if ((await conversation.count()) === 1) await expect(conversation).toHaveAttribute("data-loaded", "true", { timeout: 30_000 });
+  }
+}
+
+/** Opens the apps panel from the title bar's pane toggles (DR-PX-2026-11-11-021 MWS-05) unless it is already open; `kind` is the pane it opens on. */
+export async function openPane(page: Page, kind: "changes" | "terminal" | "browser" | "files" | "evidence" = "changes"): Promise<void> {
+  if ((await page.getByTestId("region-apps").count()) === 0) {
+    const toggle = page.getByTestId(`pane-toggle-${kind}`);
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  }
+  await expect(page.getByTestId("region-apps")).toBeVisible();
+}

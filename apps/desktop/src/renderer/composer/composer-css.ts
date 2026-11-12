@@ -6,22 +6,35 @@
  */
 export const composerCss = `
 .cmp { flex: none; display: flex; flex-direction: column; gap: var(--mb-space-2); padding: var(--mb-space-1) var(--mb-space-5) var(--mb-space-2); background: transparent; }
-.cmp > * { width: 100%; max-width: 640px; margin-inline: auto; box-sizing: border-box; }
+.cmp > * { width: 100%; max-width: var(--mb-column); margin-inline: auto; box-sizing: border-box; }
 .cmp-dock { display: flex; flex-direction: column; gap: var(--mb-space-1_5); }
 .cmp-dock:empty { display: none; }
 .cmp-chips { display: flex; flex-wrap: wrap; gap: var(--mb-space-1_5); align-items: center; }
 .cmp-chips:empty { display: none; }
-/* AWL-08: the composer is a 12 px editor-surface box with the 3:1 control edge (ZDX-03) and a 1 px shadow. */
-.cmp-box { position: relative; border: 1px solid var(--mb-color-border-control); border-radius: var(--radius-xl); background: var(--color-panel); box-shadow: 0 1px 2px rgb(0 0 0 / 0.05); padding: 10px 12px 8px; display: flex; flex-direction: column; gap: var(--mb-space-1); }
+/* MWS-01 and MWS-07: the composer is a 14 px editor-surface box with the 3:1 control edge (ZDX-03) and a 1 px shadow. In a task it is one line:
+   add context, the text, then stop or send, each control as tall as one line of text in its padding; the box grows with the text. */
+.cmp-box { position: relative; border: 1px solid var(--mb-color-border-control); border-radius: var(--mb-composer-radius); background: var(--color-panel); box-shadow: 0 1px 2px rgb(0 0 0 / 0.05); padding: 10px 12px 8px; display: flex; flex-direction: column; gap: var(--mb-space-1); }
 .cmp-box:focus-within { border-color: var(--mb-color-focus); }
 .cmp-box[data-tint="ask"] { border-color: var(--mb-color-mode-ask); }
 .cmp-box[data-tint="plan"] { border-color: var(--mb-color-mode-plan); }
 .cmp-box[data-tint="debug"] { border-color: var(--mb-color-mode-debug); }
 .cmp-box[data-tint="multitask"] { border-color: var(--mb-color-mode-multitask); }
 .cmp-box[data-mode-status="unconfirmed"] { border-style: dashed; }
-.cmp-row { display: flex; align-items: center; gap: var(--mb-space-1_5); min-width: 0; }
-.cmp-row > * { flex: none; }
+.cmp-one { --cmp-control: 28px; padding: 8px; }
+.cmp-line { display: flex; align-items: flex-end; gap: var(--mb-space-2); min-width: 0; }
+.cmp-line > * { flex: none; }
+.cmp-line > .cmp-input { flex: 1 1 0; }
 .cmp-input { position: relative; flex: 1 1 0; min-width: 0; }
+.cmp-one .cmp-textarea { min-height: var(--cmp-control); padding: calc((var(--cmp-control) - var(--mb-type-body-line)) / 2) 0; overflow-y: auto; }
+.cmp-one .cmp-attach-row, .cmp-one .cmp-notes { padding-inline: var(--mb-space-1); }
+.cmp-one .mb-btn.cmp-plus, .cmp-one .cmp-stop, .cmp-one .cmp-send.cmp-send { width: var(--cmp-control); height: var(--cmp-control); }
+.cmp-one .mb-btn.cmp-plus { min-height: var(--cmp-control); border-radius: var(--radius-lg); }
+.cmp-one .cmp-stop { border-color: transparent; background: transparent; border-radius: var(--radius-lg); }
+.cmp-one .cmp-stop span { width: 12px; height: 12px; }
+.cmp-one .cmp-reason { padding: var(--mb-space-1) var(--mb-space-1) 0; }
+/* Under the box: where the task runs at the left; the mode, the model, the run mode and the ring at the right. */
+.cmp-under { min-height: 22px; gap: var(--mb-space-3); }
+.cmp-under .rm-btn.rm-btn { min-height: 22px; height: 22px; padding: 0 4px; font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); }
 .cmp-textarea { display: block; width: 100%; box-sizing: border-box; min-height: 44px; max-height: 40vh; resize: none; border: 0; border-radius: 0; outline: none; background: transparent; color: var(--mb-color-text); padding: 0; font: inherit; font-size: var(--mb-type-body-size); line-height: var(--mb-type-body-line); }
 .cmp-bar { display: flex; align-items: center; gap: 6px; min-width: 0; min-height: 24px; }
 .cmp-bar > * { flex: none; }
@@ -31,6 +44,10 @@ export const composerCss = `
 .cmp-foot button { -webkit-app-region: no-drag; }
 .cmp-foot .cmp-chip { min-height: 22px; height: 22px; padding: 0 4px; font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); background: transparent; }
 .cmp-textarea::placeholder { color: var(--mb-color-text-muted); opacity: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* REQ-PX-210: a suggested next message is the placeholder; the hint beside it names the key that takes it and never covers it. */
+.cmp-textarea[data-suggestion], .cmp-one .cmp-textarea[data-suggestion] { padding-right: 176px; }
+.cmp-one .cmp-suggest-hint { top: calc((var(--cmp-control) - var(--mb-type-body-line)) / 2); }
+.cmp-suggest-hint { position: absolute; top: 0; right: 0; height: var(--mb-type-body-line); display: inline-flex; align-items: center; gap: var(--mb-space-1); font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); pointer-events: none; white-space: nowrap; }
 .mb-btn.cmp-plus { width: 24px; min-height: 22px; height: 22px; padding: 0; border-radius: var(--radius-md); border-color: transparent; background: transparent; color: var(--mb-color-text-muted); }
 .cmp-chip, .cmp-seg { font: inherit; font-size: var(--mb-type-chrome-size); line-height: var(--mb-type-chrome-line); display: inline-flex; align-items: center; gap: var(--mb-space-1); min-height: var(--mb-control-sm); padding: 0 var(--mb-space-2); border-radius: calc(infinity * 1px); border: 1px solid var(--mb-color-border-control); background: var(--mb-color-raised); color: var(--mb-color-text); cursor: pointer; }
 .cmp-chip, .cmp-seg { border-color: transparent; border-radius: var(--radius-md); }
@@ -57,18 +74,18 @@ export const composerCss = `
 .cmp-send.cmp-send:disabled { opacity: 0.35; }
 .cmp-send.cmp-send[data-tint="ask"] { background: var(--mb-color-mode-ask); }
 .cmp-attach-row { display: flex; flex-wrap: wrap; gap: var(--mb-space-1); }
-.cmp-token { display: inline-flex; align-items: center; gap: var(--mb-space-1); font-size: var(--mb-type-caption-size); border: 1px solid var(--mb-color-border-control); border-radius: calc(infinity * 1px); padding: 1px var(--mb-space-2); background: var(--mb-color-sunken); max-width: 100%; }
+.cmp-token { display: inline-flex; align-items: center; gap: var(--mb-space-1); font-size: var(--mb-type-caption-size); border: 1px solid var(--mb-color-border-control); border-radius: calc(infinity * 1px); padding: 1px var(--mb-space-2); background: var(--mb-surface-fill); max-width: 100%; }
 .cmp-token img { border-radius: var(--radius-sm); object-fit: cover; }
 .cmp-token button { font: inherit; padding: 0 var(--mb-space-1); border: 0; background: transparent; color: var(--mb-color-text); cursor: pointer; }
 .cmp-token button:hover:not(:disabled) { background: var(--mb-color-hover); }
 .cmp-notes { margin: 0; padding-left: var(--mb-space-4); font-size: var(--mb-type-caption-size); color: var(--mb-color-danger); }
 .cmp-reason { margin: 0; font-size: var(--mb-type-caption-size); color: var(--mb-color-danger); }
 .cmp-spacer { flex: 1 1 0; }
+.cmp-model.cmp-model, .cmp-bar .cmp-chip, .cmp-under .cmp-chip { min-height: 22px; height: 22px; font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); background: transparent; }
+.cmp-under .ring { padding: 0; border: 0; background: transparent; }
+.cmp-under .ring svg { width: 18px; height: 18px; }
+.cmp-under .ring > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 /* AWL-08: trays dock above the composer on the sidebar surface with an 8 % edge. */
-.cmp-model.cmp-model, .cmp-bar .cmp-chip { min-height: 22px; height: 22px; font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); background: transparent; }
-.cmp-bar .ring { padding: 0; border: 0; background: transparent; }
-.cmp-bar .ring svg { width: 14px; height: 14px; }
-.cmp-bar .ring > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .cmp-tray { background: var(--color-sidebar); border: 1px solid var(--color-tab-border); border-radius: var(--radius-xl); padding: var(--mb-space-1_5) var(--mb-space-3); font-size: var(--mb-type-chrome-size); }
 .cmp-attn[data-tone="error"] { background: var(--mb-color-danger-tint); border-color: var(--mb-color-danger); }
 .cmp-attn[data-tone="warn"] { background: var(--mb-color-warn-tint); border-color: var(--mb-color-warn); }
@@ -78,6 +95,16 @@ export const composerCss = `
 .cmp-actions { display: flex; flex-wrap: wrap; gap: var(--mb-space-2); align-items: center; margin-top: var(--mb-space-1_5); }
 .cmp-lines { margin: var(--mb-space-1) 0; padding-left: var(--mb-space-4); }
 .cmp-qlist { list-style: none; margin: var(--mb-space-1) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--mb-space-0_5); max-height: 168px; overflow: auto; }
+/* MWS-07: a queued message is one filled strip above the box: the message, Send now, Remove. The tray around the strips has no frame of its own. */
+.mb-tray[data-tray-id="composer-queue"] { background: transparent; border: 0; padding: 0; }
+.mb-tray[data-tray-id="composer-queue"] .mb-tray-head { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.mb-tray[data-tray-id="composer-queue"] .mb-tray-body { margin: 0; display: flex; flex-direction: column; gap: var(--mb-space-1_5); }
+.cmp-queue { background: transparent; border: 0; padding: 0; }
+.cmp-queue .cmp-tray-head { padding: 0 var(--mb-space-1); font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); }
+.cmp-queue .cmp-tray-head strong { font-weight: 500; }
+.cmp-queue .cmp-qlist { gap: var(--mb-space-1); }
+.cmp-queue .cmp-qrow { background: var(--mb-surface-fill); border-radius: var(--radius-xl); padding: 2px 4px 2px 6px; min-height: 36px; box-sizing: border-box; }
+.cmp-qmain > svg { flex: none; color: var(--mb-color-text-muted); }
 .cmp-qrow { display: flex; align-items: center; gap: var(--mb-space-2); min-height: 28px; }
 .cmp-qmain { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: var(--mb-space-2); text-align: left; font: inherit; font-size: var(--mb-type-chrome-size); padding: 0 var(--mb-space-1); min-height: 26px; border: 1px solid transparent; border-radius: var(--radius-md); background: transparent; color: var(--mb-color-text); cursor: pointer; }
 .cmp-qmain:hover:not(:disabled) { background: var(--mb-color-hover); border-color: transparent; color: var(--mb-color-text); }

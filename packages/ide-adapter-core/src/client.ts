@@ -98,6 +98,12 @@ import {
   GetTranscriptSchema,
   TranscriptPageSchema,
   type TranscriptPage,
+  GetWorkGraphSchema,
+  WorkGraphViewSchema,
+  type WorkGraphView,
+  GetPlanSchema,
+  PlanViewSchema,
+  type PlanView,
   TranscriptDensity,
   GetAgentHeadersSchema,
   SearchConversationsSchema,
@@ -213,6 +219,9 @@ import {
 } from "@modbit/surface-protocol";
 import {
   AskSideQuestionSchema,
+  SuggestNextPromptSchema,
+  NextPromptSuggestionSchema,
+  type NextPromptSuggestion,
   EditQueuedInputSchema,
   GetSendBehaviorSchema,
   InterruptAcceptedSchema,
@@ -597,6 +606,23 @@ export class CoreClient {
     );
     const ack = await this.command("GetTranscript", payload);
     return fromBinary(TranscriptPageSchema, ack.result);
+  }
+
+  /**
+   * The task's work graph (REQ-PX-200, DR-PX-2026-11-11-021 MWS-06): the steps of its plan with the state the Core holds for each
+   * (PENDING, READY, ACTIVE, BLOCKED, DONE, FAILED, CANCELLED), a projection of the task's log. A read: nothing is leased or changed.
+   */
+  async getWorkGraph(taskId: string): Promise<WorkGraphView> {
+    const payload = toBinary(GetWorkGraphSchema, create(GetWorkGraphSchema, { taskId: { value: unhex(taskId) } }));
+    const ack = await this.command("GetWorkGraph", payload);
+    return fromBinary(WorkGraphViewSchema, ack.result);
+  }
+
+  /** The task's plan versions as the Core recorded them (REQ-PX-200): the outcome each states, who wrote it and the versions turns ran under. A read. */
+  async getPlan(taskId: string): Promise<PlanView> {
+    const payload = toBinary(GetPlanSchema, create(GetPlanSchema, { taskId: { value: unhex(taskId) } }));
+    const ack = await this.command("GetPlan", payload);
+    return fromBinary(PlanViewSchema, ack.result);
   }
 
   /** PX-042: the header of every task of a session; the status class is the Core's. */
@@ -1078,6 +1104,18 @@ export class CoreClient {
   async askSideQuestion(taskId: string, text: string): Promise<SideAnswer> {
     const ack = await this.command("AskSideQuestion", toBinary(AskSideQuestionSchema, create(AskSideQuestionSchema, { taskId: { value: unhex(taskId) }, text })));
     return fromBinary(SideAnswerSchema, ack.result);
+  }
+
+  /**
+   * One suggested next message for a task whose turn has ended with nothing queued (REQ-PX-210): one bounded model call over a snapshot,
+   * charged to the task, that appends nothing to the task's log. The Core refuses with a typed code (TURN_RUNNING, INPUT_QUEUED,
+   * BUDGET_EXHAUSTED, BUDGET_WOULD_EXCEED, COST_UNMETERED, SUGGESTIONS_OFF, ...) instead of calling when one is not wanted or not affordable.
+   * Each call is a new command: a suggestion is kept nowhere, so a repeated command id is refused rather than replayed.
+   */
+  async suggestNextPrompt(sessionId: string, taskId: string): Promise<NextPromptSuggestion> {
+    const payload = toBinary(SuggestNextPromptSchema, create(SuggestNextPromptSchema, { taskId: { value: unhex(taskId) } }));
+    const ack = await this.command("SuggestNextPrompt", payload, undefined, this.leases.get(sessionId), sessionId);
+    return fromBinary(NextPromptSuggestionSchema, ack.result);
   }
 
   /** The variants each model offers and whether it may be pinned (PX-056); the picker lists them and computes nothing. */

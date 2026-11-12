@@ -32,7 +32,14 @@ impl Rect {
 #[serde(tag = "op")]
 pub enum Op {
     /// Set another element's value (`{n}` in `value` is the running count of this behaviour).
-    SetValue { target: String, value: String },
+    /// `window` names another window of the same application (a dialog's
+    /// button that changes its parent window); absent: the acting window.
+    SetValue {
+        target: String,
+        value: String,
+        #[serde(default)]
+        window: Option<String>,
+    },
     /// Append to another element's value.
     Append { target: String, text: String },
     /// Move the keyboard focus.
@@ -192,6 +199,30 @@ fn default_display() -> Rect {
 }
 
 impl Desktop {
+    /// What a test reads back after a run (`--state-out`): every
+    /// application, window and element with its value. A secure element's
+    /// value is never written.
+    pub fn state_json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "apps": self.apps.iter().map(|a| serde_json::json!({
+                "bundle_id": a.bundle_id,
+                "name": a.name,
+                "windows": a.windows.iter().map(|w| serde_json::json!({
+                    "id": w.id,
+                    "title": w.title,
+                    "hidden": w.hidden,
+                    "elements": w.elements.iter().map(|e| serde_json::json!({
+                        "id": e.id,
+                        "role": e.role,
+                        "name": e.name,
+                        "value": if e.secure { "" } else { e.value.as_str() },
+                        "focused": e.focused,
+                    })).collect::<Vec<_>>(),
+                })).collect::<Vec<_>>(),
+            })).collect::<Vec<_>>(),
+        })
+    }
+
     pub fn app_mut_by_pid(&mut self, pid: u32) -> Option<&mut App> {
         self.apps.iter_mut().find(|a| a.pid == pid)
     }

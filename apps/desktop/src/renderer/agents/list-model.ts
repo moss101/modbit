@@ -122,13 +122,19 @@ export function filterCount(f: Filters): number {
 
 // ----------------------------------------------------------------- grouping
 
+/**
+ * How the list groups (MWS-04). The default, `repository`, is the list's projects: the Core's projects as parents with their tasks,
+ * then each repository a task runs in as a group of its own. Status, environment (`location`) and date (`time`) are list options;
+ * `project` groups by the Core's membership map alone and `workspace` by the full path. The ids are stored in preferences and
+ * views, so they do not change with the words.
+ */
 export const GROUPINGS = [
-  { id: "repository", label: "Repository" },
-  { id: "workspace", label: "Workspace" },
+  { id: "repository", label: "Project" },
   { id: "status", label: "Status" },
-  { id: "location", label: "Execution location" },
-  { id: "time", label: "Time" },
-  { id: "project", label: "Project" },
+  { id: "location", label: "Environment" },
+  { id: "time", label: "Date" },
+  { id: "project", label: "Project membership" },
+  { id: "workspace", label: "Folder path" },
 ] as const;
 export type Grouping = (typeof GROUPINGS)[number]["id"];
 
@@ -146,6 +152,8 @@ export interface Section {
   rows: AgentHeaderView[];
   /** Pinned tasks form the first section (AFW-B07). */
   pinned?: boolean;
+  /** The folder a group stands for (a repository, a project's workspace): its own menu starts a task there (MWS-04). */
+  root?: string;
 }
 
 /** Newest activity first; the id breaks ties so the order is total and stable. */
@@ -210,22 +218,22 @@ export function groupHeaders(headers: readonly AgentHeaderView[], grouping: Grou
   const sections: Section[] = [];
   if (pinnedRows.length > 0) sections.push({ key: "pinned", label: "Pinned", rows: pinnedRows, pinned: true });
 
-  const bucketed = new Map<string, { label: string; order: number; rows: AgentHeaderView[] }>();
-  const put = (key: string, label: string, order: number, h: AgentHeaderView) => {
+  const bucketed = new Map<string, { label: string; order: number; rows: AgentHeaderView[]; root?: string }>();
+  const put = (key: string, label: string, order: number, h: AgentHeaderView, root = "") => {
     const s = bucketed.get(key);
     if (s) s.rows.push(h);
-    else bucketed.set(key, { label, order, rows: [h] });
+    else bucketed.set(key, { label, order, rows: [h], ...(root ? { root } : {}) });
   };
   rest.forEach((h, i) => {
     switch (grouping) {
       case "repository": {
         const label = repoLabel(h);
         // Same-named folders of different parents stay apart; the order is that of first (most recent) appearance.
-        put(repositoryOf(h) || "none", label, i, h);
+        put(repositoryOf(h) || "none", label, i, h, repositoryOf(h));
         break;
       }
       case "workspace":
-        put(repositoryOf(h) || "none", repositoryOf(h) || "No workspace", i, h);
+        put(repositoryOf(h) || "none", repositoryOf(h) || "No workspace", i, h, repositoryOf(h));
         break;
       case "status":
         put(h.statusClass, CLASS_META[h.statusClass].short, classRank(h.statusClass), h);
@@ -241,7 +249,7 @@ export function groupHeaders(headers: readonly AgentHeaderView[], grouping: Grou
       case "project": {
         // The Core's membership map; a task whose project the list cannot show (archived, hidden) is shown as in no project.
         const p = h.projectId ? projectName.get(h.projectId) : undefined;
-        if (p) put(p.projectId, p.name, 1 + [...projectName.keys()].indexOf(p.projectId), h);
+        if (p) put(p.projectId, p.name, 1 + [...projectName.keys()].indexOf(p.projectId), h, p.workspaceRoot);
         else put("none", "No project", 0, h);
         break;
       }
@@ -254,7 +262,7 @@ export function groupHeaders(headers: readonly AgentHeaderView[], grouping: Grou
   }
   if (grouping === "project") {
     // A project with no task passing the filters is still a section (count 0): it is a place a task can be added to.
-    for (const [i, p] of [...projectName.values()].entries()) if (!bucketed.has(p.projectId)) bucketed.set(p.projectId, { label: p.name, order: 1 + i, rows: [] });
+    for (const [i, p] of [...projectName.values()].entries()) if (!bucketed.has(p.projectId)) bucketed.set(p.projectId, { label: p.name, order: 1 + i, rows: [], ...(p.workspaceRoot ? { root: p.workspaceRoot } : {}) });
   }
   const ordered = [...bucketed.entries()].sort((a, b) => a[1].order - b[1].order);
   // Two repositories with one folder name get their paths in the label so the sections are distinguishable.
@@ -263,7 +271,7 @@ export function groupHeaders(headers: readonly AgentHeaderView[], grouping: Grou
     for (const [, s] of ordered) seen.set(s.label, (seen.get(s.label) ?? 0) + 1);
     for (const [key, s] of ordered) if ((seen.get(s.label) ?? 0) > 1) s.label = `${s.label} (${key})`;
   }
-  for (const [key, s] of ordered) sections.push({ key: `${grouping}:${key}`, label: s.label, rows: s.rows });
+  for (const [key, s] of ordered) sections.push({ key: `${grouping}:${key}`, label: s.label, rows: s.rows, ...(s.root ? { root: s.root } : {}) });
   return sections;
 }
 
@@ -285,25 +293,81 @@ export const unpin = (pins: readonly string[], taskId: string): string[] => pins
 
 // ------------------------------------------------------------- virtual list
 
-export const SECTION_HEIGHT = 28;
-export const ROW_HEIGHT = 50;
+/** Row details (MWS-04): a row keeps a second line when its task needs the person or failed, on every row, or on none. */
+export const ROW_DETAILS = [
+  { id: "auto", label: "When needed" },
+  { id: "always", label: "Always" },
+  { id: "never", label: "Never" },
+] as const;
+export type RowDetails = (typeof ROW_DETAILS)[number]["id"];
+
+/**
+ * Whether a row keeps its second line. By default only a task that needs the person or has failed does, with the Core's reason
+ * on it (AWS-10 item 2): the class is the Core's, and so is `reason` (its diagnostic or attention reason for the task, "" when
+ * nothing waits on the person). Row details can turn the line on for every row or off.
+ */
+export function hasSecondLine(h: AgentHeaderView, details: RowDetails, reason = ""): boolean {
+  if (details !== "auto") return details === "always";
+  return h.statusClass === "NEEDS_ATTENTION" || h.statusClass === "FAILED" || reason !== "";
+}
+
+/** What the list needs to know about the tasks beyond their headers to lay its rows out. */
+export interface RowOptions {
+  details?: RowDetails | undefined;
+  /** Child task to parent task (the Core's `SubagentAdmitted`, held by the session model): a child is listed under its parent. */
+  parents?: ReadonlyMap<string, string> | undefined;
+  /** What each task needs, from its card and the Core's attention view: a task with a reason keeps its second line. */
+  facts?: ReadonlyMap<string, RowFacts> | undefined;
+}
 
 export type ListItem =
-  | { kind: "section"; key: string; label: string; count: number; collapsed: boolean; pinned: boolean }
-  | { kind: "row"; key: string; header: AgentHeaderView; sectionKey: string }
-  /** The Projects group's heading (PX-064): separate from the repositories. */
-  | { kind: "projects-head"; key: string; label: string; count: number; collapsed: boolean }
+  | { kind: "section"; key: string; label: string; count: number; collapsed: boolean; pinned: boolean; root?: string }
+  /** `depth` is how far under a parent the task sits (0 for a task of its own); `twoLine` whether it keeps its second line. */
+  | { kind: "row"; key: string; header: AgentHeaderView; sectionKey: string; depth: number; twoLine: boolean }
   /** A project parent: its facts are the Core's record and rollup; `shown` is how many of its tasks pass the filters. */
   | { kind: "project"; key: string; project: ProjectInfo; shown: number; collapsed: boolean }
   ;
 
-/** The flat, ordered items of the list: a section header, then its rows unless the section is collapsed. */
-export function flatten(sections: readonly Section[], collapsed: ReadonlySet<string>): ListItem[] {
+/**
+ * Rows with each child task directly under its parent, when the parent is in the same group (MWS-04): the order of the tasks
+ * is otherwise the one given, and a child whose parent is elsewhere stays where its own order puts it, at depth 0.
+ */
+export function nestRows(rows: readonly AgentHeaderView[], parents: ReadonlyMap<string, string> = new Map()): { header: AgentHeaderView; depth: number }[] {
+  if (parents.size === 0) return rows.map((header) => ({ header, depth: 0 }));
+  const here = new Set(rows.map((r) => r.taskId));
+  const kids = new Map<string, AgentHeaderView[]>();
+  const tops: AgentHeaderView[] = [];
+  for (const r of rows) {
+    const parent = parents.get(r.taskId);
+    if (parent !== undefined && parent !== r.taskId && here.has(parent)) kids.set(parent, [...(kids.get(parent) ?? []), r]);
+    else tops.push(r);
+  }
+  const out: { header: AgentHeaderView; depth: number }[] = [];
+  const seen = new Set<string>();
+  const visit = (header: AgentHeaderView, depth: number): void => {
+    if (seen.has(header.taskId)) return;
+    seen.add(header.taskId);
+    out.push({ header, depth });
+    for (const k of kids.get(header.taskId) ?? []) visit(k, depth + 1);
+  };
+  for (const r of tops) visit(r, 0);
+  // A map that names a task its own ancestor (never the Core's) would leave rows out: they are listed as they came.
+  for (const r of rows) visit(r, 0);
+  return out;
+}
+
+function rowsOf(rows: readonly AgentHeaderView[], sectionKey: string, nest: boolean, o: RowOptions): ListItem[] {
+  const details = o.details ?? "auto";
+  return (nest ? nestRows(rows, o.parents) : rows.map((header) => ({ header, depth: 0 }))).map(({ header, depth }) => ({ kind: "row", key: `r:${sectionKey}:${header.taskId}`, header, sectionKey, depth, twoLine: hasSecondLine(header, details, o.facts?.get(header.taskId)?.next ?? "") }));
+}
+
+/** The flat, ordered items of the list: a section header, then its rows unless the section is collapsed. Pinned rows keep the person's order. */
+export function flatten(sections: readonly Section[], collapsed: ReadonlySet<string>, o: RowOptions = {}): ListItem[] {
   const out: ListItem[] = [];
   for (const s of sections) {
     const isCollapsed = collapsed.has(s.key);
-    out.push({ kind: "section", key: `s:${s.key}`, label: s.label, count: s.rows.length, collapsed: isCollapsed, pinned: s.pinned === true });
-    if (!isCollapsed) for (const h of s.rows) out.push({ kind: "row", key: `r:${s.key}:${h.taskId}`, header: h, sectionKey: s.key });
+    out.push({ kind: "section", key: `s:${s.key}`, label: s.label, count: s.rows.length, collapsed: isCollapsed, pinned: s.pinned === true, ...(s.root ? { root: s.root } : {}) });
+    if (!isCollapsed) out.push(...rowsOf(s.rows, s.key, s.pinned !== true, o));
   }
   return out;
 }
@@ -313,27 +377,26 @@ export interface Layout {
   total: number;
 }
 
-/** Height of a project parent row and of the "New project" row. */
-export const PROJECT_HEIGHT = 30;
+/**
+ * The heights the list is laid out with, in px: the density's (design-tokens `densityMetrics`), so the windowed rows and the
+ * stylesheet read one source. A row's slot is its height and the gap under it.
+ */
+export interface ListMetrics {
+  row: number;
+  rowGap: number;
+  rowTwoLine: number;
+  groupHead: number;
+}
 
-export const heightOf = (item: ListItem): number => {
-  switch (item.kind) {
-    case "section":
-    case "projects-head":
-      return SECTION_HEIGHT;
-    case "project":
-      return PROJECT_HEIGHT;
-    default:
-      return ROW_HEIGHT;
-  }
-};
+/** The slot of an item: a group's heading (a section or a project parent), a one-line row or a row with its second line. */
+export const heightOf = (item: ListItem, m: ListMetrics): number => (item.kind === "row" ? (item.twoLine ? m.rowTwoLine : m.row) + m.rowGap : m.groupHead);
 
-export function layoutOf(items: readonly ListItem[]): Layout {
+export function layoutOf(items: readonly ListItem[], m: ListMetrics): Layout {
   const offsets = new Array<number>(items.length);
   let y = 0;
   for (let i = 0; i < items.length; i++) {
     offsets[i] = y;
-    y += heightOf(items[i]!);
+    y += heightOf(items[i]!, m);
   }
   return { offsets, total: y };
 }
@@ -456,14 +519,32 @@ export function subtitleOf(h: AgentHeaderView, fields: readonly SubtitleField[])
   return parts.join(" · ");
 }
 
-/** Accessible name of a row: title, status words, unread, attention. */
-export function rowLabel(h: AgentHeaderView, pinned: boolean, facts?: RowFacts): string {
-  return [h.title || "Untitled task", h.statusLabel || CLASS_META[h.statusClass].short, h.origin === "automation" ? "started by an automation" : "", h.unread ? "unread" : "", h.pendingApproval ? "waiting on your approval" : "", pinned ? "pinned" : "", facts?.next ?? "", facts?.next ? "" : (facts?.phase ?? "")].filter(Boolean).join(", ");
+/** Whether a task is ready for review, seen or not: the class is the Core's. */
+export const readyForReview = (h: AgentHeaderView): boolean => h.statusClass === "READY_FOR_REVIEW_UNSEEN" || h.statusClass === "READY_FOR_REVIEW_SEEN";
+
+/** The number a row shows beside its state: the files a task ready for review changed (MWS-04); 0 when it shows none. */
+export const changedFilesShown = (h: AgentHeaderView): number => (readyForReview(h) && h.filesChanged > 0 ? h.filesChanged : 0);
+
+const filesWords = (n: number): string => `${n} ${n === 1 ? "file" : "files"} changed`;
+
+/** Accessible name of a row: title, status words, what the row marks (a child task, changed files, unread, attention, a pin) and what the task needs. */
+export function rowLabel(h: AgentHeaderView, pinned: boolean, facts?: RowFacts, parentTitle?: string): string {
+  const files = changedFilesShown(h);
+  return [h.title || "Untitled task", h.statusLabel || CLASS_META[h.statusClass].short, parentTitle ? `child task of ${parentTitle}` : "", h.origin === "automation" ? "started by an automation" : "", files > 0 ? filesWords(files) : "", h.unread ? "unread" : "", h.pendingApproval ? "waiting on your approval" : "", pinned ? "pinned" : "", facts?.next ?? "", facts?.next ? "" : (facts?.phase ?? "")].filter(Boolean).join(", ");
+}
+
+/** What the preview card says under the state: the Core's reason or next action, else the phase an event said; "" when the status says it all. */
+export const previewReason = (facts: RowFacts | undefined): string => facts?.next || facts?.phase || "";
+
+/** The size of a task's change for the preview card, from its header; null when it changed nothing. */
+export function changeSize(h: AgentHeaderView): { files: string; added: number; removed: number } | null {
+  if (h.filesChanged <= 0) return null;
+  return { files: `${h.filesChanged} ${h.filesChanged === 1 ? "file" : "files"}`, added: h.linesAdded, removed: h.linesRemoved };
 }
 
 // -------------------------------------------------------- the projects group
 
-export interface ItemsInput {
+export interface ItemsInput extends RowOptions {
   /** The headers that pass the filters. */
   headers: readonly AgentHeaderView[];
   /** The Core's projects (ListProjects), archived ones included; the list decides which to show. */
@@ -476,24 +557,20 @@ export interface ItemsInput {
   showArchived: boolean;
 }
 
-/** The section key of the Projects group and of one project (collapsed state persists per grouping). */
-export const PROJECTS_KEY = "projects";
+/** The section key of one project (collapsed state persists per grouping). */
 export const projectKey = (projectId: string): string => `project:${projectId}`;
 
 /**
- * The flat items of the list. With a project to show, the Projects group sits
- * after the pinned tasks and before the repositories: each project is an
- * expandable parent showing the tasks the Core's membership map puts in it, and
- * those tasks do not appear a second time below. A project the list does not
- * show (archived and not asked for) is not a parent, and its tasks are listed
- * where they would be otherwise: archiving a project hides the grouping, never
- * the work. Under the Project grouping the projects are the sections.
+ * The flat items of the list. The pinned tasks come first, then the groups. By default a group is a project: each of the Core's
+ * projects is an expandable parent showing the tasks the Core's membership map puts in it, those tasks do not appear a second
+ * time below, and every other task is under the repository it runs in. A project the list does not show (archived and not asked
+ * for) is not a parent, and its tasks are listed where they would be otherwise: archiving a project hides the grouping, never
+ * the work. Under the Project membership grouping the projects are the sections. The Tasks head (search, list options, more) is
+ * the list's own and is not an item.
  */
 export function listItems(i: ItemsInput): ListItem[] {
   const shown = visibleProjects(i.projects, i.showArchived);
-  // The heading stays in every grouping: it holds the list's options and its +.
-  const head: ListItem = { kind: "projects-head", key: `s:${PROJECTS_KEY}`, label: "Projects", count: shown.length, collapsed: i.collapsed.has(PROJECTS_KEY) };
-  if (i.grouping === "project") return [head, ...(head.collapsed ? [] : flatten(groupHeaders(i.headers, "project", i.pins, i.nowMs, { projects: shown, sort: i.sort }), i.collapsed))];
+  if (i.grouping === "project") return flatten(groupHeaders(i.headers, "project", i.pins, i.nowMs, { projects: shown, sort: i.sort }), i.collapsed, i);
   const shownIds = new Set(shown.map((p) => p.projectId));
   const pinned = new Set(i.pins);
   const inShownProject = (h: AgentHeaderView) => h.projectId !== undefined && h.projectId !== "" && shownIds.has(h.projectId) && !pinned.has(h.taskId);
@@ -501,17 +578,14 @@ export function listItems(i: ItemsInput): ListItem[] {
   const sections = groupHeaders(i.headers.filter((h) => !inShownProject(h)), i.grouping, i.pins, i.nowMs, { sort: i.sort });
   const out: ListItem[] = [];
   const first = sections[0];
-  if (first?.pinned) out.push(...flatten([sections.shift()!], i.collapsed));
-  out.push(head);
-  if (!head.collapsed) {
-    for (const p of shown) {
-      const rows = members.filter((h) => h.projectId === p.projectId).sort(byOrder(i.sort));
-      const pc = i.collapsed.has(projectKey(p.projectId));
-      out.push({ kind: "project", key: `p:${p.projectId}`, project: p, shown: rows.length, collapsed: pc });
-      if (!pc) for (const h of rows) out.push({ kind: "row", key: `r:${projectKey(p.projectId)}:${h.taskId}`, header: h, sectionKey: projectKey(p.projectId) });
-    }
+  if (first?.pinned) out.push(...flatten([sections.shift()!], i.collapsed, i));
+  for (const p of shown) {
+    const rows = members.filter((h) => h.projectId === p.projectId).sort(byOrder(i.sort));
+    const pc = i.collapsed.has(projectKey(p.projectId));
+    out.push({ kind: "project", key: `p:${p.projectId}`, project: p, shown: rows.length, collapsed: pc });
+    if (!pc) out.push(...rowsOf(rows, projectKey(p.projectId), true, i));
   }
-  out.push(...flatten(sections, i.collapsed));
+  out.push(...flatten(sections, i.collapsed, i));
   return out;
 }
 

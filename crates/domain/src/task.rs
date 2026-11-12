@@ -1199,6 +1199,39 @@ pub enum TaskEvent {
         /// When it was taken (ms since the epoch).
         taken_at_ms: i64,
     },
+    /// `GuiEvidenceEvaluated` (PX-178): the Core read the completion evidence
+    /// a GUI task's setter declared - when the task asked to complete, or
+    /// when its run ended - and found it held, failed or missing. Evidence,
+    /// never authority: it blocks a completion or not, and approves nothing.
+    /// No state change.
+    GuiEvidenceEvaluated {
+        /// The declared predicate.
+        evidence: serde_json::Value,
+        /// `PASS` | `FAIL` | `MISSING`.
+        status: String,
+        /// What was found.
+        detail: String,
+        /// What was read to decide, and nothing else was.
+        read: String,
+        /// `COMPLETION` (task.complete) | `RUN_END`.
+        at: String,
+    },
+    /// `GuiOutcomeJudged` (PX-178): how a GUI task's run came out, judged from
+    /// its evidence and its log: `VERIFIED`, `MODEL_FAILURE`,
+    /// `ENVIRONMENT_FAILURE` or `POLICY_STOP`, with the lines it rests on.
+    /// No state change.
+    GuiOutcomeJudged {
+        /// The run judged.
+        run_id: String,
+        /// The verdict.
+        verdict: String,
+        /// The evidence's status (`PASS` | `FAIL` | `MISSING`).
+        evidence_status: String,
+        /// Why, line by line: the evidence first, then the facts that decided.
+        basis: Vec<String>,
+        /// How the run ended.
+        run_end: String,
+    },
     /// `ComputerUserAborted` (PX-069, CUC-D05): the person stopped native
     /// control. Sticky for the rest of the run: no input, start or release
     /// is accepted. No state change.
@@ -3193,6 +3226,8 @@ impl TaskEvent {
             Self::ComputerLatchResolved { .. } => "ComputerLatchResolved",
             Self::ComputerSessionClosed { .. } => "ComputerSessionClosed",
             Self::ComputerUserAborted { .. } => "ComputerUserAborted",
+            Self::GuiEvidenceEvaluated { .. } => "GuiEvidenceEvaluated",
+            Self::GuiOutcomeJudged { .. } => "GuiOutcomeJudged",
             Self::ComputerArtifactExpired { .. } => "ComputerArtifactExpired",
             Self::SecurityEventRecorded { .. } => "SecurityEventRecorded",
             Self::SloStageRecorded { .. } => "SloStageRecorded",
@@ -3519,7 +3554,9 @@ impl Task {
             | TaskEvent::ComputerLatchResolved { .. }
             | TaskEvent::ComputerSessionClosed { .. }
             | TaskEvent::ComputerUserAborted { .. }
-            | TaskEvent::ComputerArtifactExpired { .. } => None,
+            | TaskEvent::ComputerArtifactExpired { .. }
+            | TaskEvent::GuiEvidenceEvaluated { .. }
+            | TaskEvent::GuiOutcomeJudged { .. } => None,
             // A service the task's terminal started is lost when the task
             // ends (its terminals are killed): the record says so whatever
             // state the task is in (REQ-PX-132).

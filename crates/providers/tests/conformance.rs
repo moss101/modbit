@@ -224,6 +224,7 @@ fn endpoint(
         max_retries: retries,
         auth: AuthScheme::Native,
         extra_body: Default::default(),
+        omit_fields: Vec::new(),
         max_concurrency: 0,
     }
 }
@@ -377,10 +378,16 @@ async fn tool_round_trip(kind: ProviderKind, scripts: Vec<Script>) {
             call_id,
             name,
             arguments_json,
-        } => Some((call_id.clone(), name.clone(), arguments_json.clone())),
+            provider_data,
+        } => Some((
+            call_id.clone(),
+            name.clone(),
+            arguments_json.clone(),
+            provider_data.clone(),
+        )),
         _ => None,
     });
-    let (call_id, name, args) = complete.expect("tool call completed");
+    let (call_id, name, args, provider_data) = complete.expect("tool call completed");
     assert_eq!(name, "fs.read");
     assert_eq!(
         serde_json::from_str::<Value>(&args).unwrap()["path"],
@@ -427,6 +434,7 @@ async fn tool_round_trip(kind: ProviderKind, scripts: Vec<Script>) {
             call_id: call_id.clone(),
             name: "fs.read".into(),
             arguments_json: args,
+            provider_data,
         }],
     });
     next.push(Message {
@@ -1047,7 +1055,13 @@ async fn live_streaming_tool_round_trip_and_cancellation_against_production_endp
                     call_id,
                     name,
                     arguments_json,
-                } => Some((call_id.clone(), name.clone(), arguments_json.clone())),
+                    provider_data,
+                } => Some((
+                    call_id.clone(),
+                    name.clone(),
+                    arguments_json.clone(),
+                    provider_data.clone(),
+                )),
                 _ => None,
             })
             .unwrap_or_else(|| panic!("{}: no tool call: {events:?}", ep.name));
@@ -1059,6 +1073,7 @@ async fn live_streaming_tool_round_trip_and_cancellation_against_production_endp
                 call_id: call.0.clone(),
                 name: call.1,
                 arguments_json: call.2,
+                provider_data: call.3,
             }],
         });
         next.push(Message {
@@ -1198,6 +1213,11 @@ async fn compatible_gateway_versioned_base_url_bearer_auth_and_extra_body() {
         assert_eq!(seen[0].path, "/api/paas/v4/chat/completions");
         assert_eq!(seen[0].body["tool_stream"], json!(true));
         assert_eq!(
+            seen[0].body["prompt_cache_key"],
+            json!("stable-prefix-hash"),
+            "the caching hint is sent by default"
+        );
+        assert_eq!(
             seen[0].body["model"],
             json!("m-tools"),
             "canonical keys win"
@@ -1207,6 +1227,49 @@ async fn compatible_gateway_versioned_base_url_bearer_auth_and_extra_body() {
                 .headers
                 .iter()
                 .any(|(k, v)| k == "authorization" && v == "Bearer k-openai")
+        );
+    }
+    // A gateway that refuses `prompt_cache_key` (Gemini's OpenAI-compatible
+    // endpoint answers it with HTTP 400): the endpoint leaves it out. A field
+    // outside the allowlist, set directly, is never removed.
+    let server = fake(vec![Script::Sse(openai_text_stream(&["ok"]))]).await;
+    let mut ep = endpoint(
+        "gw",
+        ProviderKind::OpenAi,
+        &format!("{}/v1beta/openai", server.base_url),
+        SecretHandle::Inline("k-gemini".into()),
+        0,
+    );
+    ep.omit_fields = vec!["prompt_cache_key".into(), "model".into(), "messages".into()];
+    let gw = ProviderGateway::new(vec![ep]);
+    let s = gw
+        .stream(
+            request(
+                "gw",
+                "m-tools",
+                vec![Message::text(Role::User, "hi")],
+                false,
+                5_000,
+            ),
+            &Requirements::default(),
+            CancellationToken::new(),
+        )
+        .unwrap();
+    let events = collect(s).await;
+    assert_eq!(text_of(&events), "ok");
+    {
+        let seen = server.seen.lock().unwrap();
+        assert_eq!(seen[0].path, "/v1beta/openai/v1/chat/completions");
+        let body = seen[0].body.as_object().unwrap();
+        assert!(!body.contains_key("prompt_cache_key"), "{body:?}");
+        assert_eq!(
+            body["model"],
+            json!("m-tools"),
+            "a required field is never removed"
+        );
+        assert!(
+            body["messages"].is_array(),
+            "a required field is never removed"
         );
     }
     // Anthropic family with the bearer scheme: `Authorization`, no `x-api-key`.
@@ -1316,6 +1379,17 @@ fn endpoints_from_configuration_register_providers_independently_with_priced_cat
     assert!(openai.models[1].vision && openai.models[1].reasoning);
     assert_eq!(openai.models[1].input_modalities, vec!["text", "image"]);
     assert_eq!(openai.extra_body.get("tool_stream"), Some(&json!(true)));
+    assert!(openai.omit_fields.is_empty());
+    let gemini = modbit_providers::endpoints_from(lookup(&[
+        ("OPENAI_API_KEY", "k1"),
+        (
+            "MODBIT_OPENAI_BASE_URL",
+            "https://generativelanguage.googleapis.com/v1beta/openai",
+        ),
+        ("MODBIT_OPENAI_OMIT_FIELDS", " prompt_cache_key ,"),
+    ]));
+    assert_eq!(gemini[0].omit_fields, ["prompt_cache_key"]);
+    assert_eq!(modbit_providers::OMITTABLE_FIELDS, ["prompt_cache_key"]);
     assert_eq!(openai.auth, AuthScheme::Native);
     assert!(matches!(openai.credential, SecretHandle::Env(ref v) if v == "OPENAI_API_KEY"));
     let anthropic = &eps[1];
@@ -1331,6 +1405,8 @@ fn endpoints_from_configuration_register_providers_independently_with_priced_cat
         ("MODBIT_OPENAI_AUTH", "basic"),
         ("MODBIT_OPENAI_EXTRA_BODY", "[1]"),
         ("MODBIT_OPENAI_EXTRA_BODY", "{not json"),
+        ("MODBIT_OPENAI_OMIT_FIELDS", "messages"),
+        ("MODBIT_OPENAI_OMIT_FIELDS", "prompt_cache_key,model"),
     ] {
         let eps = modbit_providers::endpoints_from(lookup(&[
             ("OPENAI_API_KEY", "k1"),
@@ -1594,6 +1670,7 @@ async fn qual_ev_0188_tool_media_is_split_for_strict_endpoints_and_embedded_wher
         max_retries: 0,
         auth: AuthScheme::Native,
         extra_body: Default::default(),
+        omit_fields: Vec::new(),
         max_concurrency: 0,
     }]);
     let tool_message = Message {
@@ -1616,6 +1693,7 @@ async fn qual_ev_0188_tool_media_is_split_for_strict_endpoints_and_embedded_wher
             call_id: "call_1".into(),
             name: "fs.read".into(),
             arguments_json: "{\"path\":\"label.png\"}".into(),
+            provider_data: None,
         }],
     };
     // 1. The canonical request never says where the media goes.
@@ -1838,6 +1916,7 @@ fn call(id: &str, name: &str) -> ContentPart {
         call_id: id.into(),
         name: name.into(),
         arguments_json: "{}".into(),
+        provider_data: None,
     }
 }
 
@@ -1952,4 +2031,159 @@ fn orphan_repair_drops_media_of_the_orphan_and_leaves_a_sound_history_untouched(
         },
     ];
     assert_eq!(without_orphan_tool_results(&reversed).len(), 1);
+}
+
+/// Gemini 3 attaches a thought signature to a function call (on the OpenAI
+/// wire: the tool call's `extra_content`) and rejects the next request when
+/// the replayed call lacks it. Over real HTTP: the gateway returns what the
+/// provider attached, scoped to the endpoint; the replay sends it back
+/// unchanged to that endpoint, on the call it came with, and to no other.
+#[tokio::test]
+async fn provider_data_on_a_tool_call_round_trips_to_its_own_endpoint_only() {
+    let f = |d: Value| (None, d.to_string(), 1);
+    let sig = json!({"google": {"thought_signature": "c2lnLUE="}});
+    let stream = vec![
+        f(
+            json!({"id":"g-1","model":"m-tools","choices":[{"index":0,"delta":{"role":"assistant","tool_calls":[
+            {"index":0,"id":"call_a","type":"function","extra_content":sig,"function":{"name":"fs.read","arguments":"{\"path\":\"a\"}"}}
+        ]},"finish_reason":null}]}),
+        ),
+        // A parallel call: Gemini signs only the first.
+        f(
+            json!({"id":"g-1","model":"m-tools","choices":[{"index":0,"delta":{"tool_calls":[
+            {"index":1,"id":"call_b","type":"function","function":{"name":"fs.read","arguments":"{\"path\":\"b\"}"}}
+        ]},"finish_reason":"tool_calls"}]}),
+        ),
+        (None, "[DONE]".into(), 1),
+    ];
+    let gem = fake(vec![
+        Script::Sse(stream),
+        Script::Sse(openai_text_stream(&["done"])),
+    ])
+    .await;
+    let other = fake(vec![Script::Sse(openai_text_stream(&["done"]))]).await;
+    let gw = ProviderGateway::new(vec![
+        endpoint(
+            "gem",
+            ProviderKind::OpenAi,
+            &gem.base_url,
+            SecretHandle::Inline("k".into()),
+            0,
+        ),
+        endpoint(
+            "other",
+            ProviderKind::OpenAi,
+            &other.base_url,
+            SecretHandle::Inline("k".into()),
+            0,
+        ),
+    ]);
+    let needs = Requirements {
+        tools: true,
+        ..Default::default()
+    };
+    let opening = vec![Message::text(Role::User, "read a and b")];
+    let events = collect(
+        gw.stream(
+            request("gem", "m-tools", opening.clone(), true, 5_000),
+            &needs,
+            CancellationToken::new(),
+        )
+        .unwrap(),
+    )
+    .await;
+    let calls: Vec<ContentPart> = events
+        .iter()
+        .filter_map(|e| match e {
+            ModelEvent::ToolCallComplete {
+                call_id,
+                name,
+                arguments_json,
+                provider_data,
+            } => Some(ContentPart::ToolCall {
+                call_id: call_id.clone(),
+                name: name.clone(),
+                arguments_json: arguments_json.clone(),
+                provider_data: provider_data.clone(),
+            }),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(calls.len(), 2, "{events:?}");
+    let ContentPart::ToolCall {
+        provider_data: first,
+        ..
+    } = &calls[0]
+    else {
+        unreachable!()
+    };
+    assert_eq!(
+        first.as_ref(),
+        Some(&json!({"endpoint": "gem", "data": {"extra_content": sig}})),
+        "what the provider attached comes back scoped to its endpoint"
+    );
+    assert!(
+        matches!(
+            &calls[1],
+            ContentPart::ToolCall {
+                provider_data: None,
+                ..
+            }
+        ),
+        "an unsigned call carries nothing"
+    );
+    let mut history = opening;
+    history.push(Message {
+        role: Role::Assistant,
+        parts: calls,
+    });
+    for id in ["call_a", "call_b"] {
+        history.push(Message {
+            role: Role::Tool,
+            parts: vec![ContentPart::ToolResult {
+                call_id: id.into(),
+                content: "x".into(),
+                is_error: false,
+            }],
+        });
+    }
+    for ep in ["gem", "other"] {
+        let events = collect(
+            gw.stream(
+                request(ep, "m-tools", history.clone(), true, 5_000),
+                &needs,
+                CancellationToken::new(),
+            )
+            .unwrap(),
+        )
+        .await;
+        assert_eq!(text_of(&events), "done", "{ep}: {events:?}");
+    }
+    let replayed = |server: &FakeProvider| {
+        let seen = server.seen.lock().unwrap();
+        let body = &seen.last().unwrap().body;
+        body["messages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|m| m["role"] == "assistant")
+            .unwrap()["tool_calls"]
+            .clone()
+    };
+    let to_gem = replayed(&gem);
+    assert_eq!(
+        to_gem[0]["extra_content"], sig,
+        "the signature goes back unchanged on the call it came with"
+    );
+    assert!(to_gem[1].get("extra_content").is_none(), "{to_gem}");
+    let to_other = replayed(&other);
+    assert!(
+        to_other
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|c| c.get("extra_content").is_none()),
+        "another endpoint never receives it: {to_other}"
+    );
+    assert_eq!(to_other[0]["id"], "call_a");
 }

@@ -1,0 +1,159 @@
+{
+ "display": {
+  "x": 0,
+  "y": 0,
+  "width": 1920,
+  "height": 1200
+ },
+ "apps": [
+  {
+   "bundle_id": "org.modbit.bench.invoice",
+   "name": "Invoice",
+   "pid": 5106,
+   "executable_path": "/Applications/Modbit Bench Invoice.app/Contents/MacOS/Invoice",
+   "signing_identity": "MODBIT:bench-invoice",
+   "windows": [
+    {
+     "id": "w-invoice",
+     "title": "Invoice INV-7",
+     "bounds": {
+      "x": 0,
+      "y": 0,
+      "width": 1280,
+      "height": 800
+     },
+     "elements": [
+      {
+       "id": "number",
+       "role": "label",
+       "name": "Invoice number",
+       "value": "INV-7",
+       "bounds": {
+        "x": 40,
+        "y": 80,
+        "width": 300,
+        "height": 30
+       }
+      },
+      {
+       "id": "total",
+       "role": "label",
+       "name": "Total due",
+       "value": "42.50",
+       "bounds": {
+        "x": 40,
+        "y": 140,
+        "width": 300,
+        "height": 30
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "bundle_id": "org.modbit.bench.ledger",
+   "name": "Ledger",
+   "pid": 5107,
+   "executable_path": "/Applications/Modbit Bench Ledger.app/Contents/MacOS/Ledger",
+   "signing_identity": "MODBIT:bench-ledger",
+   "windows": [
+    {
+     "id": "w-ledger",
+     "title": "Ledger entry",
+     "bounds": {
+      "x": 0,
+      "y": 0,
+      "width": 1280,
+      "height": 800
+     },
+     "elements": [
+      {
+       "id": "amount",
+       "role": "textfield",
+       "name": "Amount",
+       "value": "",
+       "settable": true,
+       "focused": true,
+       "actions": [
+        "focus"
+       ],
+       "bounds": {
+        "x": 40,
+        "y": 80,
+        "width": 200,
+        "height": 30
+       },
+       "behaviors": {
+        "key:tab": [
+         {
+          "op": "Focus",
+          "target": "reference"
+         }
+        ],
+        "key:cmd+enter": [
+         {
+          "op": "SetValue",
+          "target": "entry",
+          "value": "recorded"
+         }
+        ]
+       }
+      },
+      {
+       "id": "reference",
+       "role": "textfield",
+       "name": "Reference",
+       "value": "",
+       "settable": true,
+       "actions": [
+        "focus"
+       ],
+       "bounds": {
+        "x": 40,
+        "y": 140,
+        "width": 200,
+        "height": 30
+       }
+      },
+      {
+       "id": "record",
+       "role": "button",
+       "name": "Record",
+       "actions": [
+        "press"
+       ],
+       "bounds": {
+        "x": 40,
+        "y": 200,
+        "width": 120,
+        "height": 40
+       },
+       "behaviors": {
+        "press": [
+         {
+          "op": "SetValue",
+          "target": "entry",
+          "value": "recorded"
+         }
+        ]
+       }
+      },
+      {
+       "id": "entry",
+       "role": "label",
+       "name": "Entry state",
+       "value": "open",
+       "bounds": {
+        "x": 200,
+        "y": 200,
+        "width": 300,
+        "height": 30
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

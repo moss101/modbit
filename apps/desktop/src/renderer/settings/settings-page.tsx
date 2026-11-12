@@ -5,9 +5,10 @@
  */
 import { useEffect, useState, type ReactNode } from "react";
 import { Button, Icon, type IconName } from "@modbit/ui";
-import { THEME_LABEL, THEME_PREFERENCES, type ThemePreference } from "@modbit/design-tokens";
+import { DENSITIES, DENSITY_LABEL, THEME_LABEL, THEME_PREFERENCES, type Density, type ThemePreference } from "@modbit/design-tokens";
 import type { NotificationKind } from "../notifications.ts";
 import { StateLine } from "../shell/state-line.tsx";
+import { UpdateIndicator } from "../shell/update-indicator.tsx";
 import type { AppState } from "../state/use-app.ts";
 import { ProviderForm } from "./provider-form.tsx";
 import { localMachine } from "../location.ts";
@@ -29,10 +30,10 @@ export const SETTINGS_ENTRIES: readonly SettingsEntry[] = [
   { id: "browser", group: "Agent", label: "Browser permissions", icon: "globe", keywords: "origins allowlist certificates trust" },
   { id: "memory", group: "Agent", label: "Memory, skills and hooks", icon: "blocks", keywords: "customize engineering memory skills hooks extensions" },
   { id: "account", group: "Account", label: "Account and cloud", icon: "globe", keywords: "sign in login oidc tenant organization cloud" },
-  { id: "appearance", group: "App", label: "Appearance", icon: "eye", keywords: "theme dark light high contrast system zoom size" },
+  { id: "appearance", group: "App", label: "Appearance", icon: "eye", keywords: "theme dark light high contrast system zoom size density comfortable compact rows" },
   { id: "notifications", group: "App", label: "Notifications", icon: "clock", keywords: "alerts attention completion failure quiet hours" },
   { id: "tools", group: "App", label: "Automations and worktrees", icon: "git-branch", keywords: "automations worktrees dashboard cost" },
-  { id: "about", group: "About", label: "This build", icon: "file-text", keywords: "version platform languages support shortcuts keyboard" },
+  { id: "about", group: "About", label: "This build", icon: "file-text", keywords: "version platform languages support shortcuts keyboard update updates" },
 ];
 
 export const settingsMatches = (e: SettingsEntry, query: string): boolean => {
@@ -82,6 +83,9 @@ export interface SettingsPageProps {
   onTheme: (t: ThemePreference) => void;
   zoom: number;
   onZoom: (delta: -1 | 0 | 1) => void;
+  /** Comfortable or Compact (MWS-03): one setting, separate from zoom. */
+  density: Density;
+  onDensity: (d: Density) => void;
   onCustomize: () => void;
   onAutomations: () => void;
   onWorktrees: () => void;
@@ -90,7 +94,7 @@ export interface SettingsPageProps {
   onComputerPermissions: () => void;
 }
 
-export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, onCustomize, onAutomations, onWorktrees, onDashboard, onShortcuts, onComputerPermissions }: SettingsPageProps) {
+export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, density, onDensity, onCustomize, onAutomations, onWorktrees, onDashboard, onShortcuts, onComputerPermissions }: SettingsPageProps) {
   const { core, provider, credentials, credentialForm, setCredentialForm, credentialError, setCredentialError, refreshCredentials, prefs, settings, savePrefs, platform, languages } = app;
   const connected = core.state === "connected";
   const [changingProvider, setChangingProvider] = useState(false);
@@ -261,12 +265,21 @@ export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, onCusto
                 Reset
               </Button>
             </Row>
+            <Row title="Density" detail="Compact fits more on screen: smaller text, lower rows and bars. Zoom is separate.">
+              <span className="settings-seg" role="radiogroup" aria-label="Density" data-testid="settings-density">
+                {DENSITIES.map((d) => (
+                  <button key={d} type="button" role="radio" aria-checked={density === d} className="settings-seg-btn" data-testid={`settings-density-${d}`} onClick={() => onDensity(d)}>
+                    {DENSITY_LABEL[d]}
+                  </button>
+                ))}
+              </span>
+            </Row>
           </div>
         </Section>
 
         <Section id="notifications" query={query}>
           <div className="settings-card" data-testid="notification-preferences">
-            <p className="meta settings-note settings-card-pad">OS notifications are off until you opt in. Approvals always lists what needs you.</p>
+            <p className="meta settings-note settings-card-pad">OS notifications are off until you opt in. Inbox always lists what needs you.</p>
             {(["attention", "completion", "failure"] as NotificationKind[]).map((k) => (
               <Row key={k} title={NOTIFY_WORDS[k][0]} detail={NOTIFY_WORDS[k][1]}>
                 <Toggle testId={`notify-${k}`} label={`Notify: ${NOTIFY_WORDS[k][0]}`} checked={prefs.os[k]} onChange={(on) => savePrefs({ ...prefs, os: { ...prefs.os, [k]: on } })} />
@@ -320,6 +333,7 @@ export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, onCusto
                 }
               />
             )}
+            <Row title="Updates" detail={<UpdateIndicator />} />
             <Row title="Keyboard shortcuts">
               <Button size="sm" variant="outline" onClick={onShortcuts} data-testid="settings-shortcuts">
                 Show

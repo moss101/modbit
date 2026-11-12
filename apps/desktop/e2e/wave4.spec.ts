@@ -21,6 +21,7 @@ import { join, resolve } from "node:path";
 import { accessible, appDir, closeApp, git, launch, makeRepo, setContentSize } from "./support/ui-harness.ts";
 import { createTask, Gate, openConversation, sequencedModel, typeAndPress } from "./support/composer-harness.ts";
 import { sessionOf, sha256File, type ModelPart } from "./support/conversation-harness.ts";
+import { openPane } from "./support/new-task.ts";
 
 const URL1 = "https://example.invalid/one.git";
 const URL2 = "https://example.invalid/two.git";
@@ -179,7 +180,7 @@ test("Wave 4: compose with an @ chip and an attachment, queue-edit-send-now, dec
     expect(end["notes.txt"]).toBe(original);
 
     // ---- 7. Evidence: each approval left exactly one authorising receipt and its result receipt.
-    if ((await page.getByTestId("region-apps").count()) === 0) await page.getByTestId("toggle-apps-panel").click();
+    await openPane(page);
     await page.getByTestId("tab-evidence").click();
     await expect(page.getByTestId("app-evidence")).toBeVisible();
     const fromCore = await page.evaluate((t) => window.modbit.effectReceipts(t), taskId);

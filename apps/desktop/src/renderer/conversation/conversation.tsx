@@ -1,14 +1,16 @@
 /**
  * The conversation surface (REQ-PX-047), the shell's centre region for one
  * task: the Core's transcript projection with the live text of open streams,
- * a tail-status line with the stall ladder, pinned-to-bottom scrolling with an
+ * the plan as a card of steps read from the Core's work graph (REQ-PX-200), a
+ * status line that says what runs, for how long and the tokens used, with the
+ * stall ladder, pinned-to-bottom scrolling with an
  * "N new messages" pill, three Core-projected densities, folded work groups
  * that never hide something the person must act on, and the failure the Core
  * typed. The composer below it is PX-054..056's (composer/composer.tsx); the
  * inline approval and question cards live here.
  * Nothing in this file holds authority: every effect is a typed preload call.
  */
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button, Icon, IconButton, StatusDot, TrayHost, useLayer } from "@modbit/ui";
 import type { TranscriptRowView } from "../../shared/conversation-types.ts";
@@ -17,7 +19,10 @@ import { TaskDetails } from "./task-details.tsx";
 import { StateLine } from "../shell/state-line.tsx";
 import { localMachine } from "../location.ts";
 import { withCoreFacts, type TaskCard } from "../model.ts";
-import { INITIAL_FOLLOW, identityOf, messageIds, onDismiss, onJumpToBottom, onMessages, onScroll, pillText, stallLevel, withDivider, withLiveOnly, type Follow } from "./model.ts";
+import { INITIAL_FOLLOW, TIMED_PHASES, elapsedWords, identityOf, messageIds, onDismiss, onJumpToBottom, onMessages, onScroll, pillText, stallLevel, tokenWords, turnStartMs, withDivider, withLiveOnly, withPlanCard, type Follow } from "./model.ts";
+import { PlanCard } from "./plan-card.tsx";
+import { usePlan } from "./use-plan.ts";
+import { ContextRingView, useAccounting } from "../context/ring.tsx";
 import { RowView, type RowContext } from "./rows.tsx";
 import { loadConversationPrefs, saveConversationPrefs, type ConversationPrefs } from "./prefs.ts";
 import { useConversation } from "./use-conversation.ts";
@@ -46,8 +51,10 @@ export interface ConversationProps {
   onOpenTask?: ((taskId: string) => void) | undefined;
   /** A task's name for the approvals of other agents shown above this composer. */
   titleOf?: ((taskId: string) => string) | undefined;
-  /** The top bar's slot for this conversation's state, branch and overflow. */
+  /** The top bar's slot for this conversation's state and branch. */
   topSlot?: HTMLElement | null | undefined;
+  /** The top bar's last slot, after the pane toggles: More (the task's details). */
+  topEndSlot?: HTMLElement | null | undefined;
   subtasks?: readonly TaskCard[] | undefined;
   screenState?: DerivedScreenState | null | undefined;
   /** The task works in a worktree of its own. */
@@ -86,7 +93,7 @@ function collectTurnText(rows: readonly TranscriptRowView[], turnId: string, out
 }
 
 export function Conversation(props: ConversationProps) {
-  const { taskId, sessionId, connected, card, title, focusRowId, onResume, onNewTask, onOpenTerminal, onOpenTask, titleOf, topSlot, subtasks, screenState, worktree, executionLocation, branch, onReview, onBrowser, onCancelTask } = props;
+  const { taskId, sessionId, connected, card, title, focusRowId, onResume, onNewTask, onOpenTerminal, onOpenTask, titleOf, topSlot, topEndSlot, subtasks, screenState, worktree, executionLocation, branch, onReview, onBrowser, onCancelTask } = props;
   const [prefs, setPrefs] = useState<ConversationPrefs>(loadConversationPrefs);
   useEffect(() => saveConversationPrefs(prefs), [prefs]);
   const conv = useConversation(taskId, sessionId, prefs.density, connected);
@@ -105,9 +112,16 @@ export function Conversation(props: ConversationProps) {
   // A layer: Escape closes the panel and nothing else, before any key scope (a docked card's Skip) sees it.
   useLayer(detailsOpen, "task-details", false, () => setDetailsOpen(false));
 
+  // REQ-PX-200: the plan is the Core's work graph, read again whenever the task's log moves; the accounting feeds the ring and the status line.
+  const plan = usePlan(taskId, connected, conv.lastOffset);
+  const usage = useAccounting(taskId, connected);
+
   // The unread divider marks what was new when the conversation was opened; what arrives while it is open is not "unread".
   const body = useMemo(() => withDivider(withLiveOnly(conv.dividerOffset === null ? conv.rows.filter((r) => r.kind !== "UNREAD_DIVIDER") : conv.rows, conv.live), conv.dividerOffset, (n) => `${n} new`), [conv.rows, conv.live, conv.dividerOffset]);
   const latestUser = useMemo(() => [...body].reverse().find((r) => r.kind === "USER_MESSAGE")?.rowId ?? null, [body]);
+  // One card says the plan where the graph has steps; the "updated the plan" steps it replaces leave the transcript.
+  const graph = plan.graph && plan.graph.steps.length > 0 ? plan.graph : null;
+  const placed = useMemo(() => withPlanCard(body, graph !== null), [body, graph]);
 
   // Follow the tail while pinned; scrolling up freezes it.
   // The view follows the tail when the content grows (a delta, a row, a row measured at its real height) and when the person returns to the tail;
@@ -263,6 +277,9 @@ export function Conversation(props: ConversationProps) {
   // What is wrong and what to do stands above the composer while it holds (docs/39 "Every state names the next action"); a quiet state stays in the accessibility tree.
   const noticeShown = !!screenState && noticeWanted(screenState, failed, conv.approvals.length > 0);
   const lastUserText = useMemo(() => [...conv.rows].reverse().find((r) => r.kind === "USER_MESSAGE")?.text ?? "", [conv.rows]);
+  const turnStart = useMemo(() => turnStartMs(conv.rows), [conv.rows]);
+  const tokens = usage.economics ? BigInt(usage.economics.inputTokens) + BigInt(usage.economics.outputTokens) : 0n;
+  const planCard = graph ? <PlanCard key="plan-card" graph={graph} plan={plan.plan} running={phase === "RUNNING"} needsPerson={conv.approvals.length > 0 || phase === "NEEDS_ATTENTION" || (phase === "WAITING" && card?.waitReason !== "Capacity")} /> : null;
 
   return (
     <section className="conv" aria-label={`Conversation: ${title}`} data-testid="conversation" data-task-id={taskId} data-density={prefs.density} data-loaded={conv.loaded}>
@@ -282,13 +299,19 @@ export function Conversation(props: ConversationProps) {
                 <span>{branch}</span>
               </span>
             )}
-            <IconButton label="Task details" icon={<Icon name="ellipsis" />} pressed={detailsOpen} onClick={() => setDetailsOpen((o) => !o)} data-testid="task-details-toggle" />
-            {detailsOpen && <TaskDetails taskId={taskId} card={detailsCard} subtasks={subtasks ?? []} density={prefs.density} onDensity={(density) => setPrefs((p) => ({ ...p, density }))} undoAll={ckpt.head} onBrowser={() => onBrowser?.()} onCancel={() => onCancelTask?.()} onOpenTask={(id) => onOpenTask?.(id)} />}
           </>,
           topSlot,
         )}
+      {(topEndSlot ?? topSlot) &&
+        createPortal(
+          <>
+            <IconButton label="More: task details" icon={<Icon name="ellipsis" />} pressed={detailsOpen} onClick={() => setDetailsOpen((o) => !o)} data-testid="task-details-toggle" />
+            {detailsOpen && <TaskDetails taskId={taskId} card={detailsCard} subtasks={subtasks ?? []} density={prefs.density} onDensity={(density) => setPrefs((p) => ({ ...p, density }))} undoAll={ckpt.head} onBrowser={() => onBrowser?.()} onCancel={() => onCancelTask?.()} onOpenTask={(id) => onOpenTask?.(id)} />}
+          </>,
+          (topEndSlot ?? topSlot)!,
+        )}
       <div className="conv-body">
-        <div ref={scroller} className="conv-scroll" role="region" aria-label="Messages" tabIndex={0} onScroll={onScrollEvent} onKeyDown={onKeyDown} data-testid="conv-scroll" data-pinned={follow.pinned} data-row-count={body.length}>
+        <div ref={scroller} className="conv-scroll" role="region" aria-label="Messages" tabIndex={0} onScroll={onScrollEvent} onKeyDown={onKeyDown} data-testid="conv-scroll" data-pinned={follow.pinned} data-row-count={placed.rows.length}>
           <div ref={inner} className="conv-inner">
           {!conv.loaded && !conv.error && (
             <p className="meta conv-empty" role="status" data-testid="conv-loading">
@@ -305,11 +328,15 @@ export function Conversation(props: ConversationProps) {
               Nothing has happened in this task yet.
             </p>
           )}
-          {body.map((r) => (
-            <RowView key={identityOf(r)} row={r} ctx={ctx} />
+          {placed.rows.map((r, i) => (
+            <Fragment key={identityOf(r)}>
+              {placed.cardAt === i && planCard}
+              <RowView row={r} ctx={ctx} />
+            </Fragment>
           ))}
+          {placed.cardAt === placed.rows.length && planCard}
           {failed && <FailureBlock taskId={taskId} card={card} onResume={onResume} promptText={lastUserText} />}
-          {conv.tail && <TailStatus phase={phase} label={tailLabel} detail={tailFacts?.detail ?? ""} lastActivityMs={Math.max(conv.lastActivityMs, conv.refreshedAt)} />}
+          {conv.tail && <TailStatus phase={phase} label={tailLabel} detail={tailFacts?.detail ?? ""} lastActivityMs={Math.max(conv.lastActivityMs, conv.refreshedAt)} startedMs={turnStart} tokens={tokens} />}
           </div>
         </div>
         {!follow.pinned && (
@@ -344,31 +371,53 @@ export function Conversation(props: ConversationProps) {
       {ckpt.overlay}
       {/* The one tray host: docked directly above the composer, never beside or below it (AFW-H01). */}
       <TrayHost />
-      <Composer taskId={taskId} sessionId={sessionId} connected={connected} card={card} approvalPending={conv.approvals.length > 0} lastUserText={lastUserText} hasMessages={conv.rows.length > 0} onResume={onResume} onNewTask={onNewTask} onOpenTerminal={onOpenTerminal} onReview={onReview} foot={<><span className="cmp-foot-item" data-testid="conv-location"><Icon name={executionLocation === "cloud" ? "globe" : "laptop"} size={14} /> {executionLocation === "cloud" ? "Isolated cloud" : localMachine()}{worktree ? " · worktree" : ""}</span><span className="cmp-spacer" /><RunModeControl sessionId={sessionId} taskId={taskId} connected={connected} open={modeOpen} onOpenChange={setModeOpen} /></>} />
+      <Composer taskId={taskId} sessionId={sessionId} connected={connected} card={card} approvalPending={conv.approvals.length > 0} lastUserText={lastUserText} hasMessages={conv.rows.length > 0} onResume={onResume} onNewTask={onNewTask} onOpenTerminal={onOpenTerminal} onReview={onReview}
+        foot={<span className="cmp-foot-item" data-testid="conv-location"><Icon name={executionLocation === "cloud" ? "globe" : "laptop"} size={14} /> {executionLocation === "cloud" ? "Isolated cloud" : localMachine()}{worktree ? " · worktree" : ""}</span>}
+        runMode={<RunModeControl sessionId={sessionId} taskId={taskId} connected={connected} open={modeOpen} onOpenChange={setModeOpen} />}
+        ring={connected ? <ContextRingView key={taskId} taskId={taskId} accounting={usage.accounting} economics={usage.economics} /> : null}
+      />
     </section>
   );
 }
 
 /** The tail-status line: always says what the agent is doing while it runs, and says more the longer nothing happens (AFW-C03). */
-export const TailStatus = memo(function TailStatus({ phase, label, detail, lastActivityMs }: { phase: string; label: string; detail: string; lastActivityMs: number }) {
+export const TailStatus = memo(function TailStatus({ phase, label, detail, lastActivityMs, startedMs = 0, tokens = 0n }: { phase: string; label: string; detail: string; lastActivityMs: number; /** When the turn began (0 = not known): the line says how long it has been going. */ startedMs?: number | undefined; /** The tokens the Core has counted for the task. */ tokens?: bigint | undefined }) {
   const running = phase === "RUNNING";
+  const timed = TIMED_PHASES.has(phase) && startedMs > 0;
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    if (!running) return;
+    if (!running && !timed) return;
     setNow(Date.now());
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
-  }, [running, lastActivityMs]);
+  }, [running, timed, lastActivityMs]);
+  const elapsed = timed ? elapsedWords(now - startedMs) : "";
+  const used = tokenWords(tokens);
   const idle = running && lastActivityMs > 0 ? Math.max(0, now - lastActivityMs) : 0;
   const s = running ? stallLevel(label, idle) : { level: 0 as const, text: label };
   const dotStatus = phase === "RUNNING" ? "running" : phase === "FAILED" ? "danger" : phase === "NEEDS_ATTENTION" || phase === "WAITING" ? "warn" : phase === "COMPLETED" || phase === "READY_FOR_REVIEW" ? "ok" : "idle";
   return (
-    <div className="conv-tail" role="status" aria-live="polite" data-testid="conv-tail" data-phase={phase} data-stall={s.level}>
-      <StatusDot status={dotStatus} label={label} />
-      <span className={running ? "mb-shimmer conv-tail-text" : "conv-tail-text"} data-testid="conv-tail-text">
-        {s.text}
+    <div className="conv-tail" data-testid="conv-tail" data-phase={phase} data-stall={s.level}>
+      {/* What is running is announced when it changes; the clock beside it ticks outside the live region, so it is never read out every second. */}
+      <span className="conv-tail-say" role="status" aria-live="polite">
+        <StatusDot status={dotStatus} label={label} />
+        <span className={running ? "mb-shimmer conv-tail-text" : "conv-tail-text"} data-testid="conv-tail-text">
+          {s.text}
+        </span>
+        {detail && <span className="meta">{detail.replace(/_/g, " ").toLowerCase()}</span>}
       </span>
-      {detail && <span className="meta">{detail.replace(/_/g, " ").toLowerCase()}</span>}
+      {(elapsed || used) && (
+        <span className="conv-tail-meta" data-testid="conv-tail-meta">
+          {elapsed && (
+            <span data-testid="conv-tail-elapsed">
+              <span className="mb-sr-only">for </span>
+              {elapsed}
+            </span>
+          )}
+          {elapsed && used ? " · " : ""}
+          {used && <span data-testid="conv-tail-tokens">{used}</span>}
+        </span>
+      )}
     </div>
   );
 });

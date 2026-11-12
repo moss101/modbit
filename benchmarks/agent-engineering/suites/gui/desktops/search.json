@@ -1,0 +1,68 @@
+{
+ "display": {
+  "x": 0,
+  "y": 0,
+  "width": 1920,
+  "height": 1200
+ },
+ "apps": [
+  {
+   "bundle_id": "org.modbit.bench.search",
+   "name": "Search",
+   "pid": 5105,
+   "executable_path": "/Applications/Modbit Bench Search.app/Contents/MacOS/Search",
+   "signing_identity": "MODBIT:bench-search",
+   "windows": [
+    {
+     "id": "w-search",
+     "title": "Search",
+     "bounds": {
+      "x": 0,
+      "y": 0,
+      "width": 1280,
+      "height": 800
+     },
+     "elements": [
+      {
+       "id": "query",
+       "role": "searchfield",
+       "name": "Query",
+       "value": "",
+       "settable": true,
+       "actions": [
+        "focus"
+       ],
+       "bounds": {
+        "x": 40,
+        "y": 80,
+        "width": 600,
+        "height": 40
+       },
+       "behaviors": {
+        "enter": [
+         {
+          "op": "SetValue",
+          "target": "results",
+          "value": "results ready"
+         }
+        ]
+       }
+      },
+      {
+       "id": "results",
+       "role": "label",
+       "name": "Results",
+       "value": "none",
+       "bounds": {
+        "x": 40,
+        "y": 160,
+        "width": 600,
+        "height": 30
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

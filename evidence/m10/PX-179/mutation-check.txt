@@ -1,0 +1,31 @@
+PX-179 mutation check (local, macOS arm64, 2026-11-08, branch wip/px-179-gui-suite at 2180f830 = 029b8ac0 code + retained baseline)
+
+1. Per-task gate disabled
+   File: benchmarks/agent-engineering/src/axes.rs (compare)
+   Exact-string mutation:  `        if gate.per_task {\n            let all =`  ->  `        if !gate.per_task {\n            let all =`
+   (the per-task comparison never runs for a suite that declares it, so no regressed task is named)
+   Command: cargo test -p modbit-bench-agent-engineering --test gui_suite
+   Result (exit 101):
+     test qual_px_179_the_per_task_gate_names_every_regressed_task_and_cannot_be_made_unfailable ... FAILED
+       panicked at benchmarks/agent-engineering/tests/gui_suite.rs:465:5 (one regressed task under a lenient axis floor is no longer named)
+     test qual_px_179_gui_tasks_through_the_real_core_and_fixture_actuator_a_rerun_matches_the_baseline_and_a_regression_fails_naming_the_tasks ... FAILED
+       panicked at benchmarks/agent-engineering/tests/gui_suite.rs:1107:5 (the real-Core regression run: compare does not name the three regressed tasks)
+     test result: FAILED. 3 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 126.35s
+   Reverted by copying the saved file back; SHA-256 before and after: e15fb430e1b396b4d5f395a93a6b025a2ca560b0a5b8f8acbc168abdb0891874
+
+2. GUI verifier accepts any passing evaluation, whatever predicate the child was held to
+   File: benchmarks/agent-engineering/src/verifier.rs (gui_checks)
+   Exact-string mutation:  `.find(|e| e.payload["evidence"] == g.evidence && e.payload["status"] == "PASS");`  ->  `.find(|e| e.payload["status"] == "PASS");`
+   Command: cargo test -p modbit-bench-agent-engineering --test gui_suite -- --skip gui_tasks_through
+   Result (exit 101):
+     test qual_px_179_the_gui_verifier_reads_the_cores_records_and_the_desktop_never_the_models_claim ... FAILED
+       panicked at benchmarks/agent-engineering/tests/gui_suite.rs:353:9: "the child was held to an easier predicate" passed
+     test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.02s
+   Reverted the same way; SHA-256 before and after: d0262d87d79e5d3beddac700ac4684770d43606cf0d35550155c752337452006
+
+The injected regression of PX-E2E-179 itself is the model-side mutation of the suite run: in
+tests/gui_suite.rs the scripted child of three named tasks (gui_element/files-archive-confirm,
+gui_element/orders-submit-for-ada, gui_input/notes-save-shortcut) drops the input that has the
+effect and still claims it is done; those three, and only those, fail, and compare exits 3 naming
+exactly them. With both files restored `git status` shows no source change and the five
+gui_suite tests pass (see TASK_CARD.md).

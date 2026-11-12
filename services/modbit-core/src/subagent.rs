@@ -264,7 +264,8 @@ async fn run_inner(
                     call_id,
                     name,
                     arguments_json,
-                } => calls.push((call_id, name, arguments_json)),
+                    provider_data,
+                } => calls.push((call_id, name, arguments_json, provider_data)),
                 ModelEvent::Usage { usage: u } => {
                     usage = u;
                     usage_reported = true;
@@ -341,11 +342,12 @@ async fn run_inner(
         if !text.is_empty() {
             parts.push(ContentPart::Text { text: text.clone() });
         }
-        for (call_id, name, arguments_json) in &calls {
+        for (call_id, name, arguments_json, provider_data) in &calls {
             parts.push(ContentPart::ToolCall {
                 call_id: call_id.clone(),
                 name: name.clone(),
                 arguments_json: arguments_json.clone(),
+                provider_data: provider_data.clone(),
             });
         }
         transcript.push(Message {
@@ -353,7 +355,7 @@ async fn run_inner(
             parts,
         });
         let mut built = false;
-        for (call_id, name, arguments_json) in calls {
+        for (call_id, name, arguments_json, _) in calls {
             // The specialist's authority, decided here and not by the
             // projection: a name outside the read-only set never reaches a
             // tool, whatever the model asked for.

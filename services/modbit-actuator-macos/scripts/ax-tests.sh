@@ -70,4 +70,6 @@ case "$perms" in *'"screen_recording":true'*) ;; *) skip "Screen Recording is no
 case "$perms" in *'"secure_desktop":false'*) ;; *) skip "the screen is locked (or a secure prompt is up)" ;; esac
 
 cargo test -p modbit-core --test px_computer -- --ignored --test-threads=1 qual_px_071_the_real_core_drives || exit 1
+# QUAL-PX-069 on the real helper and the fixture application suite.
+cargo test -p modbit-core --test px_computer -- --ignored --test-threads=1 qual_px_069_real_helper || exit 1
 exec cargo test -p modbit-actuator-macos --test ax_fixture -- --ignored --test-threads=1 --nocapture

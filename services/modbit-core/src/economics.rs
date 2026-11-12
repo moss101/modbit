@@ -36,6 +36,21 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::TaskEconomicsVie
         std::collections::HashSet::new();
     let mut cost_cap: u64 = 0;
     for e in &events {
+        // REQ-PX-210: a next-prompt suggestion call is charged to the task
+        // from a record kept off its log. It is one of the task's model calls
+        // and its tokens are the task's; it is no event of the task, so it
+        // moves neither the wall clock nor the model time of a run.
+        if e.envelope.event_type == crate::usage::SUGGESTION_USAGE {
+            if let Ok(p) = store.payload(&e.envelope)
+                && crate::usage::off_log_task(&e.envelope.event_type, &p) == Some(task_id)
+            {
+                v.model_calls += 1;
+                v.input_tokens += p["input_tokens"].as_u64().unwrap_or(0);
+                v.output_tokens += p["output_tokens"].as_u64().unwrap_or(0);
+                v.cached_input_tokens += p["cached_input_tokens"].as_u64().unwrap_or(0);
+            }
+            continue;
+        }
         if e.envelope.task_id != Some(task_id) {
             continue;
         }
@@ -169,6 +184,12 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::TaskEconomicsVie
     v.priced_calls = count(mine.iter().filter(|c| c.cost_minor.is_some()));
     v.unreported_calls = count(mine.iter().filter(|c| !c.reported));
     v.unpriced_calls = count(mine.iter().filter(|c| c.reported && c.cost_minor.is_none()));
+    v.suggestion_calls = count(mine.iter().filter(|c| c.suggestion));
+    v.suggestion_cost_minor = mine
+        .iter()
+        .filter(|c| c.suggestion)
+        .filter_map(|c| c.cost_minor)
+        .sum();
     if v.priced_calls > 0 {
         v.currency = pricing.currency;
         v.scale = pricing.scale;
