@@ -787,6 +787,7 @@ mod tests {
                     call_id: format!("c{n}"),
                     name: "fs.read".into(),
                     arguments_json: format!("{{\"path\":\"src/f{n}.rs\"}}"),
+                    provider_data: None,
                 }],
             });
             t.push(Message {

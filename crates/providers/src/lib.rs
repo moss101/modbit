@@ -27,8 +27,8 @@ pub mod registry;
 pub mod sse;
 
 pub use contract::{
-    ContentPart, MediaPayload, Message, ModelEvent, ModelPolicy, ModelRequest, ProviderKind, Role,
-    SecretHandle, ToolProjection, Usage, stop,
+    ContentPart, MediaPayload, Message, ModelEvent, ModelPolicy, ModelRequest, ProviderData,
+    ProviderKind, Role, SecretHandle, ToolProjection, Usage, stop,
 };
 pub use gateway::{
     AuthScheme, Endpoint, EndpointHealth, ModelCapability, ModelStream, OMITTABLE_FIELDS,

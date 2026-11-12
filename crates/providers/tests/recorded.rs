@@ -119,7 +119,13 @@ async fn tool_round_trip(gw: &ProviderGateway, ep: &str, model: &str) -> Result<
                 call_id,
                 name,
                 arguments_json,
-            } => Some((call_id.clone(), name.clone(), arguments_json.clone())),
+                provider_data,
+            } => Some((
+                call_id.clone(),
+                name.clone(),
+                arguments_json.clone(),
+                provider_data.clone(),
+            )),
             _ => None,
         })
         .ok_or_else(|| format!("first turn: no tool call: {first:?}"))?;
@@ -138,6 +144,7 @@ async fn tool_round_trip(gw: &ProviderGateway, ep: &str, model: &str) -> Result<
             call_id: call.0.clone(),
             name: call.1.clone(),
             arguments_json: call.2.clone(),
+            provider_data: call.3.clone(),
         }],
     });
     next.push(Message {
@@ -165,7 +172,7 @@ async fn tool_round_trip(gw: &ProviderGateway, ep: &str, model: &str) -> Result<
     }
     let both: Vec<ModelEvent> = first.into_iter().chain(second).collect();
     Ok(RoundTrip {
-        call,
+        call: (call.0, call.1, call.2),
         answer,
         stream_ids: metadata(&both, "provider_request_id"),
         resolved_models: metadata(&both, "resolved_model"),
