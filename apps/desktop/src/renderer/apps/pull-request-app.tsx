@@ -10,7 +10,8 @@ import { Button, Icon, IconButton } from "@modbit/ui";
 import type { ReviewBundleView } from "../../preload/preload.ts";
 import { usePullRequest } from "../review/use-pull-request.ts";
 import { PaneActions } from "../shell/pane.tsx";
-import { canOpenRequest, checkWords, commentWords, forgeErrorWords, refusedWords, requestWords } from "./pull-request-model.ts";
+import { useDelivered } from "./delivered.ts";
+import { approvalOutcome, canOpenRequest, checkWords, commentWords, forgeErrorWords, refusedWords, requestWords } from "./pull-request-model.ts";
 
 export interface PullRequestAppProps {
   sessionId: string;
@@ -54,6 +55,18 @@ export function PullRequestApp({ sessionId, taskId, refreshKey }: PullRequestApp
     }
   };
   const pr = flow.pr;
+  // The approval is answered on the docked approval card (the one approval surface). Its answer reaches this window as an event
+  // of that approval; the pane then asks the Core to go on (approved) or says the attempt ended (denied). It reads nothing for it.
+  const given = useDelivered(taskId);
+  const outcome = pr?.status === "APPROVAL_PENDING" ? approvalOutcome(given.events, pr.approvalId) : null;
+  const revision = bundle?.workspaceRevision ?? "";
+  const settled = flow.settled;
+  useEffect(() => {
+    if (outcome === null || !revision) return;
+    void settled(outcome === "approved", revision);
+    // One answer per approval: the flow leaves APPROVAL_PENDING, which clears `outcome`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [outcome, revision]);
   const request = requestWords(pr);
   const openable = bundle ? canOpenRequest(bundle.taskState) : "Reading the task…";
   const busy = flow.busy;
@@ -86,27 +99,20 @@ export function PullRequestApp({ sessionId, taskId, refreshKey }: PullRequestApp
             </div>
           </>
         ) : pr?.status === "APPROVAL_PENDING" ? (
-          <div className="pr-approval" role="group" aria-label="Approve opening the pull request" data-testid="pr-pane-approval" data-approval-id={pr.approvalId}>
-            <p className="pr-title">Push the branch and open the pull request?</p>
+          <div className="pr-approval" role="status" data-testid="pr-pane-approval" data-approval-id={pr.approvalId} data-intent-hash={pr.intentHash}>
+            <p className="pr-title">{busy ? "Opening the request…" : "Waiting for your answer"}</p>
             <p className="meta">
-              Branch <code data-testid="pr-pane-branch">{pr.branch}</code>, revision <code>{pr.candidateRevision}</code>. The push and the request are one protected action; it runs only once you allow this exact intent:{" "}
+              Pushing branch <code data-testid="pr-pane-branch">{pr.branch}</code> and opening the request is one protected action. It is asked on the approval card above the composer, in the task's conversation, and runs only once you allow it there. Intent{" "}
               <code data-testid="pr-pane-intent" title={pr.intentHash}>
                 {pr.intentHash.slice(0, 16)}
               </code>
+              , revision <code>{pr.candidateRevision}</code>.
             </p>
-            <div className="pr-actions">
-              <Button size="sm" variant="ghost" disabled={busy} onClick={() => bundle && void flow.decide(false, bundle.workspaceRevision)} data-testid="pr-pane-deny">
-                Deny
-              </Button>
-              <Button size="sm" variant="primary" disabled={busy || !bundle} onClick={() => bundle && void flow.decide(true, bundle.workspaceRevision)} data-testid="pr-pane-approve">
-                {busy ? "Asking the Core…" : "Allow and open"}
-              </Button>
-            </div>
           </div>
         ) : (
           <>
             <p className="meta" data-testid="pr-pane-none">
-              {pr?.status === "DENIED" ? "Not opened: you denied it, so the branch stays on this machine." : pr?.status === "FAILED" ? `Not opened: ${pr.detail}` : "No pull request has been opened from this window for this task."}
+              {pr?.status === "DENIED" ? "Not opened: the approval was not given, so the branch stays on this machine." : pr?.status === "FAILED" ? `Not opened: ${pr.detail}` : "No pull request has been opened from this window for this task."}
             </p>
             <div className="pr-actions">
               <Button size="sm" variant="primary" disabled={busy || openable !== true} title={openable === true ? undefined : openable} onClick={() => bundle && void flow.open(false, bundle.workspaceRevision)} data-testid="pr-pane-open">

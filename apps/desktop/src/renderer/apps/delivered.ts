@@ -12,6 +12,8 @@ export interface DeliveredEvent {
   offset: string;
   eventType: string;
   aggregateType: string;
+  /** The aggregate the event is on (hex); the approval's id for an approval's events. */
+  aggregateId: string;
   occurredAtMs: number;
   payload: unknown;
 }
@@ -34,6 +36,7 @@ interface WireEvent {
   offset?: unknown;
   eventType?: unknown;
   aggregateType?: unknown;
+  aggregateId?: unknown;
   taskId?: unknown;
   occurredAtMs?: unknown;
   payload?: unknown;
@@ -65,7 +68,7 @@ export function createDeliveredStore(): DeliveredStore {
       if (isPiece(e.eventType)) return false;
       const cur = byTask.get(e.taskId) ?? NONE;
       if (cur.events.some((x) => x.offset === e.offset)) return false;
-      const ev: DeliveredEvent = { offset: e.offset, eventType: e.eventType, aggregateType: typeof e.aggregateType === "string" ? e.aggregateType : "", occurredAtMs: typeof e.occurredAtMs === "number" ? e.occurredAtMs : 0, payload: e.payload ?? null };
+      const ev: DeliveredEvent = { offset: e.offset, eventType: e.eventType, aggregateType: typeof e.aggregateType === "string" ? e.aggregateType : "", aggregateId: typeof e.aggregateId === "string" ? e.aggregateId : "", occurredAtMs: typeof e.occurredAtMs === "number" ? e.occurredAtMs : 0, payload: e.payload ?? null };
       const events = [...cur.events, ev];
       // The Core delivers in offset order; a reconnect can deliver an earlier one late.
       if (cur.events.length > 0 && BigInt(cur.events[cur.events.length - 1]!.offset) > BigInt(ev.offset)) events.sort((a, b) => (BigInt(a.offset) < BigInt(b.offset) ? -1 : 1));

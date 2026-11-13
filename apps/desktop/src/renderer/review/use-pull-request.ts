@@ -30,6 +30,11 @@ export interface PullRequestFlow {
   open: (update: boolean, revision: string) => Promise<void>;
   /** Decides the pending approval with its exact intent; approved, the same call then pushes and opens under it. */
   decide: (approve: boolean, fallbackRevision: string) => Promise<void>;
+  /**
+   * The pending approval was answered somewhere else (the docked approval card): approved, the same call now pushes and opens
+   * under it; denied, the attempt ends and the branch stays local. Nothing is decided here.
+   */
+  settled: (approved: boolean, fallbackRevision: string) => Promise<void>;
 }
 
 export function usePullRequest(sessionId: string, taskId: string, from: string): PullRequestFlow {
@@ -59,26 +64,41 @@ export function usePullRequest(sessionId: string, taskId: string, from: string):
       setBusy(false);
     }
   };
+  const finish = async (approved: boolean, fallbackRevision: string, pending: PullRequestAckView, denial: string) => {
+    if (approved) {
+      // Approved: the same call now pushes and opens, under that approval.
+      setPr(await window.modbit.openPullRequest(sessionId, taskId, candidateRevision.current ?? fallbackRevision, false));
+    } else {
+      // Denied: terminal for this attempt; the branch stays local. A later "Try again" is a new attempt with a new approval.
+      setPr({ ...pending, status: "DENIED", detail: denial, receipts: 0 });
+    }
+  };
   const decide = async (approve: boolean, fallbackRevision: string) => {
     if (!pr || pr.status !== "APPROVAL_PENDING" || busy) return;
     setBusy(true);
     setError(null);
     try {
       const r = await window.modbit.resolveApproval(sessionId, pr.approvalId, approve, approve ? `approved from ${from}` : `denied from ${from}`, pr.intentHash);
-      if (approve) {
-        // Approved: the same call now pushes and opens, under that approval.
-        setPr(await window.modbit.openPullRequest(sessionId, taskId, candidateRevision.current ?? fallbackRevision, false));
-      } else {
-        // Denied: terminal for this attempt; the branch stays local. A later "Try again" is a new attempt with a new approval.
-        setPr({ ...pr, status: "DENIED", detail: `approval ${r.approvalId.slice(0, 8)} denied at offset ${r.offset}: the branch stays local, nothing reached the forge`, receipts: 0 });
-      }
+      await finish(approve, fallbackRevision, pr, `approval ${r.approvalId.slice(0, 8)} denied at offset ${r.offset}: the branch stays local, nothing reached the forge`);
     } catch (e) {
       setError(plain(e));
     } finally {
       setBusy(false);
     }
   };
-  return { pr, busy, error, open, decide };
+  const settled = async (approved: boolean, fallbackRevision: string) => {
+    if (!pr || pr.status !== "APPROVAL_PENDING" || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await finish(approved, fallbackRevision, pr, `approval ${pr.approvalId.slice(0, 8)} was denied: the branch stays local, nothing reached the forge`);
+    } catch (e) {
+      setError(plain(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return { pr, busy, error, open, decide, settled };
 }
 
 export interface ForgeReads {

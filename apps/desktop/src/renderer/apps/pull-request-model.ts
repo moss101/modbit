@@ -44,3 +44,21 @@ export function forgeErrorWords(message: string): string {
   if (/NO_PULL_REQUEST/.test(plain)) return "The Core has no pull request for this task, so there is nothing to read yet (NO_PULL_REQUEST).";
   return plain;
 }
+
+/** An id as the key events and answers share (hex, with or without hyphens, either case). */
+const idKey = (id: string): string => id.replace(/-/g, "").toLowerCase();
+
+/**
+ * What became of the approval the request waits on, read from the events this window was given: approved, denied, expired, or
+ * null while no event of that approval has said. Nothing is asked of the Core for it.
+ */
+export function approvalOutcome(events: readonly { eventType: string; aggregateId: string; payload: unknown }[], approvalId: string): "approved" | "denied" | "expired" | null {
+  if (!approvalId) return null;
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i]!;
+    if (idKey(e.aggregateId) !== idKey(approvalId)) continue;
+    if (e.eventType === "ApprovalExpired") return "expired";
+    if (e.eventType === "ApprovalResolved") return typeof e.payload === "object" && e.payload !== null && (e.payload as Record<string, unknown>)["approved"] === true ? "approved" : "denied";
+  }
+  return null;
+}

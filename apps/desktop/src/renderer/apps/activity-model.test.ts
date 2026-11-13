@@ -7,7 +7,7 @@ import type { DeliveredEvent } from "./delivered.ts";
 const hints = { renderable: true, groupable: false, hasReasoning: false, durationMs: 0, shortText: "", linesAdded: 0, linesRemoved: 0, status: "SUCCEEDED" };
 const row = (rowId: string, kind: RowKind, offset: number, over: Partial<TranscriptRowView> = {}): TranscriptRowView => ({ ordinal: 0, rowId, kind, offset: String(offset), lastOffset: String(offset), atMs: 1_700_000_000_000 + offset, turnId: "t", hints, text: "", textTruncated: false, textRef: "", children: [], facts: { type: "none" }, ...over });
 const tool = (toolClass: string, toolName: string, over: Partial<Extract<RowFacts, { type: "tool" }>> = {}): RowFacts => ({ type: "tool", toolCallId: "c", toolName, toolClass, effectClass: "", state: "", failureCode: "", paths: [], ...over });
-const event = (offset: number, eventType: string, aggregateType = "run", payload: unknown = {}): DeliveredEvent => ({ offset: String(offset), eventType, aggregateType, occurredAtMs: 1_700_000_000_000 + offset, payload });
+const event = (offset: number, eventType: string, aggregateType = "run", payload: unknown = {}): DeliveredEvent => ({ offset: String(offset), eventType, aggregateType, aggregateId: "", occurredAtMs: 1_700_000_000_000 + offset, payload });
 
 const ROWS: TranscriptRowView[] = [
   row("user:1", "USER_MESSAGE", 10, { text: "Tidy the notes\nand more" }),
