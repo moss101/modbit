@@ -203,19 +203,24 @@ test("PX-200: the plan card follows the Core's work graph, the composer is one l
     await page.getByTestId("menu-item-task-pin").click();
     await expect(page.locator(`[data-testid="agent-row"][data-task-id="${taskId}"]`)).toHaveAttribute("data-pinned", "false");
     const toggles = await bar.locator('[data-testid^="pane-toggle-"]').evaluateAll((els) => els.map((e) => [e.getAttribute("data-testid"), e.getAttribute("aria-pressed")]));
-    expect(toggles).toEqual([["pane-toggle-changes", "false"], ["pane-toggle-browser", "false"], ["pane-toggle-files", "false"], ["pane-toggle-evidence", "false"]]);
-    const lastToggle = (await bar.getByTestId("pane-toggle-evidence").boundingBox())!;
+    expect(toggles).toEqual([["pane-toggle-changes", "false"], ["pane-toggle-browser", "false"], ["pane-toggle-files", "false"], ["pane-toggle-evidence", "false"], ["pane-toggle-activity", "false"], ["pane-toggle-background", "false"], ["pane-toggle-pull-request", "false"]]);
+    const lastToggle = (await bar.getByTestId("pane-toggle-pull-request").boundingBox())!;
     const more = (await bar.getByTestId("task-details-toggle").boundingBox())!;
     expect(more.x, "More comes after the toggles").toBeGreaterThanOrEqual(lastToggle.x + lastToggle.width - 1);
     await bar.getByTestId("pane-toggle-files").click();
-    await expect(page.getByTestId("tab-files")).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByTestId("pane-files")).toBeVisible();
     await expect(bar.getByTestId("pane-toggle-files")).toHaveAttribute("aria-pressed", "true");
     await expect(bar.getByTestId("pane-toggle-changes")).toHaveAttribute("aria-pressed", "false");
     await bar.getByTestId("pane-toggle-changes").click();
-    await expect(page.getByTestId("tab-changes")).toHaveAttribute("aria-selected", "true");
-    await expect(bar.getByTestId("pane-toggle-files")).toHaveAttribute("aria-pressed", "false");
+    await expect(page.getByTestId("pane-changes")).toBeVisible();
+    // MWS-10 (PX-202): a second pane opens beside the first; each toggle says its own pane's state.
+    await expect(bar.getByTestId("pane-toggle-files")).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByTestId("pane-files")).toBeVisible();
     await shots(page, "pane-toggle-open-on-changes");
     await bar.getByTestId("pane-toggle-changes").click();
+    await expect(page.getByTestId("pane-changes")).toHaveCount(0);
+    await expect(page.getByTestId("region-apps"), "the other pane is still open").toBeVisible();
+    await bar.getByTestId("pane-toggle-files").click();
     await expect(page.getByTestId("region-apps")).toHaveCount(0);
 
     // ---- MWS-08: the protected write asks on one docked card.

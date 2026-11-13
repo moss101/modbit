@@ -14,7 +14,7 @@ import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PALETTES } from "../../../packages/design-tokens/src/index.ts";
-import { agentRow, expectTaskState, openTask, runTask, setDensity } from "./support/new-task.ts";
+import { agentRow, expectTaskState, openTask, runTask, setDensity, soloPane } from "./support/new-task.ts";
 import { accessible, appDir, box, closeApp, focusedTestId, launch, liftMinimumSize, makeRepo, MOD, scriptedModel, setContentSize } from "./support/ui-harness.ts";
 
 /** `#rrggbb` as the browser reports a computed colour. The window-root colour of each theme is read from the one token source (DR-PX-2026-10-24-016 changed the palette). */
@@ -97,7 +97,7 @@ test("PX-045, PX-198: geometry at 1280 x 800, keyboard-resizable splits inside 2
     expect(await page.getByTestId("region-apps").count(), "the apps panel is absent until a task has an artifact").toBe(0);
     // MWS-05: a toggle stands for a pane the open task can show; with no task there is none (the one disabled "Apps panel" toggle is gone).
     await expect(page.getByTestId("pane-toggles")).toHaveCount(0);
-    await expect(page.getByTestId("toggle-apps-panel")).toHaveCount(0);
+    await expect(page.getByTestId("apps-panel")).toHaveCount(0);
     expect((await box(page, "region-conversation")).width).toBeGreaterThanOrEqual(424);
 
     const sep = page.getByTestId("splitter-list");
@@ -501,11 +501,11 @@ test("PX-045: the apps panel appears for a task with an artifact, within the geo
     const narrowed = Number(await sep.getAttribute("aria-valuenow"));
     expect(narrowed).toBeLessThan(panel.width);
     expect(narrowed).toBeGreaterThanOrEqual(384);
-    await page.getByTestId("tab-terminal").click();
-    await expect(page.getByTestId("app-terminal-empty")).toContainText("no terminal");
+    await soloPane(page, "files");
+    await expect(page.getByTestId("app-files")).toBeVisible();
     const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("modbit.ui.v1")!));
     expect(Object.keys(stored.panelByTask)).toHaveLength(1);
-    expect(Object.values(stored.panelByTask)[0]).toMatchObject({ open: true, tab: "terminal" });
+    expect(Object.values(stored.panelByTask)[0]).toMatchObject({ panes: ["files"] });
     expect(JSON.stringify(stored)).not.toContain("Edit the notes");
 
     await closeApp(app);
@@ -515,7 +515,7 @@ test("PX-045: the apps panel appears for a task with an artifact, within the geo
     // The review opens by itself only on the live event; this restart shows home, and the task opens with the remembered panel.
     await openTask(page, taskId);
     await expect(page.getByTestId("region-apps")).toBeVisible();
-    await expect(page.getByTestId("tab-terminal")).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByTestId("pane-files")).toBeVisible();
     await expect(page.getByTestId("splitter-panel")).toHaveAttribute("aria-valuenow", String(narrowed));
 
     // Too narrow to sit beside a 424 centre: Conversation | Apps segments.
@@ -533,11 +533,11 @@ test("PX-045: the apps panel appears for a task with an artifact, within the geo
 
     // Toggling the panel closed is remembered for this task.
     await setContentSize(app, page, 1280, 800);
-    await page.getByTestId("toggle-apps-panel").focus();
+    await page.getByTestId("pane-close-files").focus();
     await page.keyboard.press("Enter");
     await expect(page.getByTestId("region-apps")).toHaveCount(0);
     const after = await page.evaluate(() => JSON.parse(localStorage.getItem("modbit.ui.v1")!));
-    expect(Object.values(after.panelByTask)[0]).toMatchObject({ open: false });
+    expect(Object.values(after.panelByTask)[0]).toMatchObject({ panes: [] });
   } finally {
     await closeApp(app);
     server.close();

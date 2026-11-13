@@ -642,7 +642,7 @@ test("PX-055: the background-terminals tray lists a live terminal with its timer
 
     // Open it in the Terminal tab of the apps panel.
     await page.getByTestId("terminal-tray-open").click();
-    await expect(page.getByTestId("tab-terminal")).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByTestId("pane-terminal")).toBeVisible();
     await expect(page.getByTestId("terminal-view")).toBeVisible({ timeout: 30_000 });
 
     // Kill asks first; keeping it running changes nothing; stopping it ends the process through the Core.

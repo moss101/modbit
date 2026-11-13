@@ -6,6 +6,7 @@
  * in three themes. The screens are the agent workspace of DR-PX-2026-11-04-020: home is one composer, the removed Fleet surfaces
  * stay gone, and the conversation, composer and apps panel have the approved layout. Retained mutations show each check failing.
  */
+import { dockDrift } from "./support/dock-gate.ts";
 import { expect, test, type Page } from "@playwright/test";
 import { existsSync, mkdirSync, mkdtempSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -216,9 +217,10 @@ async function workspaceDrift(page: Page, density: Density = "comfortable"): Pro
     const sum = await steps.nth(i).locator("summary").evaluate((el) => ({ text: el.textContent ?? "", icon: el.querySelector("svg") !== null }));
     if (/worked for/i.test(sum.text) || !sum.icon) bad.push(`step ${i} does not say what it did: ${sum.text}`);
   }
-  // The apps panel: tabs in the window's top row at the bar's height (MWS-01: every pane head is the bar), the commit bar at the foot.
-  const tabs = await page.getByTestId("apps-panel").locator(".mb-tablist").boundingBox();
-  if (!tabs || tabs.y > 1 || Math.abs(tabs.height - m.topBar) > 1) bad.push(`panel tabs ${JSON.stringify(tabs)}`);
+  // The pane dock (MWS-10): the panes tiled with heads in the window's top row at the bar's height (MWS-01: every pane head is the bar), no tab strip, the commit bar at the foot.
+  const head = await page.getByTestId("apps-panel").locator(".pane-head").first().boundingBox();
+  if (!head || head.y > 1 || Math.abs(head.height - m.topBar) > 1) bad.push(`pane head ${JSON.stringify(head)}`);
+  bad.push(...(await dockDrift(page, m.topBar)));
   const changesHead = page.locator(".changes-head");
   if ((await changesHead.count()) === 1 && Math.abs((await changesHead.boundingBox())!.height - m.topBar) > 1) bad.push(`changes head ${(await changesHead.boundingBox())!.height}`);
   // MWS-03: the transcript's text at the density's size and line (15 on 21, 14 on 20 in Compact).
@@ -616,7 +618,7 @@ test("PX-194, PX-198: a scripted task with tool steps, an edit, a terminal and a
     await expect(page.getByTestId("conv-group").first()).toBeVisible();
     await expect(page.locator('[data-testid="conv-footer"][data-outcome="COMPLETED"]').first()).toBeAttached();
     await page.getByTestId("pane-toggle-changes").click();
-    await expect(page.getByTestId("tab-changes")).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByTestId("pane-changes")).toBeVisible();
     await expect(page.getByTestId("app-changes")).toBeVisible({ timeout: 30_000 });
     for (const density of DENSITIES) {
       await setDensity(page, density);
@@ -661,19 +663,27 @@ test("PX-194, PX-198: a scripted task with tool steps, an edit, a terminal and a
       return drift.some((d) => d.includes(needle));
     };
     expect(await failsWorkspace(".conv-user { font-size: 14px !important; line-height: 22px !important; }", "transcript text"), "the old 14 on 22 transcript fails").toBe(true);
-    expect(await failsWorkspace(".apps-panel .mb-tablist { height: 40px !important; }", "panel tabs"), "a 40 px pane head fails in Comfortable").toBe(true);
+    expect(await failsWorkspace(".pane-head { height: 40px !important; }", "pane head"), "a 40 px pane head fails in Comfortable").toBe(true);
     // MWS-07 and section 6: the superseded two-row composer fails, in each of the ways it can come back.
     expect(await failsWorkspace(".cmp-line { flex-direction: column !important; align-items: stretch !important; }", "composer: not one line"), "a two-row composer (send under the text) fails").toBe(true);
     expect(await failsWorkspace(".cmp-one .cmp-textarea { min-height: 44px !important; }", "more than one line"), "the old two-line text area fails").toBe(true);
     expect(await failsWorkspace(".cmp-under { position: absolute !important; top: 0 !important; }", "is not under the box"), "the model, run mode and ring above the box fail").toBe(true);
     expect(await failsWorkspace(".cmp-under { flex-direction: row-reverse !important; }", "not under the box at the right"), "the controls at the left fail").toBe(true);
-    expect(await failsWorkspace(".apps-panel { padding-top: 40px !important; }", "panel tabs"), "tabs pushed down fail").toBe(true);
+    expect(await failsWorkspace(".apps-panel { padding-top: 40px !important; }", "pane head"), "pane heads pushed down fail").toBe(true);
+    // MWS-10 and section 6: the superseded apps panel (one app at a time behind a tab strip) fails the dock's gate, as does a pane under its minimum.
+    await page.getByTestId("pane-toggle-files").click();
+    await expect(page.getByTestId("pane-files")).toBeVisible();
+    expect(await workspaceDrift(page), "two panes tiled").toEqual([]);
+    expect(await failsWorkspace(".apps-panel .pane ~ .pane, .apps-panel .dock-col ~ .dock-col { display: none !important; }", "pane(s) open"), "one app at a time fails").toBe(true);
+    expect(await failsWorkspace(".apps-panel .pane { max-height: 60px !important; min-height: 0 !important; }", "under 100"), "a pane under 100 px fails").toBe(true);
+    await page.getByTestId("pane-close-files").click();
+    await expect(page.getByTestId("pane-files")).toHaveCount(0);
     expect(await workspaceDrift(page), "clean again").toEqual([]);
 
     // MWS-09: while the pane is open the rail gives way, and the popover is gone.
     expect(await railDrift(page), "the rail with a pane open").toEqual([]);
     // MWS-01: with the panel closed and the window wide enough for the conversation beside its details rail, the column is 768 with its text at 736. The superseded columns fail.
-    await page.getByTestId("toggle-apps-panel").click();
+    await page.getByTestId("pane-close-changes").click();
     await expect(page.getByTestId("region-apps")).toHaveCount(0);
     await setContentSize(app, page, 1440, 800);
     await expect(page.getByTestId("details-rail")).toBeVisible();

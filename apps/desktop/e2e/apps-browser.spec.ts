@@ -52,7 +52,7 @@ test("Browser tab: the lease badge follows the Core, Take control moves the leas
     await page.getByTestId("pane-toggle-browser").click();
     await expect(page.getByTestId("region-apps")).toBeVisible();
     await expect(page.getByTestId("pane-toggle-browser")).toHaveAttribute("aria-pressed", "true");
-    await expect(page.getByTestId("tab-browser")).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByTestId("pane-browser")).toBeVisible();
     const tab = page.getByTestId("app-browser");
     await expect(tab).toContainText("Agent holds control", { timeout: 30_000 });
     await expect(page.getByTestId("browser-tab-lease")).toContainText("lease generation 1");

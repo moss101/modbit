@@ -12,7 +12,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ECHO_LOOP, expectTerminals, gate, nodeTerminal, readTerminal, steppedModel, type Step } from "./support/apps-harness.ts";
-import { expectTaskState, openTask, runTask } from "./support/new-task.ts";
+import { expectTaskState, openTask, runTask, soloPane } from "./support/new-task.ts";
 import { closeApp, launch, makeRepo, MOD, setContentSize } from "./support/ui-harness.ts";
 
 test("a background terminal survives a crashed renderer: same handle, same Core, replayed screen, live input", async () => {
@@ -42,7 +42,7 @@ test("a background terminal survives a crashed renderer: same handle, same Core,
 
     // Open the terminal, wait for the child's banner, then type once so the log holds a line the new view can only get from the Core.
     await page1.keyboard.press(`${MOD}+e`);
-    await page1.getByTestId("tab-terminal").click();
+    await soloPane(page1, "terminal");
     await page1.locator(`[data-testid="terminal-row"][data-terminal-id="${before.terminalId}"] [data-testid="terminal-pick"]`).click();
     await expect(page1.getByTestId("terminal-screen")).toContainText("READY", { timeout: 30_000 });
     await page1.getByTestId("terminal-screen").click();
@@ -80,7 +80,7 @@ test("a background terminal survives a crashed renderer: same handle, same Core,
       if ((await page.locator(`[data-testid="conversation"][data-task-id="${taskId}"]`).count()) === 0) await openTask(page, taskId);
       await page.keyboard.press(`${MOD}+e`);
     }
-    await page.getByTestId("tab-terminal").click();
+    await soloPane(page, "terminal");
     await page.locator(`[data-testid="terminal-row"][data-terminal-id="${before.terminalId}"] [data-testid="terminal-pick"]`).click();
     const screen = page.getByTestId("terminal-screen");
     await expect(screen).toContainText("got:before-crash", { timeout: 30_000 });

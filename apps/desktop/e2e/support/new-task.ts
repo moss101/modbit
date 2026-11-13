@@ -111,8 +111,37 @@ export async function setDensity(page: Page, density: "comfortable" | "compact")
   }
 }
 
-/** Opens the apps panel from the title bar's pane toggles (DR-PX-2026-11-11-021 MWS-05) unless it is already open; `kind` is the pane it opens on. */
-export async function openPane(page: Page, kind: "changes" | "terminal" | "browser" | "files" | "evidence" = "changes"): Promise<void> {
+export type PaneKind = "changes" | "terminal" | "browser" | "files" | "evidence" | "activity" | "background" | "pull-request";
+
+/** Brings one pane into the dock from its toggle in the title bar (DR-PX-2026-11-11-021 MWS-10), beside whatever is open; a pane already in the grid is left as it is. */
+export async function showPane(page: Page, kind: PaneKind): Promise<void> {
+  const pane = page.getByTestId(`pane-${kind}`);
+  if ((await pane.count()) === 0) {
+    const toggle = page.getByTestId(`pane-toggle-${kind}`);
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  }
+  await expect(pane).toBeVisible();
+}
+
+/**
+ * Shows `kind` as the only pane in the dock: it is opened if it is not, and every other pane in the grid is closed with its own
+ * Close, as a person would. For the specs about one pane's content, which were written when the panel showed one app at a time.
+ */
+export async function soloPane(page: Page, kind: PaneKind): Promise<void> {
+  await showPane(page, kind);
+  for (;;) {
+    const others = await page.getByTestId("apps-panel").locator(".pane").evaluateAll((els, k) => els.map((e) => e.getAttribute("data-kind") ?? "").filter((x) => x !== k), kind);
+    if (others.length === 0) break;
+    await page.getByTestId(`pane-close-${others[0]}`).click();
+    await expect(page.getByTestId(`pane-${others[0]}`)).toHaveCount(0);
+  }
+  await expect(page.getByTestId("apps-panel")).toHaveAttribute("data-panes", kind);
+}
+
+/** Opens the dock from the title bar's pane toggles (DR-PX-2026-11-11-021 MWS-05) unless a pane is already open; `kind` is the pane it opens. */
+export async function openPane(page: Page, kind: PaneKind = "changes"): Promise<void> {
   if ((await page.getByTestId("region-apps").count()) === 0) {
     const toggle = page.getByTestId(`pane-toggle-${kind}`);
     await expect(toggle).toHaveAttribute("aria-pressed", "false");
