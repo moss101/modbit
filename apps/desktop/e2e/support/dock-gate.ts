@@ -25,7 +25,9 @@ export async function dockDrift(page: Page, topBar: number): Promise<string[]> {
   const bad: string[] = [];
   const dock = page.getByTestId("apps-panel");
   if ((await dock.count()) !== 1) return ["dock: not on screen"];
-  const m = await dock.evaluate((el) => {
+  const m = await dock.evaluate((panel) => {
+    // The grid the panes tile in: the whole dock, less its own bar where the title bar does not hold the task's toggles.
+    const el = panel.querySelector<HTMLElement>(".dock-grid") ?? panel;
     const r = el.getBoundingClientRect();
     const panes = [...el.querySelectorAll<HTMLElement>(".pane")].map((p) => {
       const b = p.getBoundingClientRect();
@@ -35,7 +37,7 @@ export async function dockDrift(page: Page, topBar: number): Promise<string[]> {
       const style = getComputedStyle(p);
       return { kind, x: b.x, y: b.y, width: b.width, height: b.height, head: hb ? { y: hb.y - b.y, height: hb.height } : null, name: (p.querySelector(".pane-name")?.textContent ?? "").trim(), minimize: p.querySelector(`[data-testid="pane-minimize-${kind}"]`) !== null, close: p.querySelector(`[data-testid="pane-close-${kind}"]`) !== null, shown: style.display !== "none" && style.visibility !== "hidden" && b.width > 0 && b.height > 0 };
     });
-    return { box: { x: r.x, y: r.y, width: r.width, height: r.height }, scrollHeight: el.scrollHeight, open: (el.getAttribute("data-panes") ?? "").split(" ").filter(Boolean), columns: Number(el.getAttribute("data-columns")), panes: panes as PaneBox[], tabs: el.querySelectorAll('[role="tablist"], [role="tab"], .mb-tabs').length };
+    return { box: { x: r.x, y: r.y, width: r.width, height: r.height }, scrollHeight: el.scrollHeight, open: (panel.getAttribute("data-panes") ?? "").split(" ").filter(Boolean), columns: Number(panel.getAttribute("data-columns")), panes: panes as PaneBox[], tabs: panel.querySelectorAll('[role="tablist"], [role="tab"], .mb-tabs').length };
   });
   // The tab strip of one app at a time is gone.
   if (m.tabs !== 0 || (await page.getByTestId("apps-tabs").count()) !== 0) bad.push("dock: the one-app tab strip is back");

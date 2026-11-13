@@ -12,6 +12,7 @@ import { TerminalApp } from "../apps/terminal-app.tsx";
 import { APP_LABEL } from "./artifacts.ts";
 import { closePane, dockColumns, leftColumnPx, minimizePane, PANE_MIN, resizeRows, rowHeights, splitForLeft, weightOf } from "./dock.ts";
 import { PaneFrame } from "./pane.tsx";
+import { PaneToggles, type PaneToggle } from "./top-bar.tsx";
 import { DOCK_SPLIT_DEFAULT, type AppKind, type PanelState } from "./prefs.ts";
 import { Splitter } from "./splitter.tsx";
 
@@ -44,6 +45,11 @@ export interface AppsPanelProps {
   onStopChild: (taskId: string) => void;
   /** Shows a terminal in the Terminal pane. */
   onOpenTerminal: (terminalId: string) => void;
+  /**
+   * The task's pane toggles, where the title bar does not have them: the centre shows something other than this task (home after
+   * a reload, another page), and the dock then says whose panes these are and is where one is opened from. Absent otherwise.
+   */
+  ownToggles?: { panes: readonly PaneToggle[]; onPane: (kind: AppKind) => void } | undefined;
 }
 
 /**
@@ -97,7 +103,16 @@ export function AppsPanel(p: AppsPanelProps) {
   };
 
   return (
-    <div ref={root} className="apps-panel dock" role="group" aria-label="Panes" data-testid="apps-panel" data-task-id={p.taskId} data-columns={columns.length} data-panes={p.tiled.join(" ")}>
+    <div className="apps-panel dock" role="group" aria-label="Panes" data-testid="apps-panel" data-task-id={p.taskId} data-columns={columns.length} data-panes={p.tiled.join(" ")}>
+      {p.ownToggles && p.ownToggles.panes.length > 0 && (
+        <div className="dock-bar" data-testid="dock-bar">
+          <span className="dock-bar-task" title={p.taskTitle} data-testid="dock-bar-task">
+            {p.taskTitle}
+          </span>
+          <PaneToggles panes={p.ownToggles.panes} onPane={p.ownToggles.onPane} size="sm" />
+        </div>
+      )}
+      <div ref={root} className="dock-grid" data-testid="dock-grid">
       {size &&
         columns.map((column, ci) => {
           const heights = rowHeights(dock, column, size.height);
@@ -165,6 +180,7 @@ export function AppsPanel(p: AppsPanelProps) {
             </div>
           );
         })}
+      </div>
     </div>
   );
 }

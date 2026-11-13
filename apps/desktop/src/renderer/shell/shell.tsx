@@ -440,6 +440,8 @@ export function Shell({ app }: { app: AppState }) {
   const onPane = (kind: AppKind) => {
     if (panelTaskId) setPanelState(panelTaskId, (s) => togglePane(s, kind));
   };
+  // Where the title bar has no toggles for the dock's task (the centre shows home or another task's page), the dock carries them itself.
+  const dockToggles = useMemo<PaneToggle[]>(() => (panes.length === 0 && panelTaskId !== null ? available.map((kind) => ({ kind, open: paneStateOf(panelState, kind) === "open", state: paneStateOf(panelState, kind) })) : []), [panes.length, panelTaskId, available, panelState]);
   // The title is the task's while its conversation is what the centre shows; then it opens the task's menu.
   const menuTaskId = conversation && shownTaskId === conversation.taskId && !reviewing && !browsing ? conversation.taskId : null;
   const taskMenu = useMemo<MenuItem[] | undefined>(() => {
@@ -484,6 +486,7 @@ export function Shell({ app }: { app: AppState }) {
               onTerminalsChanged={refreshTerminals}
               announce={setNotice}
               dock={panelState}
+              ownToggles={dockToggles.length > 0 ? { panes: dockToggles, onPane } : undefined}
               tiled={tiled}
               onDock={(update) => setPanelState(panelTaskId, update)}
               onOpenReview={() => setReviewing(panelTaskId)}

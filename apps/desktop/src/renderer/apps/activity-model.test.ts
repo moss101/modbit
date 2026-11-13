@@ -15,7 +15,7 @@ const ROWS: TranscriptRowView[] = [
     lastOffset: "30",
     facts: { type: "group", turnId: "t", label: "Worked", steps: 3, reads: 1, searches: 0, commands: 1, edits: 1, others: 0, linesAdded: 1, linesRemoved: 0, durationMs: 5, open: false },
     children: [
-      row("tool:read", "TOOL_CARD", 12, { lastOffset: "14", text: "notes.txt", facts: tool("READ", "fs.read") }),
+      row("tool:read", "TOOL_CARD", 12, { lastOffset: "14", text: "fs.read notes.txt", facts: tool("READ", "fs.read") }),
       row("tool:edit", "TOOL_CARD", 16, { lastOffset: "20", text: "notes.txt", facts: tool("EDIT", "change.apply", { paths: ["notes.txt"] }) }),
       row("tool:run", "TOOL_CARD", 22, { lastOffset: "30", text: "cargo test", hints: { ...hints, status: "FAILED" }, facts: tool("SHELL", "shell.run", { failureCode: "EXIT_1" }) }),
     ],
@@ -77,6 +77,10 @@ test("REQ-PX-202: an event is worded from its own type and a few named fields, n
   assert.equal(eventTitle("TaskReadyForReview"), "Task ready for review");
   const [e] = activityOf([], [event(1, "AcceptanceGateEvaluated", "run", { verdict: "ACCEPT", secret: "sk-live-1", nested: { status: "x" }, reason: "x".repeat(200) })]);
   assert.equal(e!.text, "Acceptance gate evaluated: accept");
+  // The window's own housekeeping is delivered too, and is not something the task did.
+  assert.deepEqual(activityOf([], [event(1, "ConversationRead", "task"), event(2, "TerminalControlRecorded", "terminal"), event(3, "TaskStarted", "task")]).map((x) => x.text), ["Task started"]);
+  // A tool with no verb of its own is named by what it is.
+  assert.deepEqual(activityOf([row("tool:plan", "TOOL_CARD", 5, { text: "plan.update the notes are tidy", facts: tool("OTHER", "plan.update") })], []).map((x) => `${x.kind} ${x.text}`), ["other Plan update: the notes are tidy"]);
   assert.equal(clock(0), "");
   assert.match(clock(1_700_000_000_000), /^\d\d:\d\d:\d\d$/);
 });

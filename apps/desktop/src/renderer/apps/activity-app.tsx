@@ -53,7 +53,7 @@ export function ActivityApp({ taskId }: { taskId: string }) {
           ) : (
             <ol className="activity-list" aria-label="Activity, oldest first" data-testid="activity-list">
               {shown.map((e) => (
-                <li key={e.key} className="activity-entry" data-testid="activity-entry" data-kind={e.kind} data-source={e.source} data-offset={e.offset} data-tone={e.tone}>
+                <li key={e.key} className="activity-entry" data-testid="activity-entry" data-key={e.key} data-kind={e.kind} data-source={e.source} data-offset={e.offset} data-tone={e.tone}>
                   <span className="activity-text" title={e.text}>
                     {e.text}
                   </span>

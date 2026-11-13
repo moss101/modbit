@@ -214,7 +214,11 @@ input.settings-toggle.settings-toggle::after, input.settings-toggle.settings-tog
 .agent-core[data-status="ok"] .agent-core-dot { background: var(--mb-color-ok); }
 .agent-core[data-status="danger"] .agent-core-dot { background: var(--mb-color-danger); outline: 1px solid var(--mb-color-text); }
 /* MWS-10 (REQ-PX-202): the pane dock. Panes tile in at most two columns, each with a head the height of the top bar and a 1 px edge; none is under 280 by 100 (the dock scrolls where they cannot all fit). The sizes are the dock model's (shell/dock.ts). */
-.apps-panel { position: relative; box-sizing: border-box; height: 100%; min-height: 0; display: flex; align-items: flex-start; overflow-x: hidden; overflow-y: auto; }
+.apps-panel { position: relative; box-sizing: border-box; height: 100%; min-height: 0; display: flex; flex-direction: column; }
+.dock-grid { position: relative; flex: 1 1 0; min-height: 0; display: flex; align-items: flex-start; overflow-x: hidden; overflow-y: auto; }
+.dock-bar { flex: none; box-sizing: border-box; min-height: var(--mb-row); display: flex; align-items: center; gap: var(--mb-space-2); padding: 0 var(--mb-space-2) 0 var(--mb-space-4); border-bottom: 1px solid var(--color-tab-border); font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); }
+.dock-bar-task { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dock-bar .topbar-panes { margin-left: 0; }
 .dock-col { position: relative; flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
 .dock-col + .dock-col { border-left: 1px solid var(--color-tab-border); }
 .pane { position: relative; flex: none; box-sizing: border-box; min-width: 0; min-height: 100px; background: var(--mb-surface-conversation); display: flex; flex-direction: column; overflow: hidden; }

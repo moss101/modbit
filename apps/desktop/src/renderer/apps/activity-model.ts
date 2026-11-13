@@ -6,7 +6,7 @@
  */
 import type { TranscriptRowView } from "../../shared/conversation-types.ts";
 import { humanTitle } from "../approvals/model.ts";
-import { callStatus, toolVerb } from "../conversation/model.ts";
+import { callStatus, stepText, toolVerb } from "../conversation/model.ts";
 import type { DeliveredEvent } from "./delivered.ts";
 
 export const ACTIVITY_KINDS = ["message", "edit", "command", "read", "approval", "check", "turn", "other"] as const;
@@ -51,9 +51,12 @@ function rowEntry(row: TranscriptRowView): ActivityEntry | null {
     case "TOOL_CARD": {
       if (f.type !== "tool") return null;
       const status = callStatus(row.hints.status, f.failureCode);
-      const what = firstLine(row.text) || row.hints.shortText || f.paths[0] || f.toolName;
+      const what = firstLine(stepText(row)) || row.hints.shortText || f.paths[0] || f.toolName;
       const after = STATUS_WORDS[status];
-      return { ...base, kind: TOOL_KIND[f.toolClass] ?? "other", text: cut(`${toolVerb(f.toolClass, status)} ${what}${after ? ` (${after})` : ""}`), tone: status === "FAILED" ? "bad" : status === "PENDING_APPROVAL" ? "ask" : "none" };
+      const kind = TOOL_KIND[f.toolClass] ?? "other";
+      // A tool with no verb of its own (a plan update, a delegation) is named by what it is, not "Used".
+      const lead = kind === "other" && f.toolClass !== "BROWSER" ? `${humanTitle(f.toolName)}:` : toolVerb(f.toolClass, status);
+      return { ...base, kind, text: cut(`${lead} ${what}${after ? ` (${after})` : ""}`), tone: status === "FAILED" ? "bad" : status === "PENDING_APPROVAL" ? "ask" : "none" };
     }
     case "APPROVAL_CARD": {
       if (f.type !== "approval") return null;
@@ -123,6 +126,12 @@ function eventEntry(e: DeliveredEvent): ActivityEntry {
   return { key: `event:${e.offset}`, source: "event", offset: e.offset, atMs: e.occurredAtMs, kind: eventKind(e), text: cut(detail ? `${eventTitle(e.eventType)}: ${detail}` : eventTitle(e.eventType)), tone: /FAIL|REJECT|DENIED/i.test(status) ? "bad" : /PASS|ACCEPT/i.test(status) ? "ok" : e.eventType === "ApprovalRequested" ? "ask" : "none" };
 }
 
+/**
+ * Events that record the window's own housekeeping, not something the task did: that a person has read the conversation, and
+ * that a terminal view attached, acknowledged output or changed size. They are delivered like any other and are not activity.
+ */
+export const HOUSEKEEPING: ReadonlySet<string> = new Set(["ConversationRead", "TerminalControlRecorded"]);
+
 const big = (offset: string): bigint => (/^\d+$/.test(offset) ? BigInt(offset) : 0n);
 
 /**
@@ -135,7 +144,7 @@ export function activityOf(rows: readonly TranscriptRowView[], events: readonly 
   const spans = listed.map(({ row }) => [big(row.offset), big(row.lastOffset || row.offset)] as const);
   const covered = (offset: bigint): boolean => spans.some(([from, to]) => offset >= from && offset <= to);
   const out = listed.map((l) => l.entry);
-  for (const e of events) if (!covered(big(e.offset))) out.push(eventEntry(e));
+  for (const e of events) if (!HOUSEKEEPING.has(e.eventType) && !covered(big(e.offset))) out.push(eventEntry(e));
   // Stable: entries at one offset keep the order they were listed in.
   return out.map((entry, i) => ({ entry, i })).sort((a, b) => (big(a.entry.offset) < big(b.entry.offset) ? -1 : big(a.entry.offset) > big(b.entry.offset) ? 1 : a.i - b.i)).map((x) => x.entry);
 }
