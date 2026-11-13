@@ -79,6 +79,12 @@ pub enum Error {
         /// Where it is checked out.
         path: String,
     },
+    /// A worktree cannot be removed because a file inside it is held by
+    /// another process (Windows: opened with no share-delete), or the path
+    /// refuses the move. Nothing was deleted; retry after the lock is gone
+    /// (WIN-05).
+    #[error("worktree `{0}` is held by another process; nothing was deleted")]
+    WorktreeHeld(String),
     /// The repository has no commit, which the operation needs.
     #[error("the repository has no commit yet")]
     EmptyRepository,
@@ -642,8 +648,22 @@ impl Repo {
         })
     }
 
-    /// Remove a worktree (forced: the task owns it).
+    /// Remove a worktree (forced: the task owns it). Locked files first:
+    /// `git worktree remove` deletes files one by one, so on Windows a file
+    /// another process holds with no share-delete makes it fail halfway and
+    /// PRUNE the registration — an unlisted half-deleted worktree. The
+    /// pre-flight moves the whole tree one name aside: a held file blocks
+    /// the directory rename itself (verified on NTFS), so the refusal
+    /// happens before anything is deleted and the worktree stays registered;
+    /// the retry after the lock is gone succeeds (WIN-05).
     pub fn worktree_remove(&self, path: &Path) -> Result<()> {
+        let aside = path.with_extension("modbit-removing");
+        let _ = std::fs::remove_dir_all(&aside);
+        if std::fs::rename(path, &aside).is_err() {
+            return Err(Error::WorktreeHeld(path.display().to_string()));
+        }
+        std::fs::rename(&aside, path)
+            .map_err(|_| Error::WorktreeHeld(path.display().to_string()))?;
         run(
             &self.dir,
             &[
