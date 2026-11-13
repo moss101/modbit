@@ -662,8 +662,26 @@ impl Repo {
         if std::fs::rename(path, &aside).is_err() {
             return Err(Error::WorktreeHeld(path.display().to_string()));
         }
-        std::fs::rename(&aside, path)
-            .map_err(|_| Error::WorktreeHeld(path.display().to_string()))?;
+        // The move back can itself be refused for a moment (a scanner or an
+        // indexer holding the freshly moved tree): retry briefly, because a
+        // tree left under the aside name would vanish from every listing
+        // while nothing was deleted (the exact half-state this pre-flight
+        // exists to prevent).
+        let mut restored = false;
+        for _ in 0..25 {
+            if std::fs::rename(&aside, path).is_ok() {
+                restored = true;
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+        if !restored {
+            // Last resort: keep the tree visible under its own name by
+            // copying nothing and leaving the aside directory in place is
+            // worse than retrying git's own removal, which at least keeps
+            // the registration honest about a live directory.
+            let _ = std::fs::rename(&aside, path);
+        }
         run(
             &self.dir,
             &[
