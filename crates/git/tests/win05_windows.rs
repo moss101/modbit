@@ -212,11 +212,14 @@ fn a_locked_worktree_fails_cleanup_typed_and_retains_the_worktree() {
         wt_path.join("a.txt").exists(),
         "the locked file is retained"
     );
-    let listed = repo
-        .worktree_list()
-        .unwrap()
-        .into_iter()
-        .any(|w| w.path == wt_path);
+    // git's porcelain output may spell the same directory with an 8.3 name
+    // (a CI user like `runneradmin` becomes `RUNNER~1`), so the comparison
+    // goes through canonicalization, not exact PathBuf equality.
+    let listed = repo.worktree_list().unwrap().into_iter().any(|w| {
+        let listed = std::fs::canonicalize(&w.path).unwrap_or_else(|_| w.path.clone());
+        let wanted = std::fs::canonicalize(&wt_path).unwrap_or_else(|_| wt_path.clone());
+        listed == wanted
+    });
     assert!(listed, "the residue stays registered for the retry");
     drop(held);
     repo.worktree_remove(&wt_path)
