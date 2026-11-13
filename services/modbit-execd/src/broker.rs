@@ -740,7 +740,12 @@ fn owner_only_pipe_attributes() -> *mut SECURITY_ATTRIBUTES {
     // string-to-descriptor conversion of a constant SDDL string.
     unsafe {
         // D:P(A;;GRGW;;;OW)(A;;GRGW;;;SY)(A;;GRGW;;;BA) (read+write for the owner, SYSTEM and Administrators only)
-        const SDDL_OWNER_ONLY: &[u16] = &[68u16, 58u16, 80u16, 40u16, 65u16, 59u16, 59u16, 71u16, 82u16, 71u16, 87u16, 59u16, 59u16, 59u16, 79u16, 87u16, 41u16, 40u16, 65u16, 59u16, 59u16, 71u16, 82u16, 71u16, 87u16, 59u16, 59u16, 59u16, 83u16, 89u16, 41u16, 40u16, 65u16, 59u16, 59u16, 71u16, 82u16, 71u16, 87u16, 59u16, 59u16, 59u16, 66u16, 65u16, 41u16];
+        const SDDL_OWNER_ONLY: &[u16] = &[
+            68u16, 58u16, 80u16, 40u16, 65u16, 59u16, 59u16, 71u16, 82u16, 71u16, 87u16, 59u16,
+            59u16, 59u16, 79u16, 87u16, 41u16, 40u16, 65u16, 59u16, 59u16, 71u16, 82u16, 71u16,
+            87u16, 59u16, 59u16, 59u16, 83u16, 89u16, 41u16, 40u16, 65u16, 59u16, 59u16, 71u16,
+            82u16, 71u16, 87u16, 59u16, 59u16, 59u16, 66u16, 65u16, 41u16,
+        ];
         let mut sd: *mut core::ffi::c_void = std::ptr::null_mut();
         let ok = ConvertStringSecurityDescriptorToSecurityDescriptorW(
             SDDL_OWNER_ONLY.as_ptr(),
