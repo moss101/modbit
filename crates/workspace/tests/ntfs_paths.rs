@@ -206,10 +206,20 @@ fn ordinary_spellings_still_work() {
         p.check(spelling)
             .unwrap_or_else(|e| panic!("{spelling}: {e:?}"));
     }
-    // Absolute inside the root, plain and verbatim, is allowed.
-    let plain = format!(r"{}\src\lib.rs", d.path().display());
+    // Absolute inside the root, plain and verbatim, is allowed. The root is
+    // canonicalized first: std's tempdir can hand back an 8.3 spelling
+    // (`RUNNER~1` on a CI runner) which is a *different* string than the
+    // canonical root the policy holds, and an absolute spelling must name
+    // the root as it canonically is.
+    let root = d.path().canonicalize().unwrap();
+    // canonicalize hands back the verbatim \\\\?\\ form; both spellings are built from the plain root.
+    let root_text = root.display().to_string();
+    let plain_root = root_text
+        .strip_prefix("\\\\?\\")
+        .unwrap_or(root_text.as_str());
+    let plain = format!(r"{}\src\lib.rs", plain_root);
     p.check(&plain).expect("plain absolute inside root");
-    let verbatim = format!(r"\\?\{}\src\lib.rs", d.path().display());
+    let verbatim = format!(r"\\?\{}\src\lib.rs", plain_root);
     p.check(&verbatim).expect("verbatim absolute inside root");
 }
 
