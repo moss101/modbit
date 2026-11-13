@@ -1,7 +1,7 @@
 # Modbit Dossier Manifest — V3.3 EPR v1.1
 
 > **Authority date:** 2026-09-05  
-> **Generated:** 2026-11-12 by `tools/build_manifest.py`  
+> **Generated:** 2026-11-13 by `tools/build_manifest.py`  
 > **Scope:** every specification file in `docs/` plus the root governing files and tooling. The previous `99_MANIFEST.md` covered only 39 Part 2 files; this manifest covers all 97 docs.
 > **Machine-readable twin:** `manifest.json` (same content, same hashes).
 
@@ -831,6 +831,35 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-201/ci-run-43268843557.json` | retained evidence | 65329 | `d2d158b8b1b85ea0a3f7eae7b90b0d6bbb72d6880264e368a5c2dd879eafb246` |
 | `evidence/m10/PX-201/desktop-e2e-full-results.txt` | retained evidence | 40002 | `14d7bb719e30e8c2aaf5791e4786c6d29999b6867720d1ff4be22afe7812adfd` |
 | `evidence/m10/PX-201/evidence.json` | retained evidence | 8062 | `0c41621f0b97424f0f334c9873016f4ca63458de004c7ea31e20f3654d21a11d` |
+| `evidence/m10/PX-202/TASK_CARD.md` | retained evidence | 21581 | `9aea547c1c5a01684d9b08f7d292436a7ce9bb1130e2a9d99ccf8f724ea18e42` |
+| `evidence/m10/PX-202/after/activity-and-background-tasks-dark-comfortable.png` | retained evidence | 357535 | `86e9bba4e31226bb2192264c8b794a1b6a2e18c1c63628b15fae490b8a60e277` |
+| `evidence/m10/PX-202/after/activity-and-background-tasks-dark-compact.png` | retained evidence | 339799 | `20a6ba88f93913e3619ed0279d5a4e199d694fa214bf6a280e908dbadb6359da` |
+| `evidence/m10/PX-202/after/activity-and-background-tasks-light-comfortable.png` | retained evidence | 358269 | `c73c38ec92d7a51ecc11c7e9befcff18eb198891186fc86830a5f6b5355403a0` |
+| `evidence/m10/PX-202/after/activity-and-background-tasks-light-compact.png` | retained evidence | 341675 | `da96a017f09bd3ff3bf35cc35f8f248380918f7067ae6a64fdd66fd8c95049a7` |
+| `evidence/m10/PX-202/after/activity-filtered-dark-comfortable.png` | retained evidence | 235641 | `07b86428369df84cad2c6002b0b24d61334c4bebffb6b481ac850a7356d5cc88` |
+| `evidence/m10/PX-202/after/activity-filtered-dark-compact.png` | retained evidence | 223361 | `e3718744f83a64fcea57a2dbe41642a4c5b21a0de32ea41f4778307524158639` |
+| `evidence/m10/PX-202/after/activity-filtered-light-comfortable.png` | retained evidence | 236717 | `83421b0ad05f292b9404c10e1fb1b15ea2914784f583a7b4992f13bab9c4ffb4` |
+| `evidence/m10/PX-202/after/activity-filtered-light-compact.png` | retained evidence | 225349 | `fb2a83a70802d9d3fedaba7c78532ade3ec61391aba48f5692f96dd7e1c6e0ec` |
+| `evidence/m10/PX-202/after/narrow-window-1000-dark-comfortable.png` | retained evidence | 250437 | `0eb6a373d5330e2b0e897fe61dd6f421f1ffd301fc95b291ce76a56901d4b780` |
+| `evidence/m10/PX-202/after/narrow-window-1000-light-comfortable.png` | retained evidence | 251033 | `8557b7670fb75aa3370231ebde95b399050c572f5791c6016e58c90e940eca8a` |
+| `evidence/m10/PX-202/after/narrow-window-more-over-approval-dark-comfortable.png` | retained evidence | 248516 | `23a1d2b14ebee13410bfcaf903ccf9caa5a622432756d946d6b3ffb61de18eca` |
+| `evidence/m10/PX-202/after/narrow-window-more-over-approval-light-comfortable.png` | retained evidence | 249665 | `83de81314812fdc7f6c95081432de74ba12561f0cf6794acc02f48c8a06729c1` |
+| `evidence/m10/PX-202/after/pull-request-checks-and-comments-dark-comfortable.png` | retained evidence | 383451 | `b362b59eb8e255f50c9980249854ef8622506d1074cfa75bdb0ccc488757cc5d` |
+| `evidence/m10/PX-202/after/pull-request-checks-and-comments-dark-compact.png` | retained evidence | 362218 | `eca6f865889421312135f5be2a9fafae1c3a1b068cb42e0d03b3b6f282233efa` |
+| `evidence/m10/PX-202/after/pull-request-checks-and-comments-light-comfortable.png` | retained evidence | 382137 | `22fd7bafe9a1b6f7905ba5bb61272b94dfebcae9bb002a7faf4c55a725c98b58` |
+| `evidence/m10/PX-202/after/pull-request-checks-and-comments-light-compact.png` | retained evidence | 362026 | `adc80087109d9fcf3d6ec5a9a445ab1a8a7c71092e328d72587c8f11daec3339` |
+| `evidence/m10/PX-202/after/pull-request-none-dark-comfortable.png` | retained evidence | 181493 | `bf63b31c7bbe6aef7b174def10834204b4d0a0da3e2bdc59377def54b8e998eb` |
+| `evidence/m10/PX-202/after/pull-request-none-light-comfortable.png` | retained evidence | 182471 | `1b0eb0c506fde305f7959cfbd77cdfbe5a721cbee6a4e87bbbe5fd12557d82a1` |
+| `evidence/m10/PX-202/after/pull-request-waiting-on-approval-dark-comfortable.png` | retained evidence | 290622 | `74228bb9b6ed884bcb27de83b754d88d9a769e33f950aaf064b6c41d418fdb6b` |
+| `evidence/m10/PX-202/after/pull-request-waiting-on-approval-light-comfortable.png` | retained evidence | 291270 | `ff9053e7679d74469fb296aaba1da4856cd21db53ea59a9f4d8eea5a3ee2510e` |
+| `evidence/m10/PX-202/after/terminal-minimized-dark-comfortable.png` | retained evidence | 365438 | `1450865e48f819a46ee355fcfa8fe1bbe0388eba7718d2d0bd6f9db84e433eac` |
+| `evidence/m10/PX-202/after/terminal-minimized-light-comfortable.png` | retained evidence | 366481 | `554987834106cd2a6b8c25cf2cb5485c1e9e404fc74b0d3ec38a326cffd7f419` |
+| `evidence/m10/PX-202/after/three-panes-tiled-dark-comfortable.png` | retained evidence | 441350 | `674e80407c47f3c163695cad75c2571d533dfd495b582d186a873e4798ee3195` |
+| `evidence/m10/PX-202/after/three-panes-tiled-dark-compact.png` | retained evidence | 415755 | `9280c7008aae17d0009e52e3b2f8441b01f09ed458dfb68df2a00cb2b09b0113` |
+| `evidence/m10/PX-202/after/three-panes-tiled-light-comfortable.png` | retained evidence | 441840 | `5b3df399ea232dfe4f0fb5b40946b3efd8fcae60e65a4c8a01e48e3f2bb4e2b3` |
+| `evidence/m10/PX-202/after/three-panes-tiled-light-compact.png` | retained evidence | 417718 | `e8fc45dcd84b516997406e3fefab26eb1bb0bd5eae4a0775bc0e4933d193ff82` |
+| `evidence/m10/PX-202/desktop-e2e-full-results.txt` | retained evidence | 40146 | `ad5effb8b98c5751f317a18c3ade1219c7b3ce4b316c10d2e6a345bd56a288cd` |
+| `evidence/m10/PX-202/evidence.json` | retained evidence | 6927 | `b43c42eb873b396ff01a881af5f11e7c9bbe394fc8f31b092a97af899bf95bc7` |
 | `evidence/m10/PX-210/TASK_CARD.md` | retained evidence | 11615 | `493c4c60c6a94d4a062040ba472476e08b5b9c7f30116221ff5eb56dd26873f4` |
 | `evidence/m10/PX-210/after/composer-after-tab-light.png` | retained evidence | 30362 | `a7b1367df855da4288ff969ddb1a68bb03d6a4ecbbc8071ad59d0e5dddabff4d` |
 | `evidence/m10/PX-210/after/composer-long-suggestion-dark-900.png` | retained evidence | 35124 | `14ec8efa1eafc089f6f688e72fb15a75e11555cdf3e48e237cb62fdeb3f3d36f` |

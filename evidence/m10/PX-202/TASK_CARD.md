@@ -49,7 +49,7 @@
 
 ## Verification
 
-See `evidence.json` for the counts and the runs. In short: unit tests and typecheck; `e2e/px-202-pane-dock.spec.ts` (two tests) on the real app and a real Core; the gate `e2e/support/dock-gate.ts` in that spec and in `awl.spec.ts`; the whole desktop suite once locally.
+Unit: `@modbit/desktop` 405 of 405; `pnpm typecheck` clean. Real app, real Core, scripted model: `e2e/px-202-pane-dock.spec.ts`, 2 of 2; the gate `e2e/support/dock-gate.ts` runs in that spec and in `awl.spec.ts`. Whole desktop suite, local, macOS arm64, two runs: run 1, 204 passed, 3 failed, 2 skipped, 2 did not run (two failures were axe on the pane body, caused by this change and fixed; `secrets.spec.ts:66` passed alone and in run 2 and is not explained); run 2 on the final build, 209 passed, 0 failed, 2 skipped. Results by test in `desktop-e2e-full-results.txt`. `shell.spec.ts:25` needs `target/debug/modbit-core`: `target/debug` was linked to the prebuilt binaries for these runs.
 
 - **Changes, Terminal and Evidence open together and tile**: the three panes are on screen at once in two columns; the gate holds in light and dark, Comfortable and Compact; axe on the shell.
 - **The set and the sizes persist per task across a reload**: the separators are moved by keyboard, the boxes recorded; another task has no pane and opening one there leaves the first task's set and boxes as they were; after `page.reload()` the boxes are equal to the pixel.
@@ -123,6 +123,6 @@ No assertion was weakened.
 - The proof is local (macOS arm64); CI runs are recorded in `evidence.json`.
 - Dragging a separator with the pointer is unit-proven through the model and was not driven end to end; the keyboard path was.
 - The Browser pane in the grid, a pane head at exactly 280 px with every action, and a dock that scrolls were not driven end to end.
-- A request denied on the card, an approval that expires, and Update the request are unit-proven or covered by the Review's own specs only.
+- A request denied on the card, an approval that expires, and Update the request were not driven end to end from the pane (the outcome of an approval is unit-proven).
 - In the stacked view (a narrow window showing the panes) the approval card is in the conversation, so the pane sends the person there.
 - The owner has not yet seen these screenshots beside the boards, which the record makes an exit criterion. The row is not COMPLETE and no graph status was set.

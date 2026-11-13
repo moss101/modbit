@@ -1,0 +1,109 @@
+{
+ "task": "PX-202",
+ "requirements": [
+  "REQ-PX-202",
+  "QUAL-PX-202",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-202"
+ ],
+ "scenarios": [
+  "QUAL-PX-202 / PX-E2E-202"
+ ],
+ "decision_record": "DR-PX-2026-11-11-021 (MWS-10, MWS-01, section 5.1, section 7)",
+ "tier": "release-critical",
+ "branch": "wip/desktop-2-pane-dock",
+ "status": "built and proven locally on macOS arm64; not sealed (graph.py was not run: sealing is not this task's)",
+ "audit": {
+  "classification": "IMPLEMENTED-PARTIAL (five apps behind a one-app tab strip, pane toggles that switched the one tab; the pull request, Stop on a child and Stop on a terminal working elsewhere; no activity list)",
+  "first_missing_link": "AppsPanel takes a single tab and PanelState is { open, tab }: no set of open panes, no grid, no size to remember",
+  "found": [
+   "with the tab strip gone, a dock shown while the centre is not its task had no way to open another pane: the dock carries the toggles itself in that case",
+   "the Core has no read of a pull request's state or of the request a task opened (PX-211): the pane shows the Core's answer to this window and nothing after a reload",
+   "conversation:markRead and a transcript re-read follow each other about every 0.4 s while the first test's task is open (seen in the bridge log before the Activity pane is opened); not investigated, not verified against main"
+  ],
+  "traced": "Shell -> panelByTask[task] (PanelState) -> tiledOf -> ShellFrame (computeLayout panelOpen) -> AppsPanel (dockColumns, rowHeights) -> PaneFrame -> ChangesApp / TerminalApp / BrowserApp / FilesApp / EvidenceApp (unchanged reads) | ActivityApp <- delivered (rows from useConversation's transcript read, events from window.modbit.onEvent) | BackgroundApp -> BackgroundList -> cancelTask (the shell's confirmation) / terminalKill | PullRequestApp -> reviewBundle, openPullRequest, ingestCiResults, ingestReviewComments; the approval is resolved by ApprovalDock -> resolveApproval -> Core"
+ },
+ "bridge": {
+  "added": [],
+  "protocol_change": "none",
+  "preload_change": "none",
+  "main_change": "none",
+  "csp_change": "none",
+  "rust_change": "none",
+  "proof": "dist/preload/preload.cjs and dist/main/main.cjs have the digests evidence/m10/PX-200/evidence.json and evidence/m10/PX-201/evidence.json recorded"
+ },
+ "left_out": [
+  "Pop out (PX-203)",
+  "the request's state, title and file count, Merge when ready, Auto-fix, Address (PX-211..214: no Core read)",
+  "the request's number after a reload (no Core read)",
+  "Clear finished (no Core command)",
+  "New terminal tab (no client command starts a terminal)",
+  "the dock's width per task (it is the frame's one preference)"
+ ],
+ "also_fixed": [
+  "rail wording: the evidence line, Generation (Updates recorded), the economics as a list of facts",
+  "More ends above a docked approval card and scrolls inside"
+ ],
+ "tests": [
+  "apps/desktop/e2e/px-202-pane-dock.spec.ts",
+  "apps/desktop/e2e/support/dock-gate.ts",
+  "apps/desktop/e2e/awl.spec.ts",
+  "apps/desktop/e2e/support/new-task.ts",
+  "apps/desktop/e2e/agent-workspace.spec.ts",
+  "apps/desktop/e2e/apps-browser.spec.ts",
+  "apps/desktop/e2e/apps-panel-state.spec.ts",
+  "apps/desktop/e2e/apps-panel.spec.ts",
+  "apps/desktop/e2e/autonomy.spec.ts",
+  "apps/desktop/e2e/composer.spec.ts",
+  "apps/desktop/e2e/fleet-agents.spec.ts",
+  "apps/desktop/e2e/px-200-task-view.spec.ts",
+  "apps/desktop/e2e/px-201-details-rail.spec.ts",
+  "apps/desktop/e2e/shell.spec.ts",
+  "apps/desktop/e2e/states.spec.ts",
+  "apps/desktop/e2e/terminal-history.spec.ts",
+  "apps/desktop/e2e/terminal-renderer-restart.spec.ts",
+  "apps/desktop/e2e/wave4.spec.ts",
+  "apps/desktop/src/renderer/shell/dock.test.ts",
+  "apps/desktop/src/renderer/shell/shell.test.ts",
+  "apps/desktop/src/renderer/apps/delivered.test.ts",
+  "apps/desktop/src/renderer/apps/activity-model.test.ts",
+  "apps/desktop/src/renderer/apps/pull-request-model.test.ts",
+  "apps/desktop/src/renderer/conversation/rail-model.test.ts",
+  "apps/desktop/src/renderer/conversation/more-fit.test.ts",
+  "apps/desktop/src/renderer/measured-css.test.ts"
+ ],
+ "unit": "@modbit/desktop 405 of 405; pnpm typecheck clean.",
+ "proof": "Whole desktop e2e suite, local, macOS arm64, real Core (the prebuilt binaries of research/desktop-2/bin, built from main's Rust; this change has no Rust), scripted models. Run 1: 204 passed, 3 failed, 2 skipped, 2 did not run in 23.1m; two failures (apps-panel.spec.ts:356, wave4.spec.ts:56) were axe's scrollable-region-focusable on .pane-body, caused by this change and fixed (the pane body takes the keyboard); secrets.spec.ts:66 passed alone and in run 2 and is not explained. Run 2 on the final renderer (WIP commit 2d52537e): 209 passed, 0 failed, 2 skipped (the live-provider specs) in 21.8m. px-202-pane-dock.spec.ts: 2 of 2, run again for the screenshots.",
+ "retained_mutations": "see TASK_CARD.md, Retained mutations",
+ "removed_test_ids": [
+  "apps-tabs",
+  "tab-<kind> in the panel",
+  "apps-panel-maximize",
+  "toggle-apps-panel",
+  "app-changes-empty",
+  "app-files-empty",
+  "app-evidence-empty"
+ ],
+ "removed_checks": "see TASK_CARD.md, Assertions deleted, replaced or changed",
+ "not_proven_here": [
+  "pointer drag of a separator end to end",
+  "the Browser pane in the grid",
+  "a pane head at 280 px with every action",
+  "a dock that scrolls",
+  "a request denied on the card, an expired approval, Update the request",
+  "Windows and Linux (CI)"
+ ],
+ "screenshots": "after/*.png: the running app against a real Core at 1440 by 900 (captured at 2x), written by e2e/px-202-pane-dock.spec.ts with MODBIT_SHOTS_DIR set, on the final build: three panes tiled, the terminal minimized, Activity filtered, Activity and Background tasks, the Pull request pane (nothing yet, waiting on the approval card, checks and comments), the stacked dock at 1000 wide, More above a docked approval at 1000 by 640. Light and dark; Comfortable and Compact for the four main states. The boards for the comparison are in evidence/dossier-px-020/boards/.",
+ "full_suite_results": "evidence/m10/PX-202/desktop-e2e-full-results.txt",
+ "build_digest": {
+  "dist/renderer/index.js": "sha256:b3c5faa16b7d58a9f188c7869122b3379e5a739e28912632fea30294930233e0",
+  "dist/renderer/app.css": "sha256:4f4ca4661296e2691dd2e1a392ba4de59c4384b4a9899bc521720148bb9cb5d5",
+  "dist/preload/preload.cjs": "sha256:e195ff5ba0724b9c8b79104d7c8a35fa42f59040cf0a1c7839b05c90450e6167",
+  "dist/main/main.cjs": "sha256:5ebb1fe6e3ff9a03f005fb99fd6c8bd0e83202a091ce02eb4ac8647d27e2bfdc",
+  "note": "the build run 2 and the screenshots used"
+ },
+ "core_binary": {
+  "path": "research/desktop-2/bin/modbit-core (prebuilt from main's Rust; not in the repository)",
+  "sha256": "c5ec630a2c92680ceaccf3dc72a663ecf0e3f369c3e1309e146a691807234fcb"
+ },
+ "ci": "not run yet when this file was written; the pull request's runs are reported in the handoff"
+}
