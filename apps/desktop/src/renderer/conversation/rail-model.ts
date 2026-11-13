@@ -72,7 +72,11 @@ export function evidenceWords(raw: string): string {
   const protectedEffect = /^child (.*?) reached a protected effect: (\S*) \((.*)\)$/.exec(raw);
   if (protectedEffect) return `A child task${protectedEffect[1] ? ` (${protectedEffect[1]})` : ""} is waiting for approval to use ${protectedEffect[2]}`;
   const child = /^child ([a-z_]+): ([\s\S]*)$/.exec(raw);
-  if (child) return `A child task ${child[1] === "completed" ? "finished" : lower(child[1] ?? "")}: ${child[2]}`;
+  if (child) {
+    const status = child[1] === "completed" ? "finished" : lower(child[1] ?? "");
+    // The Core repeats the status where the child left no summary ("child cancelled: cancelled"): said once.
+    return (child[2] ?? "").trim().toLowerCase() === child[1] || !(child[2] ?? "").trim() ? `A child task ${status === "finished" ? status : `was ${status}`}` : `A child task ${status}: ${child[2]}`;
+  }
   const verification = /^(\S+) verification (\S+)$/.exec(raw);
   if (verification) return `${(verification[1] ?? "").charAt(0).toUpperCase()}${lower((verification[1] ?? "").slice(1))} checks ${lower(verification[2] ?? "")}`;
   const gate = /^acceptance gate (\S+)$/.exec(raw);

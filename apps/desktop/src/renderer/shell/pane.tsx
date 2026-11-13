@@ -49,7 +49,8 @@ export function PaneFrame({ kind, height, onMinimize, onClose, before, paneRef, 
         <IconButton label={`Minimize ${name}`} title="Minimize" icon={<Icon name="chevron-down" size={16} />} size="sm" data-testid={`pane-minimize-${kind}`} onClick={onMinimize} />
         <IconButton label={`Close ${name}`} title="Close" icon={<Icon name="x" size={16} />} size="sm" data-testid={`pane-close-${kind}`} onClick={onClose} />
       </header>
-      <div className="pane-body" data-testid={`pane-body-${kind}`}>
+      {/* The body scrolls, so it takes the keyboard (as the tab panel it replaces did). */}
+      <div className="pane-body" role="group" aria-label={`${name}: content`} tabIndex={0} data-testid={`pane-body-${kind}`}>
         <PaneHeadContext.Provider value={head}>{children}</PaneHeadContext.Provider>
       </div>
     </section>

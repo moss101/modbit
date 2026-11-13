@@ -90,6 +90,7 @@ test("PX-201 follow-up: the latest evidence line is said in a person's words, wi
   assert.equal(evidenceWords("child child-a reached a protected effect: git.push (External)"), "A child task (child-a) is waiting for approval to use git.push");
   assert.equal(evidenceWords("child completed: created src/a/a.txt"), "A child task finished: created src/a/a.txt");
   assert.equal(evidenceWords("child failed: no such file"), "A child task failed: no such file");
+  assert.equal(evidenceWords("child cancelled: cancelled"), "A child task was cancelled", "a status the Core repeats as the summary is said once");
   assert.equal(evidenceWords("targeted verification PASSED"), "Targeted checks passed");
   assert.equal(evidenceWords("acceptance gate ACCEPT"), "Final check before review: passed");
   assert.equal(evidenceWords("acceptance gate INCONCLUSIVE"), "Final check before review: could not decide");
