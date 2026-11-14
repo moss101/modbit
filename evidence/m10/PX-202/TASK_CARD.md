@@ -60,7 +60,7 @@ Proof, in `px-202-pane-dock.spec.ts`: with Changes, Terminal and Evidence open, 
 
 ## Verification
 
-Unit: `@modbit/desktop` 405 of 405; `pnpm typecheck` clean. Real app, real Core, scripted model: `e2e/px-202-pane-dock.spec.ts`, 2 of 2; the gate `e2e/support/dock-gate.ts` runs in that spec and in `awl.spec.ts`. Whole desktop suite, local, macOS arm64, two runs: run 1, 204 passed, 3 failed, 2 skipped, 2 did not run (two failures were axe on the pane body, caused by this change and fixed; `secrets.spec.ts:66` passed alone and in run 2 and is not explained); run 2 on the final build, 209 passed, 0 failed, 2 skipped. Results by test in `desktop-e2e-full-results.txt`. `shell.spec.ts:25` needs `target/debug/modbit-core`: `target/debug` was linked to the prebuilt binaries for these runs.
+Unit: `@modbit/desktop` 408 of 408; `pnpm typecheck` clean. Real app, real Core, scripted model: `e2e/px-202-pane-dock.spec.ts`, 2 of 2; the gate `e2e/support/dock-gate.ts` runs in that spec and in `awl.spec.ts`. Whole desktop suite, local, macOS arm64, four runs, the last on the final build after the title-bar change: 209 passed, 0 failed, 2 skipped. The failures of the earlier runs, and which were caused by this change, are in `desktop-e2e-full-results.txt`; `secrets.spec.ts:66`, `browser-observer.spec.ts:133` and `perf-budgets.spec.ts:293` each failed once, passed alone and in the last run, and are not explained. `shell.spec.ts:25` needs `target/debug/modbit-core`: `target/debug` was linked to the prebuilt binaries for these runs.
 
 - **Changes, Terminal and Evidence open together and tile**: the three panes are on screen at once in two columns; the gate holds in light and dark, Comfortable and Compact; axe on the shell.
 - **The set and the sizes persist per task across a reload**: the separators are moved by keyboard, the boxes recorded; another task has no pane and opening one there leaves the first task's set and boxes as they were; after `page.reload()` the boxes are equal to the pixel.
@@ -97,6 +97,8 @@ Deleted because the surface was removed on purpose (the tab strip and its tools)
 
 Changed because the behaviour changed on purpose:
 
+- `gallery.spec.ts` (PX-044/045): the gallery frame at 1280 with the panel was 493 beside 499 and is 560 beside 432; the dock at its widest left the centre 424 and leaves the conversation 560.
+- `apps-panel.spec.ts` (resize): the window it narrows to, 1100, now stacks the dock (a 560 conversation and 280 of dock do not fit in 812), so the view never refitted; it widens to 1440 instead (the dock goes from 432 to 562). The assertion, that the child reports a new size, is unchanged.
 - `shell.test.ts` AFW-A06 and AFW-A08: with the dock open at 1280 the centre was 424 and the panel 568; they are 560 and 432. "A ratio that would push the centre under 424" is "under 560". The side-by-side boundary was 288 + 424 + 384 and is 288 + 560 + 280. In their place as well: the dock narrows under 384 before the conversation does, the conversation is at least 560 for widths 1128 to 1920 at four ratios, and the centre's own minimum with no dock is still 424.
 - `px-200-task-view.spec.ts`: the bar held a toggle per pane (seven) and holds Changes; the Panes menu holds the seven, each closed; Files is opened from the menu, after which its toggle stands in the bar pressed; once closed it leaves the bar. "More comes after the toggles" is "after the toggles and the Panes menu".
 - `shell.spec.ts`: "Changes, Browser, Files and Evidence each say closed" is read from each toggle where it stands, else from its entry in the Panes menu (`paneStateShown`).
@@ -126,7 +128,8 @@ No assertion was weakened.
 - **Activity.** Oldest first with the time of day; the boards are newest first with "20s ago". The filters are the kinds that have entries, with counts; the boards draw five fixed ones and a Filter button. Entries are the Core's rows and event names in words, so "Turn finished" and "Task ready for review" appear; the boards' sentences are written by hand.
 - **Background tasks.** A child's row ends in its Core state, not "step 2 of 3"; no "Clear finished"; "n finished" opens in place.
 - **Pull request.** No title, no "into main · 5 files", no durations on checks, no Address, no Auto-fix switch, no Merge when ready, no Commit and push (that is the Changes pane's): none has a Core read or belongs to this row. The checks are the forge's runs by name with the run id and commit.
-- **Title bar.** With eight toggles and a wide dock the task's title is cut short.
+- **Title bar.** The bar holds Details, Changes, Terminal and the open or minimized panes, and the Panes menu (Lucide's grid icon); the boards have no menu.
+- **Widths.** Beside the dock the conversation keeps at least 560 and the dock has the rest up to the stored ratio. At 1440 the boards' `panes-on` grid gives the conversation 0.82 parts against the panes' 1.18 (about 472 against 680); the app gives the conversation more, as the owner asked.
 - Lucide has no icon here for a pull request or for activity in the generated set; Activity uses the clock, Background tasks the layers, Pull request the compare icon.
 
 ## Differences from the Decision Record
@@ -145,9 +148,10 @@ No assertion was weakened.
   - macOS, `checkpoints.spec.ts:46`: `ENOENT` reading `a.txt` inside the poll that waits for Undo all to delete it: the file was removed between the spec's existence check and its read. A race in the spec's helper, not in the product, and not caused by this change (Undo all's path is unchanged); the helper now counts a file removed in between as absent, so the poll still waits for the same final state.
   - cloud CI_COMPATIBLE: a Rust test timed out ("timed out waiting for worker b to hold the session" in `qual_m8_2_a_worker_claims_the_lease…`). This change has no Rust; the same job failed on another branch's run 43375533349 with a different timeout. Not caused by this change.
   - After the fixes, `awl.spec.ts`, `checkpoints.spec.ts` and `px-202-pane-dock.spec.ts` passed locally (8 of 8); the whole suite was not run again locally before the second push.
+- **CI run 2** (43576230709 on 37b7703d, before the title-bar change): every job passed but rust CI_COMPATIBLE on macOS (`apps/cli/tests/lifecycle.rs:347`, `fix_17_a_background_command_keeps_the_core_up_after_its_run_ended`: the command did not report finishing on the Core that started it; this change has no Rust), desktop E2E on Windows (`task-list.spec.ts:492`: a row archived with `e` was still listed after 15 s) and desktop E2E on macOS (`composer.spec.ts:670`: the conversation did not appear after a task was started). The two desktop specs passed on the other two systems in that run and in the local full run on the final build; this change does not touch the task list, archiving or starting a task. Not explained. Ubuntu desktop E2E and the cloud job passed.
 - The proof is local (macOS arm64); CI runs are recorded in `evidence.json`.
 - Dragging a separator with the pointer is unit-proven through the model and was not driven end to end; the keyboard path was.
 - The Browser pane in the grid, a pane head at exactly 280 px with every action, and a dock that scrolls were not driven end to end.
 - A request denied on the card, an approval that expires, and Update the request were not driven end to end from the pane (the outcome of an approval is unit-proven).
 - In the stacked view (a narrow window showing the panes) the approval card is in the conversation, so the pane sends the person there.
-- The owner has not yet seen these screenshots beside the boards, which the record makes an exit criterion. The row is not COMPLETE and no graph status was set.
+- The owner saw the first screenshots and asked for the title bar to be fixed first; the screenshots in `after/` are retaken on the final build and have not been seen yet. The row is not COMPLETE and no graph status was set.
