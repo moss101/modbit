@@ -232,8 +232,9 @@ test("resize: the viewer's size reaches the PTY and the child prints it", async 
   };
   const first = await reported();
   await expect(screen()).toContainText(first.want, { timeout: 30_000 });
-  // A narrower window changes the panel, the view refits, and the child reports the new size.
-  await setContentSize(app, page, 1100, 800); // beside the conversation the panel is 416 px here, against 596 px at 1280
+  // Another window width changes the panel, the view refits, and the child reports the new size. (REQ-PX-202: beside a 560
+  // conversation the dock is 432 px at 1280 and 562 px at 1440; at 1100 it no longer fits beside the conversation and stacks.)
+  await setContentSize(app, page, 1440, 800);
   await expect.poll(async () => (await reported()).cols, { timeout: 30_000 }).not.toBe(first.cols);
   const second = await reported();
   await expect(screen()).toContainText(second.want, { timeout: 30_000 });

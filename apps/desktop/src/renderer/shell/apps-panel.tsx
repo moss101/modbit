@@ -188,6 +188,7 @@ function DockBar({ title, panes, onPane }: { title: string; panes: readonly Pane
       <span className="dock-bar-task" title={title} data-testid="dock-bar-task">
         {title}
       </span>
+      <span className="topbar-spacer" />
       <PaneToggles panes={panes} onPane={onPane} fit={fit} size="sm" />
     </div>
   );

@@ -37,6 +37,17 @@
 - **More over a docked approval card (open after PX-201).** More ends 8 px above a card it would run behind (never under 120 px) and scrolls inside; the card stays on top, so its answers can always be clicked.
 - No preload, protocol, main-process, CSP or Rust change.
 
+## The title bar and the conversation's width (the owner's review of the screenshots, 2026-11-13: "Fix title bar first")
+
+What was wrong in the first screenshots: with panes open the conversation went down to the centre's minimum (424), and nine toggles stood in the title bar, so the task's title was cut to "Ti…".
+
+- **The conversation keeps 560 px while the dock is open** (`DOCK_LAYOUT.conversationMin` in `shell/layout.ts`). Derived from the measured numbers: two pane minimums (section 5.1, a pane is never under 280), which is also what the title bar needs at the title's 200 px floor beside Details, Changes, Terminal, Panes and More (5 controls of 28, the gaps and the bar's padding: about 250, plus 200, under 560). The dock gives first: it drops to one column (two need 561 of dock), then narrows from its preferred 384 down to one pane's 280; where even 280 beside 560 does not fit (a task area under 840) it stacks behind Conversation | Apps, as it did before under 808. At 1280 the dock is 432 and one column; at 1440 it goes up to 592 and two columns. The record's centre minimum (424, `GEOMETRY.centerMin`) is unchanged and still bounds the centre with no dock open; the token file is not touched.
+- **The title has priority.** The bar measures itself: the title's whole text (at least 200), Details, the Panes menu and More are placed first; pane toggles stand in what is left (`shell/title-fit.ts`, `useToggleFit` in `shell/top-bar.tsx`). A toggle moves into the Panes menu before the title is cut; the title is cut only when no toggle is left to move. Found on the way: the title button's −8 px margin made every title 8 px narrower than its text, so it was always cut by a few letters; the margin is now on its container.
+- **Few toggles.** The bar holds Details, Changes and Terminal (as on the boards A4 and C1), and the toggle of each pane that is open or minimized. When not all fit, the open and minimized ones stay and Changes and Terminal move first.
+- **The Panes menu** (`panes-menu`, Lucide's grid icon) lists every pane the task can show, each a checkable item that says whether its pane is open (checked), minimized ("(minimized)") or closed, and does what the pane's toggle does. It is a menu button: Enter, Space or ArrowDown opens it, arrows and type-ahead move, Enter selects, Escape closes and returns focus. The dock's own bar (shown where the centre is not the dock's task) uses the same toggles and menu.
+
+Proof, in `px-202-pane-dock.spec.ts`: with Changes, Terminal and Evidence open, at the window the app opens with (the runner's on CI), at 1280 by 800 and at 1440 by 900: the title is not cut while a toggle stands in the bar and is at least 200 wide (or its whole text); the conversation is 560 or wider beside the dock; no control runs past the bar; the Panes menu lists the eight panes, each visible, each saying its pane's state; with the dock at its widest the conversation is exactly 560; at 1280 the dock is one column and passes the dock's gate. Files, Activity and Pull request are each opened from the Panes menu by keyboard and closed again. Retained mutations, each asserted to fail: every pane's toggle back in the bar; a title cut while toggles stand; a conversation under 560 (the dock forced to 700); a pane the menu cannot show. `title-fit.test.ts` and `shell.test.ts` hold the same rules as numbers.
+
 ## Left out, and why
 
 - **Pop out**: PX-203. No control is drawn for it.
@@ -85,6 +96,12 @@ Deleted because the surface was removed on purpose (the tab strip and its tools)
 - `measured-css.test.ts`: `.apps-panel .mb-tablist` reads its height from the token. In its place: `.pane-head` does, `.pane` is on the editor surface with a 100 px minimum, and two mutations.
 
 Changed because the behaviour changed on purpose:
+
+- `shell.test.ts` AFW-A06 and AFW-A08: with the dock open at 1280 the centre was 424 and the panel 568; they are 560 and 432. "A ratio that would push the centre under 424" is "under 560". The side-by-side boundary was 288 + 424 + 384 and is 288 + 560 + 280. In their place as well: the dock narrows under 384 before the conversation does, the conversation is at least 560 for widths 1128 to 1920 at four ratios, and the centre's own minimum with no dock is still 424.
+- `px-200-task-view.spec.ts`: the bar held a toggle per pane (seven) and holds Changes; the Panes menu holds the seven, each closed; Files is opened from the menu, after which its toggle stands in the bar pressed; once closed it leaves the bar. "More comes after the toggles" is "after the toggles and the Panes menu".
+- `shell.spec.ts`: "Changes, Browser, Files and Evidence each say closed" is read from each toggle where it stands, else from its entry in the Panes menu (`paneStateShown`).
+- `apps-browser.spec.ts`, `awl.spec.ts`: the Browser and Files panes are opened with `showPane`, which uses the toggle where it stands and the Panes menu otherwise; the assertions after it are unchanged.
+- `e2e/support/new-task.ts`: `showPane` and `openPane` act through the toggle or the Panes menu and check the pane says open either way.
 
 - `awl.spec.ts` `workspaceDrift`: "the commit bar is at the foot of the panel" is "at the foot of the Changes pane" (the panel itself where Changes is its only pane). Same fact; the pane is now the container.
 - `checkpoints.spec.ts`: the hashing helper counts a file deleted between its existence check and its read as absent (a race seen on CI run 1, macOS). The assertions are unchanged.
