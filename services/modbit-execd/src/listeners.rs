@@ -182,6 +182,25 @@ pub fn parse_netstat(text: &str) -> Vec<Listener> {
         .collect()
 }
 
+/// Like [`parse_netstat`], but fail closed when the output carries TCP rows
+/// in a state vocabulary the parser does not recognize — a localized Windows
+/// writes German `ABHÖREN` or French `ÉCOUTE` where English writes
+/// `LISTENING`, and an unknown state must never read as "no listeners"
+/// (WIN-04, PX-132).
+pub fn parse_netstat_fail_closed(text: &str) -> Result<Vec<Listener>, String> {
+    let out = parse_netstat(text);
+    if out.is_empty()
+        && text.lines().any(|l| {
+            l.split_whitespace()
+                .next()
+                .is_some_and(|f| f.eq_ignore_ascii_case("TCP"))
+        })
+    {
+        return Err("netstat reported TCP rows but none in a listening state this parser recognizes (localized output?)".into());
+    }
+    Ok(out)
+}
+
 /// `/proc/net/tcp` or `/proc/net/tcp6` (Linux): the listening sockets as
 /// `(inode, port, address)`. State `0A` is LISTEN.
 #[must_use]
@@ -368,7 +387,7 @@ mod imp {
 
 #[cfg(windows)]
 mod imp {
-    use super::{Listener, Proc, parse_netstat};
+    use super::{Listener, Proc, parse_netstat_fail_closed};
     use std::collections::HashSet;
     use std::process::{Command, Stdio};
 
@@ -403,10 +422,12 @@ mod imp {
             .map_err(|e| format!("netstat: {e}"))?;
         // netstat lists the machine's sockets; only those held by the
         // session's own processes are kept.
-        Ok(parse_netstat(&String::from_utf8_lossy(&out.stdout))
-            .into_iter()
-            .filter(|l| pids.contains(&l.pid))
-            .collect())
+        parse_netstat_fail_closed(&String::from_utf8_lossy(&out.stdout)).map(|listeners| {
+            listeners
+                .into_iter()
+                .filter(|l| pids.contains(&l.pid))
+                .collect()
+        })
     }
 }
 
@@ -495,6 +516,35 @@ mod tests {
     }
 
     #[test]
+    fn win04_a_localized_netstat_fails_closed_instead_of_reporting_no_listeners() {
+        use super::parse_netstat_fail_closed;
+        // English rows parse; a header-only output is genuinely empty; a
+        // localized state (German, French) is a typed error, never an
+        // empty list that would read as "no listeners".
+        let english = "  Proto  Local          Foreign        State       PID
+TCP    0.0.0.0:3000    0.0.0.0:0      LISTENING   1234
+";
+        assert_eq!(parse_netstat_fail_closed(english).unwrap()[0].port, 3000);
+        assert!(
+            parse_netstat_fail_closed(
+                "Active Connections
+
+"
+            )
+            .unwrap()
+            .is_empty()
+        );
+        let german = "  Proto  Lokale Adresse         Remoteadresse          Status
+TCP    0.0.0.0:3000    0.0.0.0:0      ABHÖREN  1234
+";
+        let err = parse_netstat_fail_closed(german).unwrap_err();
+        assert!(err.contains("localized"), "{err}");
+        let french = "  Proto  Adresse locale      Adresse distante    État
+TCP    0.0.0.0:3000    0.0.0.0:0      ÉCOUTE      1234
+";
+        assert!(parse_netstat_fail_closed(french).is_err());
+    }
+
     fn netstat_and_proc_net_parse() {
         let n = "  TCP    0.0.0.0:3000     0.0.0.0:0      LISTENING       1234\n  TCP    [::1]:3001       [::]:0         LISTENING       1234\n  TCP    10.0.0.2:50000   10.0.0.9:443   ESTABLISHED     9\n";
         let l = parse_netstat(n);

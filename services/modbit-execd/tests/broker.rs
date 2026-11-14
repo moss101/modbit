@@ -1306,3 +1306,245 @@ async fn px_099_windowed_replay_of_tiny_records_is_in_full_chunks_with_the_same_
         "full-size chunks (the unwindowed replay was {plain_frames} frames)"
     );
 }
+
+// ---- WIN-04: the tree a command started ends with the session ----------
+
+fn pid_alive(pid: u32) -> bool {
+    #[cfg(windows)]
+    {
+        std::process::Command::new("tasklist")
+            .args(["/FI", &format!("PID eq {pid}"), "/NH"])
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::null())
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).contains(&pid.to_string()))
+            .unwrap_or(false)
+    }
+    #[cfg(unix)]
+    {
+        std::process::Command::new("kill")
+            .args(["-0", &pid.to_string()])
+            .status()
+            .map(|st| st.success())
+            .unwrap_or(false)
+    }
+}
+
+/// The grandchild pid the parent reported, wherever the terminal's own
+/// escape sequences left it on the line.
+fn grandchild_pid(text: &str) -> Option<u32> {
+    text.split("grandchild ")
+        .nth(1)?
+        .trim_start()
+        .split(|c: char| !c.is_ascii_digit())
+        .next()
+        .and_then(|d| d.parse().ok())
+}
+
+fn win04_request(role: &str, marker: &Path, pty: bool) -> ExecRequest {
+    let (argv, mut env) = self_role(role, &[]);
+    env.insert(
+        "MODBIT_EXECD_TEST_PID_FILE".to_owned(),
+        marker.display().to_string(),
+    );
+    ExecRequest {
+        request_id: "win04".into(),
+        argv,
+        cwd: String::new(),
+        env,
+        inherit_env: false,
+        timeout_ms: 0,
+        pty,
+        stdin_mode: "closed".into(),
+        output_budget_bytes: 64 * 1024,
+        execution_profile: "local_trusted".into(),
+        capability_lease_id: None,
+        terminal_session_id: None,
+        owner: String::new(),
+        pty_rows: 0,
+        pty_cols: 0,
+    }
+}
+
+/// WIN-04 (Windows): a command that starts a DETACHED grandchild and then
+/// exits cleanly must not leave the grandchild behind. The session's job
+/// object ends it — an explicit terminate when the session finishes, and
+/// `KILL_ON_JOB_CLOSE` if nothing clean ever runs. Before job confinement
+/// the grandchild outlived its session by minutes.
+#[cfg(windows)]
+#[tokio::test]
+async fn win04_a_detached_grandchild_dies_with_the_session_even_after_a_clean_exit() {
+    let dir = tempfile::tempdir().unwrap();
+    let execd = Execd::spawn(dir.path());
+    let mut c = execd.client().await;
+    let marker = dir.path().join("grandchild.pid");
+    c.exec(win04_request("spawns-grandchild-and-exits", &marker, false))
+        .await
+        .unwrap();
+    let (_, out, _, exited) = run_to_exit(&mut c).await;
+    assert_eq!(exited.exit_code, Some(0), "{exited:?}");
+    let pid: u32 =
+        grandchild_pid(&String::from_utf8_lossy(&out)).expect("the parent reported its grandchild");
+    let deadline = Instant::now() + Duration::from_secs(20);
+    while pid_alive(pid) && Instant::now() < deadline {
+        tokio::time::sleep(Duration::from_millis(250)).await;
+    }
+    assert!(
+        !pid_alive(pid),
+        "grandchild {pid} survived its session's clean exit"
+    );
+}
+
+/// WIN-04: cancelling a PTY session ends the whole tree it started. The
+/// ConPTY/PTY child spawns a detached grandchild and keeps running; the
+/// cancel must end both — on Windows through the session's job object, on
+/// Unix through the process group the child was made leader of.
+#[tokio::test]
+async fn win04_cancelling_a_pty_session_leaves_no_survivor_grandchild() {
+    let dir = tempfile::tempdir().unwrap();
+    let execd = Execd::spawn(dir.path());
+    let mut c = execd.client().await;
+    let marker = dir.path().join("grandchild.pid");
+    c.exec(win04_request("spawns-grandchild-and-runs", &marker, true))
+        .await
+        .unwrap();
+    let Event::Started(s) = c.next().await.unwrap().unwrap() else {
+        panic!()
+    };
+    // Wait until the parent reports the grandchild on its own stdout.
+    let (mut out, mut pid) = (Vec::new(), 0u32);
+    let deadline = Instant::now() + Duration::from_secs(30);
+    while pid == 0 && Instant::now() < deadline {
+        match tokio::time::timeout(Duration::from_secs(5), c.next()).await {
+            Ok(Ok(Some(Event::Output(o)))) => {
+                out.extend(o.data.iter().copied());
+                let text = String::from_utf8_lossy(&out);
+                // Inside a real terminal the line arrives prefixed by console
+                // init sequences (OSC title, cursor-visibility, DSR), so the
+                // report is found as a substring, not at a line start.
+                if let Some(p) = grandchild_pid(&text) {
+                    pid = p;
+                }
+            }
+            Ok(Ok(Some(Event::Exited(e)))) => panic!(
+                "the PTY session exited before reporting a grandchild: {e:?}; output {:?}",
+                String::from_utf8_lossy(&out)
+            ),
+            Ok(Ok(Some(_))) | Ok(Ok(None)) => {}
+            Ok(Err(e)) => panic!("broker stream error: {e}"),
+            Err(_) => panic!(
+                "no grandchild report; output {:?}",
+                String::from_utf8_lossy(&out)
+            ),
+        }
+    }
+    assert_ne!(
+        pid,
+        0,
+        "the PTY parent never reported its grandchild; output {:?}",
+        String::from_utf8_lossy(&out)
+    );
+    c.cancel(&s.session_id).await.unwrap();
+    let exited = loop {
+        if let Event::Exited(e) = c.next().await.unwrap().unwrap() {
+            break e;
+        }
+    };
+    assert!(exited.cancelled, "{exited:?}");
+    let deadline = Instant::now() + Duration::from_secs(20);
+    while pid_alive(pid) && Instant::now() < deadline {
+        tokio::time::sleep(Duration::from_millis(250)).await;
+    }
+    assert!(!pid_alive(pid), "grandchild {pid} survived the PTY cancel");
+}
+
+/// WIN-04 (Windows ConPTY): the broker answers a child's cursor-position
+/// query (DSR `ESC[6n`) itself, with `ESC[1;1R` — Windows-only code in the
+/// broker that nothing exercised before. The child's verdict comes back
+/// through the real terminal; a silent terminal is named, never a hang.
+#[cfg(windows)]
+#[tokio::test]
+async fn win04_the_broker_answers_a_cursor_position_query_for_a_conpty_child() {
+    let dir = tempfile::tempdir().unwrap();
+    let execd = Execd::spawn(dir.path());
+    let mut c = execd.client().await;
+    let mut r = req("dsr", "dsr-probe", &[]);
+    r.pty = true;
+    c.exec(r).await.unwrap();
+    let (_, out, _, exited) = run_to_exit(&mut c).await;
+    assert_eq!(exited.exit_code, Some(0), "{exited:?}");
+    let text = String::from_utf8_lossy(&out);
+    assert!(
+        text.contains("DSR:REPLY-1;1R"),
+        "the terminal's answer was not the broker's ESC[1;1R: {text:?}"
+    );
+}
+
+/// WIN-04 (Windows): the broker's named pipe carries an explicit owner-only
+/// descriptor. Queried from the live object, the DACL grants read+write to
+/// the owner, SYSTEM and Administrators — and to no world, anonymous or
+/// authenticated-users group. A second local account's behavioral denial
+/// needs one (owner decision); the descriptor itself is asserted here.
+#[cfg(windows)]
+#[tokio::test]
+async fn win04_the_brokers_pipe_descriptor_is_owner_only() {
+    let dir = tempfile::tempdir().unwrap();
+    let execd = Execd::spawn(dir.path());
+
+    #[allow(unsafe_code)]
+    fn sddl_of(name: &str) -> String {
+        // SAFETY exception (as for the broker's job/SDDL code): queries on a
+        // handle/string this test owns; every returned allocation is freed.
+        unsafe {
+            use windows_sys::Win32::Foundation::LocalFree;
+            use windows_sys::Win32::Security::Authorization::{
+                ConvertSecurityDescriptorToStringSecurityDescriptorW, GetNamedSecurityInfoW,
+            };
+            use windows_sys::Win32::Security::DACL_SECURITY_INFORMATION;
+            const SE_FILE_OBJECT: i32 = 1; // SE_OBJECT_TYPE for named pipes
+            let wide: Vec<u16> = name.encode_utf16().chain(std::iter::once(0)).collect();
+            let mut sd: *mut core::ffi::c_void = std::ptr::null_mut();
+            let rc = GetNamedSecurityInfoW(
+                wide.as_ptr(),
+                SE_FILE_OBJECT,
+                DACL_SECURITY_INFORMATION,
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                &mut sd,
+            );
+            assert_eq!(rc, 0, "GetNamedSecurityInfoW: {rc}");
+            let mut text = std::ptr::null_mut();
+            let ok = ConvertSecurityDescriptorToStringSecurityDescriptorW(
+                sd,
+                1,
+                DACL_SECURITY_INFORMATION,
+                &mut text,
+                std::ptr::null_mut(),
+            );
+            assert_eq!(ok, 1, "descriptor to string failed");
+            let mut out = String::new();
+            let mut p = text;
+            while *p != 0 {
+                out.push(*p as u8 as char);
+                p = p.add(1);
+            }
+            LocalFree(text as _);
+            LocalFree(sd as _);
+            out
+        }
+    }
+
+    let sddl = sddl_of(&execd.ready.endpoint.0);
+    assert!(
+        sddl.contains("OW") || sddl.contains("BA") || sddl.contains("SY"),
+        "the pipe has the owner/SYSTEM/Admin grants: {sddl}"
+    );
+    for wide_open in ["WD", "AN", "AU"] {
+        assert!(
+            !sddl.contains(&format!(";;;{wide_open}")),
+            "the pipe grants access to {wide_open}: {sddl}"
+        );
+    }
+}
