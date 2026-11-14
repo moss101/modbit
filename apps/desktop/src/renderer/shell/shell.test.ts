@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { CommandRegistry } from "@modbit/ui/logic";
-import { computeLayout, clampListWidth, ratioForPanel } from "./layout.ts";
+import { computeLayout, clampListWidth, ratioForPanel, DETAILS_RAIL } from "./layout.ts";
 import { DEFAULT_UI_PREFS, parseUiPrefs, serializeUiPrefs, clampZoom, UI_PREFS_KEY } from "./prefs.ts";
 import { artifactsOf, panelTaskFor, panesOf } from "./artifacts.ts";
 import { REQUIRED_CHORDS, buildShellRegistry, shellCommandDefs, shellRegistry, type ShellActions } from "./commands.ts";
@@ -102,7 +102,7 @@ test("persisted UI preferences round-trip, and hostile or corrupt storage falls 
 
 test("a layout preference is renderer-local: it never carries task state", () => {
   const keys = Object.keys(JSON.parse(serializeUiPrefs(DEFAULT_UI_PREFS)));
-  assert.deepEqual(keys.sort(), ["density", "listCollapsed", "listWidth", "panelByTask", "panelRatio", "theme", "zoom"]);
+  assert.deepEqual(keys.sort(), ["density", "detailsOpen", "listCollapsed", "listWidth", "panelByTask", "panelRatio", "theme", "zoom"]);
 });
 
 test("MWS-03: density is one layout preference with a default, separate from zoom, and a profile stored before it reads as Comfortable", () => {
@@ -185,4 +185,38 @@ test("PX-200 (MWS-05): a task has a toggle for each pane it can show, in tab ord
   assert.deepEqual(panesOf(artifactsOf({ taskId: "a", state: "Running" }, { browsingTaskId: null })), ["changes", "browser", "files", "evidence"], "the Browser pane is where a session is opened from");
   assert.deepEqual(panesOf(artifactsOf({ taskId: "a", state: "Running" }, { browsingTaskId: "a", terminalTaskIds: new Set(["a"]) })), ["changes", "terminal", "browser", "files", "evidence"]);
   assert.deepEqual(panesOf(["terminal"]), ["terminal"], "a terminal alone does not make a workspace");
+});
+
+test("MWS-09 (PX-201): the details rail is 320 inside the task area, never under 280, absent at a task area of 800 or narrower, and gives way to the apps panel", () => {
+  assert.deepEqual(DETAILS_RAIL, { width: 320, min: 280, hiddenAtOrBelow: 800 });
+  const wide = computeLayout({ ...base, width: 1280, detailsOpen: true });
+  assert.equal(wide.detailsPx, 320);
+  assert.equal(wide.centerPx, 992, "the rail is inside the centre: the task area keeps its width");
+  assert.ok(wide.centerPx - wide.detailsPx >= 424, "the conversation beside the rail keeps the centre's minimum");
+  assert.equal(computeLayout({ ...base, width: 288 + 801, detailsOpen: true }).detailsPx, 320, "801 is wider than 800");
+  const edge = computeLayout({ ...base, width: 288 + 800, detailsOpen: true });
+  assert.equal(edge.detailsPx, 0, "exactly 800 has no rail");
+  assert.equal(edge.detailsFits, false);
+  assert.equal(computeLayout({ ...base, width: 900, detailsOpen: true }).detailsPx, 0, "the window's minimum size has no rail");
+  // The person's choice, and a centre that is not a task's conversation, leave it out; whether it would fit is still told.
+  const off = computeLayout({ ...base, width: 1280, detailsOpen: false });
+  assert.equal(off.detailsPx, 0);
+  assert.equal(off.detailsFits, true);
+  assert.equal(computeLayout({ ...base, width: 1280 }).detailsPx, 0);
+  // It gives way while the apps panel is open, beside the conversation or stacked.
+  const beside = computeLayout({ ...base, width: 1440, panelOpen: true, detailsOpen: true });
+  assert.ok(beside.panelPx > 0);
+  assert.equal(beside.detailsPx, 0);
+  assert.equal(beside.detailsFits, true);
+  assert.equal(computeLayout({ ...base, width: 288 + 805, panelOpen: true, detailsOpen: true }).detailsPx, 0, "stacked");
+  // With the list on its rail the task area is wider.
+  assert.equal(computeLayout({ ...base, width: 900, listCollapsed: true, detailsOpen: true }).detailsPx, 320);
+});
+
+test("MWS-09 (PX-201): the rail's choice is stored with the layout preferences; a profile from before it reads as shown", () => {
+  assert.equal(DEFAULT_UI_PREFS.detailsOpen, true);
+  assert.equal(parseUiPrefs(JSON.stringify({ listWidth: 300 })).detailsOpen, true);
+  assert.equal(parseUiPrefs(JSON.stringify({ detailsOpen: false })).detailsOpen, false);
+  assert.equal(parseUiPrefs(JSON.stringify({ detailsOpen: "no" })).detailsOpen, true, "a hostile value falls back to the default");
+  assert.equal(parseUiPrefs(serializeUiPrefs({ ...DEFAULT_UI_PREFS, detailsOpen: false })).detailsOpen, false);
 });

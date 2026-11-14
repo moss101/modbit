@@ -210,14 +210,15 @@ test("PX-054: Shift+Tab walks the modes with the right chip and placeholder, the
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-cmp-modes-"));
   const { app, page } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: model.url } });
   try {
-    await setContentSize(app, page, 1280, 800);
+    // 1440 wide: the conversation beside its 320 px details rail (MWS-09) then has room for the whole 768 column; at 1280 it is 672 wide.
+    await setContentSize(app, page, 1440, 800);
     const taskId = await createTask(page, "Change the notes", repo);
     await openConversation(page, taskId);
     const input = page.getByTestId("composer-input");
     const corePosture = () => page.evaluate((t) => window.modbit.composerPosture(t).then((p) => p.mode), taskId);
     await expect(page.getByTestId("mode-label")).toHaveText("Agent");
     await expect(page.getByTestId("mode-clear")).toHaveCount(0);
-    // DR-PX-2026-11-11-021 MWS-01 and MWS-07 at 1280 x 800: the in-conversation composer is one line (it was two rows, about 96 px): a 28 px line in 8 px of padding and a 1 px edge, 46 px high (within 8 percent). It is never wider than the 768 px column, and at this width it fills it.
+    // DR-PX-2026-11-11-021 MWS-01 and MWS-07 at 1440 x 800: the in-conversation composer is one line (it was two rows, about 96 px): a 28 px line in 8 px of padding and a 1 px edge, 46 px high (within 8 percent). It is never wider than the 768 px column, and at this width it fills it.
     const geometry = await box(page, "composer");
     expect(geometry.width).toBeLessThanOrEqual(768.5);
     expect(geometry.width).toBeGreaterThan(688);

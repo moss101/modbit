@@ -13,7 +13,7 @@ import { join } from "node:path";
 import { accessible, closeApp, launch, makeRepo, MOD, setContentSize } from "./support/ui-harness.ts";
 import { streamingModel } from "./support/stream-model.ts";
 import { Gate } from "./support/stream-model.ts";
-import { openTaskDetails } from "./support/new-task.ts";
+import { openTaskMore } from "./support/new-task.ts";
 import { openConversation, routedModel, sessionOf, sha256File, startAndOpen, type ModelPart } from "./support/conversation-harness.ts";
 
 const NAMES = ["a.txt", "b.txt", "c.txt", "notes.txt"] as const;
@@ -96,7 +96,7 @@ test("PX-062: Restore puts the bytes of a turn's checkpoint back (Cancel changes
     expect(snap(repo), "redo restores the pre-restore state exactly").toEqual(end);
 
     // Undo all needs a second click: the first one arms it and says what it will do; nothing changes until the second.
-    const details = await openTaskDetails(page);
+    const details = await openTaskMore(page);
     const undo = details.getByTestId("undo-all");
     await expect(undo).toHaveAttribute("data-armed", "false");
     await undo.click();

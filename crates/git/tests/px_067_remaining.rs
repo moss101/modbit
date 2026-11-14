@@ -17,12 +17,30 @@ fn write(p: &Path, s: &str) {
     std::fs::write(p, s).unwrap();
 }
 
+/// An empty file git reads as the user's global config, so the machine's own
+/// configuration cannot change what these tests prove — on Windows the system
+/// config ships `credential.helper=manager`, and Git Credential Manager
+/// answers the 401 itself (headless, it blocks for minutes) before the
+/// repository's own helper is ever asked (PX-030).
+fn empty_global() -> std::path::PathBuf {
+    static ONCE: std::sync::OnceLock<std::path::PathBuf> = std::sync::OnceLock::new();
+    ONCE.get_or_init(|| {
+        let p =
+            std::env::temp_dir().join(format!("modbit-px067-empty-global-{}", std::process::id()));
+        let _ = std::fs::write(&p, "");
+        p
+    })
+    .clone()
+}
+
 fn plain(dir: &Path, args: &[&str]) -> std::process::Output {
     Command::new("git")
         .arg("-C")
         .arg(dir)
         .args(args)
         .env("GIT_TERMINAL_PROMPT", "0")
+        .env("GIT_CONFIG_NOSYSTEM", "1")
+        .env("GIT_CONFIG_GLOBAL", empty_global())
         .env("GIT_AUTHOR_NAME", "t")
         .env("GIT_AUTHOR_EMAIL", "t@e")
         .env("GIT_COMMITTER_NAME", "t")
@@ -48,11 +66,23 @@ fn seed() -> (tempfile::TempDir, Repo) {
     (dir, repo)
 }
 
-#[cfg(unix)]
 fn script(path: &Path, body: &str) {
-    use std::os::unix::fs::PermissionsExt;
     std::fs::write(path, format!("#!/bin/sh\n{body}\n")).unwrap();
-    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
+}
+
+/// A path spelled for a shell snippet or a shell-evaluated git config value:
+/// forward slashes everywhere (Git for Windows runs these through its bundled
+/// sh, which treats backslashes as escapes). PX-030.
+fn posix(p: &Path) -> String {
+    #[cfg(unix)]
+    return p.display().to_string();
+    #[cfg(windows)]
+    return p.display().to_string().replace('\\', "/");
 }
 
 fn ran(trap: &Path) -> Vec<String> {
@@ -99,14 +129,13 @@ fn an_embedded_bare_repository_is_never_entered() {
 /// A repository-local `core.sshCommand` is the first thing git runs for an
 /// ssh remote. Plain git runs it; the runner blanks it, so the command fails
 /// closed and the sentinel never appears.
-#[cfg(unix)]
 #[test]
 fn a_repository_ssh_command_never_runs() {
     let (d, repo) = seed();
     let trap = d.path().join("trap");
     std::fs::create_dir_all(&trap).unwrap();
     let ssh = d.path().join("evil-ssh.sh");
-    script(&ssh, &format!("touch '{}/RAN_ssh'\nexit 1", trap.display()));
+    script(&ssh, &format!("touch '{}/RAN_ssh'\nexit 1", posix(&trap)));
     plain_ok(
         repo.dir(),
         &[
@@ -116,10 +145,7 @@ fn a_repository_ssh_command_never_runs() {
             "ssh://git@invalid.example/o/r.git",
         ],
     );
-    plain_ok(
-        repo.dir(),
-        &["config", "core.sshCommand", &ssh.display().to_string()],
-    );
+    plain_ok(repo.dir(), &["config", "core.sshCommand", &posix(&ssh)]);
     // Control.
     let _ = plain(repo.dir(), &["ls-remote", "origin"]);
     assert_eq!(
@@ -147,7 +173,6 @@ fn a_repository_ssh_command_never_runs() {
 /// A repository-local `credential.helper` runs when the server asks for
 /// credentials. A tiny HTTP server asks (401); plain git calls the helper,
 /// the runner does not.
-#[cfg(unix)]
 #[test]
 fn a_repository_credential_helper_never_runs() {
     use std::io::{Read, Write};
@@ -159,7 +184,7 @@ fn a_repository_credential_helper_never_runs() {
         &helper,
         &format!(
             "touch '{}/RAN_credential_helper'\ncat >/dev/null\nexit 1",
-            trap.display()
+            posix(&trap)
         ),
     );
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
@@ -182,7 +207,7 @@ fn a_repository_credential_helper_never_runs() {
         &[
             "config",
             "credential.helper",
-            &format!("!{}", helper.display()),
+            &format!("!{}", posix(&helper)),
         ],
     );
     // A URL-scoped helper too.
@@ -191,7 +216,7 @@ fn a_repository_credential_helper_never_runs() {
         &[
             "config",
             &format!("credential.http://127.0.0.1:{port}.helper"),
-            &format!("!{}", helper.display()),
+            &format!("!{}", posix(&helper)),
         ],
     );
     let _ = plain(repo.dir(), &["ls-remote", "origin"]);
@@ -221,13 +246,12 @@ fn a_repository_credential_helper_never_runs() {
 /// A filter defined in a file the repository's config `include`s, selected by
 /// a committed `.gitattributes` or by `core.attributesFile`: still the
 /// repository's, still blanked.
-#[cfg(unix)]
 #[test]
 fn filters_reached_through_includes_and_attributes_files_never_run() {
     let (d, repo) = seed();
     let trap = d.path().join("trap");
     std::fs::create_dir_all(&trap).unwrap();
-    let t = trap.display();
+    let t = posix(&trap);
     // The filter lives in an included file; the attribute selecting it in a
     // committed .gitattributes and, separately, in an attributes file the
     // repository's config names.
@@ -286,7 +310,6 @@ fn filters_reached_through_includes_and_attributes_files_never_run() {
 /// What was neutralised is reported, so the Core can record it; a clean
 /// repository reports nothing, and the user's own global configuration is not
 /// reported or blanked.
-#[cfg(unix)]
 #[test]
 fn neutralized_reports_exactly_what_the_repository_asked_to_run() {
     let (d, repo) = seed();

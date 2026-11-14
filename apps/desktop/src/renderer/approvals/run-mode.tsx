@@ -258,8 +258,15 @@ export function RunModePanel({ open, onClose, info, rules, onSetMode, onAddRule,
   );
 }
 
-/** The conversation's run-mode control: a button that names the mode in force and opens the panel. */
-export function RunModeControl({ sessionId, taskId, connected, open, onOpenChange }: { sessionId: string | null; taskId: string; connected: boolean; open: boolean; onOpenChange: (open: boolean) => void }) {
+/** The task's run mode and saved rules as the Core answers them, re-read when either changes. The control under the composer and the details rail show the same read. */
+export interface RunModeState {
+  info: RunModeInfo | null;
+  rules: AllowRuleInfo[];
+  refresh: () => Promise<void>;
+  setInfo: (info: RunModeInfo) => void;
+}
+
+export function useRunMode(taskId: string, connected: boolean, open: boolean): RunModeState {
   const [info, setInfo] = useState<RunModeInfo | null>(null);
   const [rules, setRules] = useState<AllowRuleInfo[]>([]);
   const refresh = useCallback(async () => {
@@ -281,6 +288,12 @@ export function RunModeControl({ sessionId, taskId, connected, open, onOpenChang
     });
     return off;
   }, [taskId, refresh]);
+  return { info, rules, refresh, setInfo };
+}
+
+/** The conversation's run-mode control: a button that names the mode in force and opens the panel. */
+export function RunModeControl({ sessionId, taskId, state, open, onOpenChange }: { sessionId: string | null; taskId: string; state: RunModeState; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const { info, rules, refresh, setInfo } = state;
   const label = info ? modeLabel(info.mode) : "…";
   return (
     <>
