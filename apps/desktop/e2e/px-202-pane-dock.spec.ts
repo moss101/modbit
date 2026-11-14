@@ -247,8 +247,16 @@ test("PX-202: panes open together and tile; the set and the sizes are the task's
     const three = { changes: "open", terminal: "open", evidence: "open" } as const;
     for (const size of [launched, { width: 1280, height: 800 }, { width: 1440, height: 900 }]) {
       await setContentSize(app, page, size.width, size.height);
-      await expect(page.getByTestId("apps-panel")).toHaveAttribute("data-panes", "changes terminal evidence");
       const stacked = (await page.getByTestId("shell").getAttribute("data-stacked")) === "true";
+      if (stacked) {
+        // Too narrow for 280 of dock beside a 560 conversation (the CI runners' first window is): the conversation keeps the whole
+        // task area and the panes are one segment away, still the three, still tiled.
+        expect(Number(await page.getByTestId("shell").getAttribute("data-center-px")), "it stacks only where 560 and 280 do not fit side by side").toBeLessThan(CONVERSATION_MIN + 280);
+        await page.getByTestId("segment-apps").click();
+        await expect(page.getByTestId("apps-panel")).toHaveAttribute("data-panes", "changes terminal evidence");
+        expect(await dockDrift(page, 45), `the stacked dock at ${size.width} x ${size.height}`).toEqual([]);
+        await page.getByTestId("segment-conversation").click();
+      } else await expect(page.getByTestId("apps-panel")).toHaveAttribute("data-panes", "changes terminal evidence");
       expect(await titleBarDrift(page), `the title bar at ${size.width} x ${size.height}${stacked ? " (stacked)" : ""}`).toEqual([]);
       const title = await page.getByTestId("top-bar").locator(".topbar-title-text").evaluate((el) => ({ width: el.getBoundingClientRect().width, natural: el.scrollWidth }));
       expect(title.width + 1, `the title at ${size.width}: ${Math.round(title.width)} of ${title.natural}`).toBeGreaterThanOrEqual(Math.min(TITLE_FLOOR, title.natural));
