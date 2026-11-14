@@ -17,6 +17,7 @@ import { DENSITIES, type AgentHeaderView, type Density } from "../../shared/conv
 import type { TerminalViewJson } from "../../preload/preload.ts";
 import type { TranscriptRowView } from "../../shared/conversation-types.ts";
 import { noticeWanted, type ScreenState as DerivedScreenState } from "../screens.ts";
+import { moreMaxHeight } from "./more-fit.ts";
 import { DetailsRail } from "./details-rail.tsx";
 import { StateLine } from "../shell/state-line.tsx";
 import { withCoreFacts, type TaskCard } from "../model.ts";
@@ -116,6 +117,25 @@ export function Conversation(props: ConversationProps) {
   const [moreOpen, setMoreOpen] = useState(false);
   // A layer: Escape closes More and nothing else, before any key scope (a docked card's Skip) sees it.
   useLayer(moreOpen, "task-more", false, () => setMoreOpen(false));
+  // A docked approval card stays on top of More (its answers must always be clickable): More ends above it and scrolls inside.
+  const moreEl = useRef<HTMLDivElement>(null);
+  const cardsWaiting = conv.approvals.length;
+  useEffect(() => {
+    const el = moreEl.current;
+    if (!moreOpen || !el) return;
+    const fit = () => {
+      const card = document.querySelector<HTMLElement>('.mb-tray[data-tray-id="approvals"]');
+      const limit = moreMaxHeight(el.getBoundingClientRect(), card ? card.getBoundingClientRect() : null);
+      el.style.maxHeight = limit === null ? "" : `${limit}px`;
+      el.dataset.bounded = limit === null ? "false" : "true";
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(document.body);
+    const host = document.querySelector<HTMLElement>(".conv > .mb-tray-host");
+    if (host) ro.observe(host);
+    return () => ro.disconnect();
+  }, [moreOpen, cardsWaiting, railSlot]);
   const runMode = useRunMode(taskId, connected, modeOpen);
 
   // REQ-PX-200: the plan is the Core's work graph, read again whenever the task's log moves; the accounting feeds the ring and the status line.
@@ -327,7 +347,7 @@ export function Conversation(props: ConversationProps) {
           <>
             <IconButton label="More" icon={<Icon name="ellipsis" />} pressed={moreOpen} aria-haspopup="dialog" onClick={() => setMoreOpen((o) => !o)} data-testid="task-details-toggle" />
             {moreOpen && (
-              <div className="task-more" role="dialog" aria-label={railSlot ? "More" : "More: task details"} data-testid="task-more" data-task-id={taskId} data-holds-details={!railSlot}>
+              <div ref={moreEl} className="task-more" role="dialog" aria-label={railSlot ? "More" : "More: task details"} data-testid="task-more" data-task-id={taskId} data-holds-details={!railSlot}>
                 <div className="task-controls">
                   <label className="conv-density">
                     <span className="meta">Density</span>

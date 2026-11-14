@@ -54,6 +54,57 @@ export function spendWords(e: TaskEconomicsSummary | null): string | null {
 
 export const modelCallWords = (n: number): string => `${n} model ${n === 1 ? "call" : "calls"}`;
 
+/** `PROTECTED_WRITE` or `targeted` as lower-case words. */
+const lower = (code: string): string => code.replace(/_/g, " ").toLowerCase();
+
+const GATE_WORDS: Record<string, string> = { ACCEPT: "passed", REJECT: "did not pass", INCONCLUSIVE: "could not decide" };
+
+/**
+ * The task's latest evidence line in a person's words. The Core (and the window's own fold of its events) writes the line in its
+ * own terms: "delegated child-a (BACKGROUND)", "targeted verification PASSED", "acceptance gate ACCEPT". The facts are kept (the
+ * child's name, the stage, the result); only the wording changes. A line of no known shape is shown as it is.
+ */
+export function evidenceWords(raw: string): string {
+  const delegated = /^delegated (.+?) \(([A-Za-z_]*)\)$/.exec(raw);
+  if (delegated) return `Started a child task${delegated[2] === "BACKGROUND" ? " in the background" : delegated[2] ? ` (${lower(delegated[2])})` : ""}: ${delegated[1]}`;
+  const refused = /^delegation refused: (\S*) at (\S*)$/.exec(raw);
+  if (refused) return `A child task could not be started: ${lower(refused[1] ?? "") || "refused"}${refused[2] ? ` (at ${lower(refused[2])})` : ""}`;
+  const protectedEffect = /^child (.*?) reached a protected effect: (\S*) \((.*)\)$/.exec(raw);
+  if (protectedEffect) return `A child task${protectedEffect[1] ? ` (${protectedEffect[1]})` : ""} is waiting for approval to use ${protectedEffect[2]}`;
+  const child = /^child ([a-z_]+): ([\s\S]*)$/.exec(raw);
+  if (child) {
+    const status = child[1] === "completed" ? "finished" : lower(child[1] ?? "");
+    // The Core repeats the status where the child left no summary ("child cancelled: cancelled"): said once.
+    return (child[2] ?? "").trim().toLowerCase() === child[1] || !(child[2] ?? "").trim() ? `A child task ${status === "finished" ? status : `was ${status}`}` : `A child task ${status}: ${child[2]}`;
+  }
+  const verification = /^(\S+) verification (\S+)$/.exec(raw);
+  if (verification) return `${(verification[1] ?? "").charAt(0).toUpperCase()}${lower((verification[1] ?? "").slice(1))} checks ${lower(verification[2] ?? "")}`;
+  const gate = /^acceptance gate (\S+)$/.exec(raw);
+  if (gate) return `Final check before review: ${GATE_WORDS[gate[1] ?? ""] ?? lower(gate[1] ?? "")}`;
+  const escalated = /^escalated to (.+)$/.exec(raw);
+  if (escalated) return `Moved to another model: ${escalated[1]}`;
+  return raw;
+}
+
+/**
+ * The task's economics as a short list of facts (what Details shows in full): each line is one or two numbers of the Core's
+ * with the words a person would use for them. Nothing is computed beyond the sum of two counts the Core gave.
+ */
+export function economicsFacts(e: TaskEconomicsSummary): { id: string; label: string; value: string }[] {
+  const checks = e.checksPassed + e.checksFailed;
+  const requests = e.prefixCacheHits + e.prefixCacheMisses;
+  const out = [
+    { id: "checks", label: "Checks", value: checks === 0 ? (e.verified ? "verified" : "none run yet") : `${e.checksPassed} of ${checks} passed${e.verified ? ", verified" : ", not verified yet"}` },
+    { id: "model", label: "Model", value: `${modelCallWords(e.modelCalls)}${e.model ? ` to ${e.model}` : ""}` },
+    { id: "tokens", label: "Tokens", value: `${formatCount(e.inputTokens)} in (${formatCount(e.cachedInputTokens)} reused from the cache), ${formatCount(e.outputTokens)} out` },
+    { id: "cost", label: "Cost", value: e.pricingKnown ? `$${e.costUsd.toFixed(4)} at list prices` : "no price is known for this model" },
+    { id: "tools", label: "Tool calls", value: String(e.toolCalls) },
+    { id: "time", label: "Time", value: `${formatWall(e.wallMs)} in all, ${formatWall(e.modelMs)} in the model, ${formatWall(e.toolMs)} in tools` },
+  ];
+  if (requests > 0) out.push({ id: "reuse", label: "Prompt reuse", value: `${e.prefixCacheHits} of ${requests} ${requests === 1 ? "request" : "requests"} reused the start of the prompt` });
+  return out;
+}
+
 /**
  * The task's caps beside what it has used, in the Core's own units: the cost cap is in minor currency units (the Core names
  * no currency), the time cap in wall-clock time. Empty where no cap is set.

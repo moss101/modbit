@@ -297,8 +297,9 @@ test("PX-044/045: the shell geometry in the gallery frame: 1280 with the panel, 
     const num = async (name: string) => Number(await shell.getAttribute(name));
     await page.getByTestId("shell-width-1280").click();
     await expect.poll(() => num("data-list-px")).toBe(288);
-    expect(await num("data-center-px")).toBe(493);
-    expect(await num("data-panel-px")).toBe(499);
+    // REQ-PX-202: beside the open dock the conversation keeps 560; the dock has the rest (the stored ratio's 499 is more than that).
+    expect(await num("data-center-px")).toBe(560);
+    expect(await num("data-panel-px")).toBe(432);
     await expect(shell).toHaveAttribute("data-stacked", "false");
     await page.getByTestId("shell-panel-toggle").click();
     await expect.poll(() => num("data-panel-px")).toBe(0);
@@ -322,7 +323,8 @@ test("PX-044/045: the shell geometry in the gallery frame: 1280 with the panel, 
     await page.keyboard.press("Home");
     await expect.poll(() => num("data-panel-px")).toBe(384);
     await page.keyboard.press("End");
-    await expect.poll(() => num("data-center-px")).toBe(424);
+    // REQ-PX-202: the widest the dock goes leaves the conversation its 560 (the centre's 424 is its minimum with no dock open).
+    await expect.poll(() => num("data-center-px")).toBe(560);
   } finally {
     await closeApp(app);
   }

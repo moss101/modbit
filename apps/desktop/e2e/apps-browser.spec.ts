@@ -6,6 +6,7 @@
  * agent's input at once, and returning control lets the agent act again.
  * The tab never embeds the page: "Open browser" leads to the host's view.
  */
+import { showPane } from "./support/new-task.ts";
 import { expect, test } from "@playwright/test";
 import { createServer } from "node:http";
 import { mkdtempSync } from "node:fs";
@@ -49,10 +50,10 @@ test("Browser tab: the lease badge follows the Core, Take control moves the leas
 
     // The tab: the agent holds the lease (generation 1) and the page the agent loaded is named.
     // MWS-05: the Browser pane's own toggle opens the panel on it.
-    await page.getByTestId("pane-toggle-browser").click();
+    await showPane(page, "browser");
     await expect(page.getByTestId("region-apps")).toBeVisible();
     await expect(page.getByTestId("pane-toggle-browser")).toHaveAttribute("aria-pressed", "true");
-    await expect(page.getByTestId("tab-browser")).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByTestId("pane-browser")).toBeVisible();
     const tab = page.getByTestId("app-browser");
     await expect(tab).toContainText("Agent holds control", { timeout: 30_000 });
     await expect(page.getByTestId("browser-tab-lease")).toContainText("lease generation 1");

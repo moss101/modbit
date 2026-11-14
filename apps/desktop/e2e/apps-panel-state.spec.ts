@@ -9,7 +9,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { expectTaskState, openPane, runTask } from "./support/new-task.ts";
+import { expectTaskState, openPane, runTask, soloPane } from "./support/new-task.ts";
 import { closeApp, launch, makeRepo, scriptedModel, setContentSize } from "./support/ui-harness.ts";
 
 const SCRIPT = [
@@ -47,24 +47,24 @@ test("the panel keeps its own tab for each task, by the task's id, across select
     await row(page, a).click();
     await openPane(page);
     await expect(page.getByTestId("apps-panel")).toHaveAttribute("data-task-id", a);
-    await page.getByTestId("tab-terminal").click();
-    await expect(page.getByTestId("app-terminal-empty")).toBeVisible();
+    await soloPane(page, "files");
+    await expect(page.getByTestId("app-files")).toBeVisible();
     await row(page, b).click();
     await openPane(page);
     await expect(page.getByTestId("apps-panel")).toHaveAttribute("data-task-id", b);
-    await expect(page.getByTestId("tab-terminal"), "task B starts with its own default tab, not task A's").toHaveAttribute("aria-selected", "false");
-    await page.getByTestId("tab-evidence").click();
+    await expect(page.getByTestId("pane-files"), "task B starts with its own panes, not task A's").toHaveCount(0);
+    await soloPane(page, "evidence");
     await expect(page.getByTestId("app-evidence")).toBeVisible();
 
     // Back to A: its tab, not B's.
     await row(page, a).click();
     await expect(page.getByTestId("apps-panel")).toHaveAttribute("data-task-id", a);
-    await expect(page.getByTestId("tab-terminal")).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByTestId("tab-evidence")).toHaveAttribute("aria-selected", "false");
+    await expect(page.getByTestId("pane-files")).toBeVisible();
+    await expect(page.getByTestId("pane-evidence")).toHaveCount(0);
 
-    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("modbit.ui.v1")!).panelByTask as Record<string, { open: boolean; tab: string }>);
-    expect(stored[a]).toMatchObject({ open: true, tab: "terminal" });
-    expect(stored[b]).toMatchObject({ open: true, tab: "evidence" });
+    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("modbit.ui.v1")!).panelByTask as Record<string, { panes: string[] }>);
+    expect(stored[a]).toMatchObject({ panes: ["files"] });
+    expect(stored[b]).toMatchObject({ panes: ["evidence"] });
     expect(Object.keys(stored).sort()).toEqual([a, b].sort());
 
     // A restart: each task comes back with its own tab.
@@ -75,11 +75,12 @@ test("the panel keeps its own tab for each task, by the task's id, across select
     await expectTaskState(page, b, "ReadyForReview", 30_000);
     await row(page, b).click();
     await expect(page.getByTestId("apps-panel")).toHaveAttribute("data-task-id", b);
-    await expect(page.getByTestId("tab-evidence")).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByTestId("pane-evidence")).toBeVisible();
+    await expect(page.getByTestId("pane-files")).toHaveCount(0);
     await row(page, a).click();
     await expect(page.getByTestId("apps-panel")).toHaveAttribute("data-task-id", a);
-    await expect(page.getByTestId("tab-terminal")).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByTestId("tab-evidence")).toHaveAttribute("aria-selected", "false");
+    await expect(page.getByTestId("pane-files")).toBeVisible();
+    await expect(page.getByTestId("pane-evidence")).toHaveCount(0);
   } finally {
     await closeApp(app);
     server.close();

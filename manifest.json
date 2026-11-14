@@ -2,12 +2,12 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-11-12",
+  "generated_on": "2026-11-14",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2215,
+    "root_and_tooling": 2244,
     "docs_bytes": 2408986
   },
   "sections": [
@@ -4437,6 +4437,151 @@
       "path": "evidence/m10/PX-201/evidence.json",
       "bytes": 8062,
       "sha256": "0c41621f0b97424f0f334c9873016f4ca63458de004c7ea31e20f3654d21a11d"
+    },
+    {
+      "path": "evidence/m10/PX-202/TASK_CARD.md",
+      "bytes": 32835,
+      "sha256": "05eb6db7a062a1cd06d972d0d1d0f0e04f7daf4b083bd57ffe8d0796cfafe54a"
+    },
+    {
+      "path": "evidence/m10/PX-202/after/activity-and-background-tasks-dark-comfortable.png",
+      "bytes": 351411,
+      "sha256": "cb5c8b6df9b60feb61dfdb3c8f5a620011d90d3b9b8c3eb487970284b1549377"
+    },
+    {
+      "path": "evidence/m10/PX-202/after/activity-and-background-tasks-dark-compact.png",
+      "bytes": 333193,
+      "sha256": "7276a7199b7ecf814ae2acf5939d37764ddb93f3024141d57ac824ae281d5d4e"
+    },
+    {
+      "path": "evidence/m10/PX-202/after/activity-and-background-tasks-light-comfortable.png",
+      "bytes": 352922,
+      "sha256": "90912e1eeee89549b4ab976b59f9adaf87e560ba53f3322e643f32cc44b46b39"
+    },
+    {
+      "path": "evidence/m10/PX-202/after/activity-and-background-tasks-light-compact.png",
+      "bytes": 335097,
+      "sha256": "da67b4a10a2582178e324f924afc7fe4e8a2430be6deffe6be2247bff0705570"
+    },
+    {
+      "path": "evidence/m10/PX-202/after/activity-filtered-dark-comfortable.png",
+      "bytes": 244359,
+      "sha256": "a3211df53e23dec05cf82615449e20b0449e3d9e00db37778eeb2155a908c250"
+    },
+    {
+      "path": "evidence/m10/PX-202/after/activity-filtered-dark-compact.png",
+      "bytes": 229758,
+      "sha256": "f0a65d103d4c8d311b9abcfbe3eab475999cd66a25987a23eb7188186708d768"
+    },
+    {
+      "path": "evidence/m10/PX-202/after/activity-filtered-light-comfortable.png",
+      "bytes": 244641,
+      "sha256": "571c8f4730f1539b8f9e37cb34dcf3d06a822239b6f2f39a8b71c92b718c242f"
+    },
+    {
+      "path": "evidence/m10/PX-202/after/activity-filtered-light-compact.png",
+      "bytes": 230825,
+      "sha256": "f1e7b2e2e913b545dd6502eaae46ca371399ec432cd50020b4b1d845b6b39801"
+    },
+    {
+      "path": "evidence/m10/PX-202/after/narrow-window-1000-dark-comfortable.png",
+      "bytes": 244608,
+      "sha256": "20f114b5ad3ffd719a22af35dfa2345f5a505f682f1c4b76af13fc1063c307a1"
+    },
+    {
+      "path": "evidence/m10/PX-202/after/narrow-window-1000-light-comfortable.png",
+      "bytes": 245347,
+      "sha256": "f65c2c63c6941c99d0470b2b88a75fd24369d66e0f355faf989f21c99689dee1"
+    },
+    {
+      "path": "evidence/m10/PX-202/after/narrow-window-more-over-approval-dark-comfortable.png",
+      "bytes": 246662,
+      "sha256": "7474b200eb6a0c159b8fc2fb86325f45c58a5c826b42153a386b11769cf5052f"
+    },
+    {
+      "path": "evidence/m10/PX-202/after/narrow-window-more-over-approval-light-comfortable.png",
+      "bytes": 247770,
+      "sha256": "a7b904ec663b5262d3053933fc66bb581c366e7008ef3b16f95d527a6cf3f798"
+    },
+    {
+      "path": "evidence/m10/PX-202/after/pull-request-checks-and-comments-dark-comfortable.png",
+      "bytes": 379966,
+      "sha256": "895576e0330ae5580f57b1db4336f34aeaa9210cc180d93e12ceb57b8fe50e69"
+    },
+    {
+      "path": "evidence/m10/PX-202/after/pull-request-checks-and-comments-dark-compact.png",
+      "bytes": 357909,
+      "sha256": "6f9aea06ac4b5808eb60ccbd9e780987a99ce888d34c16210eeb41aca013f5fc"
+    },
+    {
+      "path": "evidence/m10/PX-202/after/pull-request-checks-and-comments-light-comfortable.png",
+      "bytes": 378884,
+      "sha256": "4208156f542c9b308cfc410e876ce00ebe6b4979b417a83522541c4077526644"
+    },
+    {
+      "path": "evidence/m10/PX-202/after/pull-request-checks-and-comments-light-compact.png",
+      "bytes": 357622,
+      "sha256": "351bffc7084bcefabdc636f642dfba792044326e6f722481d5d19f1e6991fbe1"
+    },
+    {
+      "path": "evidence/m10/PX-202/after/pull-request-none-dark-comfortable.png",
+      "bytes": 180283,
+      "sha256": "d00b10dc628b5996ebbce227d681be804baaa618c1a3251809ed4a330a9a2a4d"
+    },
+    {
+      "path": "evidence/m10/PX-202/after/pull-request-none-light-comfortable.png",
+      "bytes": 181300,
+      "sha256": "b863c74a9874d42bf23cb2acab53060f36cd90b5ae9fcaf2331bae7143ca6cf0"
+    },
+    {
+      "path": "evidence/m10/PX-202/after/pull-request-waiting-on-approval-dark-comfortable.png",
+      "bytes": 287879,
+      "sha256": "76aa70213282fb3f172e3be9ca1e495ce720a9344cbb210d9560297440fa287c"
+    },
+    {
+      "path": "evidence/m10/PX-202/after/pull-request-waiting-on-approval-light-comfortable.png",
+      "bytes": 288644,
+      "sha256": "24e8dd76db07c8ef7b90a3090b9dca6ed3c23667e3d325eef732a15f413776ec"
+    },
+    {
+      "path": "evidence/m10/PX-202/after/terminal-minimized-dark-comfortable.png",
+      "bytes": 404543,
+      "sha256": "2d177dc73f647b1a8184f2e88b1b12de4fc0ba1b7fcb8bc29e7b54caeba40427"
+    },
+    {
+      "path": "evidence/m10/PX-202/after/terminal-minimized-light-comfortable.png",
+      "bytes": 379498,
+      "sha256": "84404ef495cdf3b9e34a2896f64da0c353bf5fa986e34d75f366f2896450a8f8"
+    },
+    {
+      "path": "evidence/m10/PX-202/after/three-panes-tiled-dark-comfortable.png",
+      "bytes": 441755,
+      "sha256": "d0c1eb61622b852929ca794a66b0f831e1c4809aab4d1c53f889afa843a6ee94"
+    },
+    {
+      "path": "evidence/m10/PX-202/after/three-panes-tiled-dark-compact.png",
+      "bytes": 414617,
+      "sha256": "e488ca07efdae7acd1c858571e454a7bb59db841c75e3c55b789d1ff68baeda8"
+    },
+    {
+      "path": "evidence/m10/PX-202/after/three-panes-tiled-light-comfortable.png",
+      "bytes": 443537,
+      "sha256": "cda3715b1d400578058749c46f710e428847133bad09981fc0ef40f122b2c5be"
+    },
+    {
+      "path": "evidence/m10/PX-202/after/three-panes-tiled-light-compact.png",
+      "bytes": 416944,
+      "sha256": "732f0aaeec08a00d47aaf8a66adb406864e5048c2f5a3c5b19636e07184d7530"
+    },
+    {
+      "path": "evidence/m10/PX-202/desktop-e2e-full-results.txt",
+      "bytes": 40712,
+      "sha256": "5a1ef97f54d59c132a91c93694f8e7ffea2d5c59aa1cb2df75b3e17bf3f95396"
+    },
+    {
+      "path": "evidence/m10/PX-202/evidence.json",
+      "bytes": 10979,
+      "sha256": "eeeac9ce51ff8b01f0047656a2f37c8addf14be0fe809cfac15043c47dee1ead"
     },
     {
       "path": "evidence/m10/PX-210/TASK_CARD.md",

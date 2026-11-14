@@ -4,7 +4,8 @@ import { splitRows } from "../diff.ts";
 import { commandFor, isEditable } from "../keyboard.ts";
 import { reviewState } from "../screens.ts";
 import { StateLine } from "../shell/state-line.tsx";
-import type { PullRequestAckView, ReviewBundleView } from "../../preload/preload.ts";
+import type { ReviewBundleView } from "../../preload/preload.ts";
+import { useForgeReads, usePullRequest } from "./use-pull-request.ts";
 import "../state/types.ts";
 
 /** Review screen (docs/20 "Trusted Code Surface", REQ-EV-0036): every fact on it
@@ -12,73 +13,18 @@ import "../state/types.ts";
 export function Review({ taskId, sessionId, card, onClose }: { taskId: string; sessionId: string; card: TaskCard | null; onClose: () => void }) {
   const [bundle, setBundle] = useState<ReviewBundleView | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  // PX-007: the pull request from this candidate. The ack's states are the
-  // screen's: APPROVAL_PENDING (decide the intent shown), OPENED/UPDATED
-  // (the URL), DENIED (the branch stays local; a receipt exists).
-  const [pr, setPr] = useState<PullRequestAckView | null>(null);
-  const [prBusy, setPrBusy] = useState(false);
-  const [prError, setPrError] = useState<string | null>(null);
-  // The revision the pull request names: the one this review showed, which
-  // is the one an acceptance records as the candidate.
-  const candidateRevision = useRef<string | null>(null);
+  // PX-007: the pull request from this candidate, and PX-127: the forge's CI runs and the request's comments. One flow, which the
+  // Pull request pane drives too (review/use-pull-request.ts). The ack's states are the screen's: APPROVAL_PENDING (decide the
+  // intent shown), OPENED/UPDATED (the URL), DENIED (the branch stays local; a receipt exists).
+  const { pr, busy: prBusy, error: prError, open: openPr, decide: decidePr } = usePullRequest(sessionId, taskId, "the review");
   const openPullRequest = async (update: boolean) => {
-    if (!bundle || prBusy) return;
-    setPrBusy(true);
-    setPrError(null);
-    try {
-      candidateRevision.current ??= bundle.workspaceRevision;
-      setPr(await window.modbit.openPullRequest(sessionId, taskId, candidateRevision.current, update));
-    } catch (e) {
-      setPrError((e as Error).message);
-    } finally {
-      setPrBusy(false);
-    }
+    if (bundle) await openPr(update, bundle.workspaceRevision);
   };
   const decidePullRequest = async (approve: boolean) => {
-    if (!pr || pr.status !== "APPROVAL_PENDING" || prBusy) return;
-    setPrBusy(true);
-    setPrError(null);
-    try {
-      const r = await window.modbit.resolveApproval(sessionId, pr.approvalId, approve, approve ? "approved from the review" : "denied from the review", pr.intentHash);
-      if (approve) {
-        // Approved: the same call now pushes and opens, under that approval.
-        setPr(await window.modbit.openPullRequest(sessionId, taskId, candidateRevision.current ?? bundle!.workspaceRevision, false));
-      } else {
-        // Denied: terminal for this attempt; the branch stays local. A later
-        // "Try again" is a new attempt with a new approval.
-        setPr({ ...pr, status: "DENIED", detail: `approval ${r.approvalId.slice(0, 8)} denied at offset ${r.offset}: the branch stays local, nothing reached the forge`, receipts: 0 });
-      }
-    } catch (e) {
-      setPrError((e as Error).message);
-    } finally {
-      setPrBusy(false);
-    }
+    if (bundle) await decidePr(approve, bundle.workspaceRevision);
   };
-  // PX-127: the forge's CI runs and the pull request's comments. The Core
-  // reads the forge; this screen asks it to and shows what it recorded.
-  const [forgeBusy, setForgeBusy] = useState(false);
-  const [forgeNote, setForgeNote] = useState<string | null>(null);
-  const [forgeError, setForgeError] = useState<string | null>(null);
-  const ingestForge = async (what: "ci" | "comments") => {
-    if (forgeBusy) return;
-    setForgeBusy(true);
-    setForgeError(null);
-    setForgeNote(null);
-    try {
-      if (what === "ci") {
-        const r = await window.modbit.ingestCiResults(sessionId, taskId);
-        setForgeNote(`read ${r.checks} check run(s) for ${r.commit.slice(0, 12)}${r.refused > 0 ? `, refused ${r.refused} for another commit` : ""} (offset ${r.offset})`);
-      } else {
-        const r = await window.modbit.ingestReviewComments(sessionId, taskId);
-        setForgeNote(`${r.steered} comment(s) steer the task, ${r.ignored} ignored, ${r.alreadyTaken} already taken (offset ${r.offset})`);
-      }
-      await load();
-    } catch (e) {
-      setForgeError((e as Error).message);
-    } finally {
-      setForgeBusy(false);
-    }
-  };
+  const reloadRef = useRef<() => Promise<void>>(async () => {});
+  const { busy: forgeBusy, note: forgeNote, error: forgeError, ingest: ingestForge } = useForgeReads(sessionId, taskId, () => reloadRef.current());
   const [rejected, setRejected] = useState<Set<string>>(new Set());
   // REQ-EV-0141: hunks the reviewer marks as context. This changes what
   // retrieval prefers and nothing else — it cannot edit or accept anything.
@@ -95,6 +41,7 @@ export function Review({ taskId, sessionId, card, onClose }: { taskId: string; s
       setErr((e as Error).message);
     }
   }, [taskId]);
+  reloadRef.current = load;
   useEffect(() => {
     void load();
   }, [load]);

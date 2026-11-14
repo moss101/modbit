@@ -37,8 +37,9 @@ import { Automations } from "../automations/automations.tsx";
 import { artifactsOf, panelTaskFor, panesOf } from "./artifacts.ts";
 import { shellRegistry, type ShellActions } from "./commands.ts";
 import { CommandPalette, type PaletteItem } from "./palette.tsx";
-import { clampZoom, loadUiPrefs, saveUiPrefs, ZOOM_STEP, type AppKind, type PanelState, type UiPrefs } from "./prefs.ts";
-import { clampPanelRatio, PANEL_MAX_RATIO } from "./layout.ts";
+import { clampZoom, EMPTY_DOCK, loadUiPrefs, saveUiPrefs, ZOOM_STEP, type AppKind, type PanelState, type UiPrefs } from "./prefs.ts";
+import { openPane, paneStateOf, tiledOf, toggleDock, togglePane } from "./dock.ts";
+import { followDelivered } from "../apps/delivered.ts";
 import { ShellFrame } from "./shell-frame.tsx";
 import { ShortcutHelp } from "./shortcut-help.tsx";
 import { TrayDirector } from "../context/tray-director.tsx";
@@ -182,15 +183,20 @@ export function Shell({ app }: { app: AppState }) {
   const panelTaskId = useMemo(() => panelTaskFor(tasks, reviewing ?? browsing?.taskId ?? selectedTaskId, artifactCtx), [tasks, reviewing, browsing?.taskId, selectedTaskId, artifactCtx]);
   const panelTask = panelTaskId ? model.tasks.get(panelTaskId) : undefined;
   const artifacts = useMemo(() => artifactsOf(panelTask, artifactCtx), [panelTask, artifactCtx]);
-  const panelState: PanelState = (panelTaskId ? prefs.panelByTask[panelTaskId] : undefined) ?? { open: false, tab: artifacts[0] ?? "changes" };
-  const panelOpen = panelTaskId !== null && panelState.open;
+  // MWS-10: the task's dock. The panes it can show now, the ones it has open, and the ones in the grid (open, not minimized).
+  const panelState: PanelState = (panelTaskId ? prefs.panelByTask[panelTaskId] : undefined) ?? EMPTY_DOCK;
+  const available = useMemo(() => panesOf(artifacts), [artifacts]);
+  const tiled = useMemo(() => tiledOf(panelState, available), [panelState, available]);
+  const panelOpen = panelTaskId !== null && tiled.length > 0;
   const setPanelState = useCallback(
-    (taskId: string, next: PanelState) => setPrefs((p) => {
+    (taskId: string, next: PanelState | ((s: PanelState) => PanelState)) => setPrefs((p) => {
       const rest = Object.fromEntries(Object.entries(p.panelByTask).filter(([id]) => id !== taskId));
-      return { ...p, panelByTask: { ...rest, [taskId]: next } };
+      return { ...p, panelByTask: { ...rest, [taskId]: typeof next === "function" ? next(p.panelByTask[taskId] ?? EMPTY_DOCK) : next } };
     }),
     [setPrefs],
   );
+  // The Activity pane lists what this window was given: the events are kept as they arrive, whether or not the pane is open.
+  useEffect(() => followDelivered(), []);
 
   /** Closes every page; what is left is the conversation, or the home composer without one. */
   const closePages = useCallback(() => {
@@ -277,6 +283,8 @@ export function Shell({ app }: { app: AppState }) {
   }, [closePages]);
   const appAvailability = (kind: AppKind): true | string => {
     if (!panelTaskId) return "No task has an artifact to show yet";
+    const started = artifacts.includes("files");
+    if (kind === "activity" || kind === "background" || kind === "pull-request") return started ? true : "The task has not started yet";
     if (!artifacts.includes(kind)) return { changes: "The task has no change set to show yet", terminal: "The task has no terminal", browser: "The task has no browser session to show yet", files: "The task has not started, so it has no workspace to browse", evidence: "The task has not started, so it has no evidence yet" }[kind];
     return true;
   };
@@ -292,11 +300,12 @@ export function Shell({ app }: { app: AppState }) {
     focusSettingsSection: (id) => openSettings(() => (document.querySelector<HTMLElement>(`[data-testid="${id}"] input`) ?? document.querySelector<HTMLElement>(`[data-testid="${id}"]`))?.focus()),
     toggleAgentList: () => setPrefs((p) => ({ ...p, listCollapsed: !p.listCollapsed })),
     togglePanel: () => {
-      if (panelTaskId) setPanelState(panelTaskId, { ...panelState, open: !panelState.open });
+      if (panelTaskId) setPanelState(panelTaskId, (s) => toggleDock(s, available, available[0]));
     },
     showApp: (kind) => {
       const ok = appAvailability(kind);
-      if (ok === true && panelTaskId) setPanelState(panelTaskId, { open: kind === "terminal" ? !(panelState.open && panelState.tab === "terminal") : true, tab: kind });
+      // The terminal's command toggles its pane; the others bring theirs into the grid.
+      if (ok === true && panelTaskId) setPanelState(panelTaskId, (s) => (kind === "terminal" ? togglePane(s, kind) : openPane(s, kind)));
       return ok;
     },
     openDashboard: () => {
@@ -427,11 +436,12 @@ export function Shell({ app }: { app: AppState }) {
   const panelRefreshKey = useThrottled(`${panelTask?.state ?? ""}:${panelTask?.lastOffset ?? ""}`, 1200);
   // MWS-05: one toggle per pane the task in the centre can show, each with its state. A page that is not a task, and a task that has not started, have none.
   const shownTaskId = settingsOpen || customizeOpen || inboxOpen || automationsOpen || dashboardOpen ? null : (reviewing ?? browsing?.taskId ?? (projectPage || worktreesOpen ? null : (conversation?.taskId ?? null)));
-  const panes = useMemo<PaneToggle[]>(() => (shownTaskId !== null && shownTaskId === panelTaskId ? panesOf(artifacts).map((kind) => ({ kind, open: panelOpen && panelState.tab === kind })) : []), [shownTaskId, panelTaskId, artifacts, panelOpen, panelState.tab]);
+  const panes = useMemo<PaneToggle[]>(() => (shownTaskId !== null && shownTaskId === panelTaskId ? available.map((kind) => ({ kind, open: paneStateOf(panelState, kind) === "open", state: paneStateOf(panelState, kind) })) : []), [shownTaskId, panelTaskId, available, panelState]);
   const onPane = (kind: AppKind) => {
-    if (!panelTaskId) return;
-    setPanelState(panelTaskId, panelOpen && panelState.tab === kind ? { ...panelState, open: false } : { open: true, tab: kind });
+    if (panelTaskId) setPanelState(panelTaskId, (s) => togglePane(s, kind));
   };
+  // Where the title bar has no toggles for the dock's task (the centre shows home or another task's page), the dock carries them itself.
+  const dockToggles = useMemo<PaneToggle[]>(() => (panes.length === 0 && panelTaskId !== null ? available.map((kind) => ({ kind, open: paneStateOf(panelState, kind) === "open", state: paneStateOf(panelState, kind) })) : []), [panes.length, panelTaskId, available, panelState]);
   // The title is the task's while its conversation is what the centre shows; then it opens the task's menu.
   const menuTaskId = conversation && shownTaskId === conversation.taskId && !reviewing && !browsing ? conversation.taskId : null;
   const taskMenu = useMemo<MenuItem[] | undefined>(() => {
@@ -469,21 +479,29 @@ export function Shell({ app }: { app: AppState }) {
               taskId={panelTaskId}
               taskTitle={panelTask.goalText}
               taskState={panelTask.state}
-              artifacts={artifacts}
               refreshKey={panelRefreshKey}
               terminals={terminalsByTask.get(panelTaskId) ?? []}
               selectedTerminalId={terminalPick[panelTaskId] ?? null}
               onSelectTerminal={(id) => setTerminalPick((m) => ({ ...m, [panelTaskId]: id }))}
               onTerminalsChanged={refreshTerminals}
               announce={setNotice}
-              tab={panelState.tab}
-              onTab={(tab) => setPanelState(panelTaskId, { ...panelState, tab })}
+              dock={panelState}
+              ownToggles={dockToggles.length > 0 ? { panes: dockToggles, onPane } : undefined}
+              tiled={tiled}
+              onDock={(update) => setPanelState(panelTaskId, update)}
               onOpenReview={() => setReviewing(panelTaskId)}
               onOpenCall={(callId) => openConversation(panelTaskId, `tool:${callId}`)}
               onOpenBrowser={() => void openBrowser(panelTaskId)}
-              onClose={() => actions.togglePanel()}
-              maximized={prefs.panelRatio >= PANEL_MAX_RATIO}
-              onToggleMaximize={() => setPrefs((p) => ({ ...p, panelRatio: clampPanelRatio(p.panelRatio >= PANEL_MAX_RATIO ? GEOMETRY.panelRatioDefault : PANEL_MAX_RATIO) }))}
+              subtasks={childrenOf(model, panelTaskId)}
+              onOpenTask={(id) => openConversation(id)}
+              onStopChild={(id) => {
+                const t = model.tasks.get(id);
+                if (t) setConfirm({ kind: "cancel", taskId: t.taskId, text: `Cancel “${t.goalText}”? The run stops at its next safe boundary; the task cannot be resumed.` });
+              }}
+              onOpenTerminal={(termId) => {
+                setTerminalPick((m) => ({ ...m, [panelTaskId]: termId }));
+                setPanelState(panelTaskId, (d) => openPane(d, "terminal"));
+              }}
             />
           ) : null
         }
@@ -593,7 +611,7 @@ export function Shell({ app }: { app: AppState }) {
                     onToggle: () => {
                       const shown = layout.detailsPx > 0;
                       setPrefs((p) => ({ ...p, detailsOpen: !shown }));
-                      if (!shown && panelTaskId && panelOpen) setPanelState(panelTaskId, { ...panelState, open: false });
+                      if (!shown && panelTaskId && panelOpen) setPanelState(panelTaskId, (d) => toggleDock(d, available, undefined));
                     },
                   }
                 : undefined
@@ -675,7 +693,7 @@ export function Shell({ app }: { app: AppState }) {
               focusRowId={conversation.rowId}
               onResume={(id) => void startTask(id)}
               onNewTask={() => actions.focusNewTask()}
-              onOpenTerminal={(tid, termId) => { setTerminalPick((m) => ({ ...m, [tid]: termId })); setPanelState(tid, { open: true, tab: "terminal" }); }}
+              onOpenTerminal={(tid, termId) => { setTerminalPick((m) => ({ ...m, [tid]: termId })); setPanelState(tid, (d) => openPane(d, "terminal")); }}
               onOpenTask={(id) => openConversation(id)}
               titleOf={(id) => model.tasks.get(id)?.goalText ?? "another task"}
               topEndSlot={topEndSlot}

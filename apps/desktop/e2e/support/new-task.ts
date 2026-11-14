@@ -111,13 +111,62 @@ export async function setDensity(page: Page, density: "comfortable" | "compact")
   }
 }
 
-/** Opens the apps panel from the title bar's pane toggles (DR-PX-2026-11-11-021 MWS-05) unless it is already open; `kind` is the pane it opens on. */
-export async function openPane(page: Page, kind: "changes" | "terminal" | "browser" | "files" | "evidence" = "changes"): Promise<void> {
-  if ((await page.getByTestId("region-apps").count()) === 0) {
-    const toggle = page.getByTestId(`pane-toggle-${kind}`);
-    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+export type PaneKind = "changes" | "terminal" | "browser" | "files" | "evidence" | "activity" | "background" | "pull-request";
+
+/**
+ * Acts on one pane as a person would (REQ-PX-202): with its toggle where it stands in the title bar (or the dock's own bar), else
+ * through the Panes menu, which lists every pane. An open pane closes, a minimized one comes back, a closed one opens.
+ */
+export async function pressPane(page: Page, kind: PaneKind): Promise<void> {
+  const toggle = page.getByTestId(`pane-toggle-${kind}`);
+  if ((await toggle.count()) === 1) {
     await toggle.click();
-    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+    return;
   }
+  await page.getByTestId("panes-menu").click();
+  await page.getByTestId(`panes-menu-${kind}`).click();
+}
+
+/** Whether a pane is open, minimized or closed, as the title bar says it: its toggle where it stands there, else its entry in the Panes menu (opened and closed again). */
+export async function paneStateShown(page: Page, kind: PaneKind): Promise<"open" | "minimized" | "closed" | "absent"> {
+  const toggle = page.getByTestId(`pane-toggle-${kind}`);
+  if ((await toggle.count()) === 1) return ((await toggle.getAttribute("data-state")) ?? "absent") as "open" | "minimized" | "closed";
+  await page.getByTestId("panes-menu").click();
+  const item = page.getByTestId(`panes-menu-${kind}`);
+  const state = (await item.count()) === 0 ? "absent" : (await item.getAttribute("aria-checked")) !== "true" ? "closed" : /minimized/.test((await item.textContent()) ?? "") ? "minimized" : "open";
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu", { name: "Panes" })).toHaveCount(0);
+  return state;
+}
+
+/** Brings one pane into the dock from the title bar (its toggle, or the Panes menu), beside whatever is open; a pane already in the grid is left as it is. */
+export async function showPane(page: Page, kind: PaneKind): Promise<void> {
+  const pane = page.getByTestId(`pane-${kind}`);
+  if ((await pane.count()) === 0) {
+    expect(await paneStateShown(page, kind)).not.toBe("open");
+    await pressPane(page, kind);
+  }
+  await expect(pane).toBeVisible();
+  expect(await paneStateShown(page, kind), `${kind} says it is open`).toBe("open");
+}
+
+/**
+ * Shows `kind` as the only pane in the dock: it is opened if it is not, and every other pane in the grid is closed with its own
+ * Close, as a person would. For the specs about one pane's content, which were written when the panel showed one app at a time.
+ */
+export async function soloPane(page: Page, kind: PaneKind): Promise<void> {
+  await showPane(page, kind);
+  for (;;) {
+    const others = await page.getByTestId("apps-panel").locator(".pane").evaluateAll((els, k) => els.map((e) => e.getAttribute("data-kind") ?? "").filter((x) => x !== k), kind);
+    if (others.length === 0) break;
+    await page.getByTestId(`pane-close-${others[0]}`).click();
+    await expect(page.getByTestId(`pane-${others[0]}`)).toHaveCount(0);
+  }
+  await expect(page.getByTestId("apps-panel")).toHaveAttribute("data-panes", kind);
+}
+
+/** Opens the dock from the title bar (DR-PX-2026-11-11-021 MWS-05, REQ-PX-202) unless a pane is already open; `kind` is the pane it opens. */
+export async function openPane(page: Page, kind: PaneKind = "changes"): Promise<void> {
+  if ((await page.getByTestId("region-apps").count()) === 0) await showPane(page, kind);
   await expect(page.getByTestId("region-apps")).toBeVisible();
 }

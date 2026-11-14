@@ -10,6 +10,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Density, PendingApprovalView, TaskFactsView, TranscriptRowView } from "../../shared/conversation-types.ts";
+import { delivered } from "../apps/delivered.ts";
 import { applyStreamEvent, dividerOffsetOf, reuseRows, seedStreams, splitTail, type LiveStreams, type StreamEventLike } from "./model.ts";
 
 const PAGE = 500;
@@ -105,6 +106,8 @@ export function useConversation(taskId: string | null, sessionId: string | null,
       }
       setRows(reused);
       setTail(t);
+      // REQ-PX-202: the Activity pane lists what was delivered; these rows are what the conversation was given, and it reads no others.
+      delivered.transcript(tid, all, last.asOfOffset);
       setMeta({ taskState: last.taskState, asOfOffset: last.asOfOffset, lastOffset: last.lastOffset, readOffset: last.readOffset, totalRows: last.totalRows, facts: last.facts ?? null, factsTaskId: last.taskId });
       setLoaded(true);
       setError(null);

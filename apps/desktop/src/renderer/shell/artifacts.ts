@@ -34,13 +34,16 @@ export function artifactsOf(task: TaskLike | undefined, ctx: ArtifactContext): A
   return out;
 }
 
+/** The panes every task has once it has a workspace, whatever it has made so far: the Browser (where a session is opened from), and the three panes of MWS-10, each of which says so when it has nothing to list. */
+const ONCE_STARTED: ReadonlySet<AppKind> = new Set(["browser", "activity", "background", "pull-request"]);
+
 /**
- * The panes a task has a toggle for in the title bar (MWS-05), in tab order: what it has something to show in, and the Browser
- * once it has a workspace, because that pane is where a browser session is opened from.
+ * The panes a task has a toggle for in the title bar (MWS-05, MWS-10), in order: what it has something to show in, and, once it
+ * has a workspace, the Browser, Activity, Background tasks and Pull request.
  */
 export function panesOf(artifacts: readonly AppKind[]): AppKind[] {
   const started = artifacts.includes("files");
-  return APP_KINDS.filter((k) => artifacts.includes(k) || (k === "browser" && started));
+  return APP_KINDS.filter((k) => artifacts.includes(k) || (started && ONCE_STARTED.has(k)));
 }
 
 /** The task the panel shows: the selected one if it has artifacts, else the most recent task that does. */
@@ -51,4 +54,4 @@ export function panelTaskFor(tasks: readonly (TaskLike & { createdAtMs: number }
   return withArtifacts[0]?.taskId ?? null;
 }
 
-export const APP_LABEL: Record<AppKind, string> = { changes: "Changes", terminal: "Terminal", browser: "Browser", files: "Files", evidence: "Evidence" };
+export const APP_LABEL: Record<AppKind, string> = { changes: "Changes", terminal: "Terminal", browser: "Browser", files: "Files", evidence: "Evidence", activity: "Activity", background: "Background tasks", "pull-request": "Pull request" };

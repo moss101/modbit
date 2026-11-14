@@ -16,7 +16,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { BIG_OUTPUT, ECHO_LOOP, EXIT_THREE, expectTerminals, SIZE_REPORTER, gate, handlesIn, nodeTerminal, readTerminal, steppedModel, toolResults, type Step } from "./support/apps-harness.ts";
-import { expectTaskState, queueTask } from "./support/new-task.ts";
+import { expectTaskState, queueTask, soloPane } from "./support/new-task.ts";
 import { accessible, closeApp, describeRenderer, git, launch, makeRepo, MOD, setContentSize } from "./support/ui-harness.ts";
 
 test.describe.configure({ mode: "serial" });
@@ -111,7 +111,7 @@ test("the panel is absent until the task runs; then Changes shows the live diff 
 });
 
 test("Terminal: owners and states are listed, an exited terminal shows its code, typing reaches the PTY and the output comes back", async () => {
-  await page.getByTestId("tab-terminal").click();
+  await soloPane(page, "terminal");
   const rows = page.getByTestId("terminal-row");
   await expect(rows).toHaveCount(4);
   const all = await listTerminals();
@@ -186,7 +186,7 @@ test("replay: a reload shows the same bytes; two attaches from the start read id
   await page.reload();
   await expect(page.getByTestId("core-status")).toContainText("Core connected", { timeout: 60_000 });
   // The panel, its tab and the terminal come back from the per-task state; the screen is rebuilt from the Core's replay.
-  await expect(page.getByTestId("tab-terminal")).toHaveAttribute("aria-selected", "true", { timeout: 30_000 });
+  await expect(page.getByTestId("pane-terminal")).toBeVisible({ timeout: 30_000 });
   await pickTerminal(echo);
   // The screen is rebuilt from the Core's replay after a reload; on a loaded runner that takes longer than the default wait.
   await expect(screen()).toContainText("got:hello-pty", { timeout: 30_000 }).catch(async (e: Error) => {
@@ -232,8 +232,9 @@ test("resize: the viewer's size reaches the PTY and the child prints it", async 
   };
   const first = await reported();
   await expect(screen()).toContainText(first.want, { timeout: 30_000 });
-  // A narrower window changes the panel, the view refits, and the child reports the new size.
-  await setContentSize(app, page, 1100, 800); // beside the conversation the panel is 416 px here, against 596 px at 1280
+  // Another window width changes the panel, the view refits, and the child reports the new size. (REQ-PX-202: beside a 560
+  // conversation the dock is 432 px at 1280 and 562 px at 1440; at 1100 it no longer fits beside the conversation and stacks.)
+  await setContentSize(app, page, 1440, 800);
   await expect.poll(async () => (await reported()).cols, { timeout: 30_000 }).not.toBe(first.cols);
   const second = await reported();
   await expect(screen()).toContainText(second.want, { timeout: 30_000 });
@@ -303,7 +304,7 @@ test("a stopped terminal: Stop warns that a running process ends, and the list s
 });
 
 test("Files: the workspace is browsable read-only; binary, oversized, protected and outside paths are refused in the Core's terms", async () => {
-  await page.getByTestId("tab-files").click();
+  await soloPane(page, "files");
   await expect(page.getByTestId("files-tree")).toBeVisible();
   await expect(page.locator('[data-testid="files-entry"][data-path="notes.txt"]')).toBeVisible();
   // A text file opens.
@@ -355,7 +356,7 @@ test("Files: the workspace is browsable read-only; binary, oversized, protected 
 
 test("Evidence: the task's receipts, checks and context accounting are shown read-only", async () => {
   await expect.poll(async () => (await page.evaluate((t) => window.modbit.effectReceipts(t), taskId)).receipts.length, { timeout: 60_000 }).toBeGreaterThanOrEqual(2);
-  await page.getByTestId("tab-evidence").click();
+  await soloPane(page, "evidence");
   await expect(page.getByTestId("app-evidence")).toBeVisible().catch(async (e: Error) => {
     // The panel shows "Reading the evidence" until three Core reads settle: say which one, if any, was slow, and what the renderer was doing.
     const read = async (what: string, f: () => Promise<unknown>) => {
@@ -368,7 +369,7 @@ test("Evidence: the task's receipts, checks and context accounting are shown rea
       await read("effectReceipts", () => page.evaluate((t) => window.modbit.effectReceipts(t), taskId)),
       await read("contextInspector", () => page.evaluate((t) => window.modbit.contextInspector(t), taskId)),
     ];
-    const shown = await page.locator('[data-testid="apps-panel"] [role="tabpanel"]').first().innerText().catch(() => "?");
+    const shown = await page.locator('[data-testid="apps-panel"] .pane-body').first().innerText().catch(() => "?");
     throw new Error(`${e.message}\nthe panel shows: ${JSON.stringify(shown.slice(0, 200))}\n${reads.join("\n")}\nthe renderer: ${await describeRenderer(app, page)}`);
   });
   // Closing the worktree was a protected effect: it left an authorization receipt and its result receipt, and the chain verifies.
@@ -391,12 +392,16 @@ test("Evidence: the task's receipts, checks and context accounting are shown rea
   await accessible(page, "evidence app", '[data-testid="region-apps"]');
 });
 
-test("the apps are keyboard reachable: tabs by arrows, Shift+Escape leaves the terminal, and the terminal keeps the keys it is typed into", async () => {
-  await page.getByTestId("tab-evidence").focus();
-  await page.keyboard.press("Home");
-  await expect(page.getByTestId("tab-changes")).toHaveAttribute("aria-selected", "true");
-  await page.keyboard.press("ArrowRight");
-  await expect(page.getByTestId("tab-terminal")).toHaveAttribute("aria-selected", "true");
+test("the apps are keyboard reachable: panes by their toggles, Shift+Escape leaves the terminal, and the terminal keeps the keys it is typed into", async () => {
+  // The tab strip is gone (MWS-10): a pane is opened from its toggle in the title bar and closed from its head, both by keyboard.
+  await page.getByTestId("pane-toggle-terminal").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("pane-terminal")).toBeVisible();
+  await expect(page.getByTestId("pane-evidence"), "the pane that was open stays beside it").toBeVisible();
+  await page.getByTestId("pane-close-evidence").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("pane-evidence")).toHaveCount(0);
+  await expect(page.getByTestId("pane-toggle-terminal")).toHaveAttribute("aria-pressed", "true");
   await pickTerminal(handles[0]!);
   await screen().click();
   // Escape belongs to the process; the app's own "back" handler must not take it.

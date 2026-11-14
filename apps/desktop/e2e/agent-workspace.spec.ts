@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ECHO_LOOP, expectTerminals, gate, nodeTerminal, steppedModel, type Step } from "./support/apps-harness.ts";
 import { accessible, closeApp, launch, makeRepo, setContentSize } from "./support/ui-harness.ts";
-import { openPane, queueTask } from "./support/new-task.ts";
+import { openPane, queueTask, soloPane } from "./support/new-task.ts";
 
 async function recordDialog(app: ElectronApplication, answer: number): Promise<void> {
   await app.evaluate(({ dialog }, response) => {
@@ -81,7 +81,7 @@ test("the agent list, the conversation and the apps panel work together on one r
     await expect(conversation).toHaveAttribute("data-task-id", taskId);
 
     // Terminal: the command the agent ran, live, and the person can type into it.
-    await page.getByTestId("tab-terminal").click();
+    await soloPane(page, "terminal");
     const termRow = page.getByTestId("terminal-row").first();
     await expect(termRow.getByTestId("terminal-state")).toContainText("running", { timeout: 30_000 });
     await termRow.getByTestId("terminal-pick").click();
@@ -89,13 +89,13 @@ test("the agent list, the conversation and the apps panel work together on one r
     await expect(page.getByTestId("terminal-screen")).toContainText("READY", { timeout: 30_000 });
 
     // Changes: the live diff of the agent's edit while the task is still running.
-    await page.getByTestId("tab-changes").click();
+    await soloPane(page, "changes");
     await expect(page.getByTestId("app-changes")).toHaveAttribute("data-task-state", "Running");
     await expect(page.getByTestId("changes-file")).toHaveCount(1);
     await expect(page.getByTestId("changes-hunk")).toContainText("line 2 changed");
 
     // Evidence: the receipts shown are the Core's own list for this task.
-    await page.getByTestId("tab-evidence").click();
+    await soloPane(page, "evidence");
     await expect(page.getByTestId("app-evidence")).toBeVisible();
     await expect(page.getByTestId("evidence-receipts")).toBeVisible({ timeout: 30_000 });
     const fromCore = await page.evaluate((t) => window.modbit.effectReceipts(t), taskId);
@@ -103,7 +103,7 @@ test("the agent list, the conversation and the apps panel work together on one r
     await accessible(page, "agent list, conversation and apps panel together", '[data-testid="shell"]');
 
     // Per-task tab memory holds with the conversation: leave to the home composer and come back, the task's tab is as it was.
-    await page.getByTestId("tab-changes").click();
+    await soloPane(page, "changes");
     await page.getByTestId("agents-new-task").click();
     await expect(conversation).toHaveCount(0);
     await row.click();

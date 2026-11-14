@@ -299,6 +299,15 @@ const VERB_DONE: Record<string, string> = { READ: "Read", SEARCH: "Searched", SH
 const VERB_NOW: Record<string, string> = { READ: "Reading", SEARCH: "Searching", SHELL: "Running", EDIT: "Editing", BROWSER: "Browsing", OTHER: "Using" };
 const VERB_ASKED: Record<string, string> = { READ: "Read", SEARCH: "Search", SHELL: "Run", EDIT: "Edit", BROWSER: "Browse", OTHER: "Use" };
 
+const baseName = (p: string): string => p.replace(/[/\\]+$/, "").split(/[/\\]/).pop() ?? p;
+
+/** What a tool step acted on: a file edit reads by its file name; everything else by the Core's text for the call, without the tool's own name in front. */
+export const stepText = (row: TranscriptRowView): string => {
+  const f = row.facts.type === "tool" ? row.facts : null;
+  if (f?.toolClass === "EDIT" && f.paths.length === 1) return baseName(f.paths[0]!);
+  return f && row.text.startsWith(`${f.toolName} `) ? row.text.slice(f.toolName.length + 1) : row.text;
+};
+
 /** A tool step says what happened only once it happened: a call still waiting on approval, denied or failed has not "Ran". */
 export function toolVerb(toolClass: string, status: string): string {
   const of = status === "SUCCEEDED" ? VERB_DONE : status === "RUNNING" ? VERB_NOW : VERB_ASKED;
