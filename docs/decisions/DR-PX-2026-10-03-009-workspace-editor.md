@@ -1,13 +1,15 @@
 ---
 id: DR-PX-2026-10-03-009
 title: A scoped Workspace Editor as a transactional secondary surface, under the no-Monaco and no-Code-OSS constraint (PX-077..081, doc 67)
-status: proposed
+status: rejected
 date: 2026-10-03
 supersedes: none
-approved_by: pending owner ratification; basis is the owner's statement on 2026-10-03 that an editor is a real goal
+approved_by: rejected by the owner, chat instruction of 2026-11-11 ("drop IDE"), recorded in DR-GOV-2026-11-11-009; the 2026-10-03 basis (an editor is a real goal) no longer holds
 ---
 
 # DR-PX-2026-10-03-009 — Workspace Editor
+
+> **REJECTED 2026-11-11.** The owner dropped the editor by chat instruction; `DR-GOV-2026-11-11-009` records the decision. This proposal never took effect: MOD-SURF-002 and MOD-IDE-002 were never superseded and stand as written, rows REQ-PX-077..081 are withdrawn, and nothing below is a build plan. The text is kept as provenance of what was proposed.
 
 ## Problem and goal
 
