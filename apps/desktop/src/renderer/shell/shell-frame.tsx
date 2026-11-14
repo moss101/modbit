@@ -112,12 +112,12 @@ export function ShellFrame({ prefs, onPrefs, panelOpen, panel, agents, topBar, d
             testId="splitter-panel"
             edge="left"
             value={layout.panelPx}
-            min={GEOMETRY.panelMin}
+            min={layout.panelMin}
             max={layout.panelMax}
             growsLeft
             onDragTo={(x) => setPanel(rootLeft() + (fixedWidth ?? width) - x)}
             onNudge={(d) => setPanel(layout.panelPx + d)}
-            onJump={(to) => setPanel(to === "min" ? GEOMETRY.panelMin : layout.panelMax)}
+            onJump={(to) => setPanel(to === "min" ? layout.panelMin : layout.panelMax)}
             onReset={() => onPrefs((p) => ({ ...p, panelRatio: GEOMETRY.panelRatioDefault }))}
           />
           <div className="shell-scroll">{panel}</div>

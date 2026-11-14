@@ -202,13 +202,17 @@ test("PX-200: the plan card follows the Core's work graph, the composer is one l
     await expect(page.getByTestId("menu-item-task-pin")).toHaveText("Unpin");
     await page.getByTestId("menu-item-task-pin").click();
     await expect(page.locator(`[data-testid="agent-row"][data-task-id="${taskId}"]`)).toHaveAttribute("data-pinned", "false");
+    // REQ-PX-202 (the owner's review): the bar holds Changes (the Core lists no terminal), then the Panes menu with every pane.
     const toggles = await bar.locator('[data-testid^="pane-toggle-"]').evaluateAll((els) => els.map((e) => [e.getAttribute("data-testid"), e.getAttribute("aria-pressed")]));
-    expect(toggles).toEqual([["pane-toggle-changes", "false"], ["pane-toggle-browser", "false"], ["pane-toggle-files", "false"], ["pane-toggle-evidence", "false"], ["pane-toggle-activity", "false"], ["pane-toggle-background", "false"], ["pane-toggle-pull-request", "false"]]);
-    const lastToggle = (await bar.getByTestId("pane-toggle-pull-request").boundingBox())!;
+    expect(toggles).toEqual([["pane-toggle-changes", "false"]]);
+    const panesMenu = (await bar.getByTestId("panes-menu").boundingBox())!;
     const more = (await bar.getByTestId("task-details-toggle").boundingBox())!;
-    expect(more.x, "More comes after the toggles").toBeGreaterThanOrEqual(lastToggle.x + lastToggle.width - 1);
-    await bar.getByTestId("pane-toggle-files").click();
+    expect(more.x, "More comes after the toggles and the Panes menu").toBeGreaterThanOrEqual(panesMenu.x + panesMenu.width - 1);
+    await bar.getByTestId("panes-menu").click();
+    expect(await page.getByRole("menu", { name: "Panes" }).getByRole("menuitemcheckbox").evaluateAll((els) => els.map((e) => `${e.textContent}:${e.getAttribute("aria-checked")}`))).toEqual(["Changes:false", "Browser:false", "Files:false", "Evidence:false", "Activity:false", "Background tasks:false", "Pull request:false"]);
+    await page.getByTestId("panes-menu-files").click();
     await expect(page.getByTestId("pane-files")).toBeVisible();
+    // An open pane stands in the bar with its toggle, pressed.
     await expect(bar.getByTestId("pane-toggle-files")).toHaveAttribute("aria-pressed", "true");
     await expect(bar.getByTestId("pane-toggle-changes")).toHaveAttribute("aria-pressed", "false");
     await bar.getByTestId("pane-toggle-changes").click();
@@ -222,6 +226,7 @@ test("PX-200: the plan card follows the Core's work graph, the composer is one l
     await expect(page.getByTestId("region-apps"), "the other pane is still open").toBeVisible();
     await bar.getByTestId("pane-toggle-files").click();
     await expect(page.getByTestId("region-apps")).toHaveCount(0);
+    await expect(bar.getByTestId("pane-toggle-files"), "a closed pane leaves the bar for the Panes menu").toHaveCount(0);
 
     // ---- MWS-08: the protected write asks on one docked card.
     hold.open();

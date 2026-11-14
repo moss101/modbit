@@ -12,7 +12,8 @@ import { TerminalApp } from "../apps/terminal-app.tsx";
 import { APP_LABEL } from "./artifacts.ts";
 import { closePane, dockColumns, leftColumnPx, minimizePane, PANE_MIN, resizeRows, rowHeights, splitForLeft, weightOf } from "./dock.ts";
 import { PaneFrame } from "./pane.tsx";
-import { PaneToggles, type PaneToggle } from "./top-bar.tsx";
+import { PaneToggles, useToggleFit, type PaneToggle } from "./top-bar.tsx";
+import { wantedToggles } from "./title-fit.ts";
 import { DOCK_SPLIT_DEFAULT, type AppKind, type PanelState } from "./prefs.ts";
 import { Splitter } from "./splitter.tsx";
 
@@ -104,14 +105,7 @@ export function AppsPanel(p: AppsPanelProps) {
 
   return (
     <div className="apps-panel dock" role="group" aria-label="Panes" data-testid="apps-panel" data-task-id={p.taskId} data-columns={columns.length} data-panes={p.tiled.join(" ")}>
-      {p.ownToggles && p.ownToggles.panes.length > 0 && (
-        <div className="dock-bar" data-testid="dock-bar">
-          <span className="dock-bar-task" title={p.taskTitle} data-testid="dock-bar-task">
-            {p.taskTitle}
-          </span>
-          <PaneToggles panes={p.ownToggles.panes} onPane={p.ownToggles.onPane} size="sm" />
-        </div>
-      )}
+      {p.ownToggles && p.ownToggles.panes.length > 0 && <DockBar title={p.taskTitle} panes={p.ownToggles.panes} onPane={p.ownToggles.onPane} />}
       <div ref={root} className="dock-grid" data-testid="dock-grid">
       {size &&
         columns.map((column, ci) => {
@@ -181,6 +175,20 @@ export function AppsPanel(p: AppsPanelProps) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/** The dock's own bar, where the title bar does not hold the dock's task's toggles: whose panes these are, the toggles that fit, the Panes menu. */
+function DockBar({ title, panes, onPane }: { title: string; panes: readonly PaneToggle[]; onPane: (kind: AppKind) => void }) {
+  const [bar, setBar] = useState<HTMLElement | null>(null);
+  const fit = useToggleFit(bar, wantedToggles(panes), ".dock-bar-task", 120);
+  return (
+    <div ref={setBar} className="dock-bar" data-testid="dock-bar">
+      <span className="dock-bar-task" title={title} data-testid="dock-bar-task">
+        {title}
+      </span>
+      <PaneToggles panes={panes} onPane={onPane} fit={fit} size="sm" />
     </div>
   );
 }

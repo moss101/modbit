@@ -20,8 +20,8 @@ import { join } from "node:path";
 import { Gate } from "./support/stream-model.ts";
 import { ECHO_LOOP, nodeTerminal } from "./support/apps-harness.ts";
 import { routedModel, sessionOf, type ModelPart } from "./support/conversation-harness.ts";
-import { dockDrift } from "./support/dock-gate.ts";
-import { agentRow, expectTaskState, openTask, openTaskMore, runTask, setDensity, showPane } from "./support/new-task.ts";
+import { CONVERSATION_MIN, dockDrift, panesMenuDrift, TITLE_FLOOR, titleBarDrift } from "./support/dock-gate.ts";
+import { agentRow, expectTaskState, openTask, openTaskMore, pressPane, runTask, setDensity, showPane } from "./support/new-task.ts";
 import { accessible, box, closeApp, git, launch, liftMinimumSize, makeRepo, setContentSize } from "./support/ui-harness.ts";
 
 const SHOTS = process.env.MODBIT_SHOTS_DIR ?? "";
@@ -213,6 +213,8 @@ test("PX-202: panes open together and tile; the set and the sizes are the task's
   const { app, page } = await launch(mkdtempSync(join(tmpdir(), "modbit-e2e-px202-")), { env: { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_CAPACITY: "model=4,provider=8" } });
   try {
     await tapBridge(app);
+    // The window the app opens with on this machine (on CI, the runner's): the title bar is checked there too.
+    const launched = await page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }));
     await setContentSize(app, page, 1440, 900);
     await setTheme(page, "light");
     const taskId = await runTask(page, GOAL, repo);
@@ -226,9 +228,12 @@ test("PX-202: panes open together and tile; the set and the sizes are the task's
     const [ticker, echo] = [...listed].sort((x, y) => x.startedAtMs - y.startedAtMs) as [(typeof listed)[number], (typeof listed)[number]];
     expect(ticker && echo, "the two terminals are the Core's").toBeTruthy();
 
-    // ---- MWS-10: a toggle per pane, the three new ones among them; none open, and the rail beside the conversation.
+    // ---- MWS-10 and the owner's review: the bar holds Changes and Terminal; the Panes menu holds every pane, the three new ones among them; none open, and the rail beside the conversation.
     const bar = page.getByTestId("top-bar");
-    expect(await bar.locator('[data-testid^="pane-toggle-"]').evaluateAll((els) => els.map((e) => `${e.getAttribute("data-testid")}:${e.getAttribute("data-state")}`))).toEqual(["changes", "terminal", "browser", "files", "evidence", "activity", "background", "pull-request"].map((k) => `pane-toggle-${k}:closed`));
+    const ALL = ["changes", "terminal", "browser", "files", "evidence", "activity", "background", "pull-request"];
+    expect(await bar.locator('[data-testid^="pane-toggle-"]').evaluateAll((els) => els.map((e) => `${e.getAttribute("data-testid")}:${e.getAttribute("data-state")}`))).toEqual(["pane-toggle-changes:closed", "pane-toggle-terminal:closed"]);
+    expect(await panesMenuDrift(page, ALL, {}), "every pane is in the Panes menu, closed").toEqual([]);
+    expect(await titleBarDrift(page)).toEqual([]);
     await expect(page.getByTestId("region-apps")).toHaveCount(0);
     await expect(page.getByTestId("details-rail")).toBeVisible();
 
@@ -236,6 +241,75 @@ test("PX-202: panes open together and tile; the set and the sizes are the task's
     for (const kind of ["changes", "terminal", "evidence"] as const) await showPane(page, kind);
     await expect(page.getByTestId("apps-panel")).toHaveAttribute("data-panes", "changes terminal evidence");
     for (const kind of ["changes", "terminal", "evidence"] as const) await expect(page.getByTestId(`pane-${kind}`)).toBeVisible();
+
+    // ---- The owner's review ("Fix title bar first"): with three panes open the title stays readable and the conversation keeps
+    // its minimum, at the window the app opened with, at 1280 and at 1440; every pane is reached from the Panes menu.
+    const three = { changes: "open", terminal: "open", evidence: "open" } as const;
+    for (const size of [launched, { width: 1280, height: 800 }, { width: 1440, height: 900 }]) {
+      await setContentSize(app, page, size.width, size.height);
+      await expect(page.getByTestId("apps-panel")).toHaveAttribute("data-panes", "changes terminal evidence");
+      const stacked = (await page.getByTestId("shell").getAttribute("data-stacked")) === "true";
+      expect(await titleBarDrift(page), `the title bar at ${size.width} x ${size.height}${stacked ? " (stacked)" : ""}`).toEqual([]);
+      const title = await page.getByTestId("top-bar").locator(".topbar-title-text").evaluate((el) => ({ width: el.getBoundingClientRect().width, natural: el.scrollWidth }));
+      expect(title.width + 1, `the title at ${size.width}: ${Math.round(title.width)} of ${title.natural}`).toBeGreaterThanOrEqual(Math.min(TITLE_FLOOR, title.natural));
+      if (!stacked) expect(Number(await page.getByTestId("shell").getAttribute("data-center-px")), `the conversation at ${size.width}`).toBeGreaterThanOrEqual(CONVERSATION_MIN);
+      expect(await panesMenuDrift(page, ALL, three), `the Panes menu at ${size.width}`).toEqual([]);
+    }
+    await expect(page.getByTestId("top-bar").locator(".topbar-title-text")).toHaveText(GOAL);
+    // The widest the dock goes still leaves the conversation its minimum, and the dock drops to one column before it would take it.
+    await page.getByTestId("splitter-panel").focus();
+    await page.keyboard.press("End");
+    expect(Number(await page.getByTestId("shell").getAttribute("data-center-px")), "the dock at its widest").toBe(CONVERSATION_MIN);
+    expect(await titleBarDrift(page)).toEqual([]);
+    await setContentSize(app, page, 1280, 800);
+    await expect(page.getByTestId("apps-panel"), "at 1280 the dock beside a 560 conversation is one column").toHaveAttribute("data-columns", "1");
+    expect(await dockDrift(page, 45), "one column at 1280").toEqual([]);
+    await setContentSize(app, page, 1440, 900);
+    await page.getByTestId("splitter-panel").press("Enter");
+    // Each pane is reached from the Panes menu, by keyboard: a closed one opens, an open one closes.
+    for (const kind of ["files", "activity", "pull-request"] as const) {
+      await page.getByTestId("panes-menu").focus();
+      await page.keyboard.press("Enter");
+      await page.getByTestId(`panes-menu-${kind}`).focus();
+      await page.keyboard.press("Enter");
+      await expect(page.getByTestId(`pane-${kind}`), `${kind} opened from the Panes menu`).toBeVisible();
+      expect(await titleBarDrift(page), `with ${kind} open as well`).toEqual([]);
+      await pressPane(page, kind);
+      await expect(page.getByTestId(`pane-${kind}`)).toHaveCount(0);
+    }
+    // The retained mutations: the superseded bar (every pane's toggle in it), a title cut while toggles stand, a conversation under its minimum and a pane the menu cannot show each fail.
+    const mutateBar = (css: string) => page.evaluate((c) => {
+      const el = document.createElement("style");
+      el.id = "px202-bar-mutation";
+      el.textContent = c;
+      document.head.appendChild(el);
+    }, css);
+    const restoreBar = () => page.evaluate(() => document.getElementById("px202-bar-mutation")?.remove());
+    await page.evaluate(() => {
+      const group = document.querySelector('[data-testid="top-bar"] [data-testid="pane-toggles"]')!;
+      for (const kind of ["browser", "files", "activity"]) {
+        const b = document.createElement("button");
+        b.className = "mb-btn mb-icon-btn";
+        b.setAttribute("data-testid", `pane-toggle-${kind}`);
+        b.setAttribute("data-state", "closed");
+        b.textContent = "x";
+        b.classList.add("px202-extra");
+        group.appendChild(b);
+      }
+    });
+    expect((await titleBarDrift(page)).filter((d) => d.includes("is closed and stands in the bar")), "every pane's toggle in the bar fails").toHaveLength(3);
+    await page.evaluate(() => document.querySelectorAll(".px202-extra").forEach((e) => e.remove()));
+    await mutateBar(".topbar-title { max-width: 60px !important; }");
+    expect((await titleBarDrift(page)).some((d) => d.includes("the title is cut")), "a title cut while toggles stand fails").toBe(true);
+    await restoreBar();
+    await mutateBar('[data-testid="region-apps"] { width: 700px !important; }');
+    expect((await titleBarDrift(page)).some((d) => d.startsWith("conversation:")), "a conversation under 560 fails").toBe(true);
+    await restoreBar();
+    await mutateBar('[data-testid="panes-menu-activity"] { display: none !important; }');
+    expect((await panesMenuDrift(page, ALL, three)).some((d) => d.includes("activity is listed and cannot be seen")), "a pane the menu cannot show fails").toBe(true);
+    await restoreBar();
+    expect(await titleBarDrift(page), "clean again").toEqual([]);
+    expect(await panesMenuDrift(page, ALL, three), "clean again").toEqual([]);
     await expect(page.getByTestId("app-changes")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId("app-evidence")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId("details-rail"), "with panes open the rail gives way").toHaveCount(0);
@@ -297,13 +371,16 @@ test("PX-202: panes open together and tile; the set and the sizes are the task's
     expect(await dockDrift(page, 45), "clean again").toEqual([]);
 
     // ---- The sizes: the separators move by keyboard, and what they set is the task's.
+    // At its widest beside a 560 conversation the dock is 592: two columns of 280 leave the separator 16 px of travel each way.
     await page.getByTestId("splitter-columns").focus();
-    await page.keyboard.press("ArrowRight");
     await page.keyboard.press("ArrowRight");
     await page.getByTestId("splitter-row-terminal").focus();
     await page.keyboard.press("Shift+ArrowDown");
     const sized = await paneBoxes(page);
-    expect(sized["changes"]!.width - tiled["changes"]!.width, "the left column grew by two steps").toBe(32);
+    const dockWidth = Math.round((await page.getByTestId("dock-grid").boundingBox())!.width);
+    expect(sized["changes"]!.width, "the left column grew by one step, as far as the right column's 280 lets it").toBe(Math.min(tiled["changes"]!.width + 16, dockWidth - 1 - 280));
+    expect(sized["changes"]!.width).toBeGreaterThan(tiled["changes"]!.width);
+    expect(sized["evidence"]!.width, "and the right column stays at its minimum or more").toBeGreaterThanOrEqual(280);
     expect(sized["changes"]!.height - tiled["changes"]!.height, "Changes grew by one large step").toBe(64);
     expect(sized["terminal"]!.height - tiled["terminal"]!.height, "and Terminal gave it up").toBe(-64);
     expect(sized["evidence"]!.height, "the other column did not move").toBe(tiled["evidence"]!.height);
@@ -315,7 +392,7 @@ test("PX-202: panes open together and tile; the set and the sizes are the task's
     // Per task: another task has no pane open, and opening one there leaves this task's set alone.
     const other = await runTask(page, OTHER_GOAL, repo);
     await expect(page.getByTestId("conversation")).toHaveAttribute("data-task-id", other);
-    await expect(page.getByTestId("pane-toggle-files")).toHaveAttribute("aria-pressed", "false", { timeout: 60_000 });
+    await expect(page.getByTestId("pane-toggle-changes")).toHaveAttribute("aria-pressed", "false", { timeout: 60_000 });
     await expect(page.getByTestId("region-apps"), "the other task starts with no pane").toHaveCount(0);
     await showPane(page, "files");
     await expect(page.getByTestId("apps-panel")).toHaveAttribute("data-task-id", other);
@@ -534,9 +611,10 @@ test("PX-202: panes open together and tile; the set and the sizes are the task's
     expect(await dockDrift(page, 45), "stacked at 1000 wide").toEqual([]);
     await shots(page, "narrow-window-1000");
     await accessible(page, "the stacked dock", '[data-testid="shell"]');
+    expect(await titleBarDrift(page), "the title bar at 1000 wide").toEqual([]);
     await page.getByTestId("segment-conversation").click();
-    await page.getByTestId("pane-toggle-activity").click();
-    await page.getByTestId("pane-toggle-background").click();
+    await pressPane(page, "activity");
+    await pressPane(page, "background");
     await expect(page.getByTestId("stack-segments")).toHaveCount(0);
 
     // ---- More over a docked approval card, in a narrow and short window: it ends above the card and everything in it can be reached.

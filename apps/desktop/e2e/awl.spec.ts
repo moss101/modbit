@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { COMPACT, GEOMETRY, TYPE, densityMetrics, densityVariables, sharedVariables, themeVariables, type Density } from "@modbit/design-tokens";
 import { nodeTerminal } from "./support/apps-harness.ts";
-import { gearMenu, openTaskMore, runTask, setDensity } from "./support/new-task.ts";
+import { gearMenu, openTaskMore, runTask, setDensity, showPane } from "./support/new-task.ts";
 import { streamingModel } from "./support/stream-model.ts";
 import { accessible, box, closeApp, git, launch, liftMinimumSize, makeRepo, setContentSize } from "./support/ui-harness.ts";
 
@@ -673,8 +673,7 @@ test("PX-194, PX-198: a scripted task with tool steps, an edit, a terminal and a
     expect(await failsWorkspace(".cmp-under { flex-direction: row-reverse !important; }", "not under the box at the right"), "the controls at the left fail").toBe(true);
     expect(await failsWorkspace(".apps-panel { padding-top: 40px !important; }", "pane head"), "pane heads pushed down fail").toBe(true);
     // MWS-10 and section 6: the superseded apps panel (one app at a time behind a tab strip) fails the dock's gate, as does a pane under its minimum.
-    await page.getByTestId("pane-toggle-files").click();
-    await expect(page.getByTestId("pane-files")).toBeVisible();
+    await showPane(page, "files");
     expect(await workspaceDrift(page), "two panes tiled").toEqual([]);
     expect(await failsWorkspace(".apps-panel .pane ~ .pane, .apps-panel .dock-col ~ .dock-col { display: none !important; }", "pane(s) open"), "one app at a time fails").toBe(true);
     expect(await failsWorkspace(".apps-panel .pane { max-height: 60px !important; min-height: 0 !important; }", "under 100"), "a pane under 100 px fails").toBe(true);

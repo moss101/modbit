@@ -80,3 +80,65 @@ export async function dockDrift(page: Page, topBar: number): Promise<string[]> {
   }
   return bad;
 }
+
+/** The title is never narrower than this while a pane toggle stands in the bar (REQ-PX-202, the owner's review). */
+export const TITLE_FLOOR = 200;
+/** The conversation keeps this width while the dock is open beside it (two pane minimums). */
+export const CONVERSATION_MIN = 560;
+/** The panes whose toggle may stand in the title bar whatever their state; others only while open or minimized. */
+const ALWAYS_SHOWN = new Set(["changes", "terminal"]);
+
+/**
+ * What breaks the title bar and the conversation beside an open dock (empty when they hold): the title cut while a pane toggle
+ * still stands in the bar, the title under its floor where it has more text than that, a toggle in the bar for a closed pane
+ * other than Changes and Terminal, a control past the bar's end, and the conversation under 560 beside the dock.
+ */
+export async function titleBarDrift(page: Page): Promise<string[]> {
+  const bad: string[] = [];
+  const m = await page.getByTestId("top-bar").evaluate((bar) => {
+    const b = bar.getBoundingClientRect();
+    const text = bar.querySelector<HTMLElement>(".topbar-title-text");
+    const toggles = [...bar.querySelectorAll<HTMLElement>('[data-testid^="pane-toggle-"]')].filter((t) => getComputedStyle(t).display !== "none" && t.getBoundingClientRect().width > 0).map((t) => ({ kind: (t.getAttribute("data-testid") ?? "").replace("pane-toggle-", ""), state: t.getAttribute("data-state") ?? "" }));
+    const right = Math.max(...[...bar.querySelectorAll<HTMLElement>("button")].map((x) => x.getBoundingClientRect().right));
+    return { barRight: b.right, right, title: text ? { width: text.getBoundingClientRect().width, natural: text.scrollWidth, cut: text.scrollWidth > text.clientWidth + 1 } : null, toggles };
+  });
+  if (m.title) {
+    if (m.title.cut && m.toggles.length > 0) bad.push(`title bar: the title is cut (${Math.round(m.title.width)} of ${m.title.natural}) while ${m.toggles.length} pane toggle(s) stand in the bar`);
+    if (m.toggles.length > 0 && m.title.width + 1 < Math.min(TITLE_FLOOR, m.title.natural)) bad.push(`title bar: the title is ${Math.round(m.title.width)} wide, under ${TITLE_FLOOR}`);
+  }
+  for (const t of m.toggles) if (!ALWAYS_SHOWN.has(t.kind) && t.state === "closed") bad.push(`title bar: ${t.kind} is closed and stands in the bar`);
+  if (m.right > m.barRight + 1) bad.push(`title bar: a control ends ${Math.round(m.right - m.barRight)} px past the bar`);
+  const shell = page.getByTestId("shell");
+  const docked = (await page.getByTestId("region-apps").count()) === 1 && (await shell.getAttribute("data-stacked")) !== "true";
+  if (docked) {
+    const conv = (await page.getByTestId("region-conversation").boundingBox())!;
+    if (conv.width + 0.5 < CONVERSATION_MIN) bad.push(`conversation: ${Math.round(conv.width)} wide beside the dock, under ${CONVERSATION_MIN}`);
+  }
+  return bad;
+}
+
+/**
+ * Every pane the task can show can be reached from the Panes menu (empty when it can): the menu opens, lists each pane once, each
+ * entry is visible and says the pane's state, and the menu closes with Escape. `expected` is the panes the task can show.
+ */
+export async function panesMenuDrift(page: Page, expected: readonly string[], states: Record<string, "open" | "minimized" | "closed">): Promise<string[]> {
+  const bad: string[] = [];
+  const trigger = page.getByTestId("panes-menu");
+  if ((await trigger.count()) !== 1) return ["panes menu: no Panes menu"];
+  await trigger.focus();
+  await page.keyboard.press("Enter");
+  const menu = page.getByRole("menu", { name: "Panes" });
+  if ((await menu.count()) !== 1) return ["panes menu: Enter on it opens nothing"];
+  const items = await menu.locator('[data-testid^="panes-menu-"]').evaluateAll((els) => els.map((e) => ({ kind: (e.getAttribute("data-testid") ?? "").replace("panes-menu-", ""), text: (e.textContent ?? "").trim(), checked: e.getAttribute("aria-checked"), shown: getComputedStyle(e).display !== "none" && getComputedStyle(e).visibility !== "hidden" && e.getBoundingClientRect().height > 0 })));
+  const kinds = items.map((i) => i.kind);
+  if (JSON.stringify(kinds) !== JSON.stringify(expected)) bad.push(`panes menu: lists ${kinds.join(", ")}, not ${expected.join(", ")}`);
+  for (const i of items) {
+    if (!i.shown) bad.push(`panes menu: ${i.kind} is listed and cannot be seen`);
+    const want = states[i.kind] ?? "closed";
+    const says = i.checked !== "true" ? "closed" : /minimized/.test(i.text) ? "minimized" : "open";
+    if (says !== want) bad.push(`panes menu: ${i.kind} says ${says}, the pane is ${want}`);
+  }
+  await page.keyboard.press("Escape");
+  if ((await menu.count()) !== 0) bad.push("panes menu: Escape does not close it");
+  return bad;
+}

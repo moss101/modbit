@@ -118,15 +118,18 @@ input.settings-toggle.settings-toggle::after, input.settings-toggle.settings-tog
 /* MWS-01: the top bar and every pane head are one height (45, 40 in Compact) with a 1 px rule at 8 % under them; MWS-02: the bar sits on the conversation's surface. */
 .topbar { flex: none; box-sizing: border-box; height: var(--mb-top-bar); display: flex; align-items: center; gap: var(--mb-space-2); padding: 0 var(--mb-space-2) 0 var(--mb-space-5); background: transparent; border-bottom: 1px solid var(--color-tab-border); z-index: var(--mb-z-topbar); -webkit-app-region: drag; }
 .topbar button, .topbar select { -webkit-app-region: no-drag; }
-.topbar-title { margin: 0; flex: 0 1 auto; max-width: 60%; font-size: var(--mb-type-chrome-size); line-height: var(--mb-type-chrome-line); font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topbar-title { margin: 0; flex: 0 1 auto; font-size: var(--mb-type-chrome-size); line-height: var(--mb-type-chrome-line); font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* MWS-05: the title opens the task's menu; at the right one toggle per pane, each showing whether it is open, then More. */
 .topbar-title .mb-menu-host { display: flex; min-width: 0; max-width: 100%; }
-.mb-btn.topbar-title-btn { min-width: 0; max-width: 100%; margin-left: calc(-1 * var(--mb-space-2)); padding: 0 var(--mb-space-2); gap: var(--mb-space-1); font: inherit; font-weight: 500; color: var(--mb-color-text); }
+.mb-btn.topbar-title-btn { min-width: 0; max-width: 100%; padding: 0 var(--mb-space-2); gap: var(--mb-space-1); font: inherit; font-weight: 500; color: var(--mb-color-text); }
 .topbar-title-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .topbar-title-btn > svg { flex: none; color: var(--mb-color-text-muted); }
-.topbar-title:has(.mb-menu-host) { overflow: visible; }
+/* The title button reaches 8 px left of the text column: the margin sits on its container, so the button keeps the width of its whole text. */
+.topbar-title:has(.mb-menu-host) { overflow: visible; margin-left: calc(-1 * var(--mb-space-2)); }
 .topbar-title .mb-menu { font-weight: 400; }
 .topbar-panes { flex: none; display: inline-flex; align-items: center; gap: 2px; margin-left: var(--mb-space-2); }
+.topbar-panes-menu { flex: none; display: inline-flex; align-items: center; }
+.topbar-panes-menu .mb-menu-host { display: inline-flex; }
 .topbar-panes .mb-btn[aria-pressed="true"] { background: var(--color-selected); color: var(--mb-color-text); }
 .topbar-end { flex: none; position: relative; display: inline-flex; align-items: center; }
 .topbar-end:empty { display: none; }

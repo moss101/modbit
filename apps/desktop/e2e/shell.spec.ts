@@ -14,7 +14,7 @@ import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PALETTES } from "../../../packages/design-tokens/src/index.ts";
-import { agentRow, expectTaskState, openTask, runTask, setDensity, soloPane } from "./support/new-task.ts";
+import { agentRow, expectTaskState, openTask, paneStateShown, runTask, setDensity, soloPane } from "./support/new-task.ts";
 import { accessible, appDir, box, closeApp, focusedTestId, launch, liftMinimumSize, makeRepo, MOD, scriptedModel, setContentSize } from "./support/ui-harness.ts";
 
 /** `#rrggbb` as the browser reports a computed colour. The window-root colour of each theme is read from the one token source (DR-PX-2026-10-24-016 changed the palette). */
@@ -470,7 +470,7 @@ test("PX-045: the apps panel appears for a task with an artifact, within the geo
     await expect(page.getByTestId("conversation")).toHaveAttribute("data-task-id", taskId);
     await expect(page.getByTestId("top-bar-title")).toContainText("Edit the notes");
     // MWS-05: the task has run, so it has a toggle per pane it can show, each saying it is closed; the terminal has none because the Core lists no terminal.
-    for (const kind of ["changes", "browser", "files", "evidence"]) await expect(page.getByTestId(`pane-toggle-${kind}`), kind).toHaveAttribute("aria-pressed", "false");
+    for (const kind of ["changes", "browser", "files", "evidence"] as const) expect(await paneStateShown(page, kind), kind).toBe("closed");
     await expect(page.getByTestId("pane-toggle-terminal")).toHaveCount(0);
     expect(await page.getByTestId("region-apps").count()).toBe(0);
 

@@ -1,7 +1,8 @@
+import { GEOMETRY } from "@modbit/design-tokens";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { CommandRegistry } from "@modbit/ui/logic";
-import { computeLayout, clampListWidth, ratioForPanel, DETAILS_RAIL } from "./layout.ts";
+import { computeLayout, clampListWidth, ratioForPanel, DETAILS_RAIL, DOCK_LAYOUT } from "./layout.ts";
 import { DEFAULT_UI_PREFS, parseUiPrefs, serializeUiPrefs, clampZoom, UI_PREFS_KEY } from "./prefs.ts";
 import { artifactsOf, panelTaskFor, panesOf } from "./artifacts.ts";
 import { REQUIRED_CHORDS, buildShellRegistry, shellCommandDefs, shellRegistry, type ShellActions } from "./commands.ts";
@@ -17,16 +18,17 @@ test("AFW-A01/A03 (MWS-01): at 1280 the task list is 288 and the conversation ta
   assert.equal(l.stacked, false);
 });
 
-test("AFW-A06: with the panel open at 1280 the centre keeps 424 and the panel gets the remainder (>= 384)", () => {
+test("AFW-A06, REQ-PX-202: with the dock open at 1280 the conversation keeps 560 and the dock gets the remainder (>= 384)", () => {
   const l = computeLayout({ ...base, width: 1280, panelOpen: true });
-  assert.equal(l.centerPx, 424);
-  assert.equal(l.panelPx, 568);
+  assert.equal(DOCK_LAYOUT.conversationMin, 560);
+  assert.equal(l.centerPx, 560);
+  assert.equal(l.panelPx, 432);
   assert.ok(l.panelPx >= 384);
   assert.equal(l.listPx + l.centerPx + l.panelPx, 1280);
 });
 
-test("AFW-A06: a stored ratio that would push the centre under 424 is clamped; one that would starve the panel is raised to 384", () => {
-  assert.equal(computeLayout({ ...base, width: 1600, panelOpen: true, panelRatio: 0.8 }).centerPx, 424);
+test("AFW-A06, REQ-PX-202: a stored ratio that would push the conversation under 560 is clamped; one that would starve the dock is raised to 384", () => {
+  assert.equal(computeLayout({ ...base, width: 1600, panelOpen: true, panelRatio: 0.8 }).centerPx, 560);
   const small = computeLayout({ ...base, width: 1600, panelOpen: true, panelRatio: 0.2 });
   assert.equal(small.panelPx, 384);
   const mid = computeLayout({ ...base, width: 1600, panelOpen: true, panelRatio: 0.4 });
@@ -69,13 +71,24 @@ test("AFW-A08: below a 448 centre the shell is single-pane with a 40 px rail; th
   assert.equal(collapsed.centerPx, 1240);
 });
 
-test("AFW-A08: an open panel that cannot sit beside a 424 centre stacks behind a segmented control", () => {
+test("AFW-A08, REQ-PX-202: an open dock that cannot sit beside a 560 conversation, even at one pane's 280, stacks behind a segmented control", () => {
   const l = computeLayout({ ...base, width: 900, panelOpen: true });
   assert.equal(l.stacked, true);
   assert.equal(l.panelPx, 0);
   assert.equal(l.centerPx, 612);
-  assert.equal(computeLayout({ ...base, width: 288 + 424 + 384, panelOpen: true }).stacked, false, "exactly enough room sits side by side");
-  assert.equal(computeLayout({ ...base, width: 288 + 424 + 383, panelOpen: true }).stacked, true);
+  assert.equal(computeLayout({ ...base, width: 288 + 560 + 280, panelOpen: true }).stacked, false, "exactly enough room sits side by side");
+  assert.equal(computeLayout({ ...base, width: 288 + 560 + 279, panelOpen: true }).stacked, true);
+  // The dock gives before the conversation: under 384 of room it narrows down to 280, the conversation stays at 560.
+  const narrow = computeLayout({ ...base, width: 288 + 560 + 300, panelOpen: true, panelRatio: 0.5 });
+  assert.deepEqual([narrow.centerPx, narrow.panelPx, narrow.panelMin, narrow.panelMax], [560, 300, 300, 300]);
+  for (const width of [1128, 1200, 1280, 1366, 1440, 1600, 1920]) for (const panelRatio of [0.2, 0.39, 0.5, 0.8]) {
+    const at = computeLayout({ ...base, width, panelOpen: true, panelRatio });
+    if (!at.stacked) assert.ok(at.centerPx >= 560 && at.panelPx >= 280, `${width} at ${panelRatio}: ${at.centerPx} beside ${at.panelPx}`);
+  }
+  // The retained mutation: the superseded 424 conversation is what the record's centre minimum gave a dock, and it is narrower than 560.
+  assert.ok(GEOMETRY.centerMin < DOCK_LAYOUT.conversationMin);
+  // With no dock open the centre's own minimum is unchanged.
+  assert.equal(computeLayout({ ...base, width: 1280 }).panelMax, 1280 - 288 - GEOMETRY.centerMin);
 });
 
 test("a drag stores a ratio of the window width that reproduces the width", () => {
