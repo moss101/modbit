@@ -114,7 +114,7 @@ def package_files():
     paths += list((root / "tools").glob("*.py"))
     if (root / "evidence").exists():
         paths += [p for p in (root / "evidence").rglob("*") if p.is_file() and "__pycache__" not in p.parts]
-    return sorted({str(p.relative_to(root)) for p in paths})
+    return sorted({p.relative_to(root).as_posix() for p in paths})
 
 
 def sha256(path):
@@ -266,10 +266,10 @@ def render(manifest):
 
 def main():
     manifest = build()
-    with open(os.path.join(ROOT, "manifest.json"), "w", encoding="utf-8") as fh:
+    with open(os.path.join(ROOT, "manifest.json"), "w", encoding="utf-8", newline="\n") as fh:
         json.dump(manifest, fh, indent=2, ensure_ascii=False)
         fh.write("\n")
-    with open(os.path.join(ROOT, "MANIFEST.md"), "w", encoding="utf-8") as fh:
+    with open(os.path.join(ROOT, "MANIFEST.md"), "w", encoding="utf-8", newline="\n") as fh:
         fh.write(render(manifest))
     print("MANIFEST.md + manifest.json written: %d docs, %d root/tooling files" % (
         len(manifest["docs"]), len(manifest["root_and_tooling"])))
