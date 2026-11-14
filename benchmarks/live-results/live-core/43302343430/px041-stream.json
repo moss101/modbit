@@ -1,0 +1,111 @@
+{
+  "checks": [
+    {
+      "detail": "TaskStatus { state: \"Waiting\", wait_reason: \"UserInput\", run_state: \"Suspended\", loop_alive: false, last_offset: 65, attention_reason: \"1 consecutive turns without progress\", failure_class: \"HARNESS\", failure_code: \"NO_PROGRESS\", retryable: false, user_action: \"steer the task or narrow the goal\", recovery_path: \"the run suspended after consecutive turns without progress; resume with StartTask\", evidence_refs: [], diagnostic_features: [\"class:harness\", \"code:no_progress\", \"not_retryable\", \"source:harness\"], user_explanation: \"A rule of the agent harness refused an action (NO_PROGRESS). Trying again as it is will not help. steer the task or narrow the goal.\", posture: Some(TaskPostureView { task_id: Some(Id { value: [167, 9, 153, 36, 22, 242, 29, 124, 190, 32, 34, 229, 78, 230, 21, 211] }), mode: Agent, mode_offset: 0, mode_in_force: Agent, posture: Some(ModePostureView { effect_ceiling: \"NONE\", allowed_capabilities: [], subagents: true, reproduction_first: false, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"DIRECT\", reason_code: \"NO_ACTIVE_REGISTRY\", detail: \"no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\", floor_mode: \"\", registry_generation: \"\" }) }) }",
+      "name": "run_ended",
+      "ok": true
+    },
+    {
+      "detail": "1 completions",
+      "name": "one_completion",
+      "ok": true
+    },
+    {
+      "detail": "a live stream aborted",
+      "name": "not_aborted",
+      "ok": true
+    },
+    {
+      "detail": "21 deltas",
+      "name": "streamed_in_pieces",
+      "ok": true
+    },
+    {
+      "detail": "largest delta 183 bytes",
+      "name": "delta_size_bound",
+      "ok": true
+    },
+    {
+      "detail": "offsets",
+      "name": "strictly_increasing",
+      "ok": true
+    },
+    {
+      "detail": "21 deltas in 2228 ms (at most 47)",
+      "name": "rate_bound",
+      "ok": true
+    },
+    {
+      "detail": "every delta precedes the completion",
+      "name": "delta_before_completion",
+      "ok": true
+    },
+    {
+      "detail": "21",
+      "name": "delta_count_matches",
+      "ok": true
+    },
+    {
+      "detail": "\"303bf61bf7c6e50db632f85c249b2ef3e115806da26a3dfd3492ed9905ff0321\" vs 303bf61bf7c6e50db632f85c249b2ef3e115806da26a3dfd3492ed9905ff0321",
+      "name": "content_hash_matches",
+      "ok": true
+    },
+    {
+      "detail": "2900 bytes",
+      "name": "object_is_the_concatenation",
+      "ok": true
+    },
+    {
+      "detail": "30 events before the drop",
+      "name": "client_dropped_before_completion",
+      "ok": true
+    },
+    {
+      "detail": "30 + 35 events vs 65 in the log",
+      "name": "resume_has_no_gap_and_no_duplicate",
+      "ok": true
+    },
+    {
+      "detail": "65 vs 65",
+      "name": "live_view_equals_log",
+      "ok": true
+    },
+    {
+      "detail": "p95 2 ms over 21 deltas (bound 100 ms)",
+      "name": "latency_p95_within_100ms",
+      "ok": true
+    },
+    {
+      "detail": "a delta or the completed record carries the planted token",
+      "name": "planted_secret_not_in_the_stream",
+      "ok": true
+    }
+  ],
+  "cost_usd": 0.00678075,
+  "counts": {
+    "bytes": 2900,
+    "deltas": 21,
+    "latency_core_to_client_max_ms": 2,
+    "latency_core_to_client_p95_ms": 2,
+    "secret_echoed_and_redacted": true,
+    "stream_span_ms": 2228,
+    "wall_ms": 30580,
+    "words": 415
+  },
+  "elapsed_s": 31.084536981,
+  "endpoint": "https://generativelanguage.googleapis.com/v1beta/openai",
+  "input_tokens": 6581,
+  "leg": "stream",
+  "live": true,
+  "model": "gemini-3.8-flash",
+  "model_calls": 1,
+  "notes": [
+    "event-timestamp-to-render at p95 in the packaged app is not measured here: no display on the runner; the Core-to-client leg is"
+  ],
+  "output_tokens": 492,
+  "passed": true,
+  "row": "px041",
+  "run_id": "43302343430",
+  "started_at_ms": 1794516110077,
+  "stopped_by_cap": false
+}

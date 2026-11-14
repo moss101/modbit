@@ -1,0 +1,73 @@
+{
+  "checks": [
+    {
+      "detail": "the stream had already ended when the Core was killed (the answer was too short for this check)",
+      "name": "stream_open_at_the_kill",
+      "ok": true
+    },
+    {
+      "detail": "1 abort records",
+      "name": "one_aborted_record",
+      "ok": true
+    },
+    {
+      "detail": "\"RECOVERY\"",
+      "name": "source_recovery",
+      "ok": true
+    },
+    {
+      "detail": "\"ABORTED_BY_RECOVERY\"",
+      "name": "code_aborted_by_recovery",
+      "ok": true
+    },
+    {
+      "detail": "the aborted stream also completed",
+      "name": "no_partial_text_marked_complete",
+      "ok": true
+    },
+    {
+      "detail": "2 vs 2 deltas",
+      "name": "abort_counts_every_delta",
+      "ok": true
+    },
+    {
+      "detail": "TaskStatus { state: \"Waiting\", wait_reason: \"External\", run_state: \"Suspended\", loop_alive: false, last_offset: 36, attention_reason: \"runtime restarted while the task was running; resume with StartTask\", failure_class: \"INFRASTRUCTURE\", failure_code: \"RESTART_SUSPENDED\", retryable: true, user_action: \"resume with StartTask\", recovery_path: \"the run continues from its last recorded boundary; nothing is repeated\", evidence_refs: [], diagnostic_features: [\"boundary:turn_start\", \"class:infrastructure\", \"code:restart_suspended\", \"retryable\", \"source:restart\"], user_explanation: \"Something the agent depends on could not do its part (RESTART_SUSPENDED). Trying again may succeed. resume with StartTask.\", posture: Some(TaskPostureView { task_id: Some(Id { value: [231, 204, 186, 214, 199, 186, 108, 194, 19, 109, 131, 81, 136, 204, 193, 131] }), mode: Agent, mode_offset: 0, mode_in_force: Agent, posture: Some(ModePostureView { effect_ceiling: \"NONE\", allowed_capabilities: [], subagents: true, reproduction_first: false, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"DIRECT\", reason_code: \"NO_ACTIVE_REGISTRY\", detail: \"no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\", floor_mode: \"\", registry_generation: \"\" }) }) }",
+      "name": "loop_not_resumed_mid_token",
+      "ok": true
+    },
+    {
+      "detail": "TaskStatus { state: \"Waiting\", wait_reason: \"UserInput\", run_state: \"Suspended\", loop_alive: false, last_offset: 199, attention_reason: \"1 consecutive turns without progress\", failure_class: \"HARNESS\", failure_code: \"NO_PROGRESS\", retryable: false, user_action: \"steer the task or narrow the goal\", recovery_path: \"the run suspended after consecutive turns without progress; resume with StartTask\", evidence_refs: [], diagnostic_features: [\"class:harness\", \"code:no_progress\", \"not_retryable\", \"source:harness\"], user_explanation: \"A rule of the agent harness refused an action (NO_PROGRESS). Trying again as it is will not help. steer the task or narrow the goal.\", posture: Some(TaskPostureView { task_id: Some(Id { value: [231, 204, 186, 214, 199, 186, 108, 194, 19, 109, 131, 81, 136, 204, 193, 131] }), mode: Agent, mode_offset: 0, mode_in_force: Agent, posture: Some(ModePostureView { effect_ceiling: \"NONE\", allowed_capabilities: [], subagents: true, reproduction_first: false, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"DIRECT\", reason_code: \"NO_ACTIVE_REGISTRY\", detail: \"no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\", floor_mode: \"\", registry_generation: \"\" }) }) }",
+      "name": "run_ends_after_resume",
+      "ok": true
+    },
+    {
+      "detail": "no completed message after the resume",
+      "name": "a_new_stream_completes",
+      "ok": true
+    },
+    {
+      "detail": "the aborted stream changed",
+      "name": "aborted_stream_stays_aborted",
+      "ok": true
+    }
+  ],
+  "cost_usd": 0.03050175,
+  "counts": {
+    "deltas_before_kill": 2,
+    "two_deltas_after_ms": 15347
+  },
+  "elapsed_s": 68.138287084,
+  "endpoint": "https://generativelanguage.googleapis.com/v1beta/openai",
+  "input_tokens": 8944,
+  "leg": "kill",
+  "live": true,
+  "model": "gemini-3.8-flash",
+  "model_calls": 2,
+  "notes": [],
+  "output_tokens": 6345,
+  "passed": true,
+  "row": "px041",
+  "run_id": "43302343430",
+  "started_at_ms": 1794516041937,
+  "stopped_by_cap": false
+}
