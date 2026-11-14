@@ -1089,6 +1089,19 @@ impl ProviderGateway {
         deadline: Instant,
     ) -> Attempt {
         let url = wire_url(ep.kind, &ep.base_url);
+        // Opaque per-call provider data reaches only the endpoint that
+        // produced it, unwrapped (ProviderData).
+        let scoped;
+        let req = match crate::contract::ProviderData::messages_for(&req.messages, &ep.name) {
+            std::borrow::Cow::Borrowed(_) => req,
+            std::borrow::Cow::Owned(messages) => {
+                scoped = ModelRequest {
+                    messages,
+                    ..req.clone()
+                };
+                &scoped
+            }
+        };
         let (mut body, mut rb) = match ep.kind {
             ProviderKind::OpenAi => (crate::openai::request_body(req), self.client.post(&url)),
             ProviderKind::Anthropic => (
@@ -1294,7 +1307,16 @@ impl ProviderGateway {
                     ProviderKind::OpenAi => openai.decode(&ev.data),
                     ProviderKind::Anthropic => anthropic.decode(ev.event.as_deref(), &ev.data),
                 };
-                for e in events {
+                for mut e in events {
+                    if let ModelEvent::ToolCallComplete {
+                        provider_data: d @ Some(_),
+                        ..
+                    } = &mut e
+                    {
+                        *d = d
+                            .take()
+                            .map(|raw| crate::contract::ProviderData::scope(&ep.name, raw));
+                    }
                     if !first_token {
                         first_token = true;
                         let ms = started.elapsed().as_millis() as u64;

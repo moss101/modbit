@@ -1,7 +1,7 @@
 # Modbit Dossier Manifest — V3.3 EPR v1.1
 
 > **Authority date:** 2026-09-05  
-> **Generated:** 2026-11-12 by `tools/build_manifest.py`  
+> **Generated:** 2026-11-14 by `tools/build_manifest.py`  
 > **Scope:** every specification file in `docs/` plus the root governing files and tooling. The previous `99_MANIFEST.md` covered only 39 Part 2 files; this manifest covers all 97 docs.
 > **Machine-readable twin:** `manifest.json` (same content, same hashes).
 
@@ -170,7 +170,6 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `docs/decisions/DR-PX-2026-11-04-020-agent-workspace-screens.md` | source patch provenance | 18990 | `5c464105969bf7e764cd677fcb2545cf9132978c60e28fef4c1c80ad5ffcacdc` |
 | `docs/decisions/DR-PX-2026-11-11-021-measured-workspace.md` | source patch provenance | 22901 | `b7c8b8dd586bae037c0876e5d82fb017080afbfc52e415d52c04f839e1d9f17b` |
 | `docs/decisions/README.md` | source patch provenance | 11335 | `6000d8aea12959fbef30f0935ccf01cff063f8b40a72e60b8b10cca8f85ee3e0` |
-| `evidence/.DS_Store` | retained evidence | 14340 | `ae9e212e57c01ac7b19bf3f6a5ce4e5474c9ad30ec15ecbb3d0f305af4e6b1c8` |
 | `evidence/dossier-epr-v1.1/baseline.json` | retained evidence | 11128 | `ae11c9be07272788d2957bff45bc1333f879e121d2b5205ebc01ce780ec62543` |
 | `evidence/dossier-epr-v1.1/tests.log` | retained evidence | 2071 | `2f4bbebb6db1f0f0c6802f8dee65e5d6aa7933db6d1bda28a8acd70aa9bd88b3` |
 | `evidence/dossier-epr-v1.1/validation.json` | retained evidence | 14010 | `288bf2fff83122240110c926d18d8ef616a9257fc62bc54eb70b536088dfbfb5` |
@@ -788,7 +787,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-199/after/tasks-head-more-menu-light-comfortable.png` | retained evidence | 64870 | `6ed34a5af706cc6ced4bae0ec22bb406a4ec6a4607241719efd1da55487d55bc` |
 | `evidence/m10/PX-199/ci-run-43088097664.json` | retained evidence | 65416 | `c143986870e35ed7ac4701814534f5d32b7cb6a307b076b0edc3f4581a3a7511` |
 | `evidence/m10/PX-199/evidence.json` | retained evidence | 6283 | `a25213955afe0034cc1c3eb56504a333efcb2e9e17965d29ca2202f612c71c68` |
-| `evidence/m10/PX-200/TASK_CARD.md` | retained evidence | 25289 | `940c3537672002eddb0602fc8c495c46b9626bcc8fc23162b8add6bad9746fae` |
+| `evidence/m10/PX-200/TASK_CARD.md` | retained evidence | 26066 | `55a81c50b3752f8d9bc1a583936c7efbe3d053771e3095bffbab24a576a0881f` |
 | `evidence/m10/PX-200/after/approval-destructive-asks-twice-dark-comfortable.png` | retained evidence | 264986 | `3008e53a53d0084905cad613902879dfb7de617b10593c856c8acfb5d3f858e1` |
 | `evidence/m10/PX-200/after/approval-destructive-asks-twice-light-comfortable.png` | retained evidence | 265988 | `117630d1c2434b48c80afd4a4d70bd5a164a6a45843ce0d89de4f534217519e3` |
 | `evidence/m10/PX-200/after/approval-destructive-dark-comfortable.png` | retained evidence | 268747 | `64d1d251ce81a27102646142e72ff3e7ac661d0dfb6dcdcba807998bd6282ffc` |
@@ -815,7 +814,23 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-200/after/title-menu-and-pane-toggles-light-comfortable.png` | retained evidence | 190360 | `23f2632aefbcceb817c0b4e1d53b62a7b00555f9b0acb410827a50fdc44617ae` |
 | `evidence/m10/PX-200/ci-run-43198251756.json` | retained evidence | 65416 | `7133fd5c18bdaf2c57dd8183c427a901fc55f9f06eb9eef530afd2fd391d3582` |
 | `evidence/m10/PX-200/desktop-e2e-full-results.txt` | retained evidence | 38138 | `7a6f3e8a9ebd220218f80b8846a95380ab1c1996b3f80f86d0e52ae50e264ee4` |
-| `evidence/m10/PX-200/evidence.json` | retained evidence | 6799 | `b59732825c02e8598e000ae2e25498e0dd1204601e30cc2260a74180a057d275` |
+| `evidence/m10/PX-200/evidence.json` | retained evidence | 7172 | `a68fd6af32270b5cd708e6947d622bacb9d8c23d082569edb95a06ac5bd6e562` |
+| `evidence/m10/PX-201/TASK_CARD.md` | retained evidence | 22675 | `133c556c97505a8635a79ce6c250cc9e6996044342f79382a01d59ceee0b9ef4` |
+| `evidence/m10/PX-201/after/details-open-dark-comfortable.png` | retained evidence | 418264 | `1f6da2b9272ae041d74190e9f6ef696ca7b3660011bd95f399299c022cbd9c6f` |
+| `evidence/m10/PX-201/after/details-open-light-comfortable.png` | retained evidence | 419616 | `f760d2de2c1bcda16d4f3f8896a22f26b665b735084492392465d9ee82e86cee` |
+| `evidence/m10/PX-201/after/running-child-terminal-checkpoints-budget-dark-comfortable.png` | retained evidence | 291399 | `7ab14c0fb11fd892bc16e723d4f180c6bdfa12b16f0fea08dae53b07eca9bf0d` |
+| `evidence/m10/PX-201/after/running-child-terminal-checkpoints-budget-dark-compact.png` | retained evidence | 283207 | `ff8fe71012a2ecdcf714c7e79e2956cc48290667856e8bf2fb833d36c7cba67b` |
+| `evidence/m10/PX-201/after/running-child-terminal-checkpoints-budget-light-comfortable.png` | retained evidence | 292097 | `1f7896b704211f69e93c479ac591e5359ed2c6381a23a9fbc1f3463f7e5d6419` |
+| `evidence/m10/PX-201/after/running-child-terminal-checkpoints-budget-light-compact.png` | retained evidence | 284585 | `26e64a7f0c8967cfcd665d386b68bf0229bcbebc1a0f0b945bfb474389d5f606` |
+| `evidence/m10/PX-201/after/waiting-on-approval-dark-comfortable.png` | retained evidence | 379838 | `f0e9bd581056bddd11c5488bdb6f7464d71ac9720de1b92fa5148ce2fe542a55` |
+| `evidence/m10/PX-201/after/waiting-on-approval-dark-compact.png` | retained evidence | 357857 | `40e870b087947645511fa529555c536797245c392201ef039b3db71e8f66233a` |
+| `evidence/m10/PX-201/after/waiting-on-approval-light-comfortable.png` | retained evidence | 381211 | `f4ebb0166e8ad31e6b4edff6231ce9aa7265411b3cc76a13be7db71538ab9a6f` |
+| `evidence/m10/PX-201/after/waiting-on-approval-light-compact.png` | retained evidence | 360455 | `3ba86a58341e8bd74071b6c6ab6dce1413711d790dd9c444ae040c4faf26edc4` |
+| `evidence/m10/PX-201/after/window-1000-rail-gone-more-open-dark-comfortable.png` | retained evidence | 293224 | `b69143a4385abf84463803ede5893044cbcd8acca928b9550b3a3042703b5e64` |
+| `evidence/m10/PX-201/after/window-1000-rail-gone-more-open-light-comfortable.png` | retained evidence | 294989 | `314c8aea73eafe95111a93ccca4a9e4098bf041faa38115b45b4d29427562cd7` |
+| `evidence/m10/PX-201/ci-run-43268843557.json` | retained evidence | 65329 | `d2d158b8b1b85ea0a3f7eae7b90b0d6bbb72d6880264e368a5c2dd879eafb246` |
+| `evidence/m10/PX-201/desktop-e2e-full-results.txt` | retained evidence | 40002 | `14d7bb719e30e8c2aaf5791e4786c6d29999b6867720d1ff4be22afe7812adfd` |
+| `evidence/m10/PX-201/evidence.json` | retained evidence | 8062 | `0c41621f0b97424f0f334c9873016f4ca63458de004c7ea31e20f3654d21a11d` |
 | `evidence/m10/PX-210/TASK_CARD.md` | retained evidence | 11615 | `493c4c60c6a94d4a062040ba472476e08b5b9c7f30116221ff5eb56dd26873f4` |
 | `evidence/m10/PX-210/after/composer-after-tab-light.png` | retained evidence | 30362 | `a7b1367df855da4288ff969ddb1a68bb03d6a4ecbbc8071ad59d0e5dddabff4d` |
 | `evidence/m10/PX-210/after/composer-long-suggestion-dark-900.png` | retained evidence | 35124 | `14ec8efa1eafc089f6f688e72fb15a75e11555cdf3e48e237cb62fdeb3f3d36f` |
@@ -2316,8 +2331,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/zcode-ui/reference/zcode-colors-rgba.json` | retained evidence | 18690 | `76372c3edbcd50fe596d5e4b7fcd7991adab9686588ddc578a728afa24b4f028` |
 | `evidence/zcode-ui/reference/zcode-computed.json` | retained evidence | 718674 | `9ae8821ce72aa0fff3be44aacd0f4c9d995465c54bad7f17d1a81f92841d1c2d` |
 | `evidence/zcode-ui/reference/zcode-tokens-resolved.json` | retained evidence | 30635 | `066725c00059a05d073fbcdac9a8d965eab05f05c1f5df16e654854ff3e22b91` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 47635 | `0996abb41cb541e164320e8f55535882816b2c18dae9324497d0b202e3d25e71` |
-| `graph/project-graph.json` | project driver graph with live status | 2652586 | `764d2e04abafb7c42566e83368ecba177d4e0c74ba85ab1580312b3799e6b8aa` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 47635 | `95f29b49df718a06ae27c2a187cb437786d8fe1bca433787906cbe67e5602a5f` |
+| `graph/project-graph.json` | project driver graph with live status | 2652730 | `6dc1a8da7c54d4d144635c0b77d734792eff9f32a7904182ee5697d7bb6a018c` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 67211 | `9d101fa8395609092e6a2134a32210fb214a94a0765a13e66b58cbf790267b9d` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |

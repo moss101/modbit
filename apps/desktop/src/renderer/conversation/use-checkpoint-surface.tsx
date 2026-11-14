@@ -7,7 +7,7 @@
  */
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { Button } from "@modbit/ui";
-import type { CheckpointInfo, RestoreOutcome, RewindPreviewInfo } from "../../shared/control-types.ts";
+import type { CheckpointInfo, CheckpointListInfo, RestoreOutcome, RewindPreviewInfo } from "../../shared/control-types.ts";
 import type { TranscriptRowView } from "../../shared/conversation-types.ts";
 import type { TaskCard } from "../model.ts";
 import { EditFilesDialog, RedoBar, type CheckpointContext } from "./checkpoint-controls.tsx";
@@ -26,7 +26,7 @@ export interface CheckpointSurfaceInput {
 
 const clean = (m: string): string => m.replace(/^Error invoking remote method '[^']*': (Error: )?/, "");
 
-export function useCheckpointSurface(p: CheckpointSurfaceInput): { context: CheckpointContext; overlay: ReactNode; bar: ReactNode; head: ReactNode } {
+export function useCheckpointSurface(p: CheckpointSurfaceInput): { context: CheckpointContext; overlay: ReactNode; bar: ReactNode; head: ReactNode; list: CheckpointListInfo | null } {
   const { taskId, sessionId, connected, card, onResume, onOpenTask } = p;
   const { list, reload } = useCheckpoints(taskId, connected);
   const [request, setRequest] = useState<RestoreRequest | null>(null);
@@ -228,5 +228,5 @@ export function useCheckpointSurface(p: CheckpointSurfaceInput): { context: Chec
       )}
     </>
   );
-  return { context, overlay, bar, head };
+  return { context, overlay, bar, head, list };
 }

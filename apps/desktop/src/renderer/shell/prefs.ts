@@ -27,6 +27,8 @@ export interface UiPrefs {
   zoom: number;
   /** Comfortable or Compact (DR-PX-2026-11-11-021 MWS-03): one setting, separate from zoom. A profile stored before it existed reads as Comfortable. */
   density: Density;
+  /** The details rail beside the conversation is shown where it fits (MWS-09). A profile stored before it existed reads as shown. */
+  detailsOpen: boolean;
 }
 
 export const UI_PREFS_KEY = "modbit.ui.v1";
@@ -35,7 +37,7 @@ export const ZOOM_MIN = 0.68;
 export const ZOOM_MAX = 1.64;
 const MAX_TASK_ENTRIES = 200;
 
-export const DEFAULT_UI_PREFS: UiPrefs = { listWidth: GEOMETRY.listDefault, listCollapsed: false, panelRatio: GEOMETRY.panelRatioDefault, panelByTask: {}, theme: "system", zoom: 1, density: "comfortable" };
+export const DEFAULT_UI_PREFS: UiPrefs = { listWidth: GEOMETRY.listDefault, listCollapsed: false, panelRatio: GEOMETRY.panelRatioDefault, panelByTask: {}, theme: "system", zoom: 1, density: "comfortable", detailsOpen: true };
 
 export function clampZoom(z: number): number {
   const stepped = 1 + Math.round((z - 1) / ZOOM_STEP) * ZOOM_STEP;
@@ -70,6 +72,7 @@ export function parseUiPrefs(raw: string | null): UiPrefs {
     theme: isThemePreference(v.theme) ? v.theme : "system",
     zoom: typeof v.zoom === "number" && Number.isFinite(v.zoom) ? clampZoom(v.zoom) : 1,
     density: isDensity(v.density) ? v.density : DEFAULT_UI_PREFS.density,
+    detailsOpen: v.detailsOpen !== false,
   };
 }
 

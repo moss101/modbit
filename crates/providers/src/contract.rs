@@ -75,6 +75,14 @@ pub enum ContentPart {
         name: String,
         /// Arguments JSON text.
         arguments_json: String,
+        /// Opaque data the provider attached to this call and requires back
+        /// unchanged when the call is replayed (Gemini 3's thought
+        /// signature). Never interpreted, never shown; scoped to the
+        /// endpoint that produced it ([`ProviderData`]). Absent for every
+        /// provider that attaches none, and for calls recorded before it
+        /// had a place.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        provider_data: Option<serde_json::Value>,
     },
     /// A tool result for an earlier call.
     ToolResult {
@@ -328,6 +336,11 @@ pub enum ModelEvent {
         name: String,
         /// Complete arguments JSON text.
         arguments_json: String,
+        /// Opaque per-call data the provider requires back on replay
+        /// (see [`ContentPart::ToolCall`]). The gateway scopes it to the
+        /// endpoint that streamed it before the event leaves.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        provider_data: Option<serde_json::Value>,
     },
     /// Usage (may arrive more than once; the last one wins).
     Usage {
@@ -365,4 +378,64 @@ pub mod stop {
     pub const MAX_TOKENS: &str = "max_tokens";
     /// Cancelled by the caller.
     pub const CANCELLED: &str = "cancelled";
+}
+
+/// Endpoint scoping of a tool call's opaque provider data.
+///
+/// An adapter returns the raw data its provider attached to a call; the
+/// gateway stores it as `{"endpoint": <name>, "data": <raw>}` and, when the
+/// history is replayed, hands the raw data back only to the endpoint that
+/// produced it. Another endpoint never receives it: a field one compatible
+/// gateway requires is a field another may reject.
+pub struct ProviderData;
+
+impl ProviderData {
+    /// Wrap the raw data an adapter returned for `endpoint`.
+    #[must_use]
+    pub fn scope(endpoint: &str, raw: serde_json::Value) -> serde_json::Value {
+        serde_json::json!({"endpoint": endpoint, "data": raw})
+    }
+
+    /// The raw data of `scoped` when it was produced by `endpoint`.
+    #[must_use]
+    pub fn for_endpoint(scoped: &serde_json::Value, endpoint: &str) -> Option<serde_json::Value> {
+        (scoped.get("endpoint").and_then(serde_json::Value::as_str) == Some(endpoint))
+            .then(|| scoped.get("data").cloned())
+            .flatten()
+    }
+
+    /// `messages` as `endpoint` should see them: every tool call's provider
+    /// data unwrapped when it is this endpoint's, dropped otherwise.
+    /// Borrowed unchanged when no call carries any.
+    #[must_use]
+    pub fn messages_for<'a>(
+        messages: &'a [Message],
+        endpoint: &str,
+    ) -> std::borrow::Cow<'a, [Message]> {
+        let carries = messages.iter().any(|m| {
+            m.parts.iter().any(|p| {
+                matches!(
+                    p,
+                    ContentPart::ToolCall {
+                        provider_data: Some(_),
+                        ..
+                    }
+                )
+            })
+        });
+        if !carries {
+            return std::borrow::Cow::Borrowed(messages);
+        }
+        let mut out = messages.to_vec();
+        for m in &mut out {
+            for p in &mut m.parts {
+                if let ContentPart::ToolCall { provider_data, .. } = p {
+                    *provider_data = provider_data
+                        .as_ref()
+                        .and_then(|v| Self::for_endpoint(v, endpoint));
+                }
+            }
+        }
+        std::borrow::Cow::Owned(out)
+    }
 }

@@ -93,13 +93,12 @@ export function Shell({ app }: { app: AppState }) {
   // The conversation Back left, for Forward.
   const [leftConversation, setLeftConversation] = useState<string | null>(null);
   const [headers, setHeaders] = useState<readonly AgentHeaderView[]>([]);
-  const [topSlot, setTopSlot] = useState<HTMLSpanElement | null>(null);
   const [topEndSlot, setTopEndSlot] = useState<HTMLSpanElement | null>(null);
+  // MWS-09: the details rail's element while the frame draws it; the open conversation fills it.
+  const [railSlot, setRailSlot] = useState<HTMLElement | null>(null);
   // MWS-05: the open task's title menu pins and archives through the task list, which owns both.
   const [taskActions, setTaskActions] = useState<TaskActions | null>(null);
   const [userName, setUserName] = useState("");
-  const [branchByTask, setBranchByTask] = useState<Record<string, string>>({});
-  const noteBranch = useCallback((taskId: string, branch: string) => setBranchByTask((m) => (m[taskId] === branch ? m : { ...m, [taskId]: branch })), []);
   // PX-064: a project's page and PX-068: the worktree list take the centre like a conversation does.
   const [projectPage, setProjectPage] = useState<string | null>(null);
   const [worktreesOpen, setWorktreesOpen] = useState(false);
@@ -482,7 +481,6 @@ export function Shell({ app }: { app: AppState }) {
               onOpenReview={() => setReviewing(panelTaskId)}
               onOpenCall={(callId) => openConversation(panelTaskId, `tool:${callId}`)}
               onOpenBrowser={() => void openBrowser(panelTaskId)}
-              onBranch={noteBranch}
               onClose={() => actions.togglePanel()}
               maximized={prefs.panelRatio >= PANEL_MAX_RATIO}
               onToggleMaximize={() => setPrefs((p) => ({ ...p, panelRatio: clampPanelRatio(p.panelRatio >= PANEL_MAX_RATIO ? GEOMETRY.panelRatioDefault : PANEL_MAX_RATIO) }))}
@@ -578,9 +576,30 @@ export function Shell({ app }: { app: AppState }) {
             note={computerStop.note}
           />
         }
-        topBar={
-          <TopBar title={title} taskMenu={taskMenu} slotRef={setTopSlot} endSlotRef={setTopEndSlot} panes={panes} onPane={onPane} />
-        }
+        details={menuTaskId !== null && prefs.detailsOpen}
+        detailsRef={setRailSlot}
+        topBar={(layout) => (
+          <TopBar
+            title={title}
+            taskMenu={taskMenu}
+            endSlotRef={setTopEndSlot}
+            panes={panes}
+            onPane={onPane}
+            details={
+              menuTaskId !== null && layout.detailsFits
+                ? {
+                    shown: layout.detailsPx > 0,
+                    // The rail gives way to an open panel: asking for it closes the panel, and hiding it is remembered.
+                    onToggle: () => {
+                      const shown = layout.detailsPx > 0;
+                      setPrefs((p) => ({ ...p, detailsOpen: !shown }));
+                      if (!shown && panelTaskId && panelOpen) setPanelState(panelTaskId, { ...panelState, open: false });
+                    },
+                  }
+                : undefined
+            }
+          />
+        )}
         tray={conversation && !reviewing && !browsing && !dashboardOpen ? null : <TrayHost />}
         statusRow={
           <section aria-label="App notices">
@@ -659,18 +678,26 @@ export function Shell({ app }: { app: AppState }) {
               onOpenTerminal={(tid, termId) => { setTerminalPick((m) => ({ ...m, [tid]: termId })); setPanelState(tid, { open: true, tab: "terminal" }); }}
               onOpenTask={(id) => openConversation(id)}
               titleOf={(id) => model.tasks.get(id)?.goalText ?? "another task"}
-              topSlot={topSlot}
               topEndSlot={topEndSlot}
+              railSlot={menuTaskId === conversation.taskId ? railSlot : null}
               subtasks={childrenOf(model, conversation.taskId)}
               screenState={model.tasks.has(conversation.taskId) ? taskState({ card: model.tasks.get(conversation.taskId)!, core, attention: attentionItems }) : null}
-              worktree={Boolean(openedHeader?.checkoutRoot)}
-              executionLocation={openedHeader?.executionLocation}
-              branch={branchByTask[conversation.taskId]}
+              header={openedHeader}
+              terminals={terminalsByTask.get(conversation.taskId)}
+              onTerminalsChanged={refreshTerminals}
               onReview={() => setReviewing(conversation.taskId)}
               onBrowser={() => void openBrowser(conversation.taskId)}
               onCancelTask={() => {
                 const t = model.tasks.get(conversation.taskId);
                 if (t) setConfirm({ kind: "cancel", taskId: t.taskId, text: `Cancel “${t.goalText}”? The run stops at its next safe boundary; the task cannot be resumed.` });
+              }}
+              onStopChild={(id) => {
+                const t = model.tasks.get(id);
+                if (t) setConfirm({ kind: "cancel", taskId: t.taskId, text: `Cancel “${t.goalText}”? The run stops at its next safe boundary; the task cannot be resumed.` });
+              }}
+              onCustomize={() => {
+                closePages();
+                setCustomizeOpen(true);
               }}
             />
           ) : (

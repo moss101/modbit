@@ -797,6 +797,7 @@ mod tests {
                         call_id: format!("c{i}"),
                         name: "fs.read".into(),
                         arguments_json: "{\"path\":\"secret-args\"}".into(),
+                        provider_data: None,
                     },
                 ],
             });

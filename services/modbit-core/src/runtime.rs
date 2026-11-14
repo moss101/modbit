@@ -150,6 +150,13 @@ pub(crate) enum TranscriptEntry {
     Assistant {
         text: String,
         tool_calls: Vec<(String, String, String)>, // (call_id, name, arguments_json)
+        /// Per call id, the opaque data the provider attached to the call
+        /// and requires back on replay (Gemini 3's thought signature),
+        /// endpoint-scoped by the gateway. Persisted with the message so a
+        /// resumed run replays it; absent when no call carried any, which
+        /// keeps every other entry byte-identical to before.
+        #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+        provider_data: std::collections::BTreeMap<String, serde_json::Value>,
     },
     /// What the model saw for one requested call.
     ToolResult {
@@ -2326,6 +2333,7 @@ pub(crate) fn dangling_calls(transcript: &[Message]) -> Vec<(String, String, Str
                 call_id,
                 name,
                 arguments_json,
+                ..
             } if !answered.contains(&call_id.as_str()) => {
                 Some((call_id.clone(), name.clone(), arguments_json.clone()))
             }
@@ -2459,6 +2467,7 @@ fn frame_window(transcript: &[Message], keep: usize) -> std::borrow::Cow<'_, [Me
                     call_id,
                     name,
                     arguments_json,
+                    ..
                 } => {
                     calls.insert(call_id, (name, arguments_json));
                 }
@@ -2632,16 +2641,22 @@ pub(crate) fn b64(bytes: &[u8]) -> String {
 
 fn apply_entry(transcript: &mut Vec<Message>, state: &mut HarnessState, entry: TranscriptEntry) {
     match entry {
-        TranscriptEntry::Assistant { text, tool_calls } => {
+        TranscriptEntry::Assistant {
+            text,
+            tool_calls,
+            mut provider_data,
+        } => {
             let mut parts = Vec::new();
             if !text.is_empty() {
                 parts.push(ContentPart::Text { text });
             }
             for (call_id, name, arguments_json) in tool_calls {
+                let data = provider_data.remove(&call_id);
                 parts.push(ContentPart::ToolCall {
                     call_id,
                     name,
                     arguments_json,
+                    provider_data: data,
                 });
             }
             transcript.push(Message {
@@ -4666,6 +4681,8 @@ async fn run_loop(
                 };
                 let mut text = String::new();
                 let mut calls: Vec<(String, String, String)> = Vec::new();
+                let mut call_data: std::collections::BTreeMap<String, serde_json::Value> =
+                    std::collections::BTreeMap::new();
                 // Usage is unknown until the provider reports it: a stream that drops
                 // or is cancelled leaves the cost unknown, never zero (docs/38).
                 let mut usage = modbit_providers::Usage::default();
@@ -4733,7 +4750,13 @@ async fn run_loop(
                                     call_id,
                                     name,
                                     arguments_json,
-                                } => calls.push((call_id, name, arguments_json)),
+                                    provider_data,
+                                } => {
+                                    if let Some(d) = provider_data {
+                                        call_data.insert(call_id.clone(), d);
+                                    }
+                                    calls.push((call_id, name, arguments_json));
+                                }
                                 ModelEvent::Usage { usage: u } => {
                                     usage = u;
                                     usage_reported = true;
@@ -5152,6 +5175,7 @@ async fn run_loop(
                 let assistant = TranscriptEntry::Assistant {
                     text: text.clone(),
                     tool_calls: calls.clone(),
+                    provider_data: call_data,
                 };
                 let assistant_ref = {
                     let store = core.store.lock().await;
@@ -11471,6 +11495,7 @@ mod tests {
                     call_id: id.into(),
                     name: name.into(),
                     arguments_json: args.into(),
+                    provider_data: None,
                 }],
             },
             Message {
@@ -11631,6 +11656,7 @@ mod tests {
                     call_id: (*id).into(),
                     name: "fs.read".into(),
                     arguments_json: "{}".into(),
+                    provider_data: None,
                 })
                 .collect(),
         }
