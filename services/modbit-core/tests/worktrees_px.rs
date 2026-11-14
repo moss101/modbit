@@ -541,9 +541,11 @@ async fn px_118_an_isolated_task_works_in_its_worktree_and_the_checkout_never_ch
         "nothing reached the checkout"
     );
     // ... and through a symlink in the worktree that points at the checkout.
-    #[cfg(unix)]
     {
+        #[cfg(unix)]
         std::os::unix::fs::symlink(&fx.root, wt.join("sneaky")).unwrap();
+        #[cfg(windows)]
+        std::os::windows::fs::symlink_dir(&fx.root, wt.join("sneaky")).unwrap();
         let r = fx
             .invoke(
                 &task,
@@ -1488,16 +1490,19 @@ async fn px_065_a_failing_setup_is_visible_and_the_task_goes_on() {
     assert_eq!(last["commands"][1]["skipped"], true);
 }
 
-#[cfg(unix)]
 #[tokio::test]
 async fn px_065_a_setup_command_past_its_timeout_is_stopped_and_reported() {
     let (model, _seen) = px_common::scripted_model(vec![], vec![]).await;
     let mut envs: Vec<(String, String)> = model_env(&model);
     envs.push(("MODBIT_WORKTREE_SETUP_TIMEOUT_MS".into(), "800".into()));
     let env: Vec<(&str, &str)> = envs.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
-    let (repo, root) = setup_repo(serde_json::json!([
-        {"id": "sleeper", "argv": ["sleep", "60"]},
-    ]));
+    // A real long-running process on every platform: `sleep 60` on Unix, one
+    // ping per second for a minute on Windows.
+    #[cfg(unix)]
+    let sleeper = serde_json::json!([{"id": "sleeper", "argv": ["sleep", "60"]}]);
+    #[cfg(windows)]
+    let sleeper = serde_json::json!([{"id": "sleeper", "argv": ["ping", "-n", "61", "127.0.0.1"]}]);
+    let (repo, root) = setup_repo(sleeper);
     let mut fx = Fx::with_repo(repo, root, &env, tempfile::tempdir().unwrap()).await;
     trust(&mut fx).await;
     let t = fx.isolated(0x67).await;
@@ -1979,7 +1984,6 @@ async fn px_065_a_scheduled_run_that_finds_the_lease_held_is_skipped_not_complet
 /// Removal is confined to the worktree root after symlinks are resolved: a
 /// recorded worktree whose directory was swapped for a link to somewhere else
 /// is never followed, and what is behind the link is untouched.
-#[cfg(unix)]
 #[tokio::test]
 async fn px_065_removal_never_follows_a_link_out_of_the_worktree_root() {
     let mut fx = Fx::new(
@@ -1994,9 +1998,17 @@ async fn px_065_removal_never_follows_a_link_out_of_the_worktree_root() {
     let wt = fx.worktree_dir(&t);
     let parked = fx.data().join("parked");
     std::fs::rename(&wt, &parked).unwrap();
+    // Directory links out of the root (Developer Mode on Windows).
+    #[cfg(unix)]
     std::os::unix::fs::symlink(outside.path(), &wt).unwrap();
+    #[cfg(windows)]
+    std::os::windows::fs::symlink_dir(outside.path(), &wt).unwrap();
     // And an unrecorded link in the managed root.
+    #[cfg(unix)]
     std::os::unix::fs::symlink(outside.path(), fx.data().join("worktrees").join("sneaky")).unwrap();
+    #[cfg(windows)]
+    std::os::windows::fs::symlink_dir(outside.path(), fx.data().join("worktrees").join("sneaky"))
+        .unwrap();
     tokio::time::sleep(Duration::from_millis(50)).await;
     let report = fx
         .cleanup(
@@ -2904,7 +2916,6 @@ async fn px_119_a_parent_cannot_complete_beside_an_unintegrated_child_until_it_i
 // PX-067 at the Core boundary: a hostile repository
 // ===========================================================================
 
-#[cfg(unix)]
 fn find_bytes(root: &Path, needle: &[u8]) -> Vec<PathBuf> {
     let mut hits = Vec::new();
     let mut stack = vec![root.to_path_buf()];
@@ -2933,18 +2944,22 @@ fn find_bytes(root: &Path, needle: &[u8]) -> Vec<PathBuf> {
 /// filter, an ssh command and a remote carrying a token: every Core operation
 /// runs none of it, writes no token anywhere, and says on the task's log what
 /// it refused.
-#[cfg(unix)]
 #[tokio::test]
 async fn px_067_a_hostile_repository_runs_nothing_and_leaks_no_token_through_core_operations() {
-    use std::os::unix::fs::PermissionsExt;
     let (repo, root) = merge_repo();
     let r = Path::new(&root);
     // The repository's own mandatory check is a command the *user* configured
     // and runs as itself; it is told to leave the fsmonitor out so that what
-    // the assertion below sees is the Core's own Git, not the check's.
+    // the assertion below sees is the Core's own Git, not the check's. Its
+    // hooks go to an empty directory: /dev/null is not a path on Windows.
+    let empty_hooks = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(empty_hooks.path()).unwrap();
+    let hooks_value = empty_hooks.path().display().to_string().replace('\\', "/");
     write(
         &r.join(".modbit/verification.json"),
-        r#"{"commands": [{"id": "has-a-side", "argv": ["git", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "grep", "-q", "-F", "-e", "alpha", "-e", "beta", "--", "src/shared.txt"]}]}"#,
+        &format!(
+            r#"{{"commands": [{{"id": "has-a-side", "argv": ["git", "-c", "core.fsmonitor=false", "-c", "core.hooksPath={hooks_value}", "grep", "-q", "-F", "-e", "alpha", "-e", "beta", "--", "src/shared.txt"]}}]}}"#
+        ),
     );
     git(r, &["add", "-A"]);
     git(
@@ -2961,10 +2976,20 @@ async fn px_067_a_hostile_repository_runs_nothing_and_leaks_no_token_through_cor
         ],
     );
     let trap = tempfile::tempdir().unwrap();
+    // The trap path is spelled with forward slashes for the shell snippets,
+    // and the exec bit stays Unix-only: Git for Windows runs shebang hooks
+    // and shell-evaluated commands without it (PX-030).
+    #[cfg(unix)]
     let t = trap.path().display().to_string();
+    #[cfg(windows)]
+    let t = trap.path().display().to_string().replace('\\', "/");
     let script = |p: &Path, body: &str| {
         std::fs::write(p, format!("#!/bin/sh\n{body}\n")).unwrap();
-        std::fs::set_permissions(p, std::fs::Permissions::from_mode(0o755)).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(p, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
     };
     for h in [
         "pre-commit",
@@ -2986,8 +3011,15 @@ async fn px_067_a_hostile_repository_runs_nothing_and_leaks_no_token_through_cor
     let cfg = |k: &str, v: &str| {
         git(r, &["config", k, v]);
     };
-    cfg("core.fsmonitor", &fsmon.display().to_string());
-    cfg("core.sshCommand", &ssh.display().to_string());
+    #[cfg(unix)]
+    let fsmon_value = fsmon.display().to_string();
+    #[cfg(windows)]
+    let fsmon_value = format!("sh '{}'", fsmon.display().to_string().replace('\\', "/"));
+    cfg("core.fsmonitor", &fsmon_value);
+    cfg(
+        "core.sshCommand",
+        &ssh.display().to_string().replace('\\', "/"),
+    );
     cfg("filter.evil.clean", &format!("touch '{t}/RAN_filter'; cat"));
     cfg(
         "filter.evil.smudge",

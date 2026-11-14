@@ -2,7 +2,7 @@
 
 use std::path::{Component, Path, PathBuf};
 
-use globset::{Glob, GlobSet, GlobSetBuilder};
+use globset::{GlobSet, GlobSetBuilder};
 
 use crate::{Error, Result};
 
@@ -58,10 +58,17 @@ impl PathPolicy {
             .map(|s| (*s).to_owned())
             .chain(extra.iter().cloned())
         {
-            b.add(Glob::new(&p).map_err(|e| Error::Invalid {
-                path: p.clone(),
-                detail: format!("bad protected pattern: {e}"),
-            })?);
+            // Windows filesystems match names case-insensitively: a protected
+            // pattern must too, or `.GIT/config` walks past `.git/**`
+            // (WIN-03, PX-030). Unix keeps the exact case.
+            let glob = globset::GlobBuilder::new(&p)
+                .case_insensitive(cfg!(windows))
+                .build()
+                .map_err(|e| Error::Invalid {
+                    path: p.clone(),
+                    detail: format!("bad protected pattern: {e}"),
+                })?;
+            b.add(glob);
             patterns.push(p);
         }
         Ok(Self {
@@ -131,6 +138,8 @@ impl PathPolicy {
         for c in comps {
             match c {
                 Component::Normal(s) => {
+                    #[cfg(windows)]
+                    validate_windows_component(given, s)?;
                     rel.push(s);
                     depth += 1;
                 }
@@ -156,35 +165,35 @@ impl PathPolicy {
         Ok(rel)
     }
 
-    /// Resolve symlinks component by component. Existing prefixes are
-    /// canonicalized (following links); the non-existent tail is appended
-    /// lexically. Any hop that leaves the root fails.
+    /// Resolve every existing hop by canonicalizing it. Canonicalization
+    /// follows symlinks **and junctions** (std's `is_symlink` does not see
+    /// mount points, which the earlier symlink-only walk let through) and
+    /// expands 8.3 short names to the real spelling, so a hop that leaves the
+    /// root by any of those spellings is caught here. The non-existent tail
+    /// is appended lexically. A link whose target is missing fails closed
+    /// (canonicalize errors). (WIN-03, PX-030.)
     fn resolve(&self, given: &str, rel: &Path) -> Result<PathBuf> {
         let mut cur = self.root.clone();
         let comps: Vec<_> = rel.components().collect();
         for (i, c) in comps.iter().enumerate() {
             let candidate = cur.join(c);
             match std::fs::symlink_metadata(&candidate) {
-                Ok(meta) => {
-                    if meta.file_type().is_symlink() {
-                        let target = candidate.canonicalize().map_err(|e| Error::Io {
-                            path: candidate.display().to_string(),
-                            source: e,
-                        })?;
-                        if !target.starts_with(&self.root) {
-                            return Err(Error::OutsideRoot {
-                                path: given.into(),
-                                detail: format!(
-                                    "symlink `{}` points to `{}`",
-                                    candidate.display(),
-                                    target.display()
-                                ),
-                            });
-                        }
-                        cur = target;
-                    } else {
-                        cur = candidate;
+                Ok(_) => {
+                    let target = candidate.canonicalize().map_err(|e| Error::Io {
+                        path: candidate.display().to_string(),
+                        source: e,
+                    })?;
+                    if !target.starts_with(&self.root) {
+                        return Err(Error::OutsideRoot {
+                            path: given.into(),
+                            detail: format!(
+                                "`{}` resolves to `{}`",
+                                candidate.display(),
+                                target.display()
+                            ),
+                        });
                     }
+                    cur = target;
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
                     // Rest does not exist yet: append lexically.
@@ -237,6 +246,52 @@ impl PathPolicy {
             absolute,
         })
     }
+}
+
+/// Windows-only component rules (WIN-03): a name that Win32 would silently
+/// reinterpret must be refused, because the file the record names would not
+/// be the file the write touches. Three families:
+///
+/// * a colon outside the drive prefix names an **alternate data stream**
+///   (`data.txt:hidden`, `data.txt::$DATA`): bytes land in a stream of an
+///   existing file, invisible to ordinary reads and to content hashing;
+/// * a trailing dot or space is **dropped by Win32** on create
+///   (`file.` and `file ` both name `file`);
+/// * the reserved device names (`CON`, `PRN`, `AUX`, `NUL`, `COM1..9`,
+///   `LPT1..9`, `CONIN$`, `CONOUT$`), with or without an extension
+///   (`nul.txt`), are devices, never files: a write "succeeds" and no file
+///   appears.
+#[cfg(windows)]
+fn validate_windows_component(given: &str, s: &std::ffi::OsStr) -> Result<()> {
+    let name = s.to_string_lossy();
+    let refuse = |detail: String| {
+        Err(Error::Invalid {
+            path: given.into(),
+            detail,
+        })
+    };
+    if name.contains(':') {
+        return refuse(format!(
+            "`{name}`: a colon names an alternate data stream, not a file"
+        ));
+    }
+    if name.ends_with('.') || name.ends_with(' ') {
+        return refuse(format!(
+            "`{name}`: Windows drops a trailing dot or space, so the file on disk would not have this name"
+        ));
+    }
+    let stem = name.split('.').next().unwrap_or("");
+    const RESERVED: &[&str] = &[
+        "CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "COM1", "COM2", "COM3", "COM4", "COM5",
+        "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7",
+        "LPT8", "LPT9",
+    ];
+    if RESERVED.contains(&stem.to_ascii_uppercase().as_str()) {
+        return refuse(format!(
+            "`{name}`: a reserved device name, not a file (writes would reach a device or vanish)"
+        ));
+    }
+    Ok(())
 }
 
 /// `path` without a Windows verbatim prefix (`\\?\C:\x` becomes `C:\x`,
