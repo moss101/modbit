@@ -662,6 +662,19 @@ fn a_process_killed_inside_a_checkpoint_leaves_a_whole_snapshot_and_the_answers_
                 "{stage}: aborted (SIGABRT), not a clean exit"
             );
         }
+        #[cfg(windows)]
+        {
+            // std::process::abort on MSVC terminates via __fastfail, which
+            // surfaces as exit code STATUS_STACK_BUFFER_OVERRUN (0xC0000409,
+            // verified empirically) — the same "aborted, not a clean exit"
+            // property as SIGABRT on Unix.
+            const STATUS_STACK_BUFFER_OVERRUN: i32 = 0xC000_0409u32 as i32;
+            assert_eq!(
+                child.status.code(),
+                Some(STATUS_STACK_BUFFER_OVERRUN),
+                "{stage}: aborted (fastfail), not a clean exit"
+            );
+        }
         let after = c.store().load();
         match stage {
             "after_manifest" => {
