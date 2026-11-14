@@ -111,7 +111,34 @@
  "ci": {
   "run_1": "43390459914 on a391764f (pull request 219): every job passed but desktop E2E on macOS (checkpoints.spec.ts:46, ENOENT race in the spec's hashing helper while Undo all deletes; not caused by this change; helper fixed) and Ubuntu (awl.spec.ts:552, the commit bar measured against the whole panel where the dock was one column; caused by this change; now measured against the Changes pane), and cloud CI_COMPATIBLE (Rust qual_m8_2 worker-lease timeout; no Rust in this change; the same job failed on run 43375533349 of another branch). Windows desktop E2E passed.",
   "run_2": "43576230709 on 37b7703d: every job passed but rust CI_COMPATIBLE macOS (apps/cli/tests/lifecycle.rs:347, fix_17 background command; no Rust in this change), desktop E2E Windows (task-list.spec.ts:492, archived row still listed) and desktop E2E macOS (composer.spec.ts:670, conversation not shown after start). Neither desktop spec is touched by this change; both passed on the other systems in the run and locally. Not explained. Ubuntu desktop E2E and cloud CI_COMPATIBLE passed.",
-  "run_3": "43588336636 on 9e097c05: Rust, node, cloud, packaged desktop, protocol, dossier and supply chain passed (macOS Rust and reproducible build cancelled at the end); desktop E2E failed on all three: px-202-pane-dock.spec.ts:185 (macOS, Windows: the CI launch window stacks the dock; spec fixed), px-200-task-view.spec.ts:217 (Ubuntu: Changes moved into the Panes menu beside a long title, by design; spec fixed), composer.spec.ts:670 (macOS: Review opened before the conversation loaded; spec race, not this change), apps-panel.spec.ts:395 (Windows: Leave terminal not focused after Shift+Escape; not explained)."
+  "run_3": "43588336636 on 9e097c05: Rust, node, cloud, packaged desktop, protocol, dossier and supply chain passed (macOS Rust and reproducible build cancelled at the end); desktop E2E failed on all three: px-202-pane-dock.spec.ts:185 (macOS, Windows: the CI launch window stacks the dock; spec fixed), px-200-task-view.spec.ts:217 (Ubuntu: Changes moved into the Panes menu beside a long title, by design; spec fixed), composer.spec.ts:670 (macOS: Review opened before the conversation loaded; spec race, not this change), apps-panel.spec.ts:395 (Windows: Leave terminal not focused after Shift+Escape; not explained).",
+  "run_4": "43600376815 on 63fd2c15. Attempt 1: every job passed but desktop E2E windows-latest (px-202-pane-dock.spec.ts:185: the Apps segment 'not stable' then 'detached' for 30 s at the runner's first window). Attempt 2 (rerun of failed jobs): desktop E2E windows-latest, rust/node/packaged windows and the CI_COMPATIBLE summary passed; the run is green."
  },
- "owner_review": "2026-11-13, on the first screenshots: 'Fix title bar first'. The conversation keeps 560 beside the dock (two pane minimums), the title has priority over the toggles, the bar holds Details, Changes, Terminal and the open or minimized panes, and a Panes menu lists every pane (TASK_CARD.md)."
+ "owner_review": "2026-11-13, on the first screenshots: 'Fix title bar first'. The conversation keeps 560 beside the dock (two pane minimums), the title has priority over the toggles, the bar holds Details, Changes, Terminal and the open or minimized panes, and a Panes menu lists every pane (TASK_CARD.md).",
+ "threshold_probe": {
+  "what": "the shell's stacked state and width every 25 ms for 3 s, real app, three panes open, task area 836..844 px, with no scrollbar, a forced 17 px classic scrollbar, and an auto scrollbar",
+  "result": [
+   "plain area=836 window=1124: flips=0 scrollbar=0 states=true/1124/288",
+   "plain area=838 window=1126: flips=0 scrollbar=0 states=true/1126/288",
+   "plain area=839 window=1127: flips=0 scrollbar=0 states=true/1127/288",
+   "plain area=840 window=1128: flips=0 scrollbar=0 states=false/1128/288",
+   "plain area=841 window=1129: flips=0 scrollbar=0 states=false/1129/288",
+   "plain area=842 window=1130: flips=0 scrollbar=0 states=false/1130/288",
+   "plain area=844 window=1132: flips=0 scrollbar=0 states=false/1132/288",
+   "scrollbar area=836 window=1141: flips=0 scrollbar=17 states=true/1107/288",
+   "scrollbar area=838 window=1143: flips=0 scrollbar=17 states=true/1109/288",
+   "scrollbar area=839 window=1144: flips=0 scrollbar=17 states=true/1110/288",
+   "scrollbar area=840 window=1145: flips=0 scrollbar=17 states=true/1111/288",
+   "scrollbar area=841 window=1146: flips=0 scrollbar=17 states=true/1112/288",
+   "scrollbar area=842 window=1147: flips=0 scrollbar=17 states=true/1113/288",
+   "scrollbar area=844 window=1149: flips=0 scrollbar=17 states=true/1115/288",
+   "auto-scrollbar area=839: flips=1 scrollbar=0 states=false/1127/288 true/1127/288",
+   "auto-scrollbar area=840: flips=0 scrollbar=0 states=false/1128/288",
+   "auto-scrollbar area=841: flips=0 scrollbar=0 states=false/1129/288",
+   "auto-scrollbar area=856: flips=0 scrollbar=0 states=false/1144/288",
+   "auto-scrollbar area=857: flips=0 scrollbar=0 states=false/1145/288",
+   "auto-scrollbar area=858: flips=0 scrollbar=0 states=false/1146/288"
+  ],
+  "conclusion": "no flapping: at most one switch, on the size change itself; no hysteresis added"
+ }
 }

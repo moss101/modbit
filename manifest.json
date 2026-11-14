@@ -4440,8 +4440,8 @@
     },
     {
       "path": "evidence/m10/PX-202/TASK_CARD.md",
-      "bytes": 31729,
-      "sha256": "758164d965a349ce108b309504e7719541a1eb3442df131e2e17e20c05309d35"
+      "bytes": 32835,
+      "sha256": "05eb6db7a062a1cd06d972d0d1d0f0e04f7daf4b083bd57ffe8d0796cfafe54a"
     },
     {
       "path": "evidence/m10/PX-202/after/activity-and-background-tasks-dark-comfortable.png",
@@ -4580,8 +4580,8 @@
     },
     {
       "path": "evidence/m10/PX-202/evidence.json",
-      "bytes": 8740,
-      "sha256": "05cd333fb50ba80ff79e0f757b5d05466c33d6f5446f5182ce160c61dc3d7ed1"
+      "bytes": 10979,
+      "sha256": "eeeac9ce51ff8b01f0047656a2f37c8addf14be0fe809cfac15043c47dee1ead"
     },
     {
       "path": "evidence/m10/PX-210/TASK_CARD.md",
