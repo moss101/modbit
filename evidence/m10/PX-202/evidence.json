@@ -69,7 +69,8 @@
   "apps/desktop/src/renderer/apps/pull-request-model.test.ts",
   "apps/desktop/src/renderer/conversation/rail-model.test.ts",
   "apps/desktop/src/renderer/conversation/more-fit.test.ts",
-  "apps/desktop/src/renderer/measured-css.test.ts"
+  "apps/desktop/src/renderer/measured-css.test.ts",
+  "apps/desktop/e2e/checkpoints.spec.ts"
  ],
  "unit": "@modbit/desktop 405 of 405; pnpm typecheck clean.",
  "proof": "Whole desktop e2e suite, local, macOS arm64, real Core (the prebuilt binaries of research/desktop-2/bin, built from main's Rust; this change has no Rust), scripted models. Run 1: 204 passed, 3 failed, 2 skipped, 2 did not run in 23.1m; two failures (apps-panel.spec.ts:356, wave4.spec.ts:56) were axe's scrollable-region-focusable on .pane-body, caused by this change and fixed (the pane body takes the keyboard); secrets.spec.ts:66 passed alone and in run 2 and is not explained. Run 2 on the final renderer (WIP commit 2d52537e): 209 passed, 0 failed, 2 skipped (the live-provider specs) in 21.8m. px-202-pane-dock.spec.ts: 2 of 2, run again for the screenshots.",
@@ -105,5 +106,7 @@
   "path": "research/desktop-2/bin/modbit-core (prebuilt from main's Rust; not in the repository)",
   "sha256": "c5ec630a2c92680ceaccf3dc72a663ecf0e3f369c3e1309e146a691807234fcb"
  },
- "ci": "not run yet when this file was written; the pull request's runs are reported in the handoff"
+ "ci": {
+  "run_1": "43390459914 on a391764f (pull request 219): every job passed but desktop E2E on macOS (checkpoints.spec.ts:46, ENOENT race in the spec's hashing helper while Undo all deletes; not caused by this change; helper fixed) and Ubuntu (awl.spec.ts:552, the commit bar measured against the whole panel where the dock was one column; caused by this change; now measured against the Changes pane), and cloud CI_COMPATIBLE (Rust qual_m8_2 worker-lease timeout; no Rust in this change; the same job failed on run 43375533349 of another branch). Windows desktop E2E passed."
+ }
 }

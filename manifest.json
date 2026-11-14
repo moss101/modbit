@@ -2,7 +2,7 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-11-13",
+  "generated_on": "2026-11-14",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
@@ -4440,8 +4440,8 @@
     },
     {
       "path": "evidence/m10/PX-202/TASK_CARD.md",
-      "bytes": 21581,
-      "sha256": "9aea547c1c5a01684d9b08f7d292436a7ce9bb1130e2a9d99ccf8f724ea18e42"
+      "bytes": 23521,
+      "sha256": "58fef7cbb718304b5aa2d721d5957b3baf96b7cd34701b910081c7f1c993d0d4"
     },
     {
       "path": "evidence/m10/PX-202/after/activity-and-background-tasks-dark-comfortable.png",
@@ -4580,8 +4580,8 @@
     },
     {
       "path": "evidence/m10/PX-202/evidence.json",
-      "bytes": 6927,
-      "sha256": "b43c42eb873b396ff01a881af5f11e7c9bbe394fc8f31b092a97af899bf95bc7"
+      "bytes": 7454,
+      "sha256": "136045e8b2f8f9bcccb7427a77306d6a23ce9f0fda1c250d618283803f017835"
     },
     {
       "path": "evidence/m10/PX-210/TASK_CARD.md",

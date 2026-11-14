@@ -19,7 +19,17 @@ import { openConversation, routedModel, sessionOf, sha256File, startAndOpen, typ
 const NAMES = ["a.txt", "b.txt", "c.txt", "notes.txt"] as const;
 type Snap = Record<"a" | "b" | "c" | "notes", string | null>;
 /** The SHA-256 of each file the task touches, null where it does not exist. */
-const snap = (repo: string): Snap => Object.fromEntries(NAMES.map((n) => [n.replace(".txt", ""), existsSync(join(repo, n)) ? sha256File(join(repo, n)) : null])) as Snap;
+const snap = (repo: string): Snap => Object.fromEntries(NAMES.map((n) => [n.replace(".txt", ""), hashOrNull(join(repo, n))])) as Snap;
+/** A file removed between the existence check and the read (Undo all deletes while the test polls) does not exist. */
+function hashOrNull(path: string): string | null {
+  if (!existsSync(path)) return null;
+  try {
+    return sha256File(path);
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw e;
+  }
+}
 
 const create = (f: string, content: string): ModelPart => ({ call: { name: "change.apply", args: { path: f, op: "create", content } } });
 const editNotes: ModelPart = { call: { name: "change.apply", args: { path: "notes.txt", op: "edit", text_edits: [{ old: "line 1", new: "agent edit" }] } } };

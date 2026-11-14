@@ -86,6 +86,9 @@ Deleted because the surface was removed on purpose (the tab strip and its tools)
 
 Changed because the behaviour changed on purpose:
 
+- `awl.spec.ts` `workspaceDrift`: "the commit bar is at the foot of the panel" is "at the foot of the Changes pane" (the panel itself where Changes is its only pane). Same fact; the pane is now the container.
+- `checkpoints.spec.ts`: the hashing helper counts a file deleted between its existence check and its read as absent (a race seen on CI run 1, macOS). The assertions are unchanged.
+
 - `px-200-task-view.spec.ts`: the toggles were four and are seven; opening Changes left Files not pressed (one at a time) and now leaves it pressed with both panes on screen; closing Changes left no panel and now leaves Files, which is then closed.
 - `apps-panel-state.spec.ts`, `shell.spec.ts`: the stored state was `{ open, tab }` and is `{ panes: [...] }`; "its tab is selected" is "its pane is visible and the other task's is not".
 - `shell.test.ts`: the preferences round-trip carries a dock; a hostile `{ open: true, tab: "nope" }` reads as the one pane Changes (it read as the tab Changes); `panesOf` lists the three new panes.
@@ -120,6 +123,11 @@ No assertion was weakened.
 
 ## Limitations
 
+- **CI run 1** (43390459914 on a391764f, pull request 219): Rust, node, protocol, dossier, packaged desktop and supply chain passed on every system; desktop E2E passed on Windows and failed on macOS and Ubuntu with one test each; the cloud job failed.
+  - Ubuntu, `awl.spec.ts:552`: "the commit bar is not at the foot of the panel" with Changes and Files open. Caused by this change: where the dock is one column the Changes pane is the upper pane, so its commit bar ends at the foot of that pane, not of the panel. The check now measures the foot of the Changes pane (the whole panel when Changes is its only pane); its fact is unchanged. Locally the same window gave two columns.
+  - macOS, `checkpoints.spec.ts:46`: `ENOENT` reading `a.txt` inside the poll that waits for Undo all to delete it: the file was removed between the spec's existence check and its read. A race in the spec's helper, not in the product, and not caused by this change (Undo all's path is unchanged); the helper now counts a file removed in between as absent, so the poll still waits for the same final state.
+  - cloud CI_COMPATIBLE: a Rust test timed out ("timed out waiting for worker b to hold the session" in `qual_m8_2_a_worker_claims_the_lease…`). This change has no Rust; the same job failed on another branch's run 43375533349 with a different timeout. Not caused by this change.
+  - After the fixes, `awl.spec.ts`, `checkpoints.spec.ts` and `px-202-pane-dock.spec.ts` passed locally (8 of 8); the whole suite was not run again locally before the second push.
 - The proof is local (macOS arm64); CI runs are recorded in `evidence.json`.
 - Dragging a separator with the pointer is unit-proven through the model and was not driven end to end; the keyboard path was.
 - The Browser pane in the grid, a pane head at exactly 280 px with every action, and a dock that scrolls were not driven end to end.

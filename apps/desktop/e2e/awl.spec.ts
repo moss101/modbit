@@ -230,8 +230,10 @@ async function workspaceDrift(page: Page, density: Density = "comfortable"): Pro
   const panel = await box(page, "apps-panel");
   if ((await page.getByTestId("apps-panel-task-title").count()) !== 0) bad.push("the panel repeats the task's title");
   if ((await page.getByTestId("app-changes").count()) === 1) {
+    // MWS-10: the commit bar stands at the foot of the Changes pane (the whole panel where Changes is its only pane).
     const commit = await box(page, "changes-commit");
-    if (Math.abs(commit.y + commit.height - (panel.y + panel.height)) > 1) bad.push("the commit bar is not at the foot of the panel");
+    const holder = (await page.getByTestId("pane-changes").count()) === 1 ? await box(page, "pane-changes") : panel;
+    if (Math.abs(commit.y + commit.height - (holder.y + holder.height)) > 1) bad.push("the commit bar is not at the foot of the Changes pane");
     // One row: a note may sit under it (no git identity on this machine), and an approval replaces it.
     const row = page.locator(".changes-commit-actions");
     if ((await row.count()) === 1 && (await row.boundingBox())!.height > 40) bad.push(`the commit row is ${(await row.boundingBox())!.height} tall`);
