@@ -15,6 +15,25 @@ import type { AccountingInfo, AddRuleInput, AllowRuleInfo, CheckpointListInfo, C
 
 export type { TerminalFrameJson, TerminalViewJson };
 
+/** REQ-PX-203: the panes that can stand in a window of their own, and what one shows (main's types, pane-windows.ts). */
+export type PaneWindowKind = "terminal" | "changes" | "files" | "evidence";
+export interface PaneWindowRef {
+  taskId: string;
+  kind: PaneWindowKind;
+}
+export interface PaneViewStateDto {
+  terminalId?: string;
+  path?: string;
+  scrollTop?: number;
+}
+export interface PaneContextDto {
+  sessionId: string;
+  taskId: string;
+  kind: PaneWindowKind;
+  title: string;
+  state: PaneViewStateDto;
+}
+
 export interface UpdateViewDto {
   enabled: boolean;
   disabledReason?: string;
@@ -524,6 +543,20 @@ export interface ModbitBridge {
   debugIpcRefusals(): Promise<{ channel: string; senderId: number; frameUrl: string; reason: string; atMs: number }[]>;
   /** REQ-EV-0076: the renderer's own process endings and whether main loaded it again. */
   debugRendererLog(): Promise<{ reason: string; exitCode: number; reloaded: boolean; atMs: number }[]>;
+  // REQ-PX-203: pane windows. The app's window pops a pane of a task out, lists and brings forward the pane windows, and hears
+  // when one closes (with what it was showing) and when one asks it to show something. A pane window asks who it is, says what
+  // it shows, asks the app's window to show the task's review, a call or the waiting approval, and goes back to the dock. Main
+  // decides who may ask which; a pane window may ask nothing that decides an approval.
+  popOutPane(sessionId: string, taskId: string, kind: PaneWindowKind, state: PaneViewStateDto, title: string, size?: { width: number; height: number }): Promise<PaneWindowRef[]>;
+  paneWindows(): Promise<PaneWindowRef[]>;
+  focusPaneWindow(taskId: string, kind: PaneWindowKind): Promise<boolean>;
+  onPaneWindows(cb: (list: PaneWindowRef[]) => void): () => void;
+  onPaneReturned(cb: (r: PaneWindowRef & { state: PaneViewStateDto }) => void): () => void;
+  onPaneShow(cb: (r: { taskId: string; what: "review" | "approval" | "call"; toolCallId?: string }) => void): () => void;
+  paneContext(): Promise<PaneContextDto>;
+  reportPaneState(state: PaneViewStateDto): Promise<void>;
+  paneShow(request: { what: "review" } | { what: "approval" } | { what: "call"; toolCallId: string }): Promise<boolean>;
+  returnPane(state?: PaneViewStateDto): Promise<void>;
   // Onboarding (REQ-PX-022). The key goes to main and never comes back.
   setupProvider(provider: "openai" | "anthropic", apiKey: string, baseUrl?: string): Promise<{ endpoint: string; model: string; ok: boolean; errorCode: string; errorMessage: string; persisted: boolean; keychainAvailable: boolean }>;
   providerStatus(): Promise<{ configured: boolean; endpoints: string[]; stored: boolean; provider: string; keychainAvailable: boolean; keychainBackend: string }>;
@@ -732,6 +765,28 @@ const bridge: ModbitBridge = {
   debugCoreInfo: () => ipcRenderer.invoke("debug:coreInfo"),
   debugIpcRefusals: () => ipcRenderer.invoke("debug:ipcRefusals"),
   debugRendererLog: () => ipcRenderer.invoke("debug:rendererLog"),
+  popOutPane: (sessionId, taskId, kind, state, title, size) => ipcRenderer.invoke("pane:popOut", sessionId, taskId, kind, state, title, size ?? null),
+  paneWindows: () => ipcRenderer.invoke("pane:windows"),
+  focusPaneWindow: (taskId, kind) => ipcRenderer.invoke("pane:focus", taskId, kind),
+  onPaneWindows: (cb) => {
+    const listener = (_: unknown, l: unknown) => cb(l as PaneWindowRef[]);
+    ipcRenderer.on("pane:windows", listener);
+    return () => ipcRenderer.removeListener("pane:windows", listener);
+  },
+  onPaneReturned: (cb) => {
+    const listener = (_: unknown, r: unknown) => cb(r as PaneWindowRef & { state: PaneViewStateDto });
+    ipcRenderer.on("pane:returned", listener);
+    return () => ipcRenderer.removeListener("pane:returned", listener);
+  },
+  onPaneShow: (cb) => {
+    const listener = (_: unknown, r: unknown) => cb(r as { taskId: string; what: "review" | "approval" | "call"; toolCallId?: string });
+    ipcRenderer.on("pane:show", listener);
+    return () => ipcRenderer.removeListener("pane:show", listener);
+  },
+  paneContext: () => ipcRenderer.invoke("pane:context"),
+  reportPaneState: (state) => ipcRenderer.invoke("pane:state", state),
+  paneShow: (request) => ipcRenderer.invoke("pane:show", request),
+  returnPane: (state) => ipcRenderer.invoke("pane:return", state),
   setupProvider: (provider, apiKey, baseUrl) => ipcRenderer.invoke("onboarding:provider", provider, apiKey, baseUrl ?? ""),
   providerStatus: () => ipcRenderer.invoke("onboarding:providerStatus"),
   trustRepository: (sessionId, workspaceRoot) => ipcRenderer.invoke("onboarding:trust", sessionId, workspaceRoot),

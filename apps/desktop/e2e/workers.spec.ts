@@ -131,6 +131,10 @@ const BRIDGE_ALLOW_LIST = [
   "composerSuggest",
   // REQ-PX-200 (the plan card). Added on purpose: two reads over projections of the task's log, GetWorkGraph and GetPlan; main validates the task id (conversation-ipc.ts) and nothing is leased or changed.
   "workGraph", "plan",
+  // PX-203 (pane pop-out): the app window pops a pane out, lists and brings forward pane windows and hears them close or ask;
+  // a pane window asks which pane it shows, says what it shows, asks the app window to show something, and goes back to the
+  // dock. Main answers a pane window only on its pane's channels, for its own task (pane-windows.ts).
+  "popOutPane", "paneWindows", "focusPaneWindow", "onPaneWindows", "onPaneReturned", "onPaneShow", "paneContext", "reportPaneState", "paneShow", "returnPane",
   // REQ-PX-057 / 058 / 060 / 062 (approval stack, run modes, context accounting, checkpoints). Added on purpose; each is a typed request main validates (control-ipc.ts, control-args.ts).
   "dockApprovals", "allowAlways", "runMode", "setRunMode", "allowRules", "addAllowRule", "revokeAllowRule", "contextAccounting", "setTaskBudgets", "checkpoints", "previewRestore", "restoreCheckpoint", "forkFromTurn",
   // REQ-PX-055 / 058 (Wave 6): the agent's mode proposal and the approvals the Core closed as expired. Added on purpose; each is a typed request main validates (control-ipc.ts, control-args.ts).

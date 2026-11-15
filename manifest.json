@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2245,
+    "root_and_tooling": 2257,
     "docs_bytes": 2408986
   },
   "sections": [
@@ -4587,6 +4587,66 @@
       "path": "evidence/m10/PX-202/evidence.json",
       "bytes": 11784,
       "sha256": "b3d70c76ab999676b5199eb39bef5e4236c65ca2a72dc9b22b7c8f550fe86c2e"
+    },
+    {
+      "path": "evidence/m10/PX-203/TASK_CARD.md",
+      "bytes": 19857,
+      "sha256": "c2d86372fc5419c9ac458abcb6ee15b25b03872da298a90c993a1b8b92562cfd"
+    },
+    {
+      "path": "evidence/m10/PX-203/after/changes-popped-out-dark.png",
+      "bytes": 152684,
+      "sha256": "fe5475e1494c4100b1d6adfefb01240595e6333487fe85f672c4fedf3e3629aa"
+    },
+    {
+      "path": "evidence/m10/PX-203/after/changes-popped-out-light.png",
+      "bytes": 153329,
+      "sha256": "10f76fad5100cd91c212152061e65c064b5fc9b4fcce84921ee8b4262b2dfacf"
+    },
+    {
+      "path": "evidence/m10/PX-203/after/dock-without-them-dark.png",
+      "bytes": 402860,
+      "sha256": "f29530dbebb3cb0f6b4c57f80f6f6c4b52f18e47136a1cefa5d03d3dd63e6b9d"
+    },
+    {
+      "path": "evidence/m10/PX-203/after/dock-without-them-light.png",
+      "bytes": 402492,
+      "sha256": "9abba7051c29cf384b1f05a5618b111496ad69069b77af070d17fb63c6160aa6"
+    },
+    {
+      "path": "evidence/m10/PX-203/after/quit-question.txt",
+      "bytes": 711,
+      "sha256": "18d9a95a6b4bb66ca5f1387095c843735321a37e3f30e2d1c532547fb626f693"
+    },
+    {
+      "path": "evidence/m10/PX-203/after/returned-dark.png",
+      "bytes": 549142,
+      "sha256": "80c542c030b9d4c3a2482df976959c26b34569e3a228b42ee558c28defd76984"
+    },
+    {
+      "path": "evidence/m10/PX-203/after/returned-light.png",
+      "bytes": 547957,
+      "sha256": "b0e73903f22e64103366416e0242342f2b31fd7f41843e3e1a3976731c442b37"
+    },
+    {
+      "path": "evidence/m10/PX-203/after/terminal-popped-out-dark.png",
+      "bytes": 87504,
+      "sha256": "e217b6b568ef50cd5d09e534f8b2f43a842ed312415c2950f49a177637996936"
+    },
+    {
+      "path": "evidence/m10/PX-203/after/terminal-popped-out-light.png",
+      "bytes": 87537,
+      "sha256": "bb6098c679ee201de1c16d04e39d394e85a38b4f35ece7b9028d0c75e4e934da"
+    },
+    {
+      "path": "evidence/m10/PX-203/desktop-e2e-full-results.txt",
+      "bytes": 42246,
+      "sha256": "e59968bfa4483367cbbfb60b2575d43b4d88a27fcc7a31b4c298c493b84dfee7"
+    },
+    {
+      "path": "evidence/m10/PX-203/evidence.json",
+      "bytes": 7055,
+      "sha256": "ce735f0e69938cceab6b943a457eae697c231b51caa34ff4433c685fcc341f61"
     },
     {
       "path": "evidence/m10/PX-210/TASK_CARD.md",

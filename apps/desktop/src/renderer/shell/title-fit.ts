@@ -27,7 +27,7 @@ export function fitCount(room: number, wanted: number): number {
  */
 export function shownToggles(panes: readonly { kind: AppKind; state: PaneState }[], fit: number): AppKind[] {
   const candidates = panes.filter((p) => ALWAYS_SHOWN.includes(p.kind) || p.state !== "closed");
-  const rank = (p: { kind: AppKind; state: PaneState }) => (p.state === "open" ? 0 : p.state === "minimized" ? 1 : 2) * 100 + APP_KINDS.indexOf(p.kind);
+  const rank = (p: { kind: AppKind; state: PaneState }) => (p.state === "open" ? 0 : p.state === "minimized" || p.state === "popped" ? 1 : 2) * 100 + APP_KINDS.indexOf(p.kind);
   const kept = new Set([...candidates].sort((a, b) => rank(a) - rank(b)).slice(0, Math.max(0, fit)).map((p) => p.kind));
   return APP_KINDS.filter((k) => kept.has(k));
 }
