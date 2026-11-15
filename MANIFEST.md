@@ -1,7 +1,7 @@
 # Modbit Dossier Manifest — V3.3 EPR v1.1
 
 > **Authority date:** 2026-09-05  
-> **Generated:** 2026-11-14 by `tools/build_manifest.py`  
+> **Generated:** 2026-11-15 by `tools/build_manifest.py`  
 > **Scope:** every specification file in `docs/` plus the root governing files and tooling. The previous `99_MANIFEST.md` covered only 39 Part 2 files; this manifest covers all 97 docs.
 > **Machine-readable twin:** `manifest.json` (same content, same hashes).
 
@@ -831,6 +831,49 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-201/ci-run-43268843557.json` | retained evidence | 65329 | `d2d158b8b1b85ea0a3f7eae7b90b0d6bbb72d6880264e368a5c2dd879eafb246` |
 | `evidence/m10/PX-201/desktop-e2e-full-results.txt` | retained evidence | 40002 | `14d7bb719e30e8c2aaf5791e4786c6d29999b6867720d1ff4be22afe7812adfd` |
 | `evidence/m10/PX-201/evidence.json` | retained evidence | 8062 | `0c41621f0b97424f0f334c9873016f4ca63458de004c7ea31e20f3654d21a11d` |
+| `evidence/m10/PX-202/TASK_CARD.md` | retained evidence | 36525 | `7c6a817a0851425e7d33ae58161263260adfd0d8fc805dadf4ea421c20add487` |
+| `evidence/m10/PX-202/after/activity-and-background-tasks-dark-comfortable.png` | retained evidence | 351411 | `cb5c8b6df9b60feb61dfdb3c8f5a620011d90d3b9b8c3eb487970284b1549377` |
+| `evidence/m10/PX-202/after/activity-and-background-tasks-dark-compact.png` | retained evidence | 333193 | `7276a7199b7ecf814ae2acf5939d37764ddb93f3024141d57ac824ae281d5d4e` |
+| `evidence/m10/PX-202/after/activity-and-background-tasks-light-comfortable.png` | retained evidence | 352922 | `90912e1eeee89549b4ab976b59f9adaf87e560ba53f3322e643f32cc44b46b39` |
+| `evidence/m10/PX-202/after/activity-and-background-tasks-light-compact.png` | retained evidence | 335097 | `da67b4a10a2582178e324f924afc7fe4e8a2430be6deffe6be2247bff0705570` |
+| `evidence/m10/PX-202/after/activity-filtered-dark-comfortable.png` | retained evidence | 244359 | `a3211df53e23dec05cf82615449e20b0449e3d9e00db37778eeb2155a908c250` |
+| `evidence/m10/PX-202/after/activity-filtered-dark-compact.png` | retained evidence | 229758 | `f0a65d103d4c8d311b9abcfbe3eab475999cd66a25987a23eb7188186708d768` |
+| `evidence/m10/PX-202/after/activity-filtered-light-comfortable.png` | retained evidence | 244641 | `571c8f4730f1539b8f9e37cb34dcf3d06a822239b6f2f39a8b71c92b718c242f` |
+| `evidence/m10/PX-202/after/activity-filtered-light-compact.png` | retained evidence | 230825 | `f1e7b2e2e913b545dd6502eaae46ca371399ec432cd50020b4b1d845b6b39801` |
+| `evidence/m10/PX-202/after/narrow-window-1000-dark-comfortable.png` | retained evidence | 244608 | `20f114b5ad3ffd719a22af35dfa2345f5a505f682f1c4b76af13fc1063c307a1` |
+| `evidence/m10/PX-202/after/narrow-window-1000-light-comfortable.png` | retained evidence | 245347 | `f65c2c63c6941c99d0470b2b88a75fd24369d66e0f355faf989f21c99689dee1` |
+| `evidence/m10/PX-202/after/narrow-window-more-over-approval-dark-comfortable.png` | retained evidence | 246662 | `7474b200eb6a0c159b8fc2fb86325f45c58a5c826b42153a386b11769cf5052f` |
+| `evidence/m10/PX-202/after/narrow-window-more-over-approval-light-comfortable.png` | retained evidence | 247770 | `a7b904ec663b5262d3053933fc66bb581c366e7008ef3b16f95d527a6cf3f798` |
+| `evidence/m10/PX-202/after/pull-request-checks-and-comments-dark-comfortable.png` | retained evidence | 379966 | `895576e0330ae5580f57b1db4336f34aeaa9210cc180d93e12ceb57b8fe50e69` |
+| `evidence/m10/PX-202/after/pull-request-checks-and-comments-dark-compact.png` | retained evidence | 357909 | `6f9aea06ac4b5808eb60ccbd9e780987a99ce888d34c16210eeb41aca013f5fc` |
+| `evidence/m10/PX-202/after/pull-request-checks-and-comments-light-comfortable.png` | retained evidence | 378884 | `4208156f542c9b308cfc410e876ce00ebe6b4979b417a83522541c4077526644` |
+| `evidence/m10/PX-202/after/pull-request-checks-and-comments-light-compact.png` | retained evidence | 357622 | `351bffc7084bcefabdc636f642dfba792044326e6f722481d5d19f1e6991fbe1` |
+| `evidence/m10/PX-202/after/pull-request-none-dark-comfortable.png` | retained evidence | 180283 | `d00b10dc628b5996ebbce227d681be804baaa618c1a3251809ed4a330a9a2a4d` |
+| `evidence/m10/PX-202/after/pull-request-none-light-comfortable.png` | retained evidence | 181300 | `b863c74a9874d42bf23cb2acab53060f36cd90b5ae9fcaf2331bae7143ca6cf0` |
+| `evidence/m10/PX-202/after/pull-request-waiting-on-approval-dark-comfortable.png` | retained evidence | 287879 | `76aa70213282fb3f172e3be9ca1e495ce720a9344cbb210d9560297440fa287c` |
+| `evidence/m10/PX-202/after/pull-request-waiting-on-approval-light-comfortable.png` | retained evidence | 288644 | `24e8dd76db07c8ef7b90a3090b9dca6ed3c23667e3d325eef732a15f413776ec` |
+| `evidence/m10/PX-202/after/terminal-minimized-dark-comfortable.png` | retained evidence | 404543 | `2d177dc73f647b1a8184f2e88b1b12de4fc0ba1b7fcb8bc29e7b54caeba40427` |
+| `evidence/m10/PX-202/after/terminal-minimized-light-comfortable.png` | retained evidence | 379498 | `84404ef495cdf3b9e34a2896f64da0c353bf5fa986e34d75f366f2896450a8f8` |
+| `evidence/m10/PX-202/after/three-panes-tiled-dark-comfortable.png` | retained evidence | 441755 | `d0c1eb61622b852929ca794a66b0f831e1c4809aab4d1c53f889afa843a6ee94` |
+| `evidence/m10/PX-202/after/three-panes-tiled-dark-compact.png` | retained evidence | 414617 | `e488ca07efdae7acd1c858571e454a7bb59db841c75e3c55b789d1ff68baeda8` |
+| `evidence/m10/PX-202/after/three-panes-tiled-light-comfortable.png` | retained evidence | 443537 | `cda3715b1d400578058749c46f710e428847133bad09981fc0ef40f122b2c5be` |
+| `evidence/m10/PX-202/after/three-panes-tiled-light-compact.png` | retained evidence | 416944 | `732f0aaeec08a00d47aaf8a66adb406864e5048c2f5a3c5b19636e07184d7530` |
+| `evidence/m10/PX-202/ci-run-43691278961.json` | retained evidence | 65329 | `ddc15f1fb4621c385c951972dcfef66c08faeeb60391a6a50cb1d0142f40050d` |
+| `evidence/m10/PX-202/desktop-e2e-full-results.txt` | retained evidence | 40912 | `84ef70030296473cd5c45d2201c32ff5b6c3af87d1ece9b2f5cd2de1032ea6a1` |
+| `evidence/m10/PX-202/evidence.json` | retained evidence | 11784 | `b3d70c76ab999676b5199eb39bef5e4236c65ca2a72dc9b22b7c8f550fe86c2e` |
+| `evidence/m10/PX-203/TASK_CARD.md` | retained evidence | 20432 | `d5510d433bed8a258fd55603e2fff0ea842799e1ec4e43d3ccb7b9f12d05448f` |
+| `evidence/m10/PX-203/after/changes-popped-out-dark.png` | retained evidence | 152684 | `fe5475e1494c4100b1d6adfefb01240595e6333487fe85f672c4fedf3e3629aa` |
+| `evidence/m10/PX-203/after/changes-popped-out-light.png` | retained evidence | 153329 | `10f76fad5100cd91c212152061e65c064b5fc9b4fcce84921ee8b4262b2dfacf` |
+| `evidence/m10/PX-203/after/dock-without-them-dark.png` | retained evidence | 402860 | `f29530dbebb3cb0f6b4c57f80f6f6c4b52f18e47136a1cefa5d03d3dd63e6b9d` |
+| `evidence/m10/PX-203/after/dock-without-them-light.png` | retained evidence | 402492 | `9abba7051c29cf384b1f05a5618b111496ad69069b77af070d17fb63c6160aa6` |
+| `evidence/m10/PX-203/after/quit-question.txt` | retained evidence | 711 | `18d9a95a6b4bb66ca5f1387095c843735321a37e3f30e2d1c532547fb626f693` |
+| `evidence/m10/PX-203/after/returned-dark.png` | retained evidence | 549142 | `80c542c030b9d4c3a2482df976959c26b34569e3a228b42ee558c28defd76984` |
+| `evidence/m10/PX-203/after/returned-light.png` | retained evidence | 547957 | `b0e73903f22e64103366416e0242342f2b31fd7f41843e3e1a3976731c442b37` |
+| `evidence/m10/PX-203/after/terminal-popped-out-dark.png` | retained evidence | 87504 | `e217b6b568ef50cd5d09e534f8b2f43a842ed312415c2950f49a177637996936` |
+| `evidence/m10/PX-203/after/terminal-popped-out-light.png` | retained evidence | 87537 | `bb6098c679ee201de1c16d04e39d394e85a38b4f35ece7b9028d0c75e4e934da` |
+| `evidence/m10/PX-203/ci-run-43709635767.json` | retained evidence | 65329 | `42098042cd836008e7d9eadde0e0534a2aa6d455981b81a882a62005e5a327a3` |
+| `evidence/m10/PX-203/desktop-e2e-full-results.txt` | retained evidence | 42246 | `e59968bfa4483367cbbfb60b2575d43b4d88a27fcc7a31b4c298c493b84dfee7` |
+| `evidence/m10/PX-203/evidence.json` | retained evidence | 7055 | `ce735f0e69938cceab6b943a457eae697c231b51caa34ff4433c685fcc341f61` |
 | `evidence/m10/PX-210/TASK_CARD.md` | retained evidence | 11615 | `493c4c60c6a94d4a062040ba472476e08b5b9c7f30116221ff5eb56dd26873f4` |
 | `evidence/m10/PX-210/after/composer-after-tab-light.png` | retained evidence | 30362 | `a7b1367df855da4288ff969ddb1a68bb03d6a4ecbbc8071ad59d0e5dddabff4d` |
 | `evidence/m10/PX-210/after/composer-long-suggestion-dark-900.png` | retained evidence | 35124 | `14ec8efa1eafc089f6f688e72fb15a75e11555cdf3e48e237cb62fdeb3f3d36f` |
@@ -2331,8 +2374,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/zcode-ui/reference/zcode-colors-rgba.json` | retained evidence | 18690 | `76372c3edbcd50fe596d5e4b7fcd7991adab9686588ddc578a728afa24b4f028` |
 | `evidence/zcode-ui/reference/zcode-computed.json` | retained evidence | 718674 | `9ae8821ce72aa0fff3be44aacd0f4c9d995465c54bad7f17d1a81f92841d1c2d` |
 | `evidence/zcode-ui/reference/zcode-tokens-resolved.json` | retained evidence | 30635 | `066725c00059a05d073fbcdac9a8d965eab05f05c1f5df16e654854ff3e22b91` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 47635 | `95f29b49df718a06ae27c2a187cb437786d8fe1bca433787906cbe67e5602a5f` |
-| `graph/project-graph.json` | project driver graph with live status | 2652730 | `6dc1a8da7c54d4d144635c0b77d734792eff9f32a7904182ee5697d7bb6a018c` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 47635 | `04bf057c4438702e8b4c86391eac84c15420652ba0e2a056a4e4f95dbcf8b5d9` |
+| `graph/project-graph.json` | project driver graph with live status | 2653018 | `d08ac4090fd4d1c9658c3fa7ffdca12459a07d5eafe8bdef3313922f7f9c8a68` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 67211 | `9d101fa8395609092e6a2134a32210fb214a94a0765a13e66b58cbf790267b9d` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |

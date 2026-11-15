@@ -95,3 +95,17 @@ test("PX-049: a session-end step that outlives the deadline is reported as timed
   const failing = await runShutdown([{ name: "session-end", run: () => Promise.reject(new Error("1 session-end hook did not finish cleanly: h: failed")) }], 1000);
   assert.deepEqual(failing.failed, [{ name: "session-end", reason: "1 session-end hook did not finish cleanly: h: failed" }]);
 });
+
+test("PX-203: the quit question counts the work pane windows show and says the pane windows close", () => {
+  const p = quitPrompt({ runningTasks: 1, runningTerminals: 2, paneWindows: 2, tasksInPaneWindows: 1, terminalsInPaneWindows: 1 });
+  assert.equal(p.message, "1 task is running (shown in a pane window) and 2 background terminals are running (1 shown in a pane window). Quit anyway?");
+  assert.match(p.detail, /The 2 pane windows close with Modbit; their panes are back in the dock when you open Modbit again\./);
+  const one = quitPrompt({ runningTasks: 0, runningTerminals: 1, paneWindows: 1, tasksInPaneWindows: 0, terminalsInPaneWindows: 1 });
+  assert.equal(one.message, "1 background terminal is running (shown in a pane window). Quit anyway?");
+  assert.match(one.detail, /The pane window closes with Modbit; its pane is back in the dock/);
+  // Pane windows that show nothing running are not work: nothing running, nothing asked.
+  assert.equal(noWork({ runningTasks: 0, runningTerminals: 0, paneWindows: 3, tasksInPaneWindows: 0, terminalsInPaneWindows: 0 }), true);
+  // Without pane windows the question is the one it was.
+  assert.equal(quitPrompt({ runningTasks: 1, runningTerminals: 0 }).message, "1 task is running. Quit anyway?");
+  assert.doesNotMatch(quitPrompt({ runningTasks: 1, runningTerminals: 0 }).detail, /pane window/);
+});

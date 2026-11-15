@@ -127,7 +127,7 @@ async function answered(app: ElectronApplication, method: string, taskId: string
 }
 
 /** The words the rail writes that are not values: headings, labels and controls. Everything else it shows must be a value with a read behind it. */
-const STATIC = new Set(["Details", "Environment", "Approvals", "Context", "Tool servers", "Changes", "Evidence", "Background tasks", "Cost", "change", "manage", "restore", "Restore", "Review", "Verification", "show", "hide", "Stop it", "Keep", "State", "Phase", "Agents", "Generation", "Attachments", "Risk", "Security", "Next", "Run mode:", "Cost cap:", "Time cap:", "branch not read yet"]);
+const STATIC = new Set(["Details", "Environment", "Approvals", "Context", "Tool servers", "Changes", "Evidence", "Background tasks", "Cost", "change", "manage", "restore", "Restore", "Review", "Verification", "show", "hide", "Stop it", "Keep", "State", "Phase", "Agents", "Updates recorded", "Attachments", "Risk", "Security", "Next", "Run mode:", "Cost cap:", "Time cap:", "branch not read yet"]);
 
 /**
  * What in the rail's body has no Core read behind it (empty when everything has): a value that names no read, a value naming a
@@ -460,7 +460,7 @@ test("PX-201: the details rail shows the Core's facts for the open task, each fr
     const clipped = (await details.boundingBox())!;
     expect(clipped.width <= 1 && clipped.height <= 1, "closed, the facts take no room").toBe(true);
     const tree = await rail.ariaSnapshot();
-    for (const word of ["State", "Phase", "Agents", "Generation", "Attachments"]) expect(tree, `${word} is in the accessibility tree while Details is closed`).toContain(word);
+    for (const word of ["State", "Phase", "Agents", "Updates recorded", "Attachments"]) expect(tree, `${word} is in the accessibility tree while Details is closed`).toContain(word);
     await rail.getByTestId("rail-details-toggle").click();
     await expect(details).toHaveAttribute("data-open", "true");
     await expect(rail.getByTestId("rail-details-toggle")).toHaveAttribute("aria-expanded", "true");

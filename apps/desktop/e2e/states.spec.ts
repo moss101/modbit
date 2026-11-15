@@ -234,7 +234,8 @@ test("screen states: provider down, human continuation, review gate and a denied
     // Review: its state follows the acceptance gate the Core recorded on the run.
     await openTask(page, taskId);
     await openTaskDetails(page);
-    const gate = await page.getByTestId("task-evidence").textContent();
+    // The line is said in plain words (PX-202); the Core's own text, with its verdict code, is on the element.
+    const gate = await page.getByTestId("task-evidence").getAttribute("data-core");
     await page.getByTestId("task-review").click();
     const reviewState = page.getByTestId("review-state");
     await expect(reviewState).toHaveAttribute("data-kind", /populated|degraded/, { timeout: 30_000 });

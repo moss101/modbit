@@ -30,6 +30,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 mod broker;
+mod job;
 mod listeners;
 #[cfg(target_os = "linux")]
 mod seccomp_net;

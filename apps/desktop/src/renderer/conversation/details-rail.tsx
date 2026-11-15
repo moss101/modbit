@@ -19,9 +19,9 @@ import { useContextTray } from "../context/ring.tsx";
 import { MODE_COPY, modeLabel } from "../approvals/run-mode-model.ts";
 import type { RunModeState } from "../approvals/run-mode.tsx";
 import { effectWords } from "../approvals/model.ts";
-import { elapsedLabel } from "../composer/model.ts";
 import type { CheckpointContext } from "./checkpoint-controls.tsx";
-import { backgroundOf, budgetLines, changeWords, checkpointHeading, checkpointLabel, countWords, folderWords, locationWords, modelCallWords, restorable, spendWords, toolServers, verificationWords, type RailSource } from "./rail-model.ts";
+import { BackgroundList } from "./background-list.tsx";
+import { budgetLines, economicsFacts, evidenceWords, changeWords, checkpointHeading, checkpointLabel, countWords, folderWords, locationWords, modelCallWords, restorable, spendWords, toolServers, verificationWords, type RailSource } from "./rail-model.ts";
 
 export interface DetailsRailProps {
   taskId: string;
@@ -54,7 +54,7 @@ export interface DetailsRailProps {
 }
 
 /** Marks an element as a value of the rail and names the preload read (or reads) it is drawn from. */
-const src = (...s: RailSource[]) => ({ "data-rail-value": "", "data-src": s.join(" ") });
+export const src = (...s: RailSource[]) => ({ "data-rail-value": "", "data-src": s.join(" ") });
 
 function Section({ id, title, aside, children }: { id: string; title: string; aside?: ReactNode; children?: ReactNode }) {
   return (
@@ -171,9 +171,15 @@ function DetailsMore({ taskId, offset, economics }: { taskId: string; offset: st
         </details>
       )}
       {economics && economics.modelCalls > 0 && (
-        <p className="meta task-section" data-testid="task-economics">
-          Economics: {economics.verified ? "verified" : "not verified"}, {economics.checksPassed}/{economics.checksPassed + economics.checksFailed} check(s) passed; {economics.modelCalls} model call(s) on {economics.model || "no model"}, {economics.inputTokens} in ({economics.cachedInputTokens} cached) and {economics.outputTokens} out{economics.pricingKnown ? `, $${economics.costUsd.toFixed(4)} at catalog list prices` : ", price unknown"}; {economics.toolCalls} tool call(s); {economics.wallMs} ms wall, {economics.modelMs} ms in the model, {economics.toolMs} ms in tools; prompt prefix reused {economics.prefixCacheHits} of {economics.prefixCacheHits + economics.prefixCacheMisses} time(s).
-        </p>
+        <dl className="task-facts task-section" aria-label="What the task has used" data-testid="task-economics">
+          {economicsFacts(economics).map((f) => (
+            <Fact key={f.id} label={f.label}>
+              <span data-testid={`task-economics-${f.id}`} {...src("taskEconomics")}>
+                {f.value}
+              </span>
+            </Fact>
+          ))}
+        </dl>
       )}
     </>
   );
@@ -188,95 +194,16 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-/** A running terminal's row: what it runs, for how long, and Stop, which asks once more before the Core kills it. */
-function TerminalRow({ t, now, sessionId, taskId, onOpen, onChanged }: { t: TerminalViewJson; now: number; sessionId: string | null; taskId: string; onOpen?: ((terminalId: string) => void) | undefined; onChanged?: (() => void) | undefined }) {
-  const [armed, setArmed] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [note, setNote] = useState("");
-  const title = t.title || "terminal";
-  const kill = async () => {
-    if (!sessionId) return;
-    setBusy(true);
-    try {
-      await window.modbit.terminalKill(sessionId, taskId, t.terminalId);
-      setNote("");
-      onChanged?.();
-    } catch (e) {
-      setNote((e as Error).message.replace(/^Error invoking remote method '[^']*': (Error: )?/, ""));
-    } finally {
-      setBusy(false);
-      setArmed(false);
-    }
-  };
-  return (
-    <li className="rail-row" data-testid="rail-terminal" data-terminal-id={t.terminalId} data-state={t.state}>
-      <span className="rail-ico">
-        <Icon name="terminal" size={16} />
-      </span>
-      {onOpen ? (
-        <button type="button" className="rail-x rail-link rail-mono" onClick={() => onOpen(t.terminalId)} title={`Open ${title} in the Terminal pane`} data-testid="rail-terminal-title" {...src("terminalList")}>
-          {title}
-        </button>
-      ) : (
-        <span className="rail-x rail-mono" data-testid="rail-terminal-title" {...src("terminalList")}>
-          {title}
-        </span>
-      )}
-      {note ? (
-        <span className="rail-aside" role="alert">
-          {note}
-        </span>
-      ) : (
-        !armed && (
-          <span className="rail-aside" data-testid="rail-terminal-elapsed" {...src("terminalList")}>
-            {elapsedLabel(t.startedAtMs, now)}
-          </span>
-        )
-      )}
-      {armed ? (
-        <span
-          className="rail-armed"
-          onBlur={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setArmed(false);
-          }}
-        >
-          <Button size="sm" variant="danger" autoFocus disabled={busy || !sessionId} onClick={() => void kill()} data-testid="rail-terminal-stop-confirm">
-            Stop it
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => setArmed(false)} data-testid="rail-terminal-stop-cancel">
-            Keep
-          </Button>
-        </span>
-      ) : (
-        <button type="button" className="rail-stop" aria-label={`Stop ${title}`} title="Stop" onClick={() => setArmed(true)} data-testid="rail-terminal-stop">
-          <span aria-hidden="true" />
-        </button>
-      )}
-    </li>
-  );
-}
-
 /** The rail's content. `layout` says where it stands: beside the conversation, or under More. */
 export function DetailsRail(p: DetailsRailProps) {
   const { taskId, sessionId, connected, card, stateWords, subtasks, terminals, runMode, accounting, economics, checkpointContext } = p;
   const contextTray = useContextTray();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [checkpointsOpen, setCheckpointsOpen] = useState(false);
-  const [finishedOpen, setFinishedOpen] = useState(false);
   const started = !!card && card.state !== "Created" && card.state !== "Queued";
   const reads = useRailReads(taskId, sessionId, connected, started, p.header, `${card?.state ?? ""}:${p.header?.filesChanged ?? ""}`, card?.lastOffset ?? "");
   const header = reads.header;
   const approvals = p.approvals.filter((a) => a.taskId === taskId);
-  const bg = backgroundOf(subtasks, terminals);
-  const [now, setNow] = useState(() => Date.now());
-  const ticking = bg.liveTerminals.length > 0;
-  useEffect(() => {
-    if (!ticking) return;
-    setNow(Date.now());
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, [ticking]);
-
   const location = locationWords(header?.executionLocation, localMachine());
   const folder = header ? folderWords(header.checkoutRoot || header.workspaceRoot) : null;
   const worktree = Boolean(header?.checkoutRoot);
@@ -324,8 +251,10 @@ export function DetailsRail(p: DetailsRailProps) {
                 {active}/{card.agents.total}
               </span>
             </Fact>
-            <Fact label="Generation">
-              <span {...src("sessionSnapshot")}>{card.generation}</span>
+            <Fact label="Updates recorded">
+              <span data-testid="task-generation" title="How many times the Core has recorded a change to this task" {...src("sessionSnapshot")}>
+                {card.generation}
+              </span>
             </Fact>
             <Fact label="Attachments">
               <span data-testid="task-attachments" {...src("transcript")}>
@@ -495,8 +424,8 @@ export function DetailsRail(p: DetailsRailProps) {
           )}
           {card?.latestEvidence && (
             <Row icon="eye">
-              <span title={card.latestEvidence} data-testid="task-evidence" {...src("transcript")}>
-                {card.latestEvidence}
+              <span title={evidenceWords(card.latestEvidence)} data-testid="task-evidence" data-core={card.latestEvidence} {...src("transcript")}>
+                {evidenceWords(card.latestEvidence)}
               </span>
             </Row>
           )}
@@ -535,76 +464,7 @@ export function DetailsRail(p: DetailsRailProps) {
 
       {(subtasks.length > 0 || terminals.length > 0) && (
         <Section id="background" title="Background tasks">
-          <div data-testid="task-children">
-          <ul className="rail-list" aria-label="Running child tasks and terminals">
-            {bg.liveChildren.map((c) => (
-              <li key={c.taskId} className="rail-row" data-testid="child-card" data-task-id={c.taskId} data-state={c.state}>
-                <span className="rail-ico">
-                  <Icon name="list-tree" size={16} />
-                </span>
-                <button type="button" className="rail-x rail-link" onClick={() => p.onOpenTask(c.taskId)} title={c.goalText}>
-                  <span data-testid="child-goal" {...src("sessionSnapshot")}>
-                    {c.goalText}
-                  </span>
-                </button>
-                <span className="rail-aside" data-testid="child-state" {...src("sessionSnapshot")}>
-                  {c.state}
-                </span>
-                <button type="button" className="rail-stop" aria-label={`Stop ${c.goalText}`} title="Stop" onClick={() => p.onStopChild(c.taskId)} data-testid="child-stop">
-                  <span aria-hidden="true" />
-                </button>
-              </li>
-            ))}
-            {bg.liveTerminals.map((t) => (
-              <TerminalRow key={t.terminalId} t={t} now={now} sessionId={sessionId} taskId={taskId} onOpen={p.onOpenTerminal} onChanged={p.onTerminalsChanged} />
-            ))}
-          </ul>
-          {bg.finished > 0 && (
-            <>
-              <button type="button" className="rail-row rail-rowbtn" aria-expanded={finishedOpen} onClick={() => setFinishedOpen((o) => !o)} data-testid="rail-finished" data-count={bg.finished}>
-                <span className="rail-ico">
-                  <Icon name="check" size={16} />
-                </span>
-                <span className="rail-x rail-dim" data-testid="rail-finished-count" {...src("sessionSnapshot", "terminalList")}>
-                  {bg.finished} finished
-                </span>
-                <span className="rail-aside">{finishedOpen ? "hide" : "show"}</span>
-              </button>
-              {finishedOpen && (
-                <ul className="rail-list" aria-label="Finished child tasks and terminals" data-testid="rail-finished-list">
-                  {bg.endedChildren.map((c) => (
-                    <li key={c.taskId} className="rail-row rail-sub" data-testid="child-card" data-task-id={c.taskId} data-state={c.state}>
-                      <button type="button" className="rail-x rail-link" onClick={() => p.onOpenTask(c.taskId)} title={c.goalText}>
-                        <span data-testid="child-goal" {...src("sessionSnapshot")}>
-                          {c.goalText}
-                        </span>
-                      </button>
-                      <span className="rail-aside" data-testid="child-state" {...src("sessionSnapshot")}>
-                        {c.state}
-                      </span>
-                    </li>
-                  ))}
-                  {bg.endedTerminals.map((t) => (
-                    <li key={t.terminalId} className="rail-row rail-sub" data-testid="rail-terminal-ended" data-terminal-id={t.terminalId} data-state={t.state}>
-                      {p.onOpenTerminal ? (
-                        <button type="button" className="rail-x rail-link rail-mono" onClick={() => p.onOpenTerminal?.(t.terminalId)} {...src("terminalList")}>
-                          {t.title || "terminal"}
-                        </button>
-                      ) : (
-                        <span className="rail-x rail-mono" {...src("terminalList")}>
-                          {t.title || "terminal"}
-                        </span>
-                      )}
-                      <span className="rail-aside" {...src("terminalList")}>
-                        {t.exitCode === null ? t.state.toLowerCase() : `exit ${t.exitCode}`}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </>
-          )}
-          </div>
+          <BackgroundList taskId={taskId} sessionId={sessionId} subtasks={subtasks} terminals={terminals} onOpenTask={p.onOpenTask} onOpenTerminal={p.onOpenTerminal} onStopChild={p.onStopChild} onTerminalsChanged={p.onTerminalsChanged} />
         </Section>
       )}
 
