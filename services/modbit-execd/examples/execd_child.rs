@@ -181,25 +181,9 @@ fn main() {
         // says which answer arrived, so a silent terminal is named, not hung.
         "dsr-probe" => {
             use std::io::Read;
-            out.write_all(&[0x1b, b'[', b'6', b'n']).unwrap();
-            out.flush().unwrap();
-            let (tx, rx) = std::sync::mpsc::channel();
-            std::thread::spawn(move || {
-                let mut stdin = std::io::stdin();
-                let mut buf = [0u8; 32];
-                loop {
-                    match stdin.read(&mut buf) {
-                        Ok(0) | Err(_) => break,
-                        Ok(n) => {
-                            if tx.send(buf[..n].to_vec()).is_err() {
-                                break;
-                            }
-                        }
-                    }
-                }
-            });
             // A cooked-mode line never completes without a carriage
-            // return, and the reply has none: read the console in raw mode.
+            // return, and the reply has none: the console is raw before the
+            // query is written and before any read is pending.
             #[cfg(windows)]
             {
                 #[allow(unsafe_code)]
@@ -217,6 +201,23 @@ fn main() {
                     }
                 }
             }
+            out.write_all(&[0x1b, b'[', b'6', b'n']).unwrap();
+            out.flush().unwrap();
+            let (tx, rx) = std::sync::mpsc::channel();
+            std::thread::spawn(move || {
+                let mut stdin = std::io::stdin();
+                let mut buf = [0u8; 32];
+                loop {
+                    match stdin.read(&mut buf) {
+                        Ok(0) | Err(_) => break,
+                        Ok(n) => {
+                            if tx.send(buf[..n].to_vec()).is_err() {
+                                break;
+                            }
+                        }
+                    }
+                }
+            });
             let mut got = Vec::new();
             while let Ok(chunk) = rx.recv_timeout(Duration::from_secs(5)) {
                 got.extend(chunk);

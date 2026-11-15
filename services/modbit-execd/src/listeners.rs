@@ -188,17 +188,34 @@ pub fn parse_netstat(text: &str) -> Vec<Listener> {
 /// `LISTENING`, and an unknown state must never read as "no listeners"
 /// (WIN-04, PX-132).
 pub fn parse_netstat_fail_closed(text: &str) -> Result<Vec<Listener>, String> {
-    let out = parse_netstat(text);
-    if out.is_empty()
-        && text.lines().any(|l| {
-            l.split_whitespace()
-                .next()
-                .is_some_and(|f| f.eq_ignore_ascii_case("TCP"))
-        })
-    {
-        return Err("netstat reported TCP rows but none in a listening state this parser recognizes (localized output?)".into());
+    // The states English `netstat -ano` writes for TCP. A TCP row in any
+    // other vocabulary is localized output; an English host that only has
+    // ESTABLISHED/TIME_WAIT rows genuinely has no listeners.
+    const ENGLISH_STATES: &[&str] = &[
+        "LISTENING",
+        "ESTABLISHED",
+        "SYN_SENT",
+        "SYN_RECEIVED",
+        "FIN_WAIT_1",
+        "FIN_WAIT_2",
+        "CLOSE_WAIT",
+        "CLOSING",
+        "LAST_ACK",
+        "TIME_WAIT",
+        "CLOSED",
+        "BOUND",
+        "DELETE_TCB",
+    ];
+    if let Some(state) = text.lines().find_map(|l| {
+        let f: Vec<&str> = l.split_whitespace().collect();
+        (f.len() >= 5 && f[0].eq_ignore_ascii_case("TCP") && !ENGLISH_STATES.contains(&f[3]))
+            .then(|| f[3].to_owned())
+    }) {
+        return Err(format!(
+            "netstat reported a TCP state this parser does not recognize ({state}): localized output?"
+        ));
     }
-    Ok(out)
+    Ok(parse_netstat(text))
 }
 
 /// `/proc/net/tcp` or `/proc/net/tcp6` (Linux): the listening sockets as
@@ -543,8 +560,16 @@ TCP    0.0.0.0:3000    0.0.0.0:0      ABHÖREN  1234
 TCP    0.0.0.0:3000    0.0.0.0:0      ÉCOUTE      1234
 ";
         assert!(parse_netstat_fail_closed(french).is_err());
+        // English output with connections but no listener is an empty
+        // list, not a localization error.
+        let no_listeners = "  Proto  Local          Foreign        State       PID
+TCP    10.0.0.2:50000  10.0.0.9:443   ESTABLISHED 9
+TCP    10.0.0.2:50001  10.0.0.9:443   TIME_WAIT   0
+";
+        assert!(parse_netstat_fail_closed(no_listeners).unwrap().is_empty());
     }
 
+    #[test]
     fn netstat_and_proc_net_parse() {
         let n = "  TCP    0.0.0.0:3000     0.0.0.0:0      LISTENING       1234\n  TCP    [::1]:3001       [::]:0         LISTENING       1234\n  TCP    10.0.0.2:50000   10.0.0.9:443   ESTABLISHED     9\n";
         let l = parse_netstat(n);

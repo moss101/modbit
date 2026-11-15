@@ -728,31 +728,33 @@ enum Listener {
     },
 }
 
-/// SECURITY_ATTRIBUTES granting the pipe's write side to its owner, SYSTEM
-/// and Administrators only (SDDL `D:P(A;;GW;;;OW)(A;;GW;;;SY)(A;;GW;;;BA)`),
-/// the Windows analogue of the Unix socket's `0o600` (WIN-04). Leaked once
-/// per call: the descriptor must outlive the server, and a broker binds one
-/// pipe endpoint per data directory for its whole life.
+/// SECURITY_ATTRIBUTES granting the pipe to its owner, SYSTEM and
+/// Administrators only (SDDL `D:P(A;;GRGW;;;OW)(A;;GRGW;;;SY)(A;;GRGW;;;BA)`),
+/// the Windows analogue of the Unix socket's `0o600` (WIN-04). Built once and
+/// leaked for the process's life: every pipe instance — the first one and
+/// each replacement `accept` creates — carries the same descriptor.
 #[cfg(windows)]
 fn owner_only_pipe_attributes() -> *mut SECURITY_ATTRIBUTES {
-    #![allow(unsafe_code)]
-    // SAFETY exception (workspace `unsafe_code = "deny"`, as for job.rs): one
-    // string-to-descriptor conversion of a constant SDDL string.
-    unsafe {
-        // D:P(A;;GRGW;;;OW)(A;;GRGW;;;SY)(A;;GRGW;;;BA) (read+write for the owner, SYSTEM and Administrators only)
-        const SDDL_OWNER_ONLY: &[u16] = &[
-            68u16, 58u16, 80u16, 40u16, 65u16, 59u16, 59u16, 71u16, 82u16, 71u16, 87u16, 59u16,
-            59u16, 59u16, 79u16, 87u16, 41u16, 40u16, 65u16, 59u16, 59u16, 71u16, 82u16, 71u16,
-            87u16, 59u16, 59u16, 59u16, 83u16, 89u16, 41u16, 40u16, 65u16, 59u16, 59u16, 71u16,
-            82u16, 71u16, 87u16, 59u16, 59u16, 59u16, 66u16, 65u16, 41u16,
-        ];
+    static ATTRS: std::sync::OnceLock<usize> = std::sync::OnceLock::new();
+    let attrs = *ATTRS.get_or_init(|| {
+        // The API reads a NUL-terminated wide string: the terminator is part
+        // of the buffer, never assumed to follow it in memory.
+        let sddl: Vec<u16> = "D:P(A;;GRGW;;;OW)(A;;GRGW;;;SY)(A;;GRGW;;;BA)"
+            .encode_utf16()
+            .chain(std::iter::once(0))
+            .collect();
         let mut sd: *mut core::ffi::c_void = std::ptr::null_mut();
-        let ok = ConvertStringSecurityDescriptorToSecurityDescriptorW(
-            SDDL_OWNER_ONLY.as_ptr(),
-            1,
-            &mut sd,
-            std::ptr::null_mut(),
-        );
+        // SAFETY exception (workspace `unsafe_code = "deny"`, as for job.rs):
+        // one string-to-descriptor conversion of a NUL-terminated constant.
+        #[allow(unsafe_code)]
+        let ok = unsafe {
+            ConvertStringSecurityDescriptorToSecurityDescriptorW(
+                sddl.as_ptr(),
+                1,
+                &mut sd,
+                std::ptr::null_mut(),
+            )
+        };
         assert!(
             ok != 0,
             "SDDL pipe descriptor: {}",
@@ -762,8 +764,9 @@ fn owner_only_pipe_attributes() -> *mut SECURITY_ATTRIBUTES {
             nLength: std::mem::size_of::<SECURITY_ATTRIBUTES>() as u32,
             lpSecurityDescriptor: sd,
             bInheritHandle: 0,
-        }))
-    }
+        })) as usize
+    });
+    attrs as *mut SECURITY_ATTRIBUTES
 }
 
 impl Listener {
@@ -813,7 +816,15 @@ impl Listener {
             let Listener::Pipe { name, next } = self;
             let server = next.lock().unwrap().take().expect("pipe instance");
             server.connect().await?;
-            let replacement = tokio::net::windows::named_pipe::ServerOptions::new().create(name)?;
+            // Every instance carries the owner-only descriptor, not only the
+            // first (WIN-04).
+            // SAFETY: the attributes pointer is the leaked, process-lifetime
+            // SECURITY_ATTRIBUTES built by `owner_only_pipe_attributes`.
+            #[allow(unsafe_code)]
+            let replacement = unsafe {
+                tokio::net::windows::named_pipe::ServerOptions::new()
+                    .create_with_security_attributes_raw(name, owner_only_pipe_attributes().cast())
+            }?;
             *next.lock().unwrap() = Some(replacement);
             Ok(Box::new(server))
         }
@@ -1461,6 +1472,25 @@ fn scan_services(
     Ok((out, scanned))
 }
 
+/// End the whole tree a session's command started (REQ-EV-0221): its job
+/// (Windows), then its process group (Unix) or a `taskkill /T` walk of the
+/// descendants (Windows, for a session the job could not confine). The
+/// direct child is killed separately by the caller.
+async fn kill_tree(s: &Arc<Session>, pid: u32) {
+    if let Some(j) = s.job.lock().await.take() {
+        j.terminate();
+    }
+    #[cfg(unix)]
+    kill_group(pid);
+    #[cfg(windows)]
+    if pid != 0 {
+        let _ = tokio::process::Command::new("taskkill")
+            .args(["/T", "/F", "/PID", &pid.to_string()])
+            .output()
+            .await;
+    }
+}
+
 async fn kill(s: &Arc<Session>) {
     // The job ends the whole tree at once, pipes and all (WIN-04); the child
     // kill below is then belt-and-braces. Taking the slot keeps it idempotent.
@@ -1497,22 +1527,11 @@ async fn kill(s: &Arc<Session>) {
                 .expect("pty child")
                 .as_ref()
                 .and_then(|c| c.process_id());
+            // The PTY made the child a session leader (Unix: its group is
+            // its pid); on Windows a session the job could not confine is
+            // walked with taskkill.
             if let Some(pid) = pid {
-                // The PTY made the child a session leader: its group is its pid.
-                #[cfg(unix)]
-                kill_group(pid);
-                // A ConPTY shell's children are not in the session's job on
-                // this host (AssignProcessToJobObject on a pseudoconsole
-                // child is refused with ACCESS_DENIED, observed on Windows
-                // 11 26200), so the tree is ended the same job-less way the
-                // piped arm ends it: taskkill walks the descendant tree.
-                #[cfg(windows)]
-                {
-                    let _ = tokio::process::Command::new("taskkill")
-                        .args(["/T", "/F", "/PID", &pid.to_string()])
-                        .output()
-                        .await;
-                }
+                kill_tree(s, pid).await;
             }
             if let Some(c) = child.lock().expect("pty child").as_mut() {
                 let _ = c.kill();
@@ -1528,9 +1547,13 @@ async fn kill(s: &Arc<Session>) {
 #[cfg(unix)]
 #[allow(unsafe_code)]
 fn kill_group(pid: u32) {
+    // 0 is "no pid known": killpg(0) would signal this broker's own group.
     let Ok(pid) = i32::try_from(pid) else {
         return;
     };
+    if pid <= 0 {
+        return;
+    }
     unsafe {
         libc::killpg(pid, libc::SIGKILL);
     }
@@ -1872,8 +1895,11 @@ impl Broker {
         // Confine the tree this command is about to start (WIN-04): on
         // Windows every descendant dies with the session, by an explicit
         // terminate or by the kernel when the job handle closes; on Unix the
-        // process group set below is the boundary and confine is a no-op.
-        *s.job.lock().await = crate::job::confine(child.id().unwrap_or(0));
+        // process group set above is the boundary and no job exists.
+        #[cfg(windows)]
+        if let Some(h) = child.raw_handle() {
+            *s.job.lock().await = crate::job::confine(h);
+        }
         let stdout = child.stdout.take();
         let stderr = child.stderr.take();
         if let Some(stdin) = child.stdin.take() {
@@ -1932,22 +1958,10 @@ impl Broker {
                         // exit would never be observed (REQ-EV-0221; WIN-04:
                         // the Windows arm cannot rely on the job alone, since
                         // a ConPTY child cannot be job-assigned on this host).
-                        #[cfg(windows)]
-                        {
-                            let pid = s.pid.load(Ordering::SeqCst);
-                            if pid != 0 {
-                                let _ = tokio::process::Command::new("taskkill")
-                                    .args(["/T", "/F", "/PID", &pid.to_string()])
-                                    .output()
-                                    .await;
-                            }
-                        }
-                        #[cfg(unix)]
-                        if let Some(c) = child.lock().await.as_mut() {
-                            kill_group(c.id().unwrap_or(0));
-                            let _ = c.kill().await;
-                        }
-                        #[cfg(windows)]
+                        // The pid recorded at spawn, not `Child::id()`, which
+                        // reads None once the child is reaped (kill_group
+                        // ignores 0 either way).
+                        kill_tree(&s, s.pid.load(Ordering::SeqCst)).await;
                         if let Some(c) = child.lock().await.as_mut() {
                             let _ = c.kill().await;
                         }
@@ -1957,6 +1971,16 @@ impl Broker {
             } else {
                 wait.await
             };
+            // The command is over: on Windows its job ends whatever it left
+            // behind now, before the readers drain — a grandchild that
+            // inherited the output pipes would otherwise hold them open and
+            // the drain below (and so `finish`) would never be reached
+            // (WIN-04). On Unix the process group's survivors are left as
+            // before; a cancel or timeout already ended them.
+            #[cfg(windows)]
+            if let Some(j) = s.job.lock().await.take() {
+                j.terminate();
+            }
             // After a kill (cancel or timeout) a surviving grandchild may hold the
             // pipes: bound the reader wait so the exit is still reported.
             let abrupt = timed_out || s.cancelled.load(Ordering::SeqCst);
@@ -2048,8 +2072,9 @@ impl Broker {
         // a shell started under a PTY forks freely, and only the job ends
         // what it started on Windows (WIN-04; the Unix arm killpg's the
         // session group).
-        if let Some(pid) = child.process_id() {
-            *s.job.lock().await = crate::job::confine(pid);
+        #[cfg(windows)]
+        if let Some(h) = child.as_raw_handle() {
+            *s.job.lock().await = crate::job::confine(h);
         }
         let mut reader = pair
             .master
@@ -2110,6 +2135,8 @@ impl Broker {
                     Ok(st) => st.ok().flatten(),
                     Err(_) => {
                         timed_out = true;
+                        // The whole tree ends, as at cancel (REQ-EV-0221).
+                        kill_tree(&s, s.pid.load(Ordering::SeqCst)).await;
                         if let Some(c) = child.lock().expect("pty child").as_mut() {
                             let _ = c.kill();
                         }

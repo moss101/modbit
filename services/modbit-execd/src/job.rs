@@ -22,7 +22,6 @@ mod imp {
         JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JobObjectExtendedLimitInformation,
         SetInformationJobObject, TerminateJobObject,
     };
-    use windows_sys::Win32::System::Threading::{OpenProcess, PROCESS_SET_QUOTA};
 
     /// An owned job handle. Dropping it closes the job; because the job's
     /// only handle is owned here, the kernel ends every confined process
@@ -35,14 +34,19 @@ mod imp {
     unsafe impl Send for Job {}
     unsafe impl Sync for Job {}
 
-    /// Confine `pid` — and everything it spawns from now on — to a new job
-    /// that dies with the returned handle. `None` only when a Windows call
-    /// refuses (the session then stays unconfined and the explicit kill
-    /// paths still run `taskkill /T`, as before).
-    pub(crate) fn confine(pid: u32) -> Option<Job> {
+    /// Confine the process behind `proc` — and everything it spawns from
+    /// now on — to a new job that dies with the returned handle. `proc` is
+    /// the spawner's own handle on the child (full access, held open for the
+    /// child's life), never a handle reopened by pid: a pid can be reused,
+    /// and `AssignProcessToJobObject` needs both `PROCESS_SET_QUOTA` and
+    /// `PROCESS_TERMINATE`, which a `PROCESS_SET_QUOTA`-only reopen lacks
+    /// (the ACCESS_DENIED first seen on ConPTY children). `None` only when a
+    /// Windows call refuses; the session then stays unconfined and the
+    /// explicit kill paths still run `taskkill /T`.
+    pub(crate) fn confine(proc: std::os::windows::io::RawHandle) -> Option<Job> {
         // SAFETY exception (workspace `unsafe_code = "deny"`, noted in
-        // Cargo.toml): job-object calls on handles this function created or
-        // opened itself, on a pid the broker spawned.
+        // Cargo.toml): job-object calls on a handle this function created
+        // and on the child handle its spawner owns and keeps open.
         unsafe {
             let job = CreateJobObjectW(std::ptr::null(), std::ptr::null());
             if job.is_null() {
@@ -68,20 +72,10 @@ mod imp {
                 CloseHandle(job);
                 return None;
             }
-            let proc = OpenProcess(PROCESS_SET_QUOTA, 0, pid);
-            if proc.is_null() {
-                eprintln!(
-                    "modbit-execd: job: OpenProcess({pid}) failed: {}",
-                    std::io::Error::last_os_error()
-                );
-                CloseHandle(job);
-                return None;
-            }
-            let assigned = AssignProcessToJobObject(job, proc);
-            CloseHandle(proc);
+            let assigned = AssignProcessToJobObject(job, proc as HANDLE);
             if assigned == 0 {
                 eprintln!(
-                    "modbit-execd: job: AssignProcessToJobObject({pid}) failed: {}",
+                    "modbit-execd: job: AssignProcessToJobObject failed: {}",
                     std::io::Error::last_os_error()
                 );
                 CloseHandle(job);
@@ -119,11 +113,6 @@ pub(crate) use imp::{Job, confine};
 /// `killpg`'d on cancel (broker.rs); no job exists there.
 #[cfg(not(windows))]
 pub(crate) struct Job;
-
-#[cfg(not(windows))]
-pub(crate) fn confine(_pid: u32) -> Option<Job> {
-    None
-}
 
 #[cfg(not(windows))]
 impl Job {

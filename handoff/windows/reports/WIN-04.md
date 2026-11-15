@@ -63,3 +63,19 @@ All inside the owner (`services/modbit-execd`):
 ## 10. Next safe action
 
 Merge (maintainer; CI green on all three OSes required — Unix behavior unchanged: confine is a no-op there, the PTY/timeout taskkill arms are `cfg(windows)`). Then WIN-05 — Git on Windows hardening beyond what WIN-02 already landed (autocrlf round-trips, `safe.directory`, case-colliding names, locked worktrees).
+
+## 11. Review fixes (PR #214)
+
+A code review of this branch found these defects. Each is fixed in the follow-up commit; the Windows paths are proven by hosted CI (`windows-latest`), and the Linux suite and Windows-target clippy were run before pushing.
+
+1. **A unit test had been silently disabled**: the new netstat test was inserted between `#[test]` and `netstat_and_proc_net_parse`, which then never ran. The attribute is restored.
+2. **The SDDL string had no NUL terminator**: `ConvertStringSecurityDescriptorToSecurityDescriptorW` read past the end of the hand-written `u16` array. The descriptor is now built from a `&str` with an explicit terminator.
+3. **Only the first pipe instance was owner-only**: each replacement instance made in `accept` used the default descriptor. Every instance now carries the same descriptor, built once (`OnceLock`).
+4. **Job assignment used a pid reopened with `PROCESS_SET_QUOTA` only**: `AssignProcessToJobObject` needs `PROCESS_SET_QUOTA | PROCESS_TERMINATE`, which is the most likely cause of the `ACCESS_DENIED` recorded in §7.3 (and of the clean-exit mutation passing anyway, §7.2). `confine` now takes the spawner's own full-access child handle (`tokio::process::Child::raw_handle`, `portable_pty::Child::as_raw_handle`), which also removes any pid-reuse question.
+5. **A clean exit could hang before the job ended the tree**: the piped arm drained the output readers without a bound before `finish` terminated the job, so a grandchild holding the inherited pipes blocked the session forever. On Windows the job is now terminated as soon as the direct child's exit is observed, before the drain.
+6. **The PTY timeout only killed the shell**: it now ends the whole tree like cancel does (one `kill_tree` helper: job, then `killpg` on Unix or `taskkill /T` on Windows).
+7. **`killpg(0)` on Unix**: the piped timeout passed `Child::id().unwrap_or(0)`, and `killpg(0, SIGKILL)` signals the broker's own group. The timeout uses the pid recorded at spawn, and `kill_group` ignores 0.
+8. **The DSR probe could read in cooked mode**: the console is now switched to raw mode before the query is written and before the reader thread starts.
+9. **An English host with no listeners failed as "localized"**: `parse_netstat_fail_closed` now fails only on a TCP state outside the English vocabulary; a regression case (ESTABLISHED/TIME_WAIT only) returns an empty list.
+
+Remaining (unchanged from §9): a descendant spawned in the microseconds between process creation and job assignment is outside the job; closing that needs `CREATE_SUSPENDED` or `PROC_THREAD_ATTRIBUTE_JOB_LIST`, which `std` and `portable-pty` do not expose. The cancel/timeout `taskkill /T` walk still covers that case.
