@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2258,
+    "root_and_tooling": 2269,
     "docs_bytes": 2408986
   },
   "sections": [
@@ -4652,6 +4652,61 @@
       "path": "evidence/m10/PX-203/evidence.json",
       "bytes": 7055,
       "sha256": "ce735f0e69938cceab6b943a457eae697c231b51caa34ff4433c685fcc341f61"
+    },
+    {
+      "path": "evidence/m10/PX-204/TASK_CARD.md",
+      "bytes": 18447,
+      "sha256": "fb743654fcbbb0a8d1d7bbb88b6910268cd2f86fbc04e650383cdef2f22cdb78"
+    },
+    {
+      "path": "evidence/m10/PX-204/after/split-comfortable-dark.png",
+      "bytes": 356533,
+      "sha256": "0b1f42e1f6ffe49afa67fa4555d648ccc0cda8ec7b7ed69d8ec56289ae4b912d"
+    },
+    {
+      "path": "evidence/m10/PX-204/after/split-comfortable-light.png",
+      "bytes": 357825,
+      "sha256": "ed33da70211899957b1643f2b3798cde49a253e0fedff268d7c3ca3121dd164d"
+    },
+    {
+      "path": "evidence/m10/PX-204/after/split-compact-dark.png",
+      "bytes": 271552,
+      "sha256": "575a934e4a3c2b815a2a3fd7e915f7d5c10f81a6b402df684351b1c75157836c"
+    },
+    {
+      "path": "evidence/m10/PX-204/after/split-compact-light.png",
+      "bytes": 273469,
+      "sha256": "4252f8d502b1c8e54a554d7e8583b2da8cb876f43b41f5745b1fd7cdad953fb8"
+    },
+    {
+      "path": "evidence/m10/PX-204/after/split-paused-narrow-dark.png",
+      "bytes": 300930,
+      "sha256": "7d6638d49ef24c4b2f88543394815267de3c04f2e4ecc9713d91feab617cc03c"
+    },
+    {
+      "path": "evidence/m10/PX-204/after/split-paused-narrow-light.png",
+      "bytes": 302808,
+      "sha256": "5ab76d7a87e4ae473ef2929e0ca4177053e7b9631902f17b7fc803a9d7b89a23"
+    },
+    {
+      "path": "evidence/m10/PX-204/after/split-refused-narrow-dark.png",
+      "bytes": 300654,
+      "sha256": "13ac5638be25375c6a45b72d0c89385e63e5d82cc8e366c8c0c606b0eea021d6"
+    },
+    {
+      "path": "evidence/m10/PX-204/after/split-refused-narrow-light.png",
+      "bytes": 303136,
+      "sha256": "6331f5f0195a8ec52861c289093f7460b877eba7c12606a306864840ed20117b"
+    },
+    {
+      "path": "evidence/m10/PX-204/desktop-e2e-full-results.txt",
+      "bytes": 42165,
+      "sha256": "d450226fcdd54da228545a889141c9dd6d7821d06f6dc4c1c3970cfdc96bbb51"
+    },
+    {
+      "path": "evidence/m10/PX-204/evidence.json",
+      "bytes": 5327,
+      "sha256": "89a05505ae231df4531e86fe5f4a94687174f63eb97bd3e2cd2e1d88ea2bd53d"
     },
     {
       "path": "evidence/m10/PX-210/TASK_CARD.md",
