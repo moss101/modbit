@@ -104,3 +104,9 @@ Whole desktop suite, local, macOS arm64, two runs; see `desktop-e2e-full-results
 - A commit denied or expired on the app window's card while the Changes window waits is not driven end to end (allowed is); the outcome is read by `approvalOutcome`, unit-proven for the Pull request pane.
 - The pane window shows the task's title as main recorded it at pop-out; a rename after that is not followed.
 - The owner has not seen the screenshots. No graph status was set.
+
+## Closure (2026-11-15)
+
+- CI run 43709635767 on head e2fd0a7b: all checks passed. Merged to main as 7ec3f2b8 (moss101/modbit#220).
+- Code reviewed before the merge: one window factory, pane-scoped allow list in main, terminal attachments owned per window, factory guard with retained mutations.
+- The owner asked for the review, merge and seal on 2026-11-15; the screenshots were reviewed beside the dock. Left open at the seal: in the terminal pane window the "Leave terminal" button overlaps the first letter of the hint beside it; Pop out exists on four of eight panes.
