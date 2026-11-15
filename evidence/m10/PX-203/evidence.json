@@ -1,7 +1,13 @@
 {
  "task": "PX-203",
- "requirements": ["REQ-PX-203", "QUAL-PX-203", "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-203"],
- "scenarios": ["QUAL-PX-203 / PX-E2E-203"],
+ "requirements": [
+  "REQ-PX-203",
+  "QUAL-PX-203",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-203"
+ ],
+ "scenarios": [
+  "QUAL-PX-203 / PX-E2E-203"
+ ],
  "decision_record": "DR-PX-2026-11-11-021 (MWS-10, sections 8 and 9)",
  "tier": "release-critical",
  "branch": "wip/desktop-2-pop-out",
@@ -12,12 +18,22 @@
   "found": [
    "the constructor key pin in hardening-guard.test.ts does not see spreads; the new factory guard pins them",
    "TerminalHost.detachAll() on any did-start-loading would end another window's attachments; attachments now carry their owner",
-   "the Changes pane reset its chosen file on every mount; it now keeps it per task in memory"
+   "the Changes pane reset its chosen file on every mount; it now keeps it per task in memory",
+   "with owned attachments a crashed app window kept its terminal input lease (terminal-renderer-restart.spec.ts:18 in run 1); a window's attachments now end when it closes or crashes"
   ],
   "traced": "createAppWindow (one BrowserWindow, one webPreferences, preload.cjs, index.html[#pane]) -> will-navigate/setWindowOpenHandler for every window -> handle(): app window top frame, or pane window top frame + paneRefusal(PANE_CHANNELS, own task/session) -> handlers; core:event -> app window + pane windows of the event's task; terminal:frame -> owner window (TerminalHost.owner); pane:popOut -> createAppWindow({kind:'pane'}) -> pane:context -> PaneWindow (TerminalApp | ChangesApp | FilesApp | EvidenceApp) -> pane:state -> closed -> pane:returned -> Shell (paneView, terminalPick, openPane); activeWork -> quitPrompt"
  },
  "bridge": {
-  "added": ["pane:popOut", "pane:windows", "pane:focus", "pane:context", "pane:state", "pane:show", "pane:return", "events pane:windows, pane:returned, pane:show"],
+  "added": [
+   "pane:popOut",
+   "pane:windows",
+   "pane:focus",
+   "pane:context",
+   "pane:state",
+   "pane:show",
+   "pane:return",
+   "events pane:windows, pane:returned, pane:show"
+  ],
   "protocol_change": "none",
   "preload_change": "ten methods (pin 76e83c38eb21ecebb78b88166be888fc7de17123e2213a51c1d0b4fba8fb85c2, review note in hardening-guard.test.ts)",
   "main_change": "one window factory; pane-scoped IPC allow list; per-window events and terminal frames; quit question counts pane-window work",
@@ -52,6 +68,7 @@
  "removed_test_ids": [],
  "removed_checks": [],
  "changed_checks": [
+  "workers.spec.ts BRIDGE_ALLOW_LIST gains the ten pane-window methods",
   "hardening-guard.test.ts preload pin moved, with its review note",
   "terminal-host.test.ts: calls carry the owner window; detach:att1 -> detach:att2 because the fake now numbers its attachments"
  ],
@@ -60,11 +77,15 @@
   "dist/renderer/index.js": "sha256:82d75096ab8932ac3884189e03f24ca210ca56ff89bd1e0d44f937a528a887a2",
   "dist/renderer/app.css": "sha256:f19fa778555d66cdd5fe3c7b136fea969cddd1530ebc76344e7fb4c6ffd1fa4a",
   "dist/preload/preload.cjs": "sha256:91365bcfca1d747a1a96ab101bce7a96942c2872665042634fbda087d3e7bbf1",
-  "dist/main/main.cjs": "sha256:b48028e8525696f1cfc91622aaf9465f132cd637c2af6168fd4448c763db84e1",
+  "dist/main/main.cjs": "sha256:3878cc18e3b0a5ca59be7dd91d23f089d27edff080129fd8a68bc85f747c8b14",
   "note": "the build the screenshots and the full local suite used"
  },
- "core_binary": {"path": "research/desktop-2/bin/modbit-core (prebuilt from main's Rust; not in the repository)", "sha256": "c5ec630a2c92680ceaccf3dc72a663ecf0e3f369c3e1309e146a691807234fcb"},
+ "core_binary": {
+  "path": "research/desktop-2/bin/modbit-core (prebuilt from main's Rust; not in the repository)",
+  "sha256": "c5ec630a2c92680ceaccf3dc72a663ecf0e3f369c3e1309e146a691807234fcb"
+ },
  "full_suite_results": "evidence/m10/PX-203/desktop-e2e-full-results.txt",
  "ci": {},
- "owner_review": "not yet seen"
+ "owner_review": "not yet seen",
+ "full_suite": "run 1: 210 passed, 2 failed (both caused by this change and fixed: workers.spec.ts bridge names, terminal-renderer-restart.spec.ts input lease of a crashed window), 3 skipped; run 2 on the final build: 212 passed, 0 failed, 3 skipped"
 }

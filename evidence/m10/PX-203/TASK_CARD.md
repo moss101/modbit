@@ -20,7 +20,7 @@
 - first missing link: `handle()` accepts the app window only and `send()`/`TerminalHost` know one window, so a second window could not ask anything, and admitting it would have admitted it to every channel, approvals included. There was also no way to say which pane a window shows.
 - Found on the way:
   - The existing key pin in `hardening-guard.test.ts` reads only keys at four spaces of indentation: a spread (`...(cond ? { ... } : {})`) in the constructor could carry any option past it. The new factory guard pins the spreads by text.
-  - `TerminalHost.detachAll()` ran on any `did-start-loading` and would have ended a pane window's terminal attachment when the app window reloads. Attachments now carry their owner window.
+  - `TerminalHost.detachAll()` ran on any `did-start-loading` and would have ended a pane window's terminal attachment when the app window reloads. Attachments now carry their owner window. The first whole-suite run then showed the other side of it: a crashed app window's attachments had been ended only by its replacement's `did-start-loading` (which detached everything), so with ownership the dead window kept the terminal's input lease and `terminal-renderer-restart.spec.ts:18` failed (LEASE_HELD). A window's attachments now end when it closes and, for a crashed app window, before its replacement is made.
   - The Changes pane reset its chosen file to the first one on every mount; it now keeps the file per task in memory (the same view state is what travels with a pane).
 
 ## What was built
@@ -63,7 +63,7 @@ Real app, real Core (prebuilt `research/desktop-2/bin/modbit-core`, sha256 c5ec6
 - **Failure: a pane window's renderer dies** (Evidence popped out, `forcefullyCrashRenderer`): the window closes, Evidence is back in the dock, the Core is still connected.
 - **Quitting closes every pane window**: with a Terminal window open, Quit and stop: the process exits 0.
 
-Whole desktop suite, local, macOS arm64: see `desktop-e2e-full-results.txt`.
+Whole desktop suite, local, macOS arm64, two runs; see `desktop-e2e-full-results.txt`. Run 1: 210 passed, 2 failed, 3 skipped; both failures were caused by this change (`workers.spec.ts:145`, the bridge's pinned names; `terminal-renderer-restart.spec.ts:18`, a crashed window's input lease) and are fixed. Run 2, on the final build: 212 passed, 0 failed, 3 skipped (the two live-model specs and the Windows-only one).
 
 ## Retained mutations (each asserted to fail)
 
@@ -83,6 +83,7 @@ Whole desktop suite, local, macOS arm64: see `desktop-e2e-full-results.txt`.
 
 - None deleted.
 - `hardening-guard.test.ts`: the preload pin moved to the new bridge (76e83c38…), with the review note beside it. The CSP, webPreferences and key pins are unchanged and pass.
+- `e2e/workers.spec.ts` (REQ-EV-0075): the pinned list of bridge names gains the ten pane-window methods, with a note beside them; the check (the bridge is exactly the list) is unchanged.
 - `terminal-host.test.ts`: every call gains the owner window (`owner: 1` on attach, `, 1` on ack, detach, write, input, resize, detachAll), because ownership is now part of the call. The fake now numbers its attachments, so in "a window that reloads detaches everything it opened" the second attachment is `att2` and the assertion reads `detach:att2` (it read `detach:att1`, the same attachment under the fake's old fixed id). Same fact.
 
 ## Differences from the boards and the record
