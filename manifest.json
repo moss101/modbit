@@ -4590,8 +4590,8 @@
     },
     {
       "path": "evidence/m10/PX-203/TASK_CARD.md",
-      "bytes": 18889,
-      "sha256": "53d0b8f5a581a1350009999c74f16bb76da784cc8cd2a911e5538508d7deba52"
+      "bytes": 19857,
+      "sha256": "c2d86372fc5419c9ac458abcb6ee15b25b03872da298a90c993a1b8b92562cfd"
     },
     {
       "path": "evidence/m10/PX-203/after/changes-popped-out-dark.png",
@@ -4645,8 +4645,8 @@
     },
     {
       "path": "evidence/m10/PX-203/evidence.json",
-      "bytes": 6172,
-      "sha256": "8403b94894cad05cbbaf57dcfc0b8df1d422e0c7845463d02bf14d3de9edf429"
+      "bytes": 7055,
+      "sha256": "ce735f0e69938cceab6b943a457eae697c231b51caa34ff4433c685fcc341f61"
     },
     {
       "path": "evidence/m10/PX-210/TASK_CARD.md",

@@ -92,7 +92,9 @@ test("PX-049: the window constructor takes the size options and nothing else bes
  * pin above); and every window, the app's and each pane's, comes from that factory. Empty when it holds.
  */
 const KNOWN_SPREADS = ["...(bounds ?? WINDOW_DEFAULT)", '...(process.platform === "darwin" && role.kind === "app" ? { titleBarStyle: "hiddenInset" as const, trafficLightPosition: { x: 14, y: 13 } } : {})', '...(role.kind === "pane" ? { title: role.title } : {})'];
-export function windowFactoryDrift(src: string): string[] {
+export function windowFactoryDrift(source: string): string[] {
+  // A Windows checkout may carry CRLF; the guard reads the LF form, as the pins above do.
+  const src = source.replace(/\r\n/g, "\n");
   const bad: string[] = [];
   const count = (re: RegExp) => [...src.matchAll(re)].length;
   if (count(/new BrowserWindow\(/g) !== 1) bad.push(`main.ts constructs a window in ${count(/new BrowserWindow\(/g)} places, not one`);
@@ -128,9 +130,10 @@ test("PX-203: every window, the app's and each pane's, comes from the one factor
 });
 
 test("PX-203: the factory guard fails on a looser window (retained mutations)", () => {
+  const lf = mainSource.replace(/\r\n/g, "\n");
   const mutate = (from: string, to: string): string => {
-    assert.ok(mainSource.includes(from), `the mutation's anchor is in main.ts: ${from.slice(0, 60)}`);
-    return mainSource.replace(from, to);
+    assert.ok(lf.includes(from), `the mutation's anchor is in main.ts: ${from.slice(0, 60)}`);
+    return lf.replace(from, to);
   };
   // A second constructor for pane windows with Node in the page.
   const second = mutate('    void w.loadFile(join(__dirname, "..", "renderer", "index.html"), { hash: "pane" });', '    const loose = new BrowserWindow({ webPreferences: { nodeIntegration: true, contextIsolation: false } });\n    void loose.loadFile(join(__dirname, "..", "renderer", "index.html"), { hash: "pane" });');

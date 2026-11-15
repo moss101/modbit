@@ -84,6 +84,7 @@ Whole desktop suite, local, macOS arm64, two runs; see `desktop-e2e-full-results
 - None deleted.
 - `hardening-guard.test.ts`: the preload pin moved to the new bridge (76e83c38…), with the review note beside it. The CSP, webPreferences and key pins are unchanged and pass.
 - `e2e/workers.spec.ts` (REQ-EV-0075): the pinned list of bridge names gains the ten pane-window methods, with a note beside them; the check (the bridge is exactly the list) is unchanged.
+- `px-203-pop-out.spec.ts` (new in this change): Back to the dock is clicked with `clickAndClose` (the window may close before the click returns), after CI run 1.
 - `terminal-host.test.ts`: every call gains the owner window (`owner: 1` on attach, `, 1` on ack, detach, write, input, resize, detachAll), because ownership is now part of the call. The fake now numbers its attachments, so in "a window that reloads detaches everything it opened" the second attachment is `att2` and the assertion reads `detach:att2` (it read `detach:att1`, the same attachment under the fake's old fixed id). Same fact.
 
 ## Differences from the boards and the record
@@ -96,6 +97,7 @@ Whole desktop suite, local, macOS arm64, two runs; see `desktop-e2e-full-results
 
 ## Limitations
 
+- **CI run 1** (43704419709 on 578ae965, draft pull request 220): desktop E2E passed on macOS and Ubuntu; packaged desktop, protocol, cloud, supply chain, locked files and dossier passed. Failed, caused by this change and fixed: node CI_COMPATIBLE on Windows (`hardening-guard.test.ts`, the factory guard's mutation anchors are LF and the Windows checkout is CRLF; the guard and its mutations now read the LF form, as the existing pins do); desktop E2E on Windows (`px-203-pop-out.spec.ts:444`, Back to the dock closed its window before Playwright finished the click; the spec now expects the click to close its window). Failed, not caused by this change (no Rust here): rust CI_COMPATIBLE on Ubuntu, `memory_graph_index.rs:2077` `px_111_a_core_killed_inside_an_index_write_recovers_to_a_whole_snapshot`.
 - The proof is local (macOS arm64); CI is recorded in `evidence.json`.
 - Navigation refusal is proven through the window's own `will-navigate` handlers (a navigation the page starts and the window refuses leaves Playwright waiting forever on that frame); the static guard proves the handler is registered for every window, and the mutation proves a window without it fails.
 - Files popped out is not driven end to end (its channels are unit-proven; Evidence is, through the crash test).

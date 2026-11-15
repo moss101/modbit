@@ -59,6 +59,18 @@ async function nextPaneWindow(app: ElectronApplication, kind: string, click: () 
   return w;
 }
 
+/**
+ * Clicks a control that closes its own window (Back to the dock): the window can be gone before Playwright finishes the click,
+ * which is the click having worked. Waits for the page to close.
+ */
+async function clickAndClose(w: Page, testId: string): Promise<void> {
+  const closed = w.waitForEvent("close", { timeout: 30_000 });
+  await w.getByTestId(testId).click({ noWaitAfter: true }).catch((e: Error) => {
+    if (!/closed/i.test(e.message)) throw e;
+  });
+  await closed;
+}
+
 const windowCount = (app: ElectronApplication): Promise<number> => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().filter((w) => !w.isDestroyed()).length);
 
 /**
@@ -388,7 +400,7 @@ test("PX-203: Terminal and Changes pop out and keep working; the guard holds for
     await expectTaskState(page, taskId, "ReadyForReview", 90_000);
 
     // ---- Closing each window brings its pane back to the dock as it was: the Terminal by its own Back to the dock, Changes by the window's close.
-    await termWin.getByTestId("pane-return").click();
+    await clickAndClose(termWin, "pane-return");
     await expect.poll(() => windowCount(app)).toBe(2);
     await expect(page.getByTestId("pane-terminal")).toBeVisible();
     await expect(page.getByTestId("pane-toggle-terminal")).toHaveAttribute("data-state", "open");
@@ -441,7 +453,7 @@ test("PX-203: Terminal and Changes pop out and keep working; the guard holds for
     if (await card.getByTestId("approval-confirm").isVisible().catch(() => false)) await card.getByTestId("approval-confirm-run").click();
     await expect(commitWin.getByTestId("changes-result"), "the commit went on in the window once allowed").toHaveAttribute("data-status", "COMPLETED", { timeout: 60_000 });
     expect(git(bare, "branch", "--list").trim(), "the branch is on the remote").not.toBe("");
-    await commitWin.getByTestId("pane-return").click();
+    await clickAndClose(commitWin, "pane-return");
     await expect.poll(() => windowCount(app)).toBe(1);
     await expect(page.getByTestId("pane-changes").getByTestId("changes-empty"), "the dock's Changes reads the committed state").toBeVisible({ timeout: 30_000 });
 
