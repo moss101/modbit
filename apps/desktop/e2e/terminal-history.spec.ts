@@ -17,7 +17,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ECHO_LOOP, expectTerminals, gate, nodeTerminal, readTerminal, steppedModel, type Step } from "./support/apps-harness.ts";
-import { expectTaskState, queueTask } from "./support/new-task.ts";
+import { expectTaskState, queueTask, soloPane } from "./support/new-task.ts";
 import { accessible, closeApp, launch, makeRepo, MOD, setContentSize } from "./support/ui-harness.ts";
 
 test.describe.configure({ mode: "serial" });
@@ -82,7 +82,7 @@ test.beforeAll(async () => {
   handle.echo = by("READY");
   await page.keyboard.press(`${MOD}+e`);
   await expect(page.getByTestId("region-apps")).toBeVisible();
-  await page.getByTestId("tab-terminal").click();
+  await soloPane(page, "terminal");
 });
 
 test.afterAll(async () => {

@@ -154,6 +154,13 @@ fn fixed_config(n: &Neutral) -> Vec<String> {
         // tree) is entered only when it is named; its config and hooks are
         // never consulted for a command run in or under it.
         "safe.bareRepository=explicit".into(),
+        // The repository's own line-ending config never rewrites content:
+        // with a live repo-controlled `core.autocrlf` (or `core.eol`) a CRLF
+        // write would be stored as a different byte stream than the model
+        // wrote, and every digest, diff and patch round-trip would quietly
+        // disagree with the bytes on disk (WIN-05).
+        "core.autocrlf=false".into(),
+        "core.eol=lf".into(),
     ]
 }
 
@@ -376,6 +383,21 @@ pub(crate) fn neutralized(dir: &Path) -> Result<Vec<Neutralized>> {
 #[must_use]
 pub(crate) fn is_dubious_ownership(stderr: &str) -> bool {
     stderr.contains("dubious ownership")
+}
+
+#[cfg(test)]
+mod win05_tests {
+    use super::is_dubious_ownership;
+
+    #[test]
+    fn dubious_ownership_is_detected_in_gits_real_words() {
+        // The exact phrase git prints (stable across versions and locales:
+        // the refusal text is not localized).
+        let stderr = "fatal: detected dubious ownership in repository at 'C:/x/r'
+If you want to add this directory to the list of safe directories";
+        assert!(is_dubious_ownership(stderr));
+        assert!(!is_dubious_ownership("fatal: not a git repository"));
+    }
 }
 
 /// Replace the `user[:password]@` part of every `scheme://` URL in `text` with

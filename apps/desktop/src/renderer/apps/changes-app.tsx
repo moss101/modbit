@@ -4,6 +4,7 @@ import type { CodeView, ReviewBundleView, ReviewFileView } from "../../preload/p
 import type { ChangeEffectInfo, ChangesStateInfo, CommitPushAckInfo, DecideHunkAckInfo, RevertAckInfo } from "../../shared/changes-types.ts";
 import { parseRefusal } from "../projects/project-model.ts";
 import { callRowId, canCommitPush, canDecide, changeSummary, chipText, commitLabel, commitMode, decisionWords, effectWords, isReviewable, lineKind, newCommandId, rangesContain, refusalWords, stageState } from "./changes-model.ts";
+import { PaneActions } from "../shell/pane.tsx";
 
 /**
  * The Changes app (REQ-PX-048, PX-104's reachability half): the task's live,
@@ -202,7 +203,8 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
   };
   return (
     <div className="changes-app" data-testid="app-changes" data-task-state={taskState} data-workspace-revision={bundle.workspaceRevision} data-staged-digest={state.stagedDigest}>
-      <div className="changes-head">
+      {/* MWS-10: in the dock the pane's own actions stand in its head, after its name. */}
+      <PaneActions className="changes-head">
         <span className="changes-summary" data-testid="changes-summary">{changeSummary(bundle.files)}</span>
         <span className="mb-sr-only">
           <Badge tone={isReviewable(taskState) ? "ok" : "info"}>{taskState}</Badge>
@@ -215,7 +217,7 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
         <Button size="sm" variant="outline" disabled={locked || unstaged.length === 0} onClick={() => void stageAll()} data-testid="changes-stage-all">
           Stage all
         </Button>
-      </div>
+      </PaneActions>
       <p className="mb-sr-only" data-testid="changes-note">
         {isReviewable(taskState)
           ? "This task is ready for review: accept or return it, hunk by hunk, in the review."

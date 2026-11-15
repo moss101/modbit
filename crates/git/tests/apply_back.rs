@@ -451,11 +451,14 @@ fn protected_paths_and_symlinks_are_not_applied_without_saying_so() {
     assert!(w.checkout.dir().join(".github/workflows/ci.yml").exists());
 }
 
-#[cfg(unix)]
 #[test]
 fn a_symlink_change_is_refused_not_dropped() {
     let w = world();
+    // A file link to a relative target (Developer Mode on Windows).
+    #[cfg(unix)]
     std::os::unix::fs::symlink("a.txt", w.task.dir().join("link")).unwrap();
+    #[cfg(windows)]
+    std::os::windows::fs::symlink_file("a.txt", w.task.dir().join("link")).unwrap();
     let p = the_plan(&w, View::Disk);
     assert_eq!(*state_of(&p, "link"), EntryState::Unsupported);
     let refusal = prepare(&w.checkout, &p, &req(Choice::Overwrite, &[]), &w.store).unwrap_err();

@@ -463,12 +463,9 @@ async fn until_output(c: &mut ExecClient, seen: &mut String, needle: &str) {
 /// the terminal — and bad requests are typed.
 #[tokio::test]
 async fn px_099_resize_changes_the_size_the_child_reads() {
-    if cfg!(windows) {
-        eprintln!(
-            "SKIPPED px_099 resize: the observer is `stty size`, which a Windows ConPTY child does not have; ConPTY resize (ResizePseudoConsole) is exercised by the broker but not asserted through a child on this platform"
-        );
-        return;
-    }
+    // WIN-04: the observer role reports through `stty size` on Unix and
+    // through the console PowerShell reads on a ConPTY child, so the resize
+    // is asserted through a real child on every platform.
     let dir = tempfile::tempdir().unwrap();
     let execd = Execd::spawn(dir.path());
     let mut c = execd.client().await.act_as("task:alpha");

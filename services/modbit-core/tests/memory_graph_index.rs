@@ -2137,9 +2137,7 @@ async fn px_111_sigkill_during_repeated_refreshes_never_leaves_an_unusable_index
                     std::thread::sleep(Duration::from_millis(5));
                 }
                 std::thread::sleep(kill_after);
-                #[cfg(unix)]
                 sigkill(pid);
-                let _ = pid;
             })
         };
         for n in 0..40 {
@@ -2195,11 +2193,19 @@ async fn px_111_sigkill_during_repeated_refreshes_never_leaves_an_unusable_index
     }
 }
 
-#[cfg(unix)]
 fn sigkill(pid: u32) {
-    // SIGKILL through the shell: the workspace forbids unsafe code, and `kill`
-    // is the same system call the test harness's `Child::kill` makes.
+    // A hard, uncatchable kill of exactly this process. Unix: SIGKILL through
+    // the shell (the workspace forbids unsafe code, and `kill` is the same
+    // system call the test harness's `Child::kill` makes). Windows:
+    // TerminateProcess via taskkill /F, without /T so the tree is not swept.
+    #[cfg(unix)]
     let _ = Command::new("kill").args(["-9", &pid.to_string()]).status();
+    #[cfg(windows)]
+    let _ = Command::new("taskkill")
+        .args(["/F", "/PID", &pid.to_string()])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status();
 }
 
 /// The indexed search path over the real Core returns what the scan returns,

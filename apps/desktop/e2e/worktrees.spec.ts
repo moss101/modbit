@@ -242,6 +242,12 @@ test("PX-068: a real apply-back conflict through the modal - Cancel is the defau
     const modal = page.getByTestId("apply-modal");
 
     // ---- The Core classifies; the modal shows its conflict plan and its options. Cancel is selected.
+    // WIN-06: rest the pointer away from the agents rail first: its hover
+    // preview lives inside the rail's subtree, so a click aimed underneath
+    // it never leaves the subtree and the preview never closes (deterministic
+    // overlap at 150% scaling; a user simply moves away, a locator click
+    // cannot).
+    await page.mouse.move(2, 2);
     await wtRow(page, task).getByTestId("worktree-apply").click();
     await expect(modal.getByTestId("apply-conflict")).toBeVisible();
     await expect(modal.getByTestId("apply-path").filter({ hasText: "a.txt" })).toContainText("conflict: both modified");
@@ -268,6 +274,12 @@ test("PX-068: a real apply-back conflict through the modal - Cancel is the defau
     expect(sha256File(checkoutA)).toBe(userHash);
 
     // ---- Overwrite through the modal: the files are typed, the exact plan is approved, the bytes land.
+    // WIN-06: rest the pointer away from the agents rail first: its hover
+    // preview lives inside the rail's subtree, so a click aimed underneath
+    // it never leaves the subtree and the preview never closes (deterministic
+    // overlap at 150% scaling; a user simply moves away, a locator click
+    // cannot).
+    await page.mouse.move(2, 2);
     await wtRow(page, task).getByTestId("worktree-apply").click();
     await expect(modal.getByTestId("apply-conflict")).toBeVisible();
     await modal.locator('[data-testid="apply-option-OVERWRITE"] input').check();
@@ -320,6 +332,12 @@ test("PX-068: a real apply-back conflict through the modal - Cancel is the defau
 
     // ---- A non-destructive choice may be remembered: Merge manually leaves markers, Undo puts the bytes back,
     // and the next conflict goes straight to the approval of that remembered choice.
+    // WIN-06: rest the pointer away from the agents rail first: its hover
+    // preview lives inside the rail's subtree, so a click aimed underneath
+    // it never leaves the subtree and the preview never closes (deterministic
+    // overlap at 150% scaling; a user simply moves away, a locator click
+    // cannot).
+    await page.mouse.move(2, 2);
     await wtRow(page, task).getByTestId("worktree-apply").click();
     await expect(modal.getByTestId("apply-conflict")).toBeVisible();
     await modal.locator('[data-testid="apply-option-MERGE_MANUALLY"] input').check();
@@ -337,6 +355,12 @@ test("PX-068: a real apply-back conflict through the modal - Cancel is the defau
     expect(sha256File(checkoutA)).toBe(userHash);
     await modal.getByTestId("apply-close").click();
 
+    // WIN-06: rest the pointer away from the agents rail first: its hover
+    // preview lives inside the rail's subtree, so a click aimed underneath
+    // it never leaves the subtree and the preview never closes (deterministic
+    // overlap at 150% scaling; a user simply moves away, a locator click
+    // cannot).
+    await page.mouse.move(2, 2);
     await wtRow(page, task).getByTestId("worktree-apply").click();
     await expect(modal.getByTestId("apply-approve")).toBeVisible();
     await expect(modal.getByTestId("apply-approve-option")).toHaveText("Merge manually");

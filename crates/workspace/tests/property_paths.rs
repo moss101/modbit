@@ -72,7 +72,16 @@ proptest! {
                 let via_link = first == "link" || first == "linkdir";
                 prop_assert!(!via_link, "an escaping link resolved: {p:?} -> {}", resolved.absolute.display());
             }
-            Err(Error::OutsideRoot { .. } | Error::Protected { .. } | Error::Io { .. }) => {}
+            // `Invalid` is also a refusal (fail-closed): WIN-03 added the
+            // Windows component rules (alternate-data-stream colons, reserved
+            // device names, trailing dots/spaces), so a spelling such as
+            // `~/C:` is rejected as invalid rather than outside.
+            Err(
+                Error::OutsideRoot { .. }
+                | Error::Protected { .. }
+                | Error::Io { .. }
+                | Error::Invalid { .. },
+            ) => {}
             Err(other) => prop_assert!(false, "{p:?}: unexpected {other}"),
         }
     }

@@ -48,7 +48,10 @@ const MEASURED: [keyof typeof COMPONENT_SHEETS, string, string, string][] = [
   // MWS-01: the top bar and every pane head are one bar height.
   ["shellCss", ".topbar", "height", "var(--mb-top-bar)"],
   ["shellCss", ".agent-region-head", "height", "var(--mb-top-bar)"],
-  ["shellCss", ".apps-panel .mb-tablist", "height", "var(--mb-top-bar)"],
+  // MWS-10 (REQ-PX-202): the tab strip is gone; each pane of the dock has a head the bar's height, on the editor surface.
+  ["shellCss", ".pane-head", "height", "var(--mb-top-bar)"],
+  ["shellCss", ".pane", "background", "var(--mb-surface-conversation)"],
+  ["shellCss", ".pane", "min-height", "100px"],
   ["shellCss", ".changes-head", "height", "var(--mb-top-bar)"],
   // Navigation rows: the row height, 2 apart, radius 8, inset 8.
   ["shellCss", ".agent-nav-row.agent-nav-row", "height", "var(--mb-row)"],
@@ -122,6 +125,9 @@ test("MWS-01/02: the measured surfaces take their sizes and their surface from t
   assert.match(mutate("composerCss", "border-radius: var(--mb-composer-radius);", "border-radius: var(--radius-xl);").join("\n"), /\.cmp-box \{ border-radius: var\(--radius-xl\) \}/);
   // MWS-09: a rail row with a height of its own would not follow the density.
   assert.match(mutate("shellCss", ".rail-row { display: flex; align-items: center; gap: 10px; min-height: var(--mb-row);", ".rail-row { display: flex; align-items: center; gap: 10px; min-height: 32px;").join("\n"), /\.rail-row \{ min-height: 32px \}/);
+  // MWS-10: a pane head with a height of its own (the superseded 40) would not be the bar, and would not follow the density.
+  assert.match(mutate("shellCss", ".pane-head { flex: none; box-sizing: border-box; height: var(--mb-top-bar);", ".pane-head { flex: none; box-sizing: border-box; height: 40px;").join("\n"), /\.pane-head \{ height: 40px \}/);
+  assert.match(mutate("shellCss", "min-width: 0; min-height: 100px; background: var(--mb-surface-conversation); display: flex;", "min-width: 0; min-height: 40px; background: var(--mb-surface-conversation); display: flex;").join("\n"), /\.pane \{ min-height: 40px \}/);
   // The superseded mapping (the conversation on chrome, the message on the editor surface) is caught too.
   assert.match(mutate("shellCss", "overflow: hidden; background: var(--mb-surface-conversation); }", "overflow: hidden; background: var(--color-background); }").join("\n"), /\.shell-frame \{ background: var\(--color-background\) \}/);
   assert.match(mutate("workspaceCss", ".conv-user { align-self: stretch; background: var(--mb-surface-fill);", ".conv-user { align-self: stretch; background: var(--color-panel);").join("\n"), /\.conv-user \{ background: var\(--color-panel\) \}/);
