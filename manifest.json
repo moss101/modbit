@@ -2,7 +2,7 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-11-14",
+  "generated_on": "2026-11-15",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
@@ -4440,8 +4440,8 @@
     },
     {
       "path": "evidence/m10/PX-202/TASK_CARD.md",
-      "bytes": 32835,
-      "sha256": "05eb6db7a062a1cd06d972d0d1d0f0e04f7daf4b083bd57ffe8d0796cfafe54a"
+      "bytes": 35676,
+      "sha256": "792b885db239091bd925096508a39632f053f8381ba3885d8be519ede0072339"
     },
     {
       "path": "evidence/m10/PX-202/after/activity-and-background-tasks-dark-comfortable.png",
@@ -4575,13 +4575,13 @@
     },
     {
       "path": "evidence/m10/PX-202/desktop-e2e-full-results.txt",
-      "bytes": 40712,
-      "sha256": "5a1ef97f54d59c132a91c93694f8e7ffea2d5c59aa1cb2df75b3e17bf3f95396"
+      "bytes": 40912,
+      "sha256": "84ef70030296473cd5c45d2201c32ff5b6c3af87d1ece9b2f5cd2de1032ea6a1"
     },
     {
       "path": "evidence/m10/PX-202/evidence.json",
-      "bytes": 10979,
-      "sha256": "eeeac9ce51ff8b01f0047656a2f37c8addf14be0fe809cfac15043c47dee1ead"
+      "bytes": 11784,
+      "sha256": "b3d70c76ab999676b5199eb39bef5e4236c65ca2a72dc9b22b7c8f550fe86c2e"
     },
     {
       "path": "evidence/m10/PX-210/TASK_CARD.md",
