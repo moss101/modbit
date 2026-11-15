@@ -141,40 +141,6 @@ async function recordDialog(app: ElectronApplication, answer: number): Promise<v
 const asked = (app: ElectronApplication) => app.evaluate(() => (globalThis as unknown as { __asked: { message: string; detail: string; buttons: string[] }[] }).__asked);
 const exited = (app: ElectronApplication) => new Promise<void>((resolve) => (app.process().exitCode !== null ? resolve() : app.process().once("exit", () => resolve())));
 
-/**
- * The real quit question on screen, for the evidence (macOS only, and only when screenshots are asked for): the dialog main
- * shows is kept open for a moment and the screen region of the app's window is captured, then the dialog is closed with its
- * default answer (Keep Modbit open). Where the capture is refused the recorded text stands in.
- */
-async function captureQuitQuestion(app: ElectronApplication): Promise<string> {
-  if (!SHOTS || process.platform !== "darwin") return "not captured";
-  await app.evaluate(({ dialog }) => {
-    const g = globalThis as unknown as { __realShow?: unknown; __showing?: AbortController };
-    const d = dialog as unknown as { showMessageBox: (...args: unknown[]) => Promise<{ response: number }> };
-    const orig = (g.__realShow as typeof d.showMessageBox | undefined) ?? d.showMessageBox.bind(dialog);
-    g.__realShow = orig;
-    d.showMessageBox = (...args: unknown[]) => {
-      const ctl = new AbortController();
-      g.__showing = ctl;
-      const i = args.findIndex((x) => typeof x === "object" && x !== null && "message" in (x as object));
-      args[i] = { ...(args[i] as object), signal: ctl.signal };
-      return orig(...args);
-    };
-  });
-  await app.evaluate(({ app: a }) => a.quit());
-  await new Promise((r) => setTimeout(r, 2500));
-  const bounds = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((w) => !w.webContents.getURL().endsWith("#pane"))!.getBounds());
-  let result = "captured";
-  try {
-    execFileSync("/usr/sbin/screencapture", ["-x", `-R${bounds.x},${bounds.y},${bounds.width},${bounds.height}`, join(SHOTS, "quit-question.png")], { timeout: 15_000 });
-  } catch (e) {
-    result = `capture refused: ${(e as Error).message.split("\n")[0]}`;
-  }
-  await app.evaluate(() => (globalThis as unknown as { __showing?: AbortController }).__showing?.abort());
-  await new Promise((r) => setTimeout(r, 800));
-  return result;
-}
-
 test("PX-203: Terminal and Changes pop out and keep working; the guard holds for pane windows; a pane is in one place; no approval is decided from a pane window; the quit question counts pane-window work; closing returns each pane as it was", async () => {
   test.setTimeout(600_000);
   const repo = mkdtempSync(join(tmpdir(), "modbit-px203-repo-"));
@@ -336,6 +302,22 @@ test("PX-203: Terminal and Changes pop out and keep working; the guard holds for
     const foreignAsk = (await page.evaluate(() => window.modbit.debugIpcRefusals())).filter((r) => r.reason === "not the app window");
     expect(foreignAsk.length, "the foreign windows' bridges were refused by main").toBeGreaterThan(0);
 
+    // ---- The quit question counts what the pane windows show; keeping Modbit open keeps them.
+    await expectTaskState(page, taskId, "Running");
+    await recordDialog(app, 0);
+    await app.evaluate(({ app: a }) => a.quit());
+    await expect.poll(async () => ((await asked(app)) ?? []).length).toBe(1);
+    const q = (await asked(app))[0]!;
+    expect(q.message, "the running task and terminal are counted where they are shown").toBe("1 task is running (shown in a pane window) and 1 background terminal is running (shown in a pane window). Quit anyway?");
+    expect(q.detail).toContain("The 2 pane windows close with Modbit; their panes are back in the dock when you open Modbit again.");
+    expect(q.buttons).toEqual(["Keep Modbit open", "Quit and resume on reopen", "Quit and leave suspended"]);
+    expect(await windowCount(app), "keeping Modbit open keeps the pane windows").toBe(3);
+    if (SHOTS) {
+      mkdirSync(SHOTS, { recursive: true });
+      // The question is the main process's native dialog, not a page: what main asked it to show is the evidence.
+      writeFileSync(join(SHOTS, "quit-question.txt"), `${q.message}\n\n${q.detail}\n\n[${q.buttons.join("] [")}]\n`);
+    }
+
     // ---- No approval is decided from a pane window. The approval the task asks for next is pending in the Core.
     hold.open();
     const card = page.getByTestId("approval-card");
@@ -373,26 +355,9 @@ test("PX-203: Terminal and Changes pop out and keep working; the guard holds for
     const refusals = (await page.evaluate(() => window.modbit.debugIpcRefusals())).filter((r) => r.reason.startsWith("pane window:"));
     expect(new Set(refusals.map((r) => r.channel)), "main recorded each refusal").toEqual(new Set(["approval:resolve", "approval:allowAlways", "question:respond", "modeproposals:decide", "task:cancel", "changes:state"]));
     await expect(card, "the card is still in the app's window").toBeVisible();
-
-    // ---- The quit question counts what the pane windows show; keeping Modbit open keeps them.
     await shots(termWin, "terminal-popped-out");
     await shots(changesWin, "changes-popped-out");
     await shots(page, "dock-without-them");
-    await recordDialog(app, 0);
-    await app.evaluate(({ app: a }) => a.quit());
-    await expect.poll(async () => ((await asked(app)) ?? []).length).toBe(1);
-    const q = (await asked(app))[0]!;
-    expect(q.message, "the running terminal is counted where it is shown").toContain("1 background terminal is running (shown in a pane window)");
-    expect(q.detail).toContain("The 2 pane windows close with Modbit; their panes are back in the dock when you open Modbit again.");
-    expect(q.buttons[0]).toBe("Keep Modbit open");
-    expect(await windowCount(app), "keeping Modbit open keeps the pane windows").toBe(3);
-    if (SHOTS) {
-      mkdirSync(SHOTS, { recursive: true });
-      writeFileSync(join(SHOTS, "quit-question.txt"), `${q.message}\n\n${q.detail}\n\n[${q.buttons.join("] [")}]\n`);
-      const got = await captureQuitQuestion(app);
-      writeFileSync(join(SHOTS, "quit-question-capture.txt"), `${got}\n`);
-      await recordDialog(app, 0);
-    }
 
     // ---- Accessibility of each pane window, light and dark.
     for (const [name, w] of [["the Terminal window", termWin], ["the Changes window", changesWin]] as const) {

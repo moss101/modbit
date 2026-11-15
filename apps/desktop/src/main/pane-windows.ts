@@ -115,7 +115,7 @@ export function cleanShowRequest(v: unknown): PaneShowRequest | null {
 export const PANE_WINDOW_MIN = { width: 320, height: 240 } as const;
 export const PANE_WINDOW_DEFAULT = { width: 720, height: 560 } as const;
 /** A pane window opens at least this big, even from a narrow place in the dock; the person can make it smaller. */
-export const PANE_WINDOW_OPEN_MIN = { width: 560, height: 420 } as const;
+export const PANE_WINDOW_OPEN_MIN = { width: 720, height: 560 } as const;
 
 /** A short, plain name for a pane window: "Terminal: <task title>". */
 export const PANE_NAME: Record<PoppableKind, string> = { terminal: "Terminal", changes: "Changes", files: "Files", evidence: "Evidence" };

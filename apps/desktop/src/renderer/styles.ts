@@ -235,14 +235,17 @@ input.settings-toggle.settings-toggle::after, input.settings-toggle.settings-tog
 /* REQ-PX-203: a pane in a window of its own fills the window; its head is the dock's head with the task's name after the pane's. */
 .pane-window { width: 100vw; height: 100vh; min-height: 0; }
 .pane-window .pane-name { flex: none; margin: 0 var(--mb-space-1) 0 0; font-size: var(--mb-type-chrome-size); line-height: var(--mb-type-chrome-line); font-weight: 500; color: var(--mb-color-text); }
-.pane-window-task { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pane-window-task { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pane-window .pane-actions { flex: none; overflow: visible; }
 .pane-window-empty { margin: var(--mb-space-4); color: var(--mb-color-text-muted); }
 .pane-body > * { padding-inline: var(--mb-space-3); }
 .pane-body > .changes-app { padding: 0; flex: 1 1 0; min-height: 0; }
 .pane-body > p.meta:first-child { margin-top: var(--mb-space-3); }
 .splitter[data-axis="horizontal"] { top: 0; bottom: auto; left: 0; right: 0; width: auto; height: 4px; cursor: row-resize; }
 .splitter[data-axis="horizontal"]::after { top: 50%; bottom: auto; left: 0; right: 0; width: auto; height: 2px; margin: -1px 0 0; }
-.topbar-panes .mb-btn[data-state="minimized"] { position: relative; }
+.topbar-panes .mb-btn[data-state="minimized"], .topbar-panes .mb-btn[data-state="popped"] { position: relative; }
+/* REQ-PX-203: a pane in its own window is marked by a dot under its toggle (a minimized one by a bar). */
+.topbar-panes .mb-btn[data-state="popped"]::after { content: ""; position: absolute; left: 50%; bottom: 2px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--mb-color-text-muted); }
 .topbar-panes .mb-btn[data-state="minimized"]::after { content: ""; position: absolute; left: 50%; bottom: 2px; width: 10px; height: 2px; margin-left: -5px; border-radius: 1px; background: var(--mb-color-text-muted); }
 /* The Activity pane: the find field in the head, the kinds as a row of filters, the entries one line each in the log's order. */
 .activity-find { flex: 0 1 220px; min-width: 96px; box-sizing: border-box; height: var(--mb-control-md); display: flex; align-items: center; gap: var(--mb-space-1); padding: 0 var(--mb-space-2); border-radius: var(--radius-md); background: var(--mb-surface-fill); color: var(--mb-color-text-muted); }
