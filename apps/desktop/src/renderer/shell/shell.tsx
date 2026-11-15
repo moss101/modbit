@@ -660,6 +660,7 @@ export function Shell({ app }: { app: AppState }) {
                   trayStore={o.trayStore}
                   hostsAppTrays={o.hostsAppTrays}
                   shownBeside={o.shownBeside}
+              nameLandmarks={o.shownBeside !== undefined}
                   onCustomize={() => {
                     closePages();
                     setCustomizeOpen(true);

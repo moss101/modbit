@@ -25,14 +25,14 @@ export function useTrayStore(): TrayStore<ReactNode> {
  * active; the others are one-line rows that bring themselves forward. Trays
  * stay until resolved or dismissed, wherever the person navigates.
  */
-export function TrayHost({ store: given }: { store?: TrayStore<ReactNode> | undefined }) {
+export function TrayHost({ store: given, label = "Notices" }: { store?: TrayStore<ReactNode> | undefined; /** The landmark's name; two hosts in one page need two names. */ label?: string | undefined }) {
   const scoped = useTrayStore();
   const store = given ?? scoped;
   const snap = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
   const active = snap.trays.find((t) => t.id === snap.activeId) ?? null;
   const others = snap.trays.filter((t) => t.id !== snap.activeId);
   return (
-    <section className="mb-tray-host" aria-label="Notices" data-testid="tray-host" data-count={snap.trays.length}>
+    <section className="mb-tray-host" aria-label={label} data-testid="tray-host" data-count={snap.trays.length}>
       {others.map((t) => (
         <button key={t.id} type="button" className="mb-tray-chip" data-tone={t.tone} data-testid="tray-pending" data-tray-id={t.id} onClick={() => store.activate(t.id)}>
           <span className="mb-tray-chip-tone">{TONE_LABEL[t.tone]}:</span> {t.title}

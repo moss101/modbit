@@ -14,6 +14,7 @@ import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRe
 import { createPortal } from "react-dom";
 import { Button, Icon, IconButton, StatusDot, TrayHost, TrayStoreContext, trays as appTrays, useLayer, type TrayStore } from "@modbit/ui";
 import { KEY_FOCUS_ATTR } from "../key-focus.ts";
+import { LandmarkTaskContext } from "../landmark.ts";
 import { DENSITIES, type AgentHeaderView, type Density } from "../../shared/conversation-types.ts";
 import type { TerminalViewJson } from "../../preload/preload.ts";
 import type { TranscriptRowView } from "../../shared/conversation-types.ts";
@@ -82,6 +83,8 @@ export interface ConversationProps {
   hostsAppTrays?: boolean | undefined;
   /** Tasks shown beside this one (split view): their approvals dock on their own card, not here as another agent's. */
   shownBeside?: readonly string[] | undefined;
+  /** Split view: every landmark inside says whose it is ("Composer: title"), so two tasks' landmarks are told apart. */
+  nameLandmarks?: boolean | undefined;
 }
 
 const DENSITY_LABEL: Record<Density, string> = { COMPACT: "Compact", BALANCED: "Balanced", DETAILED: "Detailed" };
@@ -111,7 +114,7 @@ function collectTurnText(rows: readonly TranscriptRowView[], turnId: string, out
 }
 
 export function Conversation(props: ConversationProps) {
-  const { taskId, sessionId, connected, card, title, focusRowId, onResume, onNewTask, onOpenTerminal, onOpenTask, titleOf, topEndSlot, railSlot, subtasks, screenState, header, terminals, onTerminalsChanged, onReview, onBrowser, onCancelTask, onStopChild, onCustomize, keyFocus = true, trayStore, hostsAppTrays = false, shownBeside } = props;
+  const { taskId, sessionId, connected, card, title, focusRowId, onResume, onNewTask, onOpenTerminal, onOpenTask, titleOf, topEndSlot, railSlot, subtasks, screenState, header, terminals, onTerminalsChanged, onReview, onBrowser, onCancelTask, onStopChild, onCustomize, keyFocus = true, trayStore, hostsAppTrays = false, shownBeside, nameLandmarks = false } = props;
   const store = trayStore ?? (appTrays as TrayStore<ReactNode>);
   const section = useRef<HTMLElement>(null);
   const [prefs, setPrefs] = useState<ConversationPrefs>(loadConversationPrefs);
@@ -351,6 +354,7 @@ export function Conversation(props: ConversationProps) {
 
   return (
     <TrayStoreContext.Provider value={store}>
+    <LandmarkTaskContext.Provider value={nameLandmarks ? title : ""}>
     <section ref={section} className="conv" aria-label={`Conversation: ${title}`} data-testid="conversation" data-task-id={taskId} data-density={prefs.density} data-loaded={conv.loaded} {...{ [KEY_FOCUS_ATTR]: keyFocus }}>
       <span className="mb-sr-only" data-testid="conv-status">
         {card ? `${card.state}${card.waitReason ? `, waiting on ${card.waitReason}` : ""}` : conv.taskState}
@@ -395,7 +399,7 @@ export function Conversation(props: ConversationProps) {
           topEndSlot,
         )}
       <div className="conv-body">
-        <div ref={scroller} className="conv-scroll" role="region" aria-label="Messages" tabIndex={0} onScroll={onScrollEvent} onKeyDown={onKeyDown} data-testid="conv-scroll" data-pinned={follow.pinned} data-row-count={placed.rows.length}>
+        <div ref={scroller} className="conv-scroll" role="region" aria-label={nameLandmarks ? `Messages: ${title}` : "Messages"} tabIndex={0} onScroll={onScrollEvent} onKeyDown={onKeyDown} data-testid="conv-scroll" data-pinned={follow.pinned} data-row-count={placed.rows.length}>
           <div ref={inner} className="conv-inner">
           {!conv.loaded && !conv.error && (
             <p className="meta conv-empty" role="status" data-testid="conv-loading">
@@ -456,12 +460,13 @@ export function Conversation(props: ConversationProps) {
       {/* The app's own trays (limits, undo) dock above the focused task's composer when this task has a store of its own. */}
       {hostsAppTrays && store !== appTrays && <TrayHost store={appTrays as TrayStore<ReactNode>} />}
       {/* The task's tray host: docked directly above the composer, never beside or below it (AFW-H01). */}
-      <TrayHost />
+      <TrayHost label={nameLandmarks ? `Notices: ${title}` : undefined} />
       <Composer taskId={taskId} sessionId={sessionId} connected={connected} card={card} approvalPending={conv.approvals.length > 0} lastUserText={lastUserText} hasMessages={conv.rows.length > 0} onResume={onResume} onNewTask={onNewTask} onOpenTerminal={onOpenTerminal} onReview={onReview}
         runMode={<RunModeControl sessionId={sessionId} taskId={taskId} state={runMode} open={modeOpen} onOpenChange={setModeOpen} />}
         ring={connected ? <ContextRingView accounting={usage.accounting} /> : null}
       />
     </section>
+    </LandmarkTaskContext.Provider>
     </TrayStoreContext.Provider>
   );
 }

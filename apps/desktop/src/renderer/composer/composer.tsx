@@ -64,6 +64,7 @@ import {
 import { useCatalog, useComposerCore, useSlashInventory } from "./use-composer-core.ts";
 import { MentionMenu, SlashMenuView, useMentionSources, useSlashItems, type MentionOption } from "./menus.tsx";
 import { ModelPicker, type PickerChoice } from "./model-picker.tsx";
+import { useLandmarkName } from "../landmark.ts";
 import { EducationTray, PolicyTray, QueueTray, SendBehaviorPanel, SideQuestionPanel, StoppedTray, TerminalsChip, TerminalsTray } from "./trays.tsx";
 
 export const MODE_ICON: Record<TaskModeId, IconName> = { AGENT: "infinity", PLAN: "list-tree", DEBUG: "bug", MULTITASK: "layers", ASK: "circle-question-mark" };
@@ -115,6 +116,7 @@ export function Composer(props: ComposerProps) {
   const core = useComposerCore(taskId, connected);
   // The tray store of this task's conversation (REQ-PX-204): in split view each composer's queue docks above its own box.
   const trays = useTrayStore();
+  const named = useLandmarkName();
   const [store, setStore] = useState<ComposerStore>(() => loadStore(storage()));
   const initial = store.drafts[taskId];
   const [text, setText] = useState(initial?.text ?? "");
@@ -637,7 +639,7 @@ export function Composer(props: ComposerProps) {
 
   if (ended) {
     return (
-      <section className="conv-composer cmp" aria-label="Composer" data-testid="composer-region" data-state="ended">
+      <section className="conv-composer cmp" aria-label={named("Composer")} data-testid="composer-region" data-state="ended">
         <p className="meta" data-testid="composer-ended">
           This task has {state === "Completed" ? "completed" : state === "Failed" ? "failed" : "been cancelled"}, so it takes no more messages.
         </p>
@@ -651,7 +653,7 @@ export function Composer(props: ComposerProps) {
   return (
     <section
       className="conv-composer cmp"
-      aria-label="Composer"
+      aria-label={named("Composer")}
       data-testid="composer-region"
       data-mode={shownMode}
       data-running={running}

@@ -4,6 +4,7 @@
  * when the Core says it is. The state of every step is a glyph and words (the words are in the accessibility tree; the active
  * and the troubled ones are also on the line).
  */
+import { useLandmarkName } from "../landmark.ts";
 import { memo } from "react";
 import { StatusDot } from "@modbit/ui";
 import type { PlanInfo, WorkGraphInfo } from "../../shared/conversation-types.ts";
@@ -21,11 +22,12 @@ export interface PlanCardProps {
 const SHOWN = new Set(["BLOCKED", "FAILED", "CANCELLED"]);
 
 export const PlanCard = memo(function PlanCard({ graph, plan, running, needsPerson }: PlanCardProps) {
+  const named = useLandmarkName();
   const steps = planSteps(graph.steps, { running, needsPerson });
   const progress = planProgress(graph.steps);
   const version = plan?.currentVersion || graph.planVersion;
   return (
-    <section className="conv-plan" aria-label={`Plan: ${progress}`} data-testid="plan-card" data-plan-version={version} data-steps={steps.length}>
+    <section className="conv-plan" aria-label={named(`Plan: ${progress}`)} data-testid="plan-card" data-plan-version={version} data-steps={steps.length}>
       <header className="conv-plan-head">
         <h2 className="conv-plan-title">Plan</h2>
         <span className="conv-plan-progress" data-testid="plan-progress">
