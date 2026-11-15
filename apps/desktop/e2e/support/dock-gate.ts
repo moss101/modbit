@@ -142,3 +142,45 @@ export async function panesMenuDrift(page: Page, expected: readonly string[], st
   if ((await menu.count()) !== 0) bad.push("panes menu: Escape does not close it");
   return bad;
 }
+
+/**
+ * The shell's own record of its layout, for a failure message: the stacked state, the widths the layout used, whether the
+ * Conversation | Apps segment is drawn, and the window's sizes as the page and the OS see them.
+ */
+export async function shellState(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    const shell = document.querySelector('[data-testid="shell"]');
+    const a = (n: string) => shell?.getAttribute(n) ?? "?";
+    return `stacked=${a("data-stacked")} centre=${a("data-center-px")} list=${a("data-list-px")} panel=${a("data-panel-px")} rail=${a("data-rail")} segment=${document.querySelector('[data-testid="stack-segments"]') !== null} shell=${Math.round(shell?.getBoundingClientRect().width ?? 0)} inner=${window.innerWidth}x${window.innerHeight} outer=${window.outerWidth}x${window.outerHeight} dpr=${window.devicePixelRatio}`;
+  });
+}
+
+/**
+ * Where the shell says it is stacked and draws no Conversation | Apps segment, or draws the segment and says it is not stacked
+ * (empty when the two agree). Stacked with no segment would leave the panes out of reach.
+ */
+export async function stackDrift(page: Page): Promise<string[]> {
+  const stacked = (await page.getByTestId("shell").getAttribute("data-stacked")) === "true";
+  const segments = (await page.getByTestId("stack-segments").count()) === 1 && (await page.getByTestId("segment-apps").count()) === 1;
+  if (stacked && !segments) return [`stack: the shell is stacked and draws no Conversation | Apps segment (${await shellState(page)})`];
+  if (!stacked && segments) return [`stack: the segment is drawn and the shell is not stacked (${await shellState(page)})`];
+  return [];
+}
+
+/** Waits until the window has held one size for `quietMs` (the OS may resize a window again after it was set). Returns that size. */
+export async function settledSize(page: Page, quietMs = 750): Promise<{ width: number; height: number }> {
+  let last = "";
+  let since = Date.now();
+  const deadline = Date.now() + 15_000;
+  for (;;) {
+    const now = await page.evaluate(() => `${window.innerWidth}x${window.innerHeight}|${document.querySelector('[data-testid="shell"]')?.getAttribute("data-stacked")}`);
+    if (now !== last) {
+      last = now;
+      since = Date.now();
+    } else if (Date.now() - since >= quietMs) break;
+    if (Date.now() > deadline) throw new Error(`the window did not settle: ${await shellState(page)}`);
+    await page.waitForTimeout(100);
+  }
+  const [w, h] = last.split("|")[0]!.split("x").map(Number);
+  return { width: w!, height: h! };
+}

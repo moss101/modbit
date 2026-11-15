@@ -5,6 +5,7 @@
  * Gate and which keeps every request it receives). Every wait is for a
  * condition the Core or the page reports; no test sleeps for a state.
  */
+import { runTask } from "./support/new-task.ts";
 import { expect, test } from "@playwright/test";
 import { existsSync, mkdtempSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -677,7 +678,9 @@ test("PX-054: a message to a task waiting for review is queued for its next run 
   const { app, page } = await launch(dataDir, { env: { MODBIT_OPENAI_BASE_URL: model.url } });
   try {
     await setContentSize(app, page, 1280, 800);
-    const taskId = await startAndOpen(page, "First pass", repo);
+    // The scripted task ends at once, and its Review can open before the conversation has loaded (a race seen on main's macOS
+    // runs): the task is started from home, its Review awaited, and the conversation's loaded state is awaited where it is opened.
+    const taskId = await runTask(page, "First pass", repo);
     await expect(page.getByTestId("review")).toBeVisible({ timeout: 90_000 });
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("review")).toHaveCount(0);

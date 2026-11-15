@@ -85,6 +85,13 @@ export function computeLayout(input: LayoutInput): Layout {
   return { rail, listPx, centerPx: avail - panelPx, panelPx, stacked: false, panelMax, panelMin, singlePane: rail, detailsPx: 0, detailsFits };
 }
 
+/**
+ * Whether the Conversation | Apps segment is drawn: exactly when the layout is stacked. The shell's `data-stacked`, the segment
+ * and which of the two regions fills the centre all read this one answer of `computeLayout`, never a width of their own, so a
+ * stacked shell always has its way to the panes (REQ-PX-202).
+ */
+export const showsStackSegments = (layout: Pick<Layout, "stacked">): boolean => layout.stacked;
+
 /** The ratio that produces a panel of `px` pixels in a window of `width` (what a drag stores). */
 export function ratioForPanel(px: number, width: number): number {
   return width > 0 ? clampPanelRatio(px / width) : GEOMETRY.panelRatioDefault;

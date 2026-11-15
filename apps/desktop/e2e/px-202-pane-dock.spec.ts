@@ -20,7 +20,7 @@ import { join } from "node:path";
 import { Gate } from "./support/stream-model.ts";
 import { ECHO_LOOP, nodeTerminal } from "./support/apps-harness.ts";
 import { routedModel, sessionOf, type ModelPart } from "./support/conversation-harness.ts";
-import { CONVERSATION_MIN, dockDrift, panesMenuDrift, TITLE_FLOOR, titleBarDrift } from "./support/dock-gate.ts";
+import { CONVERSATION_MIN, dockDrift, panesMenuDrift, settledSize, shellState, stackDrift, TITLE_FLOOR, titleBarDrift } from "./support/dock-gate.ts";
 import { agentRow, expectTaskState, openTask, openTaskMore, pressPane, runTask, setDensity, showPane } from "./support/new-task.ts";
 import { accessible, box, closeApp, git, launch, liftMinimumSize, makeRepo, setContentSize } from "./support/ui-harness.ts";
 
@@ -247,12 +247,17 @@ test("PX-202: panes open together and tile; the set and the sizes are the task's
     const three = { changes: "open", terminal: "open", evidence: "open" } as const;
     for (const size of [launched, { width: 1280, height: 800 }, { width: 1440, height: 900 }]) {
       await setContentSize(app, page, size.width, size.height);
+      // On a Windows runner the OS can size the window again after it was set: read the layout once the window holds still.
+      const held = await settledSize(page);
       const stacked = (await page.getByTestId("shell").getAttribute("data-stacked")) === "true";
+      expect(await stackDrift(page), `stacked and its segment agree at ${size.width} x ${size.height} (held at ${held.width} x ${held.height})`).toEqual([]);
       if (stacked) {
         // Too narrow for 280 of dock beside a 560 conversation (the CI runners' first window is): the conversation keeps the whole
         // task area and the panes are one segment away, still the three, still tiled.
         expect(Number(await page.getByTestId("shell").getAttribute("data-center-px")), "it stacks only where 560 and 280 do not fit side by side").toBeLessThan(CONVERSATION_MIN + 280);
-        await page.getByTestId("segment-apps").click();
+        await page.getByTestId("segment-apps").click({ timeout: 10_000 }).catch(async (e: Error) => {
+          throw new Error(`${e.message}\nthe shell: ${await shellState(page)}`);
+        });
         await expect(page.getByTestId("apps-panel")).toHaveAttribute("data-panes", "changes terminal evidence");
         expect(await dockDrift(page, 45), `the stacked dock at ${size.width} x ${size.height}`).toEqual([]);
         await page.getByTestId("segment-conversation").click();
@@ -617,6 +622,22 @@ test("PX-202: panes open together and tile; the set and the sizes are the task's
     await expect(page.getByTestId("apps-panel")).toBeVisible();
     await expect(page.getByTestId("apps-panel")).toHaveAttribute("data-panes", "activity background");
     expect(await dockDrift(page, 45), "stacked at 1000 wide").toEqual([]);
+    expect(await stackDrift(page), "stacked at 1000 wide, with its segment").toEqual([]);
+    // The retained mutation: a shell that says it is stacked and draws no segment (the panes out of reach) fails.
+    await page.evaluate(() => {
+      const nav = document.querySelector('[data-testid="stack-segments"]') as HTMLElement;
+      nav.setAttribute("data-px202-removed", "");
+      nav.setAttribute("data-testid", "stack-segments-removed");
+      nav.querySelectorAll("[data-testid]").forEach((b) => b.setAttribute("data-testid", `${b.getAttribute("data-testid")}-removed`));
+    });
+    expect((await stackDrift(page)).some((d) => d.startsWith("stack: the shell is stacked and draws no")), "stacked without a segment fails").toBe(true);
+    await page.evaluate(() => {
+      const nav = document.querySelector("[data-px202-removed]") as HTMLElement;
+      nav.removeAttribute("data-px202-removed");
+      nav.setAttribute("data-testid", "stack-segments");
+      nav.querySelectorAll("[data-testid]").forEach((b) => b.setAttribute("data-testid", b.getAttribute("data-testid")!.replace(/-removed$/, "")));
+    });
+    expect(await stackDrift(page), "clean again").toEqual([]);
     await shots(page, "narrow-window-1000");
     await accessible(page, "the stacked dock", '[data-testid="shell"]');
     expect(await titleBarDrift(page), "the title bar at 1000 wide").toEqual([]);

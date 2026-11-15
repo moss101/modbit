@@ -2,7 +2,7 @@ import { GEOMETRY } from "@modbit/design-tokens";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { CommandRegistry } from "@modbit/ui/logic";
-import { computeLayout, clampListWidth, ratioForPanel, DETAILS_RAIL, DOCK_LAYOUT } from "./layout.ts";
+import { computeLayout, clampListWidth, ratioForPanel, DETAILS_RAIL, DOCK_LAYOUT, showsStackSegments } from "./layout.ts";
 import { DEFAULT_UI_PREFS, parseUiPrefs, serializeUiPrefs, clampZoom, UI_PREFS_KEY } from "./prefs.ts";
 import { artifactsOf, panelTaskFor, panesOf } from "./artifacts.ts";
 import { REQUIRED_CHORDS, buildShellRegistry, shellCommandDefs, shellRegistry, type ShellActions } from "./commands.ts";
@@ -239,4 +239,21 @@ test("MWS-09 (PX-201): the rail's choice is stored with the layout preferences; 
   assert.equal(parseUiPrefs(JSON.stringify({ detailsOpen: false })).detailsOpen, false);
   assert.equal(parseUiPrefs(JSON.stringify({ detailsOpen: "no" })).detailsOpen, true, "a hostile value falls back to the default");
   assert.equal(parseUiPrefs(serializeUiPrefs({ ...DEFAULT_UI_PREFS, detailsOpen: false })).detailsOpen, false);
+});
+
+test("REQ-PX-202: a stacked shell always draws the Conversation | Apps segment, and a side-by-side one never does, from the one layout answer", () => {
+  let stackedSeen = 0;
+  for (let width = 600; width <= 2000; width += 1) for (const listCollapsed of [false, true]) for (const panelRatio of [0.2, 0.39, 0.8]) {
+    const l = computeLayout({ ...base, width, listCollapsed, panelRatio, panelOpen: true, detailsOpen: true });
+    assert.equal(showsStackSegments(l), l.stacked, `${width}`);
+    if (l.stacked) {
+      stackedSeen++;
+      assert.equal(l.panelPx, 0, `${width}: stacked, nothing beside the conversation`);
+    } else assert.ok(l.panelPx >= 280 && l.centerPx >= 560, `${width}: side by side within the minimums`);
+  }
+  assert.ok(stackedSeen > 0);
+  // The retained mutation: a segment decided by a width of its own (the window's, at the old 808 threshold) disagrees with the layout somewhere.
+  const byWindow = (width: number) => width - 288 < 808;
+  const disagree = [...Array(800).keys()].map((i) => 900 + i).filter((width) => byWindow(width) !== computeLayout({ ...base, width, panelOpen: true }).stacked);
+  assert.ok(disagree.length > 0, "a second width source would leave a stacked shell without its segment");
 });
