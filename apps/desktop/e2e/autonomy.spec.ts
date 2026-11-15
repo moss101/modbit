@@ -14,7 +14,7 @@ import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { accessible, appDir, closeApp, git, launch, setContentSize } from "./support/ui-harness.ts";
 import { createTask, openConversation, routedModel, sessionOf } from "./support/conversation-harness.ts";
-import { openPane } from "./support/new-task.ts";
+import { openPane, soloPane } from "./support/new-task.ts";
 
 const REPO_TSC = resolve(appDir, "..", "..", "node_modules", ".bin", "tsc");
 
@@ -134,7 +134,7 @@ test("PX-145: a first fix that does not build is a repair attempt the Core recor
     const bundle = await page.evaluate((t) => window.modbit.reviewBundle(t), taskId);
     expect(bundle.repairAttempts.map((a) => [a.ordinal, a.outcome])).toEqual([[1, "RESOLVED"]]);
     await openPane(page);
-    await page.getByTestId("tab-evidence").click();
+    await soloPane(page, "evidence");
     await expect(page.getByTestId("app-evidence")).toBeVisible();
     await expect(page.getByTestId("evidence-repair")).toHaveCount(1, { timeout: 30_000 });
     await expect(page.getByTestId("evidence-repair")).toHaveAttribute("data-outcome", "RESOLVED");
