@@ -109,6 +109,8 @@ export interface Attachment {
   terminalId: string;
   taskId: string;
   sessionId: string;
+  /** The window (its web contents id) that opened the attachment: only it may use the attachment, and its frames go only to it. */
+  owner: number;
 }
 
 export class TerminalHost {
@@ -124,9 +126,9 @@ export class TerminalHost {
 
   private readonly client: () => CoreClient;
   private readonly ensureLease: (c: CoreClient, sessionId: string) => Promise<void>;
-  private readonly send: (frame: TerminalFrameJson) => void;
+  private readonly send: (frame: TerminalFrameJson, owner: number) => void;
 
-  constructor(client: () => CoreClient, ensureLease: (c: CoreClient, sessionId: string) => Promise<void>, send: (frame: TerminalFrameJson) => void) {
+  constructor(client: () => CoreClient, ensureLease: (c: CoreClient, sessionId: string) => Promise<void>, send: (frame: TerminalFrameJson, owner: number) => void) {
     this.client = client;
     this.ensureLease = ensureLease;
     this.send = send;
@@ -142,11 +144,11 @@ export class TerminalHost {
     return { terminals: l.terminals.map(viewJson), nowMs: Number(l.nowMs), defaultWindowBytes: l.defaultWindowBytes.toString(), stallMs: l.stallMs.toString() };
   }
 
-  async attach(sessionId: string, taskId: string, terminalId: string, afterCursor: bigint, opts: { windowBytes: bigint; takeInputLease: boolean; stealInputLease: boolean }): Promise<{ attachId: string; terminal: TerminalViewJson; afterCursor: string; windowBytes: string; inputLeaseHeld: boolean }> {
+  async attach(sessionId: string, taskId: string, terminalId: string, afterCursor: bigint, opts: { windowBytes: bigint; takeInputLease: boolean; stealInputLease: boolean; owner: number }): Promise<{ attachId: string; terminal: TerminalViewJson; afterCursor: string; windowBytes: string; inputLeaseHeld: boolean }> {
     const c = this.client();
     if (opts.takeInputLease) await this.ensureLease(c, sessionId);
     const a = await c.attachTerminal(sessionId, taskId, terminalId, afterCursor, { windowBytes: opts.windowBytes, takeInputLease: opts.takeInputLease, stealInputLease: opts.stealInputLease });
-    this.attachments.set(a.attachId, { attachId: a.attachId, terminalId, taskId, sessionId });
+    this.attachments.set(a.attachId, { attachId: a.attachId, terminalId, taskId, sessionId, owner: opts.owner });
     this.acked.set(a.attachId, afterCursor);
     if (!a.terminal) throw new Error("CORE_PROTOCOL: the attach answered without the terminal");
     // Release what arrived before the id was registered, after the renderer has the attach's answer (it queues frames until then).
@@ -181,30 +183,31 @@ export class TerminalHost {
       return;
     }
     const j = frameJson(f);
-    if (j) this.send(j);
+    if (j) this.send(j, this.attachments.get(f.attachId)!.owner);
   }
 
   /** Send an attachment's held frames in the order they arrived; nothing if it was detached meanwhile. */
   private release(attachId: string): void {
     const held = this.held.get(attachId) ?? [];
     this.held.delete(attachId);
-    if (!this.attachments.has(attachId)) return;
+    const a = this.attachments.get(attachId);
+    if (!a) return;
     for (const f of held) {
       const j = frameJson(f);
-      if (j) this.send(j);
+      if (j) this.send(j, a.owner);
     }
   }
 
-  async ack(attachId: string, cursor: bigint): Promise<string> {
-    this.owned(attachId);
+  async ack(attachId: string, cursor: bigint, owner: number): Promise<string> {
+    this.owned(attachId, owner);
     const prev = this.acked.get(attachId) ?? 0n;
     if (cursor <= prev) return prev.toString();
     this.acked.set(attachId, cursor);
     return (await this.client().ackTerminal(attachId, cursor)).toString();
   }
 
-  async detach(attachId: string): Promise<{ wasAttached: boolean; ackedCursor: string }> {
-    this.owned(attachId);
+  async detach(attachId: string, owner: number): Promise<{ wasAttached: boolean; ackedCursor: string }> {
+    this.owned(attachId, owner);
     this.attachments.delete(attachId);
     this.acked.delete(attachId);
     this.held.delete(attachId);
@@ -212,24 +215,24 @@ export class TerminalHost {
     return { wasAttached: d.wasAttached, ackedCursor: d.ackedCursor.toString() };
   }
 
-  async input(attachId: string, hold: boolean, steal: boolean): Promise<{ held: boolean; holder: string; offset: string }> {
-    const a = this.owned(attachId);
+  async input(attachId: string, hold: boolean, steal: boolean, owner: number): Promise<{ held: boolean; holder: string; offset: string }> {
+    const a = this.owned(attachId, owner);
     const c = this.client();
     await this.ensureLease(c, a.sessionId);
     const r = await c.setTerminalInput(a.sessionId, attachId, hold, steal);
     return { held: r.held, holder: r.holder, offset: r.offset.toString() };
   }
 
-  async resize(attachId: string, rows: number, cols: number): Promise<{ rows: number; cols: number }> {
-    const a = this.owned(attachId);
+  async resize(attachId: string, rows: number, cols: number, owner: number): Promise<{ rows: number; cols: number }> {
+    const a = this.owned(attachId, owner);
     const c = this.client();
     await this.ensureLease(c, a.sessionId);
     const r = await c.resizeTerminal(a.sessionId, attachId, rows, cols);
     return { rows: r.rows, cols: r.cols };
   }
 
-  async write(attachId: string, data: Uint8Array): Promise<{ bytes: string; cursor: string }> {
-    const a = this.owned(attachId);
+  async write(attachId: string, data: Uint8Array, owner: number): Promise<{ bytes: string; cursor: string }> {
+    const a = this.owned(attachId, owner);
     const c = this.client();
     await this.ensureLease(c, a.sessionId);
     const r = await c.writeTerminal(a.sessionId, attachId, data);
@@ -274,12 +277,17 @@ export class TerminalHost {
     return { startCursor: start.toString(), from: plan.from.toString(), data, exhausted: plan.from <= start };
   }
 
-  /** The window went away (reload, crash): its attachments are over. Best effort on the Core. */
-  async detachAll(): Promise<void> {
-    const open = this.open();
-    this.attachments.clear();
-    this.acked.clear();
-    this.held.clear();
+  /**
+   * A window went away (a reload, a crash, a pane window closed): its attachments are over, and only its own; another window's
+   * attachments go on. Best effort on the Core.
+   */
+  async detachAll(owner: number): Promise<void> {
+    const open = this.open().filter((a) => a.owner === owner);
+    for (const a of open) {
+      this.attachments.delete(a.attachId);
+      this.acked.delete(a.attachId);
+      this.held.delete(a.attachId);
+    }
     await Promise.all(open.map((a) => this.client().detachTerminal(a.attachId).catch(() => undefined)));
   }
 
@@ -289,12 +297,13 @@ export class TerminalHost {
     this.attachments.clear();
     this.acked.clear();
     this.held.clear();
-    for (const a of open) this.send({ attachId: a.attachId, terminalId: a.terminalId, kind: "ended", reason: "CORE_RESTARTED", message: "the Core connection was replaced", oldestCursor: "0", resumeCursor: "0" });
+    for (const a of open) this.send({ attachId: a.attachId, terminalId: a.terminalId, kind: "ended", reason: "CORE_RESTARTED", message: "the Core connection was replaced", oldestCursor: "0", resumeCursor: "0" }, a.owner);
   }
 
-  private owned(attachId: string): Attachment {
+  private owned(attachId: string, owner: number): Attachment {
     const a = this.attachments.get(attachId);
-    if (!a) throw new Error("UNKNOWN_ATTACHMENT: this window holds no such terminal attachment");
+    // Another window's attachment is refused as if it did not exist: a window learns nothing of what another one holds.
+    if (!a || a.owner !== owner) throw new Error("UNKNOWN_ATTACHMENT: this window holds no such terminal attachment");
     return a;
   }
 }

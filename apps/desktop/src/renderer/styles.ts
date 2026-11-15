@@ -232,6 +232,11 @@ input.settings-toggle.settings-toggle::after, input.settings-toggle.settings-tog
 .pane-actions > .mb-btn { flex: none; }
 .pane-head > .mb-btn { flex: none; }
 .pane-body { flex: 1 1 0; min-height: 0; min-width: 0; overflow: auto; display: flex; flex-direction: column; }
+/* REQ-PX-203: a pane in a window of its own fills the window; its head is the dock's head with the task's name after the pane's. */
+.pane-window { width: 100vw; height: 100vh; min-height: 0; }
+.pane-window .pane-name { flex: none; margin: 0 var(--mb-space-1) 0 0; font-size: var(--mb-type-chrome-size); line-height: var(--mb-type-chrome-line); font-weight: 500; color: var(--mb-color-text); }
+.pane-window-task { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pane-window-empty { margin: var(--mb-space-4); color: var(--mb-color-text-muted); }
 .pane-body > * { padding-inline: var(--mb-space-3); }
 .pane-body > .changes-app { padding: 0; flex: 1 1 0; min-height: 0; }
 .pane-body > p.meta:first-child { margin-top: var(--mb-space-3); }

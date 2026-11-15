@@ -29,7 +29,9 @@ export interface TopBarProps {
 export const APP_ICON: Record<AppKind, IconName> = { changes: "file-diff", terminal: "terminal", browser: "globe", files: "file-text", evidence: "eye", activity: "clock", background: "layers", "pull-request": "git-compare" };
 
 /** What a pane's toggle does next, as its tooltip: an open pane closes, a minimized one comes back, a closed one opens. */
-export const paneToggleTitle = (kind: AppKind, state: PaneState): string => (state === "open" ? `Hide ${APP_LABEL[kind]}` : state === "minimized" ? `Show ${APP_LABEL[kind]} (minimized)` : `Show ${APP_LABEL[kind]}`);
+export const paneToggleTitle = (kind: AppKind, state: PaneState): string => (state === "open" ? `Hide ${APP_LABEL[kind]}` : state === "minimized" ? `Show ${APP_LABEL[kind]} (minimized)` : state === "popped" ? `Show the ${APP_LABEL[kind]} window` : `Show ${APP_LABEL[kind]}`);
+/** The words for a pane's state where its name is said: in the Panes menu and on its toggle. */
+const stateWords = (state: PaneState): string => (state === "minimized" ? " (minimized)" : state === "popped" ? " (in its own window)" : "");
 
 /**
  * The pane toggles of a bar: the ones `shownToggles` keeps (Changes, Terminal, and what is open or minimized), as many as fit
@@ -41,7 +43,7 @@ export function PaneToggles({ panes, onPane, fit, size }: { panes: readonly Pane
   const shown = new Set(shownToggles(panes, fit));
   const items: MenuItem[] = panes.map((pane) => ({
     id: `pane-${pane.kind}`,
-    label: pane.state === "minimized" ? `${APP_LABEL[pane.kind]} (minimized)` : APP_LABEL[pane.kind],
+    label: `${APP_LABEL[pane.kind]}${stateWords(pane.state)}`,
     checked: pane.state !== "closed",
     testId: `panes-menu-${pane.kind}`,
     onSelect: () => onPane(pane.kind),
@@ -53,7 +55,7 @@ export function PaneToggles({ panes, onPane, fit, size }: { panes: readonly Pane
           {panes
             .filter((pane) => shown.has(pane.kind))
             .map((pane) => (
-              <IconButton key={pane.kind} size={size ?? "md"} label={pane.state === "minimized" ? `${APP_LABEL[pane.kind]} pane, minimized` : `${APP_LABEL[pane.kind]} pane`} title={paneToggleTitle(pane.kind, pane.state)} icon={<Icon name={APP_ICON[pane.kind]} size={size === "sm" ? 16 : undefined} />} pressed={pane.open} data-open={pane.open} data-state={pane.state} data-testid={`pane-toggle-${pane.kind}`} onClick={() => onPane(pane.kind)} />
+              <IconButton key={pane.kind} size={size ?? "md"} label={pane.state === "minimized" ? `${APP_LABEL[pane.kind]} pane, minimized` : pane.state === "popped" ? `${APP_LABEL[pane.kind]} pane, in its own window` : `${APP_LABEL[pane.kind]} pane`} title={paneToggleTitle(pane.kind, pane.state)} icon={<Icon name={APP_ICON[pane.kind]} size={size === "sm" ? 16 : undefined} />} pressed={pane.open} data-open={pane.open} data-state={pane.state} data-testid={`pane-toggle-${pane.kind}`} onClick={() => onPane(pane.kind)} />
             ))}
         </span>
       )}

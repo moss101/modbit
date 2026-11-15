@@ -34,11 +34,13 @@ import { useTerminals } from "../apps/use-terminals.ts";
 import { recoverySummary } from "../../main/lifecycle.ts";
 import { AppsPanel } from "./apps-panel.tsx";
 import { Automations } from "../automations/automations.tsx";
-import { artifactsOf, panelTaskFor, panesOf } from "./artifacts.ts";
+import { APP_LABEL, artifactsOf, panelTaskFor, panesOf } from "./artifacts.ts";
 import { shellRegistry, type ShellActions } from "./commands.ts";
 import { CommandPalette, type PaletteItem } from "./palette.tsx";
 import { clampZoom, EMPTY_DOCK, loadUiPrefs, saveUiPrefs, ZOOM_STEP, type AppKind, type PanelState, type UiPrefs } from "./prefs.ts";
-import { openPane, paneStateOf, tiledOf, toggleDock, togglePane } from "./dock.ts";
+import { dockedOf, openPane, paneStateOf, popOutPane, tiledOf, toggleDock, togglePane } from "./dock.ts";
+import { paneView } from "./pane-view.ts";
+import type { PaneWindowKind, PaneWindowRef } from "../../preload/preload.ts";
 import { followDelivered } from "../apps/delivered.ts";
 import { ShellFrame } from "./shell-frame.tsx";
 import { ShortcutHelp } from "./shortcut-help.tsx";
@@ -61,14 +63,14 @@ function useThrottled<T>(value: T, ms: number): T {
   return out;
 }
 
-function applyTheme(theme: ThemePreference): void {
+export function applyTheme(theme: ThemePreference): void {
   const root = document.documentElement;
   if (theme === "system") delete root.dataset.theme;
   else root.dataset.theme = theme;
 }
 
 /** Comfortable is the token stylesheet's own block; Compact is its override block, chosen by this attribute (MWS-03). */
-function applyDensity(density: Density): void {
+export function applyDensity(density: Density): void {
   const root = document.documentElement;
   if (density === "comfortable") delete root.dataset.density;
   else root.dataset.density = density;
@@ -186,7 +188,21 @@ export function Shell({ app }: { app: AppState }) {
   // MWS-10: the task's dock. The panes it can show now, the ones it has open, and the ones in the grid (open, not minimized).
   const panelState: PanelState = (panelTaskId ? prefs.panelByTask[panelTaskId] : undefined) ?? EMPTY_DOCK;
   const available = useMemo(() => panesOf(artifacts), [artifacts]);
-  const tiled = useMemo(() => tiledOf(panelState, available), [panelState, available]);
+  // REQ-PX-203: the panes in windows of their own, as the main process lists them. A pane is in one place at a time: one of the
+  // dock's task's that is in a window is not in the grid, and its toggle brings its window forward.
+  const [paneWindows, setPaneWindows] = useState<PaneWindowRef[]>([]);
+  useEffect(() => {
+    let live = true;
+    void window.modbit.paneWindows().then((l) => live && setPaneWindows(l), () => {});
+    const off = window.modbit.onPaneWindows((l) => setPaneWindows(l));
+    return () => {
+      live = false;
+      off();
+    };
+  }, []);
+  const popped = useMemo(() => new Set<AppKind>(paneWindows.filter((w) => w.taskId === panelTaskId).map((w) => w.kind)), [paneWindows, panelTaskId]);
+  const dockable = useMemo(() => available.filter((k) => !popped.has(k)), [available, popped]);
+  const tiled = useMemo(() => dockedOf(tiledOf(panelState, available), popped), [panelState, available, popped]);
   const panelOpen = panelTaskId !== null && tiled.length > 0;
   const setPanelState = useCallback(
     (taskId: string, next: PanelState | ((s: PanelState) => PanelState)) => setPrefs((p) => {
@@ -235,6 +251,26 @@ export function Shell({ app }: { app: AppState }) {
     },
     [closePages, setSelectedTaskId],
   );
+  // REQ-PX-203: a pane window that closes hands back what it showed, and the pane is in the dock again, in its place; a pane
+  // window that asks for the task's review, a call or the waiting approval has it shown here.
+  useEffect(() => {
+    const offReturned = window.modbit.onPaneReturned((r) => {
+      paneView.put(r.taskId, r.kind, r.state);
+      const tid = r.state.terminalId;
+      if (r.kind === "terminal" && tid) setTerminalPick((m) => ({ ...m, [r.taskId]: tid }));
+      setPanelState(r.taskId, (s) => openPane(s, r.kind));
+      setPaneWindows((l) => l.filter((w) => !(w.taskId === r.taskId && w.kind === r.kind)));
+    });
+    const offShow = window.modbit.onPaneShow((r) => {
+      if (r.what === "review") setReviewing(r.taskId);
+      else if (r.what === "call" && r.toolCallId) openConversation(r.taskId, `tool:${r.toolCallId}`);
+      else openConversation(r.taskId);
+    });
+    return () => {
+      offReturned();
+      offShow();
+    };
+  }, [setPanelState, setReviewing, openConversation]);
   useEffect(() => {
     if (!navRequest) return;
     if (navRequest.kind === "task") openConversation(navRequest.taskId);
@@ -300,12 +336,14 @@ export function Shell({ app }: { app: AppState }) {
     focusSettingsSection: (id) => openSettings(() => (document.querySelector<HTMLElement>(`[data-testid="${id}"] input`) ?? document.querySelector<HTMLElement>(`[data-testid="${id}"]`))?.focus()),
     toggleAgentList: () => setPrefs((p) => ({ ...p, listCollapsed: !p.listCollapsed })),
     togglePanel: () => {
-      if (panelTaskId) setPanelState(panelTaskId, (s) => toggleDock(s, available, available[0]));
+      if (panelTaskId) setPanelState(panelTaskId, (s) => toggleDock(s, dockable, dockable[0]));
     },
     showApp: (kind) => {
       const ok = appAvailability(kind);
+      // A pane in a window of its own: its window comes forward.
+      if (ok === true && panelTaskId && popped.has(kind)) void window.modbit.focusPaneWindow(panelTaskId, kind as PaneWindowKind);
       // The terminal's command toggles its pane; the others bring theirs into the grid.
-      if (ok === true && panelTaskId) setPanelState(panelTaskId, (s) => (kind === "terminal" ? togglePane(s, kind) : openPane(s, kind)));
+      else if (ok === true && panelTaskId) setPanelState(panelTaskId, (s) => (kind === "terminal" ? togglePane(s, kind) : openPane(s, kind)));
       return ok;
     },
     openDashboard: () => {
@@ -436,12 +474,30 @@ export function Shell({ app }: { app: AppState }) {
   const panelRefreshKey = useThrottled(`${panelTask?.state ?? ""}:${panelTask?.lastOffset ?? ""}`, 1200);
   // MWS-05: one toggle per pane the task in the centre can show, each with its state. A page that is not a task, and a task that has not started, have none.
   const shownTaskId = settingsOpen || customizeOpen || inboxOpen || automationsOpen || dashboardOpen ? null : (reviewing ?? browsing?.taskId ?? (projectPage || worktreesOpen ? null : (conversation?.taskId ?? null)));
-  const panes = useMemo<PaneToggle[]>(() => (shownTaskId !== null && shownTaskId === panelTaskId ? available.map((kind) => ({ kind, open: paneStateOf(panelState, kind) === "open", state: paneStateOf(panelState, kind) })) : []), [shownTaskId, panelTaskId, available, panelState]);
+  const panes = useMemo<PaneToggle[]>(() => (shownTaskId !== null && shownTaskId === panelTaskId ? available.map((kind) => ({ kind, open: paneStateOf(panelState, kind, popped) === "open", state: paneStateOf(panelState, kind, popped) })) : []), [shownTaskId, panelTaskId, available, panelState, popped]);
   const onPane = (kind: AppKind) => {
-    if (panelTaskId) setPanelState(panelTaskId, (s) => togglePane(s, kind));
+    if (!panelTaskId) return;
+    // A pane in a window of its own: its toggle brings the window forward.
+    if (popped.has(kind)) void window.modbit.focusPaneWindow(panelTaskId, kind as PaneWindowKind);
+    else setPanelState(panelTaskId, (s) => togglePane(s, kind));
   };
   // Where the title bar has no toggles for the dock's task (the centre shows home or another task's page), the dock carries them itself.
-  const dockToggles = useMemo<PaneToggle[]>(() => (panes.length === 0 && panelTaskId !== null ? available.map((kind) => ({ kind, open: paneStateOf(panelState, kind) === "open", state: paneStateOf(panelState, kind) })) : []), [panes.length, panelTaskId, available, panelState]);
+  const dockToggles = useMemo<PaneToggle[]>(() => (panes.length === 0 && panelTaskId !== null ? available.map((kind) => ({ kind, open: paneStateOf(panelState, kind, popped) === "open", state: paneStateOf(panelState, kind, popped) })) : []), [panes.length, panelTaskId, available, panelState, popped]);
+  /** REQ-PX-203: Pop out. The pane leaves the grid for a window of its own, showing what it showed here. */
+  const popOut = (taskId: string, title: string, kind: PaneWindowKind, size: { width: number; height: number } | undefined) => {
+    const sid = model.sessionId;
+    if (!sid) return;
+    const terminals = terminalsByTask.get(taskId) ?? [];
+    const state = kind === "terminal" ? { terminalId: terminalPick[taskId] ?? terminals[0]?.terminalId } : paneView.get(taskId, kind);
+    setPanelState(taskId, (s) => popOutPane(s, kind));
+    void window.modbit
+      .popOutPane(sid, taskId, kind, Object.fromEntries(Object.entries(state).filter(([, v]) => v !== undefined && v !== "")), title, size)
+      .then((l) => {
+        setPaneWindows(l);
+        setNotice(`${APP_LABEL[kind]} is in its own window. Closing that window brings it back here.`);
+      })
+      .catch((e: Error) => setNotice(`${APP_LABEL[kind]} could not be popped out: ${e.message}`));
+  };
   // The title is the task's while its conversation is what the centre shows; then it opens the task's menu.
   const menuTaskId = conversation && shownTaskId === conversation.taskId && !reviewing && !browsing ? conversation.taskId : null;
   const taskMenu = useMemo<MenuItem[] | undefined>(() => {
@@ -500,8 +556,10 @@ export function Shell({ app }: { app: AppState }) {
               }}
               onOpenTerminal={(termId) => {
                 setTerminalPick((m) => ({ ...m, [panelTaskId]: termId }));
-                setPanelState(panelTaskId, (d) => openPane(d, "terminal"));
+                if (popped.has("terminal")) void window.modbit.focusPaneWindow(panelTaskId, "terminal");
+                else setPanelState(panelTaskId, (d) => openPane(d, "terminal"));
               }}
+              onPopOut={(kind, size) => popOut(panelTaskId, panelTask.goalText, kind, size)}
             />
           ) : null
         }
@@ -611,7 +669,7 @@ export function Shell({ app }: { app: AppState }) {
                     onToggle: () => {
                       const shown = layout.detailsPx > 0;
                       setPrefs((p) => ({ ...p, detailsOpen: !shown }));
-                      if (!shown && panelTaskId && panelOpen) setPanelState(panelTaskId, (d) => toggleDock(d, available, undefined));
+                      if (!shown && panelTaskId && panelOpen) setPanelState(panelTaskId, (d) => toggleDock(d, dockable, undefined));
                     },
                   }
                 : undefined

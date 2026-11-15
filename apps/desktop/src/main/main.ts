@@ -26,6 +26,7 @@ import { registerAutomationHandlers } from "./automation-ipc.js";
 import { optionalWindow, requireBool, requireCursor, requireDimension, requireHandle, requireKeystrokes, requireWorkspacePath } from "./apps-args.js";
 import { noWork, quitChoice, quitPrompt, runShutdown, SESSION_END_DEADLINE_MS, sessionEndFailure, WINDOW_DEFAULT, WINDOW_MIN, type ActiveWork, type SessionEndRun, type ShutdownStep } from "./lifecycle.js";
 import { TerminalHost } from "./terminal-host.js";
+import { cleanShowRequest, cleanViewState, isPoppable, PANE_WINDOW_DEFAULT, PANE_WINDOW_MIN, PANE_WINDOW_OPEN_MIN, paneRefusal, paneWindowTitle, type PaneRef, type PaneViewState } from "./pane-windows.js";
 import { UpdateService } from "./update/service.js";
 
 const dataDir = process.env.MODBIT_DATA_DIR ?? join(app.getPath("userData"), "modbit");
@@ -134,12 +135,40 @@ function send(channel: string, payload: unknown): void {
   if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
 }
 
+/**
+ * REQ-PX-203: the panes popped out of the dock, one window each, by the window's web contents id. Each shows one pane of one
+ * task; the record is this process's (the renderer of a pane window learns its pane from here and cannot choose another one).
+ */
+interface PaneWindow {
+  win: BrowserWindow;
+  ref: PaneRef;
+  title: string;
+  /** What the pane last said it was showing (the terminal, the chosen file, the scroll), handed back to the dock when it closes. */
+  state: PaneViewState;
+}
+const paneWindows = new Map<number, PaneWindow>();
+const paneList = (): { taskId: string; kind: string }[] => [...paneWindows.values()].map((p) => ({ taskId: p.ref.taskId, kind: p.ref.kind }));
+/** To the window that `owner` names, the app's window or a pane window, and to no other. */
+function sendTo(owner: number, channel: string, payload: unknown): void {
+  if (win && !win.isDestroyed() && win.webContents.id === owner) {
+    win.webContents.send(channel, payload);
+    return;
+  }
+  const p = paneWindows.get(owner);
+  if (p && !p.win.isDestroyed()) p.win.webContents.send(channel, payload);
+}
+/** A pane window hears the Core's events of its own task only (a pane is a view of one task). */
+function sendToPanes(channel: string, payload: unknown, taskId: string | null): void {
+  for (const p of paneWindows.values()) if (!p.win.isDestroyed() && (taskId === null || p.ref.taskId === taskId)) p.win.webContents.send(channel, payload);
+}
+
 const supervisor = new CoreSupervisor(
   coreBin,
   dataDir,
   {
     status(s: CoreStatus) {
       send("core:status", s);
+      sendToPanes("core:status", s, null);
     },
     client(c: CoreClient) {
       // REQ-PX-048: a new connection starts with no terminal attachments; the renderer reattaches from its cursors.
@@ -156,6 +185,7 @@ const supervisor = new CoreSupervisor(
         // (the Browser panel says it does); the Core's own stop is the Core's.
         if (ev.eventType === "SessionLeaseAcquired" && ev.sessionId) browserHost.sessionLeaseAcquired(ev.sessionId, Number((ev.payload as { lease_generation?: unknown } | null)?.lease_generation ?? 0));
         send("core:event", ev);
+        if (ev.taskId) sendToPanes("core:event", ev, ev.taskId);
       };
       // Recovery: re-take the session lease (a new generation fences any stale
       // owner), re-attach the live subscription from the last cursor we delivered,
@@ -229,7 +259,7 @@ async function ensureSessionLease(c: CoreClient, sessionId: string): Promise<voi
 const terminalHost = new TerminalHost(
   () => requireClient(),
   ensureSessionLease,
-  (frame) => send("terminal:frame", frame),
+  (frame, owner) => sendTo(owner, "terminal:frame", frame),
 );
 function requireClient(): CoreClient {
   const c = supervisor.current();
@@ -274,16 +304,30 @@ function noteRefusal(channel: string, e: IpcMainInvokeEvent, reason: string): vo
   ipcRefusals.push({ channel, senderId: e.sender.id, frameUrl: e.senderFrame?.url ?? "", reason, atMs: Date.now() });
   if (ipcRefusals.length > 200) ipcRefusals.splice(0, ipcRefusals.length - 200);
 }
+//
+// REQ-PX-203: a pane window runs the same renderer under the same preload, but what it may ask is narrower: only the channels
+// its pane needs (pane-windows.ts), and only about its own task and session. Every channel that decides an approval, answers a
+// question or changes what a task may do is refused to it here, whatever its renderer sends.
 function handle(channel: string, fn: (e: IpcMainInvokeEvent, ...args: unknown[]) => unknown): void {
   ipcMain.handle(channel, (e: IpcMainInvokeEvent, ...args: unknown[]) => {
     const appContents = win?.webContents;
-    if (!appContents || appContents.isDestroyed() || e.sender !== appContents) {
+    const fromApp = !!appContents && !appContents.isDestroyed() && e.sender === appContents;
+    const pane = fromApp ? undefined : paneWindows.get(e.sender.id);
+    const contents = fromApp ? appContents : pane && !pane.win.isDestroyed() && e.sender === pane.win.webContents ? pane.win.webContents : undefined;
+    if (!contents) {
       noteRefusal(channel, e, "not the app window");
       throw new Error("SENDER_REFUSED: only the app's own renderer may ask this");
     }
-    if (!e.senderFrame || e.senderFrame !== appContents.mainFrame) {
+    if (!e.senderFrame || e.senderFrame !== contents.mainFrame) {
       noteRefusal(channel, e, "not the top frame");
       throw new Error("SENDER_REFUSED: only the app's top frame may ask this");
+    }
+    if (pane) {
+      const why = paneRefusal(pane.ref, channel, args);
+      if (why) {
+        noteRefusal(channel, e, `pane window: ${why}`);
+        throw new Error(`SENDER_REFUSED: ${why}`);
+      }
     }
     return fn(e, ...args);
   });
@@ -924,13 +968,15 @@ handle("terminal:attach", (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: u
     windowBytes: optionalWindow(o.windowBytes),
     takeInputLease: o.takeInputLease === undefined ? false : requireBool(o.takeInputLease, "takeInputLease"),
     stealInputLease: o.stealInputLease === undefined ? false : requireBool(o.stealInputLease, "stealInputLease"),
+    owner: _e.sender.id,
   });
 });
-handle("terminal:ack", (_e: IpcMainInvokeEvent, attachId: unknown, cursor: unknown) => terminalHost.ack(requireHandle(attachId, "attach id"), requireCursor(cursor)));
-handle("terminal:detach", (_e: IpcMainInvokeEvent, attachId: unknown) => terminalHost.detach(requireHandle(attachId, "attach id")));
-handle("terminal:input", (_e: IpcMainInvokeEvent, attachId: unknown, hold: unknown, steal: unknown) => terminalHost.input(requireHandle(attachId, "attach id"), requireBool(hold, "hold"), steal === undefined ? false : requireBool(steal, "steal")));
-handle("terminal:resize", (_e: IpcMainInvokeEvent, attachId: unknown, rows: unknown, cols: unknown) => terminalHost.resize(requireHandle(attachId, "attach id"), requireDimension(rows, "rows"), requireDimension(cols, "cols")));
-handle("terminal:write", (_e: IpcMainInvokeEvent, attachId: unknown, data: unknown) => terminalHost.write(requireHandle(attachId, "attach id"), requireKeystrokes(data)));
+// An attachment is the window's that opened it (REQ-PX-203): another window's handle is refused as unknown.
+handle("terminal:ack", (_e: IpcMainInvokeEvent, attachId: unknown, cursor: unknown) => terminalHost.ack(requireHandle(attachId, "attach id"), requireCursor(cursor), _e.sender.id));
+handle("terminal:detach", (_e: IpcMainInvokeEvent, attachId: unknown) => terminalHost.detach(requireHandle(attachId, "attach id"), _e.sender.id));
+handle("terminal:input", (_e: IpcMainInvokeEvent, attachId: unknown, hold: unknown, steal: unknown) => terminalHost.input(requireHandle(attachId, "attach id"), requireBool(hold, "hold"), steal === undefined ? false : requireBool(steal, "steal"), _e.sender.id));
+handle("terminal:resize", (_e: IpcMainInvokeEvent, attachId: unknown, rows: unknown, cols: unknown) => terminalHost.resize(requireHandle(attachId, "attach id"), requireDimension(rows, "rows"), requireDimension(cols, "cols"), _e.sender.id));
+handle("terminal:write", (_e: IpcMainInvokeEvent, attachId: unknown, data: unknown) => terminalHost.write(requireHandle(attachId, "attach id"), requireKeystrokes(data), _e.sender.id));
 handle("terminal:kill", (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, terminalId: unknown) => terminalHost.kill(requireSessionId(sessionId), requireTaskId(taskId), requireHandle(terminalId, "terminal id")));
 handle("terminal:history", (_e: IpcMainInvokeEvent, taskId: unknown, terminalId: unknown, from: unknown, to: unknown) => terminalHost.history(requireTaskId(taskId), requireHandle(terminalId, "terminal id"), requireCursor(from, "from"), requireCursor(to, "to")));
 handle("files:list", async (_e: IpcMainInvokeEvent, taskId: unknown, path: unknown) => {
@@ -979,14 +1025,23 @@ handle("debug:rendererLog", () => rendererLog.slice());
 // its cursor, as at any start. Nothing of the session lives in the renderer
 // to lose.
 const rendererLog: { reason: string; exitCode: number; reloaded: boolean; atMs: number }[] = [];
-function createWindow(bounds?: Electron.Rectangle): void {
+/**
+ * What a window is for: the app's window, or one pane of one task popped out of the dock (REQ-PX-203). Both are made here, by
+ * the one constructor in this file, with the same web preferences, preload and page; the session's Content-Security-Policy
+ * (set once, for every page, at start) covers both. Navigation and new windows are refused in both. Only what a window may ask
+ * differs, and that is decided in `handle` from this record, never by the window.
+ */
+type WindowRole = { kind: "app" } | { kind: "pane"; ref: PaneRef; title: string; state: PaneViewState };
+function createAppWindow(role: WindowRole, bounds?: { width: number; height: number; x?: number; y?: number }): BrowserWindow {
+  const min = role.kind === "app" ? WINDOW_MIN : PANE_WINDOW_MIN;
   const w = new BrowserWindow({
     ...(bounds ?? WINDOW_DEFAULT),
-    // REQ-PX-049 / AFW-A02: the window never gets smaller than the shell's layout can use.
-    minWidth: WINDOW_MIN.width,
-    minHeight: WINDOW_MIN.height,
-    // The window controls sit in the agent list's own 40 px head on macOS.
-    ...(process.platform === "darwin" ? { titleBarStyle: "hiddenInset" as const, trafficLightPosition: { x: 14, y: 13 } } : {}),
+    // REQ-PX-049 / AFW-A02: the window never gets smaller than the shell's layout can use (a pane window: than a pane can).
+    minWidth: min.width,
+    minHeight: min.height,
+    // The window controls sit in the agent list's own 40 px head on macOS; a pane window keeps the system's title bar and its title.
+    ...(process.platform === "darwin" && role.kind === "app" ? { titleBarStyle: "hiddenInset" as const, trafficLightPosition: { x: 14, y: 13 } } : {}),
+    ...(role.kind === "pane" ? { title: role.title } : {}),
     show: true,
     webPreferences: {
       preload: join(__dirname, "..", "preload", "preload.cjs"),
@@ -996,6 +1051,30 @@ function createWindow(bounds?: Electron.Rectangle): void {
       webSecurity: true,
     },
   });
+  const contentsId = w.webContents.id;
+  w.webContents.on("will-navigate", (e) => e.preventDefault());
+  w.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  // REQ-PX-048: a window that loads again (a reload, a crash's replacement) holds none of its old terminal attachments; another window's go on.
+  w.webContents.on("did-start-loading", () => void terminalHost.detachAll(contentsId));
+  if (role.kind === "pane") {
+    paneWindows.set(contentsId, { win: w, ref: role.ref, title: role.title, state: role.state });
+    // The page keeps the title it was given, not the document's.
+    w.on("page-title-updated", (e) => e.preventDefault());
+    // A pane window whose renderer is gone closes, and its pane goes back to the dock as it last was.
+    w.webContents.on("render-process-gone", (_e, details) => {
+      rendererLog.push({ reason: `pane window: ${details.reason}`, exitCode: details.exitCode, reloaded: false, atMs: Date.now() });
+      if (!w.isDestroyed()) w.destroy();
+    });
+    w.on("closed", () => {
+      const p = paneWindows.get(contentsId);
+      paneWindows.delete(contentsId);
+      void terminalHost.detachAll(contentsId);
+      if (p) send("pane:returned", { taskId: p.ref.taskId, kind: p.ref.kind, state: p.state });
+      send("pane:windows", paneList());
+    });
+    void w.loadFile(join(__dirname, "..", "renderer", "index.html"), { hash: "pane" });
+    return w;
+  }
   win = w;
   // REQ-PX-049: closing the window asks first when work is running (the same question as quitting).
   w.on("close", (e) => {
@@ -1003,15 +1082,11 @@ function createWindow(bounds?: Electron.Rectangle): void {
     e.preventDefault();
     void requestQuit();
   });
-  // REQ-PX-048: a window that loads again (a reload, a crash's replacement) holds none of the old terminal attachments.
-  w.webContents.on("did-start-loading", () => void terminalHost.detachAll());
   // The report is sent once, when the Core connects; a renderer that was not listening yet would never see the counts. Sending it
   // again once the page has loaded is idempotent (the renderer takes the counts once per boot).
   w.webContents.on("did-finish-load", () => {
     for (const afterMs of [0, 600]) setTimeout(() => (lastRecovery !== null && !w.isDestroyed() ? w.webContents.send("core:recovery", lastRecovery) : undefined), afterMs);
   });
-  w.webContents.on("will-navigate", (e) => e.preventDefault());
-  w.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   // One path for "this window's renderer is gone", whoever notices first: Chromium's own report, or the liveness watch below.
   let gone = false;
   const rendererGone = (reason: string, exitCode: number, via: "event" | "watch") => {
@@ -1024,9 +1099,10 @@ function createWindow(bounds?: Electron.Rectangle): void {
     if (!replace) return;
     // The views the dead renderer showed leave the old window first (they
     // are this process's, not the window's); the new renderer shows them
-    // again when it opens its panel.
+    // again when it opens its panel. Pane windows are not the app window's
+    // and stay open; the new renderer reads which panes they hold.
     browserHost.windowReplaced(w);
-    createWindow(w.getBounds());
+    createAppWindow({ kind: "app" }, w.getBounds());
     w.destroy();
   };
   w.webContents.on("render-process-gone", (_e, details) => rendererGone(details.reason, details.exitCode, "event"));
@@ -1058,13 +1134,79 @@ function createWindow(bounds?: Electron.Rectangle): void {
   }, 1000);
   w.on("closed", () => clearInterval(watch));
   void w.loadFile(join(__dirname, "..", "renderer", "index.html"));
+  return w;
 }
+
+// ---- REQ-PX-203 (DR-PX-2026-11-11-021 MWS-10): Pop out. The app's window asks for a pane of a task to have a window of its own;
+// the pane window asks who it is, says what it shows, asks the app's window to show something, and goes back to the dock.
+handle("pane:popOut", (e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, kind: unknown, state: unknown, title: unknown, size: unknown) => {
+  if (e.sender !== win?.webContents) throw new Error("SENDER_REFUSED: only the app's window pops a pane out");
+  const sid = requireSessionId(sessionId);
+  const tid = requireTaskId(taskId);
+  if (!isPoppable(kind)) throw new Error("BAD_ARGUMENT: this pane cannot be popped out");
+  const t = typeof title === "string" ? title.slice(0, 500) : "";
+  const existing = [...paneWindows.values()].find((p) => p.ref.taskId === tid && p.ref.kind === kind);
+  if (existing) {
+    existing.win.show();
+    existing.win.focus();
+    return paneList();
+  }
+  const z = (size ?? {}) as { width?: unknown; height?: unknown };
+  const dim = (v: unknown, lo: number, fallback: number) => (typeof v === "number" && Number.isFinite(v) ? Math.round(Math.min(4000, Math.max(lo, v))) : fallback);
+  createAppWindow({ kind: "pane", ref: { sessionId: sid, taskId: tid, kind }, title: paneWindowTitle(kind, t), state: cleanViewState(state) }, { width: dim(z.width, PANE_WINDOW_OPEN_MIN.width, PANE_WINDOW_DEFAULT.width), height: dim(z.height, PANE_WINDOW_OPEN_MIN.height, PANE_WINDOW_DEFAULT.height) });
+  send("pane:windows", paneList());
+  return paneList();
+});
+handle("pane:windows", (e: IpcMainInvokeEvent) => {
+  if (e.sender !== win?.webContents) throw new Error("SENDER_REFUSED: only the app's window lists the pane windows");
+  return paneList();
+});
+handle("pane:focus", (e: IpcMainInvokeEvent, taskId: unknown, kind: unknown) => {
+  if (e.sender !== win?.webContents) throw new Error("SENDER_REFUSED: only the app's window brings a pane window forward");
+  const tid = requireTaskId(taskId);
+  const p = [...paneWindows.values()].find((x) => x.ref.taskId === tid && x.ref.kind === kind);
+  if (!p || p.win.isDestroyed()) return false;
+  if (p.win.isMinimized()) p.win.restore();
+  p.win.show();
+  p.win.focus();
+  return true;
+});
+/** The pane window that asks, or a refusal: these channels answer pane windows only. */
+function askingPane(e: IpcMainInvokeEvent): PaneWindow {
+  const p = paneWindows.get(e.sender.id);
+  if (!p) throw new Error("SENDER_REFUSED: only a pane window asks this");
+  return p;
+}
+handle("pane:context", (e: IpcMainInvokeEvent) => {
+  const p = askingPane(e);
+  return { sessionId: p.ref.sessionId, taskId: p.ref.taskId, kind: p.ref.kind, title: p.title, state: p.state };
+});
+handle("pane:state", (e: IpcMainInvokeEvent, state: unknown) => {
+  const p = askingPane(e);
+  p.state = cleanViewState(state);
+});
+handle("pane:show", (e: IpcMainInvokeEvent, request: unknown) => {
+  const p = askingPane(e);
+  const r = cleanShowRequest(request);
+  if (!r) throw new Error("BAD_ARGUMENT: show what?");
+  if (!win || win.isDestroyed()) return false;
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
+  send("pane:show", { taskId: p.ref.taskId, ...r });
+  return true;
+});
+handle("pane:return", (e: IpcMainInvokeEvent, state: unknown) => {
+  const p = askingPane(e);
+  if (state !== undefined) p.state = cleanViewState(state);
+  setImmediate(() => (p.win.isDestroyed() ? undefined : p.win.close()));
+});
 
 app.whenReady().then(async () => {
   session.defaultSession.webRequest.onHeadersReceived((details, cb) => {
     cb({ responseHeaders: { ...details.responseHeaders, "Content-Security-Policy": ["default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"] } });
   });
-  createWindow();
+  createAppWindow({ kind: "app" });
   updater.start();
   await supervisor.start();
 });
@@ -1085,15 +1227,22 @@ let quitResume = false;
 let shutdownStarted = false;
 
 async function activeWork(): Promise<ActiveWork> {
+  const panes = { paneWindows: paneWindows.size, tasksInPaneWindows: 0, terminalsInPaneWindows: 0 };
   const c = supervisor.current();
-  if (!c) return { runningTasks: 0, runningTerminals: 0 };
+  if (!c) return { runningTasks: 0, runningTerminals: 0, ...panes };
   const sid = loadLocalState().sessionId;
   const within = <T,>(p: Promise<T>, fallback: T): Promise<T> => Promise.race([p.catch(() => fallback), new Promise<T>((r) => setTimeout(() => r(fallback), 2000))]);
-  const [runningTasks, runningTerminals] = await Promise.all([
-    sid ? within(c.getSessionSnapshot(sid).then((s) => s.tasks.filter((t) => t.state === "Running").length), 0) : Promise.resolve(0),
-    within(c.listTerminals().then((l) => l.terminals.filter((t) => t.state === "RUNNING").length), 0),
+  const hex = (id: { value: Uint8Array } | undefined) => (id ? Buffer.from(id.value).toString("hex") : "");
+  const [tasks, terminals] = await Promise.all([
+    sid ? within(c.getSessionSnapshot(sid).then((s) => s.tasks.filter((t) => t.state === "Running").map((t) => hex(t.taskId))), []) : Promise.resolve([] as string[]),
+    within(c.listTerminals().then((l) => l.terminals.filter((t) => t.state === "RUNNING").map((t) => t.sessionId)), []),
   ]);
-  return { runningTasks, runningTerminals };
+  // REQ-PX-203: the work a pane window shows is counted where it is: a running task one of them shows, a running terminal one of them is attached to.
+  const paneTasks = new Set([...paneWindows.values()].map((p) => p.ref.taskId));
+  const paneTerminals = new Set(terminalHost.open().filter((a) => paneWindows.has(a.owner)).map((a) => a.terminalId));
+  panes.tasksInPaneWindows = tasks.filter((t) => paneTasks.has(t)).length;
+  panes.terminalsInPaneWindows = terminals.filter((t) => paneTerminals.has(t)).length;
+  return { runningTasks: tasks.length, runningTerminals: terminals.length, ...panes };
 }
 
 async function requestQuit(): Promise<void> {
