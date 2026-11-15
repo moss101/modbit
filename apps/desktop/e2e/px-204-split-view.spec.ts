@@ -236,6 +236,8 @@ test("PX-204: two tasks side by side; keys decide only in the focused task; each
     // ---- The evidence: two tasks with one waiting on approval, focus visible, each composer with its queued message.
     await focusTranscript(page, a);
     await expect(column(page, a).locator('[data-tray-id="composer-queue"], [data-tray-id="approvals"]').first()).toBeVisible();
+    // The refusal notice has gone (it stays 8 s), so the screenshot shows the two tasks as they are.
+    await expect(page.getByTestId("shell-notice")).toHaveText("", { timeout: 15_000 });
     await shots(page, "split-comfortable");
     await accessible(page, "split view, light");
     await setTheme(page, "dark");
@@ -245,6 +247,7 @@ test("PX-204: two tasks side by side; keys decide only in the focused task; each
     await expect(page.getByTestId("split-view")).toBeVisible();
     await expect(column(page, a).getByTestId("approval-card")).toBeVisible({ timeout: 30_000 });
     await focusTranscript(page, a);
+    for (const id of [a, b]) await expect(column(page, id).getByTestId("conversation")).toHaveAttribute("data-loaded", "true", { timeout: 30_000 });
     await shots(page, "split-compact");
     await accessible(page, "split view, compact");
     await setDensity(page, "comfortable");
@@ -363,6 +366,7 @@ test("PX-204: two tasks side by side; keys decide only in the focused task; each
     await expect(page.getByTestId("conversation")).toHaveAttribute("data-task-id", a);
     await expect(page.getByTestId("split-paused")).toContainText("Split view is paused: two tasks need 848 px beside the task list and this window gives 812.");
     await expect(page.getByTestId("split-paused")).toContainText(GOAL_B);
+    await expect(page.getByTestId("conversation")).toHaveAttribute("data-loaded", "true", { timeout: 30_000 });
     await shots(page, "split-paused-narrow");
     await setContentSize(app, page, 1440, 900);
     await expect(page.getByTestId("split-view")).toBeVisible();
@@ -375,6 +379,7 @@ test("PX-204: two tasks side by side; keys decide only in the focused task; each
     await agentRow(page, b).getByTestId("agent-open").click({ modifiers: ["Alt"] });
     await expect(page.getByTestId("shell-notice")).toHaveText("Split view needs 848 px beside the task list for two tasks; this window gives 812. Widen the window or hide the task list.");
     await expect(page.getByTestId("split-column")).toHaveCount(0);
+    await expect(page.getByTestId("conversation")).toHaveAttribute("data-loaded", "true", { timeout: 30_000 });
     await shots(page, "split-refused-narrow");
     await setContentSize(app, page, 1440, 900);
 
