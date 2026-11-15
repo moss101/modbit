@@ -64,12 +64,12 @@ export function PaneFrame({ kind, height, onMinimize, onClose, onPopOut, before,
  * A pane in a window of its own (REQ-PX-203): the same head, the height of the top bar, with the pane's name, the task it
  * belongs to, its own actions and Back to the dock (which closes the window; the pane is then in the dock, as it was here).
  */
-export function PaneWindowFrame({ kind, taskTitle, onReturn, children }: { kind: AppKind; taskTitle: string; onReturn: () => void; children: ReactNode }) {
+export function PaneWindowFrame({ kind, taskId, taskTitle, onReturn, children }: { kind: AppKind; taskId: string; taskTitle: string; onReturn: () => void; children: ReactNode }) {
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   const head = useMemo(() => ({ el: slot }), [slot]);
   const name = APP_LABEL[kind];
   return (
-    <main className="pane pane-window" aria-label={`${name}: ${taskTitle}`} data-testid="pane-window" data-kind={kind}>
+    <main className="pane pane-window" aria-label={`${name}: ${taskTitle}`} data-testid="pane-window" data-kind={kind} data-task-id={taskId}>
       <header className="pane-head" data-testid={`pane-head-${kind}`}>
         <h1 className="pane-name" data-testid={`pane-name-${kind}`}>
           {name}

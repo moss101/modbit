@@ -147,7 +147,7 @@ export function PaneWindow() {
     void window.modbit.reportPaneState(paneView.get(ctx.taskId, ctx.kind)).catch(() => {});
   };
   return (
-    <PaneWindowFrame kind={ctx.kind} taskTitle={ctx.title.replace(/^[^:]+: /, "")} onReturn={back}>
+    <PaneWindowFrame kind={ctx.kind} taskId={ctx.taskId} taskTitle={ctx.title.replace(/^[^:]+: /, "")} onReturn={back}>
       {ctx.kind === "terminal" && <TerminalApp sessionId={ctx.sessionId} taskId={ctx.taskId} terminals={terminals} selectedId={terminalId} onSelect={pick} onChanged={refresh} announce={setNotice} />}
       {ctx.kind === "changes" && (
         <ChangesApp
