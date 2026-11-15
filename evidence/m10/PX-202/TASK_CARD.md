@@ -168,3 +168,10 @@ No assertion was weakened.
 - A request denied on the card, an approval that expires, and Update the request were not driven end to end from the pane (the outcome of an approval is unit-proven).
 - In the stacked view (a narrow window showing the panes) the approval card is in the conversation, so the pane sends the person there.
 - The owner saw the first screenshots and asked for the title bar to be fixed first; the screenshots in `after/` are retaken on the final build and have not been seen yet. The row is not COMPLETE and no graph status was set.
+
+## Closure (2026-11-15)
+
+- CI run 43691278961 on head 978b6d67: all 19 checks passed. Merged to main as ff0b1ac9 (moss101/modbit#219).
+- The owner reviewed the first screenshots, asked "Fix title bar first", reviewed the retaken screenshots and answered "Yes, seal when green" on 2026-11-15.
+- The Windows stacked-dock failure of runs 4 and 5 did not reproduce in emulation and did not recur after the spec waited for the window to settle; it is attributed to a late OS resize, not proven. `composer.spec.ts:670` still fails on main's macOS runs before this merge; the fix lands with this change.
+- Left open at the seal: the Evidence pane keeps its earlier styling and Core terms; the Pull request pane has no title, state, merge or auto-fix (PX-211 to PX-214); the transcript re-read about every 0.4 s seen in the bridge log is not investigated.
