@@ -861,7 +861,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-202/ci-run-43691278961.json` | retained evidence | 65329 | `ddc15f1fb4621c385c951972dcfef66c08faeeb60391a6a50cb1d0142f40050d` |
 | `evidence/m10/PX-202/desktop-e2e-full-results.txt` | retained evidence | 40912 | `84ef70030296473cd5c45d2201c32ff5b6c3af87d1ece9b2f5cd2de1032ea6a1` |
 | `evidence/m10/PX-202/evidence.json` | retained evidence | 11784 | `b3d70c76ab999676b5199eb39bef5e4236c65ca2a72dc9b22b7c8f550fe86c2e` |
-| `evidence/m10/PX-203/TASK_CARD.md` | retained evidence | 19857 | `c2d86372fc5419c9ac458abcb6ee15b25b03872da298a90c993a1b8b92562cfd` |
+| `evidence/m10/PX-203/TASK_CARD.md` | retained evidence | 19936 | `b25423927d52ea691424072b76bd8570d1d8e147c8d6fc1c86067de916a4efce` |
 | `evidence/m10/PX-203/after/changes-popped-out-dark.png` | retained evidence | 152684 | `fe5475e1494c4100b1d6adfefb01240595e6333487fe85f672c4fedf3e3629aa` |
 | `evidence/m10/PX-203/after/changes-popped-out-light.png` | retained evidence | 153329 | `10f76fad5100cd91c212152061e65c064b5fc9b4fcce84921ee8b4262b2dfacf` |
 | `evidence/m10/PX-203/after/dock-without-them-dark.png` | retained evidence | 402860 | `f29530dbebb3cb0f6b4c57f80f6f6c4b52f18e47136a1cefa5d03d3dd63e6b9d` |
@@ -872,7 +872,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-203/after/terminal-popped-out-dark.png` | retained evidence | 87504 | `e217b6b568ef50cd5d09e534f8b2f43a842ed312415c2950f49a177637996936` |
 | `evidence/m10/PX-203/after/terminal-popped-out-light.png` | retained evidence | 87537 | `bb6098c679ee201de1c16d04e39d394e85a38b4f35ece7b9028d0c75e4e934da` |
 | `evidence/m10/PX-203/desktop-e2e-full-results.txt` | retained evidence | 42246 | `e59968bfa4483367cbbfb60b2575d43b4d88a27fcc7a31b4c298c493b84dfee7` |
-| `evidence/m10/PX-203/evidence.json` | retained evidence | 7055 | `ce735f0e69938cceab6b943a457eae697c231b51caa34ff4433c685fcc341f61` |
+| `evidence/m10/PX-203/evidence.json` | retained evidence | 7321 | `ad6d7af464033452000e39c8c9c6a273fc3691747998d11ca33d00cd458f215f` |
 | `evidence/m10/PX-210/TASK_CARD.md` | retained evidence | 11615 | `493c4c60c6a94d4a062040ba472476e08b5b9c7f30116221ff5eb56dd26873f4` |
 | `evidence/m10/PX-210/after/composer-after-tab-light.png` | retained evidence | 30362 | `a7b1367df855da4288ff969ddb1a68bb03d6a4ecbbc8071ad59d0e5dddabff4d` |
 | `evidence/m10/PX-210/after/composer-long-suggestion-dark-900.png` | retained evidence | 35124 | `14ec8efa1eafc089f6f688e72fb15a75e11555cdf3e48e237cb62fdeb3f3d36f` |
