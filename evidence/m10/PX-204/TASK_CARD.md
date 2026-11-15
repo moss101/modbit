@@ -101,6 +101,6 @@ Whole desktop suite, local, macOS arm64, once (see `desktop-e2e-full-results.txt
 
 ## Limitations
 
-- The proof is local (macOS arm64); CI is recorded in `evidence.json`.
+- The proof is local (macOS arm64); CI is recorded in `evidence.json` (run 1, 43755695976: the PX-204 spec raced a window resize on Ubuntu, fixed; three other failures not in this change's paths).
 - Shift+Enter (Always allow) on the card is routed by the same `ownsKeys` check as Enter and Escape and is not driven separately in the spec.
 - The owner has not seen the screenshots. No graph status was set.

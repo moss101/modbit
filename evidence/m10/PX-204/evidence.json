@@ -75,6 +75,8 @@
  },
  "full_suite_results": "evidence/m10/PX-204/desktop-e2e-full-results.txt",
  "full_suite": "run 1: 212 passed, 1 failed (task-list.spec.ts:492, caused by this change; two assertions moved with their fact, then 2 of 2), 3 skipped",
- "ci": {},
+ "ci": {
+  "run_1": "43755695976 on 33d03e96 (draft pull request 221): passed: desktop E2E windows, packaged desktop ubuntu and windows, node on all three, protocol, cloud, supply chain, locked files, dossier, rust ubuntu. Failed: desktop E2E ubuntu: px-204-split-view.spec.ts (caused by this change: the spec clicked Close at 1100 before the shell had measured the narrower window, so two Close buttons were still drawn; it now waits for data-split=paused, and for the shell to measure 1440 before the next Alt+click) and px-202-pane-dock.spec.ts:234 (the title bar's toggles read once with no wait: the Terminal toggle was not yet drawn; not changed here, not investigated as caused by this change); desktop E2E macos: terminal-history.spec.ts:94 (the task went Waiting instead of Running; no renderer path of this change; not caused by it); packaged desktop macos: packaged-update.spec.ts:108 (the updater staged a hostile feed's update; main process, untouched here; not caused by it). rust macOS and Windows and release supply chain had not reported when the watch ended."
+ },
  "owner_review": "not yet seen"
 }

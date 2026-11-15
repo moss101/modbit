@@ -373,6 +373,8 @@ test("PX-204: two tasks side by side; keys decide only in the focused task; each
     expect(await splitDrift(page, [b, a], a)).toEqual([]);
     // Below it, split view is refused with its reason.
     await setContentSize(app, page, 1100, 800);
+    // The window has its width before the shell has measured it (CI, Linux): wait for the split to pause before closing it.
+    await expect(page.getByTestId("shell")).toHaveAttribute("data-split", "paused");
     await page.getByTestId("split-close").click();
     await expect(page.getByTestId("shell")).toHaveAttribute("data-split", "none");
     await expect(page.getByTestId("conversation")).toHaveAttribute("data-task-id", a);
@@ -382,6 +384,7 @@ test("PX-204: two tasks side by side; keys decide only in the focused task; each
     await expect(page.getByTestId("conversation")).toHaveAttribute("data-loaded", "true", { timeout: 30_000 });
     await shots(page, "split-refused-narrow");
     await setContentSize(app, page, 1440, 900);
+    await expect(page.getByTestId("shell")).toHaveAttribute("data-center-px", /^(1[0-9]{3})$/);
 
     // ---- Close leaves split view with the other task in the centre.
     await agentRow(page, b).getByTestId("agent-open").click({ modifiers: ["Alt"] });
