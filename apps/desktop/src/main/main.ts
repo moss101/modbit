@@ -1056,6 +1056,8 @@ function createAppWindow(role: WindowRole, bounds?: { width: number; height: num
   w.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   // REQ-PX-048: a window that loads again (a reload, a crash's replacement) holds none of its old terminal attachments; another window's go on.
   w.webContents.on("did-start-loading", () => void terminalHost.detachAll(contentsId));
+  // A window that is gone holds none either (a crashed renderer's input lease would otherwise outlive it).
+  w.on("closed", () => void terminalHost.detachAll(contentsId));
   if (role.kind === "pane") {
     paneWindows.set(contentsId, { win: w, ref: role.ref, title: role.title, state: role.state });
     // The page keeps the title it was given, not the document's.
@@ -1102,6 +1104,8 @@ function createAppWindow(role: WindowRole, bounds?: { width: number; height: num
     // again when it opens its panel. Pane windows are not the app window's
     // and stay open; the new renderer reads which panes they hold.
     browserHost.windowReplaced(w);
+    // Its terminal attachments end with it, before the new window attaches again (they were every attachment before PX-203).
+    void terminalHost.detachAll(contentsId);
     createAppWindow({ kind: "app" }, w.getBounds());
     w.destroy();
   };

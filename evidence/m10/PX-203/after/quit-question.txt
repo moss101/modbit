@@ -1,0 +1,11 @@
+1 task is running (shown in a pane window) and 1 background terminal is running (shown in a pane window). Quit anyway?
+
+Quitting stops the local Core that runs your tasks.
+
+Everything the Core accepted is already saved. Running tasks are suspended at their last saved step and recovered the next time you open Modbit; nothing continues while Modbit is closed. Choose whether they resume by themselves when you reopen it, or wait for you to resume them.
+
+Background terminals keep running for about a minute and then stop with the Core.
+
+The 2 pane windows close with Modbit; their panes are back in the dock when you open Modbit again.
+
+[Keep Modbit open] [Quit and resume on reopen] [Quit and leave suspended]
