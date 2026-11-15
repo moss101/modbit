@@ -2,7 +2,7 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-11-15",
+  "generated_on": "2026-11-16",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
@@ -4655,8 +4655,8 @@
     },
     {
       "path": "evidence/m10/PX-204/TASK_CARD.md",
-      "bytes": 18447,
-      "sha256": "fb743654fcbbb0a8d1d7bbb88b6910268cd2f86fbc04e650383cdef2f22cdb78"
+      "bytes": 18573,
+      "sha256": "f3ad7b14de8ff3bde0743c8748153639c47252e4c515866f3aa0ad105b4f8a11"
     },
     {
       "path": "evidence/m10/PX-204/after/split-comfortable-dark.png",
@@ -4705,8 +4705,8 @@
     },
     {
       "path": "evidence/m10/PX-204/evidence.json",
-      "bytes": 5327,
-      "sha256": "89a05505ae231df4531e86fe5f4a94687174f63eb97bd3e2cd2e1d88ea2bd53d"
+      "bytes": 6398,
+      "sha256": "1213ff2e1a83c4220bf513c5a81843e38b5d36a8b049c4f6932d6d672a44a66c"
     },
     {
       "path": "evidence/m10/PX-210/TASK_CARD.md",
