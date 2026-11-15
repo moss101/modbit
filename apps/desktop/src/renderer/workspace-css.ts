@@ -110,10 +110,18 @@ export const workspaceCss = `
 .shell-content:has(> .conv-wrap) { overflow: hidden; }
 /* Banners appear only for trouble and scroll within a capped band. */
 .conv-banners { flex: none; max-height: 22%; overflow-y: auto; }
-.conv-banners:not(:has(.banner, .state[data-kind="degraded"], .state[data-kind="error"], .state[data-kind="recovery"])) { height: 0; overflow: hidden; }
+.conv-banners:not(:has(.banner, .split-paused, .state[data-kind="degraded"], .state[data-kind="error"], .state[data-kind="recovery"])) { height: 0; overflow: hidden; }
 .conv-wrap { height: 100%; min-height: 0; display: flex; flex-direction: column; }
 .conv-wrap > :not(.conv-banners) { flex: 1 1 0; min-height: 0; }
 .conv { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+/* REQ-PX-204 (MWS-11, board C2): two tasks side by side, each a column with its own title bar; the one with the keyboard has an accent rule along its top. */
+.split-view { min-width: 0; display: flex; }
+.split-col { position: relative; flex: none; min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--mb-surface-conversation); }
+.split-col + .split-col { border-left: 1px solid var(--color-tab-border); }
+.split-col[data-focused="true"] { box-shadow: inset 0 2px 0 var(--mb-color-accent); }
+.split-col-body { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+.split-col-body > .conv { flex: 1 1 0; }
+.split-paused { margin: 0; padding: var(--mb-space-1_5) var(--mb-space-5); border-bottom: 1px solid var(--color-tab-border); }
 .conv-spacer { flex: 1 1 0; }
 .conv-density { display: inline-flex; align-items: center; gap: var(--mb-space-1); }
 .conv-density select { font: inherit; font-size: var(--mb-type-chrome-size); padding: 1px var(--mb-space-1); border: 1px solid var(--mb-color-border-control); border-radius: var(--radius-md); background: var(--mb-surface-fill); color: var(--mb-color-text); }

@@ -8,7 +8,7 @@
  * choices are buttons, reachable by keyboard like every control.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Badge, Button, trays } from "@modbit/ui";
+import { Badge, Button, useTrayStore } from "@modbit/ui";
 import type { ModeProposalInfo } from "../../shared/control-types.ts";
 import { latestSettled, modeWords, pendingOf, PROPOSAL_WINDOW_S, proposalRefusalWords, proposalTitle, secondsLeft, settledWords } from "./proposal-model.ts";
 import { useModeProposals } from "./use-mode-proposals.ts";
@@ -72,6 +72,7 @@ export interface ModeProposalDockProps {
 }
 
 export function ModeProposalDock({ sessionId, taskId, connected }: ModeProposalDockProps) {
+  const trays = useTrayStore();
   const { list, skewMs, refresh } = useModeProposals(taskId, connected);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -119,7 +120,7 @@ export function ModeProposalDock({ sessionId, taskId, connected }: ModeProposalD
     // The card is re-presented when the proposal, the busy flag or the note changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingId, busy, note, skew, decide]);
-  useEffect(() => () => trays.dismiss(TRAY_ID), []);
+  useEffect(() => () => trays.dismiss(TRAY_ID), [trays]);
   useEffect(() => {
     setNote(null);
     setDismissed(null);
