@@ -14,11 +14,27 @@ export const DOCK_MAX_COLUMNS = 2;
 /** The hairline between two columns (the panes' 1 px edge). */
 export const DOCK_GAP = 1;
 
-export type PaneState = "closed" | "open" | "minimized";
+/** Where a pane is: in the grid, minimized out of it, in a window of its own (REQ-PX-203), or closed. */
+export type PaneState = "closed" | "open" | "minimized" | "popped";
 
-export function paneStateOf(s: PanelState, kind: AppKind): PaneState {
+/**
+ * Where a task's pane is. `popped` is not stored with the dock: it is the main process's record of the pane windows open now,
+ * so a pane that is in a window is open in the dock's set too and is back in its place when the window closes (or after a quit).
+ */
+export function paneStateOf(s: PanelState, kind: AppKind, popped?: ReadonlySet<AppKind>): PaneState {
+  if (popped?.has(kind)) return "popped";
   if (!s.panes.includes(kind)) return "closed";
   return s.minimized.includes(kind) ? "minimized" : "open";
+}
+
+/** The panes in the grid less those in a window of their own: a pane is shown in one place at a time. */
+export function dockedOf(tiled: readonly AppKind[], popped: ReadonlySet<AppKind>): AppKind[] {
+  return tiled.filter((k) => !popped.has(k));
+}
+
+/** A pane popped out is open in the dock's set (so it comes back there), and not minimized. */
+export function popOutPane(s: PanelState, kind: AppKind): PanelState {
+  return openPane(s, kind);
 }
 
 /** The panes in the grid, in order: the open ones the task can show now that are not minimized. */

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import type { TerminalViewJson } from "../../preload/preload.ts";
+import type { PaneWindowKind, TerminalViewJson } from "../../preload/preload.ts";
 import type { TaskCard } from "../model.ts";
 import { ActivityApp } from "../apps/activity-app.tsx";
 import { BackgroundApp } from "../apps/background-app.tsx";
@@ -51,7 +51,12 @@ export interface AppsPanelProps {
    * a reload, another page), and the dock then says whose panes these are and is where one is opened from. Absent otherwise.
    */
   ownToggles?: { panes: readonly PaneToggle[]; onPane: (kind: AppKind) => void } | undefined;
+  /** REQ-PX-203: moves a pane to a window of its own, at about its size here. Only the panes that can stand alone draw Pop out. */
+  onPopOut?: ((kind: PaneWindowKind, size: { width: number; height: number } | undefined) => void) | undefined;
 }
+
+/** The panes that can stand in a window of their own (main decides the same list: pane-windows.ts). */
+export const POPPABLE_PANES: readonly AppKind[] = ["terminal", "changes", "files", "evidence"];
 
 /**
  * The pane dock (REQ-PX-202; DR-PX-2026-11-11-021 MWS-10; AFW-A01, AFW-I01, REQ-PX-048 for the apps): any of the task's panes
@@ -130,6 +135,14 @@ export function AppsPanel(p: AppsPanelProps) {
                       p.announce(`${APP_LABEL[kind]} is minimized. Its button in the title bar brings it back.`);
                     }}
                     onClose={() => onDock((s) => closePane(s, kind))}
+                    onPopOut={
+                      p.onPopOut && POPPABLE_PANES.includes(kind)
+                        ? () => {
+                            const r = paneEls.current.get(kind)?.getBoundingClientRect();
+                            p.onPopOut?.(kind as PaneWindowKind, r ? { width: Math.round(r.width), height: Math.round(r.height) } : undefined);
+                          }
+                        : undefined
+                    }
                     before={
                       above && both >= 2 * PANE_MIN.height ? (
                         <Splitter
