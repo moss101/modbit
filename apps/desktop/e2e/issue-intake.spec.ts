@@ -115,6 +115,9 @@ test("issue intake: New Task from an issue URL and `modbit-cli task from-issue` 
     // Desktop: an unreadable issue is a clear error and no task.
     await toNewTask(page);
     await page.getByTestId("workspace").fill(repo);
+    // MWS-12 (REQ-PX-205): the issue URL is entered from add context.
+    await page.getByTestId("home-add-context").click();
+    await page.getByTestId("menu-item-home-add-issue").click();
     await page.getByTestId("issue-url").fill("https://github.test/o/r/issues/404");
     await page.getByTestId("run").click();
     await expect(page.getByTestId("banner-error")).toContainText("FORGE_ISSUE_UNREADABLE", { timeout: 30_000 });

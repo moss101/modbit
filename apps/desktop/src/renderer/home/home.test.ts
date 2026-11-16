@@ -47,7 +47,7 @@ test("a protected write is decidable from a list; what cannot be undone, native 
     assert.match((r as { why: string }).why, /cannot be undone.*asks twice/);
   }
   assert.equal(decidableFromList(approval({ toolName: "computer.click" })).ok, false);
-  assert.equal(decidableFromList(approval({ computer: {} as DockApprovalView["computer"] })).ok, false);
+  assert.equal(decidableFromList(approval({ computer: {} as NonNullable<DockApprovalView["computer"]> })).ok, false);
   assert.equal(decidableFromList(approval({ toolName: "task.budget.raise" })).ok, false);
 });
 
