@@ -176,7 +176,8 @@ input.settings-toggle.settings-toggle::after, input.settings-toggle.settings-tog
 /* MWS-12 (REQ-PX-205): home is the product's name, the composer in a tray with where the task runs attached, then what waits on
    the person and the first-run steps. The column is the conversation's (768); the tray is the chrome fill around the composer's
    14 px box, its radius concentric with the box's; every size is a token. */
-.home { height: 100%; min-height: 0; overflow: auto; display: flex; justify-content: center; padding: 0 var(--mb-space-5) var(--mb-space-6); box-sizing: border-box; }
+/* Where scroll bars take room (a mouse, Windows, Linux), a gutter on both edges keeps the column centred whether or not home scrolls. */
+.home { height: 100%; min-height: 0; overflow: auto; scrollbar-gutter: stable both-edges; display: flex; justify-content: center; padding: 0 var(--mb-space-5) var(--mb-space-6); box-sizing: border-box; }
 .home-col { width: 100%; max-width: var(--mb-column); margin-top: 15vh; }
 .home-head { display: flex; align-items: center; margin: 0 0 var(--mb-space-3); padding: 0 var(--mb-space-1_5); }
 .home-brand { margin: 0; font-size: calc(var(--ui-font-size) + 10px); line-height: 1.2; font-weight: 600; letter-spacing: -0.015em; color: var(--mb-color-text); }
