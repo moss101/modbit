@@ -222,6 +222,12 @@ function PaletteBody({ items, onClose, announce, input, pending, search }: { ite
                   </span>
                   {(item.disabled ?? item.detail) && <span className="palette-detail">{item.disabled ? `unavailable: ${item.disabled}` : item.detail}</span>}
                   {item.chord && <Kbd chord={item.chord} />}
+                  {/* MWS-11: the task's second action, on the highlighted row; Alt+click on the row does the same. */}
+                  {i === at && item.runAlt && !item.disabled && (
+                    <span className="palette-row-action" data-testid="palette-split-action">
+                      <Kbd chord="alt+enter" /> Open in split view
+                    </span>
+                  )}
                 </div>
               );
             })}
@@ -246,11 +252,6 @@ function PaletteBody({ items, onClose, announce, input, pending, search }: { ite
         <span className="palette-hint">
           <Kbd>↵</Kbd> open
         </span>
-        {activeItem?.runAlt && !activeItem.disabled && (
-          <span className="palette-hint" data-testid="palette-hint-split">
-            <Kbd chord="alt+enter" /> open in split view
-          </span>
-        )}
         <span className="palette-scope" data-testid="palette-scope">
           Searches {scope}
         </span>

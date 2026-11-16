@@ -4,7 +4,9 @@
  * conversation is found by text inside it (text only the model wrote) and opens at the row it is in; a file of the open task's
  * folder is found by its name and opens in the Files pane with its text; a command is found by its label and runs. One query
  * shows all four kinds, each under its heading, in order; the arrows, Home and End move through them; Escape closes and focus
- * returns where it was; Alt+Enter opens a task in split view; nothing found says what was searched.
+ * returns where it was; nothing found says what was searched. A task row has a second action, Open in split view (MWS-11,
+ * the item PX-204 left out): shown on the highlighted task row, Alt+Enter takes PX-204's own split entry (the shown task left,
+ * the chosen one right with the keyboard), and PX-204's refusals hold (a third task, a window too narrow for two).
  *
  * Fail conditions, each with a retained mutation that the check is shown to catch:
  *  - a file outside the open task's folder is offered: every file the palette offers must be one the Core listed for the open
@@ -12,6 +14,8 @@
  *  - search text sent anywhere but the Core's search and file reads: every bridge call (invoke and send) after the palette is
  *    first used is logged with its arguments, and none but `conversation:search`, `files:list` and `files:read` may carry
  *    what was typed.
+ *  - a split opened from the palette that is not PX-204's (columns swapped, keyboard elsewhere): `splitDrift`, shown failing
+ *    on the columns drawn the other way round.
  * The log is a tap on the main process's handlers added by the test (as in PX-201); the product is not changed.
  * With MODBIT_SHOTS_DIR set the same run writes the evidence screenshots.
  */
@@ -28,6 +32,8 @@ const GOAL_A = "Tidy the files of the px209 ledger";
 const GOAL_B = "Draft the beta summary";
 const SAID_A = "Done. The quokka ledger reconciles now; I left the widget alone.";
 const SAID_B = "The summary is drafted.";
+const GOAL_C = "Sweep the gamma chores";
+const SAID_C = "Swept.";
 const WIDGET = "src/deep/px209widget.ts";
 const WIDGET_TEXT = "export const widget = 209;\n";
 const OUTSIDE = "px209-outside.txt";
@@ -154,6 +160,16 @@ async function openPalette(page: Page, query = ""): Promise<void> {
 
 const option = (page: Page, kind: string) => page.locator(`[data-testid="palette-option"][data-kind="${kind}"]`);
 const groupsShown = (page: Page) => page.getByTestId("palette-group").evaluateAll((els) => els.map((e) => e.getAttribute("data-group")));
+/** Where a split opened from the palette differs from PX-204's rule (empty when it does not): shown task left, chosen right with the keyboard. */
+async function splitDrift(page: Page, shown: string, chosen: string): Promise<string[]> {
+  const bad: string[] = [];
+  if ((await page.getByTestId("shell").getAttribute("data-split")) !== "shown") bad.push("split view is not shown");
+  const cols = await page.getByTestId("split-column").evaluateAll((els) => els.map((e) => ({ id: e.getAttribute("data-task-id"), focused: e.getAttribute("data-focused") === "true" })));
+  if (cols.length !== 2) return [...bad, `${cols.length} columns`];
+  if (cols[0]!.id !== shown || cols[1]!.id !== chosen) bad.push(`the columns are ${cols[0]!.id} | ${cols[1]!.id}, not the shown task then the chosen one`);
+  if (!cols.some((c) => c.id === chosen && c.focused)) bad.push("the keyboard is not on the chosen task");
+  return bad;
+}
 const activeIndex = (page: Page) => page.getByTestId("palette-option").evaluateAll((els) => els.findIndex((e) => e.getAttribute("data-active") === "true"));
 
 async function expectActiveIsDescendant(page: Page): Promise<void> {
@@ -183,7 +199,7 @@ test("PX-209: one search in the palette finds a task by title, a conversation by
   // Each task says its piece once and completes.
   const model = await routedModel((goal, results): ModelPart[] => {
     if (results > 0) return ["Nothing further."];
-    const said = goal.includes("px209 ledger") ? SAID_A : goal.includes("beta summary") ? SAID_B : "Nothing further.";
+    const said = goal.includes("px209 ledger") ? SAID_A : goal.includes("beta summary") ? SAID_B : goal.includes("gamma chores") ? SAID_C : "Nothing further.";
     return [said, { call: { name: "task.complete", args: { summary: said, self_review: { findings: [] } } } }];
   });
   const { app, page } = await launch(mkdtempSync(join(tmpdir(), "modbit-e2e-px209-")), { env: { MODBIT_OPENAI_BASE_URL: model.url } });
@@ -192,7 +208,9 @@ test("PX-209: one search in the palette finds a task by title, a conversation by
     await setContentSize(app, page, 1440, 900);
     await setTheme(page, "light");
 
-    // ---- Two tasks in two folders; A is open. Each has said its piece (the text the conversation search must find).
+    // ---- Three tasks, A in its own folder, B and C in another; A is open. Each has said its piece (the text the conversation search must find).
+    const taskC = await runTask(page, GOAL_C, repoB);
+    await expect(page.getByTestId("conversation").getByText(SAID_C).first()).toBeVisible({ timeout: 60_000 });
     const taskB = await runTask(page, GOAL_B, repoB);
     await expect(page.getByTestId("conversation").getByText(SAID_B).first()).toBeVisible({ timeout: 60_000 });
     const taskA = await runTask(page, GOAL_A, repoA);
@@ -348,17 +366,54 @@ test("PX-209: one search in the palette finds a task by title, a conversation by
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("help")).toHaveCount(0);
 
-    // ---- Alt+Enter on a task opens it beside the one in the centre (MWS-11), and the footer says so only where it does.
+    // ---- Open in split view (MWS-11; PX-204's left-out item): the highlighted task row shows it, and Alt+Enter takes PX-204's
+    // own split entry, so the shown task is on the left and the chosen one on the right with the keyboard.
     await openPalette(page, "beta summary");
-    await expect(page.getByTestId("palette-hint-split")).toBeVisible();
+    const taskRow = page.getByTestId("palette-option").first();
+    await expect(taskRow).toHaveAttribute("data-id", `agent:${taskB}`);
+    await expect(taskRow.getByTestId("palette-split-action")).toContainText("Open in split view");
+    await expect(page.getByTestId("palette-split-action"), "only the highlighted row shows it").toHaveCount(1);
+    await page.keyboard.press(`${MOD}+a`);
+    await page.keyboard.type("keyboard shortcuts");
+    await expect(page.getByTestId("palette-option").first()).toHaveAttribute("data-id", "help.shortcuts");
+    await expect(page.getByTestId("palette-split-action"), "no split action on a command").toHaveCount(0);
+    await page.keyboard.press(`${MOD}+a`);
+    await page.keyboard.type("beta summary");
+    await expect(page.getByTestId("palette-option").first()).toHaveAttribute("data-id", `agent:${taskB}`);
     await page.keyboard.press("Alt+Enter");
-    await expect(page.getByTestId("shell")).toHaveAttribute("data-split", "shown");
-    await expect(page.locator('[data-testid="split-column"]')).toHaveCount(2);
+    await expect(page.getByTestId("palette")).toHaveCount(0);
+    await expect.poll(() => splitDrift(page, taskA, taskB)).toEqual([]);
+    // The retained mutation: the two columns drawn the other way round is caught by the check.
+    await page.evaluate(() => {
+      const cols = [...document.querySelectorAll<HTMLElement>('[data-testid="split-column"]')];
+      const [a, b] = [cols[0]!.getAttribute("data-task-id")!, cols[1]!.getAttribute("data-task-id")!];
+      cols[0]!.setAttribute("data-task-id", b);
+      cols[1]!.setAttribute("data-task-id", a);
+    });
+    expect(await splitDrift(page, taskA, taskB)).toEqual([`the columns are ${taskB} | ${taskA}, not the shown task then the chosen one`, "the keyboard is not on the chosen task"]);
+    await page.evaluate(() => {
+      const cols = [...document.querySelectorAll<HTMLElement>('[data-testid="split-column"]')];
+      const [a, b] = [cols[0]!.getAttribute("data-task-id")!, cols[1]!.getAttribute("data-task-id")!];
+      cols[0]!.setAttribute("data-task-id", b);
+      cols[1]!.setAttribute("data-task-id", a);
+    });
+    expect(await splitDrift(page, taskA, taskB)).toEqual([]);
+    // A third task is refused with PX-204's reason, and the split is unchanged.
+    await openPalette(page, "gamma chores");
+    await expect(page.getByTestId("palette-option").first()).toHaveAttribute("data-id", `agent:${taskC}`);
+    await page.keyboard.press("Alt+Enter");
+    await expect(page.getByTestId("shell-notice")).toContainText("Split view holds two tasks");
+    expect(await splitDrift(page, taskA, taskB)).toEqual([]);
     await page.locator(`[data-testid="split-column"][data-task-id="${taskB}"]`).getByTestId("split-close").click();
     await expect(page.getByTestId("split-view")).toHaveCount(0);
-    await openPalette(page, "keyboard shortcuts");
-    await expect(page.getByTestId("palette-hint-split"), "no split hint on a command").toHaveCount(0);
-    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("conversation")).toHaveAttribute("data-task-id", taskA);
+    // A window too narrow for two is refused with PX-204's reason.
+    await setContentSize(app, page, 1100, 800);
+    await openPalette(page, "beta summary");
+    await page.keyboard.press("Alt+Enter");
+    await expect(page.getByTestId("shell-notice")).toContainText("Split view needs");
+    await expect(page.getByTestId("split-view")).toHaveCount(0);
+    await setContentSize(app, page, 1440, 900);
 
     // ---- Nothing found says what was searched.
     typed.push("zzqq nothing here");

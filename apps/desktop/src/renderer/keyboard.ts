@@ -131,7 +131,7 @@ export function isActivatable(el: Element | null): boolean {
 /** The reference card of the shortcuts, for the help panel and the docs. */
 export const SHORTCUTS: { keys: string; command: Command; what: string }[] = [
   { keys: "⌘/Ctrl+N", command: "newTask", what: "New task (focus the goal)" },
-  { keys: "/", command: "search", what: "Search: opens the command palette (so does ⌘/Ctrl+K), which finds tasks too" },
+  { keys: "/", command: "search", what: "Search: opens the command palette (so does ⌘/Ctrl+K), which finds tasks, conversation text, the open task's files and commands" },
   { keys: "a", command: "jumpAttention", what: "Open Inbox on the first item" },
   { keys: "r", command: "jumpRunning", what: "Go to a running task in the list" },
   { keys: "y", command: "approve", what: "Approve the open task's pending effect (Enter confirms an irreversible one)" },

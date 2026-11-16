@@ -473,6 +473,7 @@ pre.codeview .add { background: var(--mb-color-ok-tint); color: var(--mb-color-t
 .palette-mono { font-family: var(--mb-font-mono); font-size: var(--mb-type-mono-size); line-height: var(--mb-type-mono-line); }
 .palette-title mark { background: transparent; color: inherit; font-weight: 600; }
 .palette-detail { flex: none; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--mb-type-caption-size); line-height: var(--mb-type-caption-line); color: var(--mb-color-text-muted); }
+.palette-row-action { flex: none; display: inline-flex; align-items: center; gap: var(--mb-space-1); white-space: nowrap; font-size: var(--mb-type-caption-size); line-height: var(--mb-type-caption-line); color: var(--mb-color-text-muted); }
 .palette-empty { margin: 0; padding: var(--mb-space-3) var(--mb-space-4); font-size: var(--mb-type-chrome-size); line-height: var(--mb-type-chrome-line); color: var(--mb-color-text-muted); }
 .palette-foot { flex: none; display: flex; align-items: center; gap: var(--mb-space-4); min-height: 40px; padding: var(--mb-space-1) var(--mb-space-4); border-top: 1px solid var(--mb-color-border); font-size: var(--mb-type-caption-size); line-height: var(--mb-type-caption-line); color: var(--mb-color-text-muted); }
 .palette-hint { flex: none; display: inline-flex; align-items: center; gap: var(--mb-space-1); white-space: nowrap; }
