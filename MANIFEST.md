@@ -1,7 +1,7 @@
 # Modbit Dossier Manifest — V3.3 EPR v1.1
 
 > **Authority date:** 2026-09-05  
-> **Generated:** 2026-11-16 by `tools/build_manifest.py`  
+> **Generated:** 2026-11-17 by `tools/build_manifest.py`  
 > **Scope:** every specification file in `docs/` plus the root governing files and tooling. The previous `99_MANIFEST.md` covered only 39 Part 2 files; this manifest covers all 97 docs.
 > **Machine-readable twin:** `manifest.json` (same content, same hashes).
 
@@ -906,7 +906,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-205/ci-run-43821013355.json` | retained evidence | 65329 | `666ac9f738d878ad127054fd2f94e33c363b1a7bcbeb1a4d9b53fb05582c902f` |
 | `evidence/m10/PX-205/desktop-e2e-full-results.txt` | retained evidence | 42301 | `06218b382a9448ca492096250e7ce82608196c45925bb10a2c67adf4b99a017b` |
 | `evidence/m10/PX-205/evidence.json` | retained evidence | 7774 | `a0cfe49c794c0b3cb25e04707a00af8db23f185e4e2d0df64fa03cbb8de18779` |
-| `evidence/m10/PX-206/TASK_CARD.md` | retained evidence | 21959 | `d5e6fc8587b5387ab01e6fdec395fac467d72834d8d8e50d2661391db7ff376e` |
+| `evidence/m10/PX-206/TASK_CARD.md` | retained evidence | 22646 | `af5fad5918086bb9482fe2e75a6793d5be05cf6b8a39418d6210e33401b0658b` |
 | `evidence/m10/PX-206/after/inbox-after-restart-comfortable-dark.png` | retained evidence | 293801 | `054e3d11577c4b7e44a73de8d0e60f98f9dca512fc8c68418e176ae51fb62783` |
 | `evidence/m10/PX-206/after/inbox-after-restart-comfortable-light.png` | retained evidence | 294290 | `c7845bb771d754fc2295b8f6a85b982dce0d7a8d5abf7b92736eb0f00dfff9e5` |
 | `evidence/m10/PX-206/after/inbox-after-restart-compact-dark.png` | retained evidence | 275254 | `93d8e57f4294c875a57859280aa792662ae5518f14d8b20e5e2d2efa44e57d3c` |
@@ -928,7 +928,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-206/after/inbox-updates-read-unread-compact-dark.png` | retained evidence | 203686 | `15fb42910f330f25c39ab5d52d2a6aeb46ddf3ea21bf0722bebae8b3c110fd7b` |
 | `evidence/m10/PX-206/after/inbox-updates-read-unread-compact-light.png` | retained evidence | 203914 | `e5eef49772bb6ac6143851112a901c0046129dd3f2d19ec01be8144908e4c0f4` |
 | `evidence/m10/PX-206/desktop-e2e-full-results.txt` | retained evidence | 2179 | `2d76c317ecf5582a468ade8f25ca0329dfd6a14b36a8f98d80f269d27def6534` |
-| `evidence/m10/PX-206/evidence.json` | retained evidence | 7640 | `973365078e012df4e9c2dc19af47b3a6bc542a3ca415cbe3a900af7893a91e31` |
+| `evidence/m10/PX-206/evidence.json` | retained evidence | 9663 | `084c3f6e33fa5b542c88d6130d184ec2357d6851b9abbbe941e53d9f1f695967` |
 | `evidence/m10/PX-210/TASK_CARD.md` | retained evidence | 11615 | `493c4c60c6a94d4a062040ba472476e08b5b9c7f30116221ff5eb56dd26873f4` |
 | `evidence/m10/PX-210/after/composer-after-tab-light.png` | retained evidence | 30362 | `a7b1367df855da4288ff969ddb1a68bb03d6a4ecbbc8071ad59d0e5dddabff4d` |
 | `evidence/m10/PX-210/after/composer-long-suggestion-dark-900.png` | retained evidence | 35124 | `14ec8efa1eafc089f6f688e72fb15a75e11555cdf3e48e237cb62fdeb3f3d36f` |
