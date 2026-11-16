@@ -92,6 +92,11 @@ export function Shell({ app }: { app: AppState }) {
   // AUT-E03: a task an automation created lives in the run's own session; its session id is the Core's (ListAutomationRuns by task).
   const [runSessions, setRunSessions] = useState<Record<string, string>>({});
   const [inboxOpen, setInboxOpen] = useState(false);
+  const [inboxFocus, setInboxFocus] = useState(0);
+  // A request to focus Inbox's first item belongs to one opening of the page.
+  useEffect(() => {
+    if (!inboxOpen) setInboxFocus(0);
+  }, [inboxOpen]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsQuery, setSettingsQuery] = useState("");
   const [settingsSection, setSettingsSection] = useState<string | null>(null);
@@ -287,7 +292,8 @@ export function Shell({ app }: { app: AppState }) {
     else {
       closePages();
       setInboxOpen(true);
-      setTimeout(() => document.querySelector<HTMLElement>('[data-testid="attention-item"]')?.focus(), 0);
+      // Inbox focuses its first item once it has read the Core's lists (REQ-PX-206).
+      setInboxFocus((n) => n + 1);
     }
     // Each request is acted on once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -877,7 +883,7 @@ export function Shell({ app }: { app: AppState }) {
               <Customize connected={core.state === "connected"} sessionId={model.sessionId} taskId={conversation?.taskId ?? selectedTaskId ?? [...model.tasks.keys()][0] ?? null} onClose={() => setCustomizeOpen(false)} />
             </div>
           ) : inboxOpen ? (
-            <Inbox app={app} onOpenTask={(id) => openConversation(id)} onNotificationSettings={() => actions.focusSettingsSection("notification-preferences")} />
+            <Inbox app={app} onOpenTask={(id) => openConversation(id)} onNotificationSettings={() => actions.focusSettingsSection("notification-preferences")} focusRequest={inboxFocus} />
           ) : automationsOpen ? (
             <div className="autos-scroll" data-testid="automations-region">
               <Automations connected={core.state === "connected"} onOpenTask={(id) => openConversation(id)} onClose={() => setAutomationsOpen(false)} />

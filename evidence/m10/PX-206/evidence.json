@@ -1,0 +1,101 @@
+{
+ "task": "PX-206",
+ "requirements": [
+  "REQ-PX-206",
+  "QUAL-PX-206",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-206"
+ ],
+ "scenarios": [
+  "QUAL-PX-206 / PX-E2E-206"
+ ],
+ "decision_record": "DR-PX-2026-11-11-021 (MWS-13, MWS-14's page shape, sections 7 and 9); DR-PX-2026-11-04-020 AWS-07..10 in force",
+ "tier": "release-critical",
+ "branch": "wip/desktop-2-inbox",
+ "base": "origin/main 1a8298f5 (PX-198..205)",
+ "status": "built and proven locally on macOS arm64; not sealed (graph.py was not run: sealing is not this task's)",
+ "audit": {
+  "classification": "IMPLEMENTED-PARTIAL: the Core's attention view, pending approvals, mode proposal decision, per-task read marker (MarkRead) and derived OS notifications PRODUCTION-WORKING; Inbox decided nothing, listed raw Core text, had no proposals, no persisted record of updates, no click handler on OS notifications, and its count came from the renderer store's column",
+  "first_missing_link": "nothing recorded what happened to a task while the person was elsewhere (no notice record with a time) and the OS notification had no click handler; Needs you had no data for proposals across tasks and no in-place decisions",
+  "core_audited": "crates/protocol/proto/modbit/v1/stream.proto (MarkRead, AgentHeader read_offset/last_offset/unread), services/modbit-core/src/attention.rs, transcript.rs (headers), server.rs (MarkRead: persisted ConversationRead, monotonic); no notice/update record exists in the Core; DR-021 section 7 and the doc 62 card place the record in the main process with no protocol change",
+  "traced": "Core event -> main c.onEvent -> scheduleUpdates -> GetAgentHeaders -> UpdatesRecord.observe -> inbox-updates.json; Inbox -> inbox:updates (headers re-read, read state = header read_offset >= entry offset) ; open -> inbox:markRead -> MarkRead(task, entry offset) -> requestNav task; approvals -> useDockApprovals(session) -> decideFromList(inbox) -> resolveShown(intent hash); proposals -> agentHeaders -> modeProposals(live tasks) -> decideProposal -> modeproposals:decide; renderer derives notifications -> notify:deliver -> Notification click -> notify:open -> requestNav task"
+ },
+ "bridge": {
+  "added": [
+   "inbox:updates",
+   "inbox:markRead (update id, 32 hex)",
+   "inbox:markAllRead",
+   "inbox:clear",
+   "event inbox:changed",
+   "event notify:open (task id or null)"
+  ],
+  "protocol_change": "none",
+  "rust_change": "none",
+  "csp_change": "none",
+  "webPreferences_change": "none",
+  "preload_change": "six methods (inboxUpdates, markUpdateRead, markAllUpdatesRead, clearUpdates, onInboxChanged, onNotificationOpen); PX-049 pin updated with its review note",
+  "main_change": "inbox-record.ts (UpdatesRecord under the data directory, cap 200), handlers above, click handler on delivered notifications",
+  "locked_files_changed": "none"
+ },
+ "record_shape": [
+  "id",
+  "kind",
+  "taskId",
+  "title",
+  "atMs",
+  "offset"
+ ],
+ "record_cap": 200,
+ "decided_here": {
+  "read_state": "not stored by main: the Core's read marker for the task (no second read-state owner); opening an update moves it through MarkRead",
+  "cap": "200 (the record names no number; notify:log's cap)",
+  "kinds": "READY_FOR_REVIEW, CHILD_FINISHED (subagent ready or completed), AUTOMATION_RAN (automation task ready or completed), FAILED; a state is noticed once per task",
+  "inbox_count": "tasks with an item in the Core's attention view (was the renderer store's needsAttention column)",
+  "needs_you_count": "the Core's pending approvals + its other attention items + pending proposals"
+ },
+ "left_out": [
+  "Always allow on Inbox's cards (a second path into rule-making; open the task)",
+  "answering questions in place (they open their task)",
+  "a reason line on updates (the record holds no text)",
+  "an inbox icon (no Lucide copy to generate it; shield-check kept)",
+  "a completed top-level task as an update"
+ ],
+ "tests": [
+  "apps/desktop/e2e/px-206-inbox.spec.ts",
+  "apps/desktop/src/main/inbox-record.test.ts",
+  "apps/desktop/src/renderer/approvals/inbox-model.test.ts",
+  "apps/desktop/e2e/attention.spec.ts",
+  "apps/desktop/e2e/states.spec.ts",
+  "apps/desktop/e2e/workers.spec.ts",
+  "apps/desktop/src/main/hardening-guard.test.ts"
+ ],
+ "unit": "@modbit/desktop 443 of 443 (+7 inbox-record.test.ts, +6 inbox-model.test.ts); @modbit/ui 11 of 11; pnpm typecheck clean",
+ "proof": "e2e/px-206-inbox.spec.ts 1 of 1 locally against the real app and a real Core (see TASK_CARD.md Verification)",
+ "retained_mutations": [
+  "a destructive effect resolved through the bridge while Inbox showed it: destructiveDecidedFromInbox fails; decideFromList(inbox) refuses Destructive approve and skip in inbox-model.test.ts with nothing reaching the bridge",
+  "a record copy with text beside an entry: recordDrift fails (extra field and transcript text); inbox-record.test.ts: a header with the assistant's last line leaves nothing of it, a file with text/reason is read back without them",
+  "Inbox's count drawn from the renderer's own list: countDrift fails; inbox-model.test.ts: a store column of 1 against a Core count of 0",
+  "a button nobody proves added to Inbox's head: inertControls fails"
+ ],
+ "removed_test_ids": [
+  "notifications",
+  "notification",
+  "notification-open"
+ ],
+ "removed_checks": [],
+ "changed_checks": "see TASK_CARD.md 'Assertions deleted, replaced or changed' (attention.spec.ts, states.spec.ts x6, workers.spec.ts allow list, hardening-guard preload pin)",
+ "screenshots": "after/*.png: the running app against a real Core at 1440 x 900 (captured at 2x), written by e2e/px-206-inbox.spec.ts with MODBIT_SHOTS_DIR set, comfortable and compact, light and dark. inbox-needs-you-*: three approvals (two protected writes, one destructive) and a proposal with its seconds left, one unread update. inbox-updates-read-unread-*: the destructive card, a proposal, an unread and a read update. inbox-destructive-*: Needs you with the destructive card. inbox-destructive-opens-task-*: the destructive task opened from Inbox, its card on the second step. inbox-after-restart-*: Inbox after the app was closed and launched again.",
+ "build_digest": {
+  "dist/renderer/index.js": "sha256:ee264100f6e7b3292589ff48d2f64abdf8574423eb6ab5d5129a4370ca5dbff8",
+  "dist/renderer/app.css": "sha256:b6452a4c75dcaf4526a2c718a5d17c1486425d2ab3d8e38bf40648b526fc3177",
+  "dist/preload/preload.cjs": "sha256:6baa4a1ae337ed809a27ee30cbd517d1b60321d73f84182a05c2f723a5e5d9de",
+  "dist/main/main.cjs": "sha256:6d9a2a742cb2e5f36c7bfcfcf6f5f35b8b591de7021f052fda6efd5882ffe89d",
+  "note": "the final build (the reruns used it); the screenshots and the whole-suite run used the build before the Inbox focus fix (renderer index.js sha256:50918e39...; app.css, preload and main identical)"
+ },
+ "core_binary": {
+  "path": "research/desktop-2/bin/modbit-core (prebuilt from main's Rust; not in the repository)",
+  "sha256": "c5ec630a2c92680ceaccf3dc72a663ecf0e3f369c3e1309e146a691807234fcb"
+ },
+ "full_suite_results": "evidence/m10/PX-206/desktop-e2e-full-results.txt",
+ "full_suite": "run 1: 206 passed, 10 failed, 3 skipped. Five were specs moved by this change but edited after the run loaded them (attention:67, states:135/286/366, workers:149); two were caused by this change and fixed (keyboard:80, task-list:492: the a shortcut focused before Inbox had read the Core's lists); three were the environment (shell:25, win06:42/65: no target/debug/modbit-core; the prebuilt was linked there, git-ignored). On the final build those eight files plus px-206: 23 passed, 1 skipped. The whole suite was not run a second time.",
+ "ci": {}
+}

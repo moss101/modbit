@@ -54,11 +54,13 @@ export interface InboxProps {
   onOpenTask: (taskId: string) => void;
   /** Opens Settings at the notification preferences. */
   onNotificationSettings: () => void;
+  /** A count that rises each time the first item should take the focus (the `a` shortcut); honoured once an item is drawn. */
+  focusRequest?: number;
 }
 
 type Note = { kind: "ok" | "refused"; text: string };
 
-export function Inbox({ app, onOpenTask, onNotificationSettings }: InboxProps) {
+export function Inbox({ app, onOpenTask, onNotificationSettings, focusRequest = 0 }: InboxProps) {
   const { attentionItems, model, core, refreshAttention } = app;
   const connected = core.state === "connected";
   const sessionId = model.sessionId;
@@ -165,6 +167,20 @@ export function Inbox({ app, onOpenTask, onNotificationSettings }: InboxProps) {
     },
     [updates, onOpenTask],
   );
+
+  // The `a` shortcut asks for the first item; the lists arrive from the Core after the page opens, so the request waits for one (up to 5 s).
+  const [focusWanted, setFocusWanted] = useState<{ n: number; at: number } | null>(null);
+  useEffect(() => {
+    if (focusRequest > 0) setFocusWanted({ n: focusRequest, at: Date.now() });
+  }, [focusRequest]);
+  useEffect(() => {
+    if (!focusWanted) return;
+    const first = document.querySelector<HTMLElement>('[data-testid="inbox"] [data-testid="attention-item"]');
+    if (first) {
+      first.focus();
+      setFocusWanted(null);
+    } else if (Date.now() - focusWanted.at > 5000) setFocusWanted(null);
+  });
 
   const showNeeds = view !== "updates";
   const showUpdates = view !== "needs";

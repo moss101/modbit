@@ -1,0 +1,18 @@
+# Run 1: whole desktop suite, macOS arm64, prebuilt Core sha256 c5ec630a..., build before the Inbox focus fix and before five specs were moved
+  1) e2e/attention.spec.ts:67:1 › attention: a start refused for capacity is an item from the Core and clears when the task starts 
+  2) e2e/keyboard.spec.ts:80:1 › keyboard: every screen by keyboard only — shortcuts, list and review navigation, confirmed approval and cancellation, focus retained across Core events, live announcements, the accessibility suite on each screen 
+  3) e2e/shell.spec.ts:25:1 › DR-PX-2026-11-04-020: started the way `pnpm start` starts it, the app finds the Core with no override 
+  4) e2e/states.spec.ts:135:1 › screen states: provider down, human continuation, review gate and a denied then opened pull request; notifications coalesce, deep-link and honour opt-in and quiet hours 
+  5) e2e/states.spec.ts:286:1 › screen states: a Core that dies before committing a tool outcome comes back reconciling — degraded, recovery, then the task's unknown outcome with its evidence; the restart notifies 
+  6) e2e/states.spec.ts:366:1 › task workspace: awaiting your answer (the agent's typed question) and awaiting approval with the exact intent, decided in the conversation; the reasons notify and coalesce 
+  7) e2e/task-list.spec.ts:492:1 › PX-199: the keyboard alone reaches every row, pins, archives with undo and opens the preview card; the card opens on rest too, reads only what the list holds, and opens its task 
+  8) e2e/win06-platform.spec.ts:42:1 › WIN-06: the Core starts from a path with spaces and non-ASCII characters 
+  9) e2e/win06-platform.spec.ts:65:1 › WIN-06: under OS forced colors the shell stays legible and its surfaces stay opaque 
+  10) e2e/workers.spec.ts:149:1 › renderer compromise (REQ-EV-0075): the app's renderer holds no secret, no Node, no socket; the bridge is typed requests only; the Core refuses what the renderer cannot vouch for; a foreign window with the same bridge is refused by main and audited 
+  10 failed
+  3 skipped
+  206 passed (28.1m)
+
+# Rerun on the final build: the ten failed specs' files plus px-206
+  1 skipped
+  23 passed (1.6m)
