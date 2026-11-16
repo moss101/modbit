@@ -258,7 +258,7 @@ test("PX-206 Inbox: Needs you decides approvals and proposals, a destructive eff
   const env = { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_CAPACITY: "model=8,provider=8" };
   const record = join(dataDir, "inbox-updates.json");
   let { app, page } = await launch(dataDir, { env });
-  const send = async (goal: string, plan = false, where = repo): Promise<string> => {
+  const send = async (goal: string, plan = false, where = repo, start = true): Promise<string> => {
     await toNewTask(page);
     await page.getByTestId("goal").fill(goal);
     await page.getByTestId("workspace").fill(where);
@@ -267,7 +267,8 @@ test("PX-206 Inbox: Needs you decides approvals and proposals, a destructive eff
       await page.getByTestId("menu-item-plan").click();
       await expect(page.getByTestId("home-mode")).toHaveAttribute("data-mode", "PLAN");
     }
-    await page.getByTestId("run").click();
+    if (start) await page.getByTestId("run").click();
+    else await page.getByTestId("goal").press("Alt+Enter");
     return conversationTask(page);
   };
   try {
@@ -342,9 +343,12 @@ test("PX-206 Inbox: Needs you decides approvals and proposals, a destructive eff
         await expect(cards).toHaveCount(3);
       });
     }
-    ids[SWITCH] = await send(SWITCH, true);
-    ids[KEEP] = await send(KEEP, true);
+    // Both are created in Plan without starting (Alt+Enter), then started together while Inbox is open: the Core's 15 s run from there.
+    ids[SWITCH] = await send(SWITCH, true, repo, false);
+    ids[KEEP] = await send(KEEP, true, repo, false);
+    for (const t of [ids[SWITCH]!, ids[KEEP]!]) expect(await page.evaluate((x) => window.modbit.composerPosture(x).then((p) => p.mode), t)).toBe("PLAN");
     await showInbox(page);
+    await page.evaluate(([s, a, b]) => Promise.all([window.modbit.startTask(s!, a!), window.modbit.startTask(s!, b!)]), [sid, ids[SWITCH], ids[KEEP]]);
     const switchRow = page.locator(`[data-testid="inbox-proposal"][data-task-id="${ids[SWITCH]}"]`);
     const keepRow = page.locator(`[data-testid="inbox-proposal"][data-task-id="${ids[KEEP]}"]`);
     await expect(switchRow).toBeVisible({ timeout: 60_000 });
