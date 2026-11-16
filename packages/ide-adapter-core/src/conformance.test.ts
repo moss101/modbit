@@ -41,6 +41,7 @@ const CLIENTS = [
       { file: "src/main/update/service.ts", specifier: "node:fs", why: "M10.2: reads the pending-update and rollback state under the app's own data dir; never a workspace file" },
       { file: "src/main/update/apply-helper.ts", specifier: "node:fs", why: "M10.2: replaces the installed app bundle and restores the old one if the new cannot be installed; never a workspace file" },
       { file: "src/main/browser-policy.ts", specifier: "node:fs", why: "PX-120: the browser target allow-list the person edits, a JSON file under the app's own data dir; never a workspace file" },
+      { file: "src/main/inbox-record.ts", specifier: "node:fs", why: "PX-206: Inbox's capped record of updates (ids, kind, title, time, offset), a JSON file under the app's own data dir; never a workspace file" },
     ],
   },
   { root: join(repoRoot, "packages", "vscode-adapter"), allow: [] },
