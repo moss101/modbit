@@ -8,7 +8,8 @@
  * summary shows.
  */
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { trays } from "@modbit/ui";
+import { useTrayStore, type TrayStore } from "@modbit/ui";
+import type { ReactNode } from "react";
 import type { AccountingInfo } from "../../shared/control-types.ts";
 import type { TaskEconomicsSummary } from "../../preload/preload.ts";
 import { budgetBars, categoryLabel, CATEGORY_LABELS, formatCount, formatWall, nearLimit, percentUsed, ringLabel, ringLevel, shareLabel, sumsToTotal, usageVisible, type UsageSetting } from "./model.ts";
@@ -217,8 +218,11 @@ export interface ContextTray {
   toggle: () => void;
 }
 
-/** How the one mounted host docks the tray with the numbers it holds; null while no conversation is open. */
-let dock: (() => void) | null = null;
+/**
+ * How the host mounted for a tray store docks the tray with the numbers it holds; none while no conversation is open there.
+ * One per store: two tasks side by side (REQ-PX-204) each dock their own breakdown above their own composer.
+ */
+const docks = new WeakMap<TrayStore<ReactNode>, () => void>();
 
 /**
  * The tray's owner, mounted once per open conversation with the Core's numbers: it docks the breakdown when asked and keeps a
@@ -227,32 +231,34 @@ let dock: (() => void) | null = null;
  */
 export function ContextTrayHost({ taskId, accounting, economics }: { taskId: string; accounting: AccountingInfo | null; economics: TaskEconomicsSummary | null }) {
   const [setting, setSetting] = useState<UsageSetting>(loadUsageSetting);
+  const trays = useTrayStore();
   const snap = useSyncExternalStore(trays.subscribe, trays.getSnapshot, trays.getSnapshot);
   const open = snap.trays.some((t) => t.id === TRAY_ID);
   const set = useCallback((s: UsageSetting) => {
     setSetting(s);
     saveUsageSetting(s);
   }, []);
-  const present = useCallback(() => trays.present({ id: TRAY_ID, tone: "info", title: `Context: ${ringLabel(accounting)}`, priority: 10, body: <ContextBreakdown accounting={accounting} economics={economics} setting={setting} onSetting={set} /> }), [accounting, economics, setting, set]);
+  const present = useCallback(() => trays.present({ id: TRAY_ID, tone: "info", title: `Context: ${ringLabel(accounting)}`, priority: 10, body: <ContextBreakdown accounting={accounting} economics={economics} setting={setting} onSetting={set} /> }), [trays, accounting, economics, setting, set]);
   // While the tray is docked it follows the numbers.
   useEffect(() => {
     if (open) present();
   }, [open, present]);
   useEffect(() => {
-    dock = present;
+    docks.set(trays, present);
     return () => {
-      if (dock === present) dock = null;
+      if (docks.get(trays) === present) docks.delete(trays);
     };
-  }, [present]);
-  useEffect(() => () => trays.dismiss(TRAY_ID), [taskId]);
+  }, [trays, present]);
+  useEffect(() => () => trays.dismiss(TRAY_ID), [trays, taskId]);
   return null;
 }
 
 /** Whether the breakdown is docked, and its toggle: for the ring and for the details rail's Context row. */
 export function useContextTray(): ContextTray {
+  const trays = useTrayStore();
   const snap = useSyncExternalStore(trays.subscribe, trays.getSnapshot, trays.getSnapshot);
   const open = snap.trays.some((t) => t.id === TRAY_ID);
-  return { open, toggle: () => (open ? trays.dismiss(TRAY_ID) : dock?.()) };
+  return { open, toggle: () => (open ? trays.dismiss(TRAY_ID) : docks.get(trays)?.()) };
 }
 
 /** The context ring for the open task from the Core's numbers the caller already reads: it shows the usage and docks the breakdown tray on a click. */

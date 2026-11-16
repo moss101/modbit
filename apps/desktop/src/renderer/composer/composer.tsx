@@ -18,7 +18,7 @@
  * sent without the person pressing send.
  */
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Button, Icon, IconButton, Kbd, Menu, trays, useLayer, type IconName, type MenuItem } from "@modbit/ui";
+import { Button, Icon, IconButton, Kbd, Menu, useLayer, useTrayStore, type IconName, type MenuItem } from "@modbit/ui";
 import type { AttachmentResult, TaskModeId } from "../../shared/composer-types.ts";
 import { MAX_ATTACHMENTS_PER_MESSAGE, MAX_ATTACHMENT_BYTES } from "../../shared/attachments.ts";
 import type { TaskCard } from "../model.ts";
@@ -64,6 +64,7 @@ import {
 import { useCatalog, useComposerCore, useSlashInventory } from "./use-composer-core.ts";
 import { MentionMenu, SlashMenuView, useMentionSources, useSlashItems, type MentionOption } from "./menus.tsx";
 import { ModelPicker, type PickerChoice } from "./model-picker.tsx";
+import { useLandmarkName } from "../landmark.ts";
 import { EducationTray, PolicyTray, QueueTray, SendBehaviorPanel, SideQuestionPanel, StoppedTray, TerminalsChip, TerminalsTray } from "./trays.tsx";
 
 export const MODE_ICON: Record<TaskModeId, IconName> = { AGENT: "infinity", PLAN: "list-tree", DEBUG: "bug", MULTITASK: "layers", ASK: "circle-question-mark" };
@@ -113,6 +114,9 @@ interface PolicyState {
 export function Composer(props: ComposerProps) {
   const { taskId, sessionId, connected, card, approvalPending, lastUserText, hasMessages, onResume, onNewTask, onOpenTerminal } = props;
   const core = useComposerCore(taskId, connected);
+  // The tray store of this task's conversation (REQ-PX-204): in split view each composer's queue docks above its own box.
+  const trays = useTrayStore();
+  const named = useLandmarkName();
   const [store, setStore] = useState<ComposerStore>(() => loadStore(storage()));
   const initial = store.drafts[taskId];
   const [text, setText] = useState(initial?.text ?? "");
@@ -488,7 +492,7 @@ export function Composer(props: ComposerProps) {
       // Nothing of the composer's is open: leave the message box for the conversation, so the keyboard is never trapped.
       e.preventDefault();
       e.nativeEvent.stopPropagation();
-      document.querySelector<HTMLElement>('[data-testid="conv-scroll"]')?.focus();
+      (e.currentTarget.closest('[data-testid="conversation"]') ?? document).querySelector<HTMLElement>('[data-testid="conv-scroll"]')?.focus();
       return;
     }
     const act = enterAction(e.nativeEvent, isMac());
@@ -630,12 +634,12 @@ export function Composer(props: ComposerProps) {
     () => () => {
       for (const id of [TRAY_QUEUE, TRAY_POLICY]) trays.dismiss(id);
     },
-    [],
+    [trays],
   );
 
   if (ended) {
     return (
-      <section className="conv-composer cmp" aria-label="Composer" data-testid="composer-region" data-state="ended">
+      <section className="conv-composer cmp" aria-label={named("Composer")} data-testid="composer-region" data-state="ended">
         <p className="meta" data-testid="composer-ended">
           This task has {state === "Completed" ? "completed" : state === "Failed" ? "failed" : "been cancelled"}, so it takes no more messages.
         </p>
@@ -649,7 +653,7 @@ export function Composer(props: ComposerProps) {
   return (
     <section
       className="conv-composer cmp"
-      aria-label="Composer"
+      aria-label={named("Composer")}
       data-testid="composer-region"
       data-mode={shownMode}
       data-running={running}

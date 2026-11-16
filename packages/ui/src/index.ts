@@ -15,6 +15,6 @@ export { Menu, type MenuItem, type MenuProps } from "./menu.tsx";
 export { Dialog, type DialogProps } from "./dialog.tsx";
 export { Tabs, type TabDef, type TabsProps } from "./tabs.tsx";
 export { List, Row, type RowProps } from "./list.tsx";
-export { TrayHost } from "./tray.tsx";
+export { TrayHost, TrayStoreContext, useTrayStore } from "./tray.tsx";
 export { focusables, useEscapeLayers, useFocusTrap, useKeyDispatch, useKeyScope, useLayer, useOutsidePress } from "./hooks.ts";
 export { uiCss } from "./styles.ts";

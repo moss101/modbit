@@ -6,8 +6,8 @@
  * authority (docs/81): every Core effect is a typed preload call made by those
  * screens.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { TrayHost, chordMatches, isMacPlatform, useEscapeLayers, useKeyDispatch, useKeyScope, type MenuItem } from "@modbit/ui";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { TrayHost, TrayStore, chordMatches, isMacPlatform, useEscapeLayers, useKeyDispatch, useKeyScope, type MenuItem } from "@modbit/ui";
 import type { KeyScope } from "@modbit/ui/logic";
 import { GEOMETRY, THEME_LABEL, THEME_PREFERENCES, type Density, type ThemePreference } from "@modbit/design-tokens";
 import type { AppState } from "../state/use-app.ts";
@@ -43,6 +43,9 @@ import { paneView } from "./pane-view.ts";
 import type { PaneWindowKind, PaneWindowRef } from "../../preload/preload.ts";
 import { followDelivered } from "../apps/delivered.ts";
 import { ShellFrame } from "./shell-frame.tsx";
+import type { Layout } from "./layout.ts";
+import { focusedTask, openInSplit, remainingAfterClose, requestSplit, splitRefusal, SPLIT_LAYOUT, SPLIT_NEED } from "./split.ts";
+import { SplitView, type SplitColumn } from "./split-view.tsx";
 import { ShortcutHelp } from "./shortcut-help.tsx";
 import { TrayDirector } from "../context/tray-director.tsx";
 import { TopBar, type PaneToggle } from "./top-bar.tsx";
@@ -92,7 +95,8 @@ export function Shell({ app }: { app: AppState }) {
   const [settingsQuery, setSettingsQuery] = useState("");
   const [settingsSection, setSettingsSection] = useState<string | null>(null);
   // PX-046/047: the conversation open in the centre region (null = the home composer). `rowId` is a search hit to scroll to.
-  const [conversation, setConversation] = useState<{ taskId: string; rowId: string | null } | null>(null);
+  // REQ-PX-204: a split stored by the last session opens again with the task that had the keyboard in the centre.
+  const [conversation, setConversation] = useState<{ taskId: string; rowId: string | null } | null>(() => (prefs.split ? { taskId: focusedTask(prefs.split), rowId: null } : null));
   // The conversation Back left, for Forward.
   const [leftConversation, setLeftConversation] = useState<string | null>(null);
   const [headers, setHeaders] = useState<readonly AgentHeaderView[]>([]);
@@ -233,10 +237,11 @@ export function Shell({ app }: { app: AppState }) {
       closePages();
       if (conversation) setLeftConversation(conversation.taskId);
       setConversation(null);
+      setPrefs((p) => (p.split ? { ...p, split: null } : p));
       if (elsewhere) setTimeout(then, 0);
       else then();
     },
-    [reviewing, browsing, dashboardOpen, conversation, automationsOpen, inboxOpen, customizeOpen, settingsOpen, projectPage, worktreesOpen, closePages],
+    [reviewing, browsing, dashboardOpen, conversation, automationsOpen, inboxOpen, customizeOpen, settingsOpen, projectPage, worktreesOpen, closePages, setPrefs],
   );
   /** Opens a task's conversation (or, with null, the home composer). */
   const openConversation = useCallback(
@@ -244,12 +249,15 @@ export function Shell({ app }: { app: AppState }) {
       closePages();
       if (taskId === null) {
         setConversation(null);
+        setPrefs((p) => (p.split ? { ...p, split: null } : p));
         return;
       }
       setSelectedTaskId(taskId);
+      // REQ-PX-204: with two tasks side by side, a task already there takes the keyboard and another takes the focused column's place.
+      setPrefs((p) => (p.split ? { ...p, split: openInSplit(p.split, taskId) } : p));
       setConversation({ taskId, rowId: rowId ?? null });
     },
-    [closePages, setSelectedTaskId],
+    [closePages, setSelectedTaskId, setPrefs],
   );
   // REQ-PX-203: a pane window that closes hands back what it showed, and the pane is in the dock again, in its place; a pane
   // window that asks for the task's review, a call or the waiting approval has it shown here.
@@ -366,6 +374,7 @@ export function Shell({ app }: { app: AppState }) {
       else if (conversation && !reviewing && !browsing) {
         setLeftConversation(conversation.taskId);
         setConversation(null);
+        setPrefs((p) => (p.split ? { ...p, split: null } : p));
       } else void runKeyCommand("back");
     },
     setTheme: (theme) => setPrefs((p) => ({ ...p, theme })),
@@ -507,6 +516,95 @@ export function Shell({ app }: { app: AppState }) {
     if (openedHeader && !openedHeader.archived) items.push({ id: "task-archive", label: "Archive", separatorBefore: true, onSelect: () => taskActions.archive(menuTaskId) });
     return items;
   }, [menuTaskId, taskActions, openedHeader]);
+
+  // ---- REQ-PX-204 (MWS-11): split view. Two tasks side by side in the centre, one with the keyboard. The split is a view choice
+  // stored with the layout preferences; `conversation` is always the task whose column has the keyboard.
+  const split = prefs.split;
+  const pageOpen = settingsOpen || customizeOpen || inboxOpen || automationsOpen || dashboardOpen || reviewing !== null || browsing !== null || projectPage !== null || worktreesOpen;
+  const splitShown = split !== null && conversation !== null && !pageOpen && split.tasks.includes(conversation.taskId);
+  const layoutRef = useRef<Layout | null>(null);
+  // Each task in split view docks its approval card, queue and context into a tray store of its own (one task uses the app's).
+  const splitStores = useRef(new Map<string, TrayStore<ReactNode>>());
+  const storeFor = (id: string): TrayStore<ReactNode> => {
+    let s = splitStores.current.get(id);
+    if (!s) {
+      s = new TrayStore<ReactNode>();
+      splitStores.current.set(id, s);
+    }
+    return s;
+  };
+  useEffect(() => {
+    for (const id of [...splitStores.current.keys()]) if (!split?.tasks.includes(id)) splitStores.current.delete(id);
+  }, [split]);
+  // The task with the keyboard is the selected one after a reload too (the dock and the keyboard's commands follow it).
+  useEffect(() => {
+    if (prefs.split) setSelectedTaskId(focusedTask(prefs.split));
+    // Once, for the split the last session stored.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // A stored split whose task the Core no longer lists closes, with the task that is left in the centre.
+  useEffect(() => {
+    if (!split || (app.screen !== "populated" && app.screen !== "empty")) return;
+    const missing = split.tasks.filter((id) => !model.tasks.has(id) && runSessions[id] === undefined);
+    if (missing.length === 0) return;
+    const kept = split.tasks.find((id) => !missing.includes(id)) ?? null;
+    setPrefs((p) => ({ ...p, split: null }));
+    setConversation((c) => (c && missing.includes(c.taskId) ? (kept ? { taskId: kept, rowId: null } : null) : c));
+    setNotice("Split view closed: a task in it is no longer listed.");
+  }, [split, model.tasks, app.screen, runSessions, setPrefs]);
+  /** Alt+click on a row and the preview card: the task beside the one in the centre, or the reason it cannot be. */
+  const openSplit = (taskId: string) => {
+    const r = requestSplit(split, !pageOpen && conversation ? conversation.taskId : null, taskId, split?.ratio);
+    if (!r.ok) {
+      setNotice(r.reason);
+      return;
+    }
+    const l = layoutRef.current;
+    const avail = l ? l.centerPx + l.panelPx : SPLIT_NEED;
+    if (avail < SPLIT_NEED) {
+      setNotice(splitRefusal(avail));
+      return;
+    }
+    setPrefs((p) => ({ ...p, split: r.split }));
+    setSelectedTaskId(taskId);
+    setConversation({ taskId, rowId: null });
+  };
+  const focusColumn = (column: 0 | 1) => {
+    if (!split || split.focus === column) return;
+    const id = split.tasks[column];
+    setPrefs((p) => (p.split ? { ...p, split: { ...p.split, focus: column } } : p));
+    setSelectedTaskId(id);
+    setConversation({ taskId: id, rowId: null });
+  };
+  /** A column's Close: split view ends and the other task is the centre's, with the keyboard. */
+  const closeColumn = (column: 0 | 1) => {
+    if (!split) return;
+    const rest = remainingAfterClose(split, column);
+    setPrefs((p) => ({ ...p, split: null }));
+    setSelectedTaskId(rest);
+    setConversation({ taskId: rest, rowId: null });
+    setTimeout(() => document.querySelector<HTMLElement>('[data-testid="conversation"] [data-testid="conv-scroll"]')?.focus(), 0);
+  };
+  /** A task's title menu (pin, archive), for the single view's title and each column's. */
+  const taskMenuOf = (id: string): MenuItem[] | undefined => {
+    if (!taskActions) return undefined;
+    const pinned = taskActions.pins.includes(id);
+    const items: MenuItem[] = [{ id: "task-pin", label: pinned ? "Unpin" : "Pin", onSelect: () => (pinned ? taskActions.unpin(id) : taskActions.pin(id)) }];
+    const h = headers.find((x) => x.taskId === id);
+    if (h && !h.archived) items.push({ id: "task-archive", label: "Archive", separatorBefore: true, onSelect: () => taskActions.archive(id) });
+    return items;
+  };
+  /** The pane toggles of a column's task: the panes it can show and where each is. A toggle gives its column the keyboard (the dock follows the focused task) and opens or closes the pane. */
+  const togglesOf = (id: string): PaneToggle[] => {
+    const st = prefs.panelByTask[id] ?? EMPTY_DOCK;
+    const pop = new Set<AppKind>(paneWindows.filter((w) => w.taskId === id).map((w) => w.kind));
+    return panesOf(artifactsOf(model.tasks.get(id), artifactCtx)).map((kind) => ({ kind, open: paneStateOf(st, kind, pop) === "open", state: paneStateOf(st, kind, pop) }));
+  };
+  const onColumnPane = (column: 0 | 1, id: string, kind: AppKind) => {
+    focusColumn(column);
+    if (paneWindows.some((w) => w.taskId === id && w.kind === kind)) void window.modbit.focusPaneWindow(id, kind as PaneWindowKind);
+    else setPanelState(id, (s) => togglePane(s, kind));
+  };
   // REQ-PX-049: what the Core recovered at start, as counts of its own task states, shown once its snapshot and attention list are in.
   const [recoveryNote, setRecoveryNote] = useState<{ boot: string; text: string } | null>(null);
   useEffect(() => {
@@ -521,6 +619,54 @@ export function Shell({ app }: { app: AppState }) {
   }, [app.recovery, app.screen, app.attentionLoaded]);
   const coreLabel = core.state === "connected" ? `Core connected (pid ${core.pid})` : core.state === "restarting" ? "Core restarting…" : core.state === "failed" ? "Core failed" : "Core starting…";
   const coreStatus = core.state === "connected" ? "ok" : core.state === "failed" ? "danger" : "warn";
+
+  const splitColumn = (tasks: readonly [string, string], column: 0 | 1): SplitColumn => {
+    const id = tasks[column];
+    return { taskId: id, title: model.tasks.get(id)?.goalText ?? "Task", taskMenu: taskMenuOf(id), panes: togglesOf(id), onPane: (kind: AppKind) => onColumnPane(column, id, kind) };
+  };
+  /** A task's conversation: the one component, for the single view and for each column of split view (REQ-PX-204). */
+  const conversationFor = (taskId: string, o: { topEndSlot: HTMLElement | null; railSlot: HTMLElement | null; keyFocus?: boolean; trayStore?: TrayStore<ReactNode>; hostsAppTrays?: boolean; shownBeside?: readonly string[] }) => (
+    <Conversation
+                  key={taskId}
+                  taskId={taskId}
+                  sessionId={model.tasks.has(taskId) ? model.sessionId : (runSessions[taskId] ?? model.sessionId)}
+                  connected={core.state === "connected"}
+                  card={model.tasks.get(taskId)}
+                  title={model.tasks.get(taskId)?.goalText ?? "Task"}
+                  focusRowId={conversation?.taskId === taskId ? conversation.rowId : null}
+                  onResume={(id) => void startTask(id)}
+                  onNewTask={() => actions.focusNewTask()}
+                  onOpenTerminal={(tid, termId) => { setTerminalPick((m) => ({ ...m, [tid]: termId })); setPanelState(tid, (d) => openPane(d, "terminal")); }}
+                  onOpenTask={(id) => openConversation(id)}
+                  titleOf={(id) => model.tasks.get(id)?.goalText ?? "another task"}
+                  topEndSlot={o.topEndSlot}
+                  railSlot={o.railSlot}
+                  subtasks={childrenOf(model, taskId)}
+                  screenState={model.tasks.has(taskId) ? taskState({ card: model.tasks.get(taskId)!, core, attention: attentionItems }) : null}
+                  header={headers.find((h) => h.taskId === taskId)}
+                  terminals={terminalsByTask.get(taskId)}
+                  onTerminalsChanged={refreshTerminals}
+                  onReview={() => setReviewing(taskId)}
+                  onBrowser={() => void openBrowser(taskId)}
+                  onCancelTask={() => {
+                    const t = model.tasks.get(taskId);
+                    if (t) setConfirm({ kind: "cancel", taskId: t.taskId, text: `Cancel “${t.goalText}”? The run stops at its next safe boundary; the task cannot be resumed.` });
+                  }}
+                  onStopChild={(id) => {
+                    const t = model.tasks.get(id);
+                    if (t) setConfirm({ kind: "cancel", taskId: t.taskId, text: `Cancel “${t.goalText}”? The run stops at its next safe boundary; the task cannot be resumed.` });
+                  }}
+                  keyFocus={o.keyFocus}
+                  trayStore={o.trayStore}
+                  hostsAppTrays={o.hostsAppTrays}
+                  shownBeside={o.shownBeside}
+              nameLandmarks={o.shownBeside !== undefined}
+                  onCustomize={() => {
+                    closePages();
+                    setCustomizeOpen(true);
+                  }}
+                />
+  );
 
   return (
     <>
@@ -637,6 +783,8 @@ export function Shell({ app }: { app: AppState }) {
                     actions.focusNewTask();
                   }}
                   onTaskActions={setTaskActions}
+                  onSplit={openSplit}
+                  splitIds={splitShown && split ? split.tasks : undefined}
                 />
               )
             }
@@ -654,7 +802,9 @@ export function Shell({ app }: { app: AppState }) {
         }
         details={menuTaskId !== null && prefs.detailsOpen}
         detailsRef={setRailSlot}
-        topBar={(layout) => (
+        split={splitShown && split ? { ratio: split.ratio } : null}
+        layoutRef={layoutRef}
+        topBar={(layout) => layout.split ? null : (
           <TopBar
             title={title}
             taskMenu={taskMenu}
@@ -674,6 +824,7 @@ export function Shell({ app }: { app: AppState }) {
                   }
                 : undefined
             }
+            onLeaveSplit={splitShown && split ? () => closeColumn(split.focus === 0 ? 1 : 0) : undefined}
           />
         )}
         tray={conversation && !reviewing && !browsing && !dashboardOpen ? null : <TrayHost />}
@@ -690,9 +841,15 @@ export function Shell({ app }: { app: AppState }) {
           </section>
         }
       >
+        {(layout: Layout) => (
         <div className="conv-wrap">
           <div className="conv-banners" data-testid="conv-banners" role="region" aria-label="Task status" tabIndex={-1}>
             <StatusRegion app={app} />
+            {splitShown && split && !layout.split && (
+              <p className="meta split-paused" role="status" data-testid="split-paused">
+                Split view is paused: two tasks need {SPLIT_NEED} px beside the task list and this window gives {layout.centerPx + layout.panelPx}. {model.tasks.get(split.tasks[split.focus === 0 ? 1 : 0])?.goalText ?? "The other task"} is back beside this one when the window is wider; Close leaves split view.
+              </p>
+            )}
           </div>
           {settingsOpen ? (
             <SettingsPage
@@ -741,45 +898,25 @@ export function Shell({ app }: { app: AppState }) {
           ) : worktreesOpen ? (
             <WorktreesPanel state={worktrees} sessionId={model.sessionId} titleOf={(id) => model.tasks.get(id)?.goalText ?? "another task"} taskStateOf={(id) => model.tasks.get(id)?.state} nowMs={nowMs} onOpenTask={(id) => openConversation(id)} announce={setNotice} />
           ) : conversation ? (
-            <Conversation
-              key={conversation.taskId}
-              taskId={conversation.taskId}
-              sessionId={model.tasks.has(conversation.taskId) ? model.sessionId : (runSessions[conversation.taskId] ?? model.sessionId)}
-              connected={core.state === "connected"}
-              card={model.tasks.get(conversation.taskId)}
-              title={model.tasks.get(conversation.taskId)?.goalText ?? "Task"}
-              focusRowId={conversation.rowId}
-              onResume={(id) => void startTask(id)}
-              onNewTask={() => actions.focusNewTask()}
-              onOpenTerminal={(tid, termId) => { setTerminalPick((m) => ({ ...m, [tid]: termId })); setPanelState(tid, (d) => openPane(d, "terminal")); }}
-              onOpenTask={(id) => openConversation(id)}
-              titleOf={(id) => model.tasks.get(id)?.goalText ?? "another task"}
-              topEndSlot={topEndSlot}
-              railSlot={menuTaskId === conversation.taskId ? railSlot : null}
-              subtasks={childrenOf(model, conversation.taskId)}
-              screenState={model.tasks.has(conversation.taskId) ? taskState({ card: model.tasks.get(conversation.taskId)!, core, attention: attentionItems }) : null}
-              header={openedHeader}
-              terminals={terminalsByTask.get(conversation.taskId)}
-              onTerminalsChanged={refreshTerminals}
-              onReview={() => setReviewing(conversation.taskId)}
-              onBrowser={() => void openBrowser(conversation.taskId)}
-              onCancelTask={() => {
-                const t = model.tasks.get(conversation.taskId);
-                if (t) setConfirm({ kind: "cancel", taskId: t.taskId, text: `Cancel “${t.goalText}”? The run stops at its next safe boundary; the task cannot be resumed.` });
-              }}
-              onStopChild={(id) => {
-                const t = model.tasks.get(id);
-                if (t) setConfirm({ kind: "cancel", taskId: t.taskId, text: `Cancel “${t.goalText}”? The run stops at its next safe boundary; the task cannot be resumed.` });
-              }}
-              onCustomize={() => {
-                closePages();
-                setCustomizeOpen(true);
-              }}
-            />
+            splitShown && split && layout.split ? (
+              <SplitView
+                columns={[splitColumn(split.tasks, 0), splitColumn(split.tasks, 1)]}
+                widths={layout.split}
+                focus={split.focus}
+                onFocus={focusColumn}
+                onClose={closeColumn}
+                onRatio={(ratio) => setPrefs((p) => (p.split ? { ...p, split: { ...p.split, ratio } } : p))}
+                min={layout.panelPx > 0 ? SPLIT_LAYOUT.columnMinBesideDock : SPLIT_LAYOUT.columnMin}
+                render={(column, endSlot, keyFocus) => conversationFor(split.tasks[column], { topEndSlot: endSlot, railSlot: null, keyFocus, trayStore: storeFor(split.tasks[column]), hostsAppTrays: keyFocus, shownBeside: [split.tasks[column === 0 ? 1 : 0]] })}
+              />
+            ) : (
+              conversationFor(conversation.taskId, { topEndSlot, railSlot: menuTaskId === conversation.taskId ? railSlot : null })
+            )
           ) : (
             <Home app={app} />
           )}
         </div>
+        )}
       </ShellFrame>
       <TrayDirector core={{ state: core.state, reason: core.state === "restarting" || core.state === "failed" ? core.reason : "" }} sessionId={model.sessionId} taskId={conversation?.taskId ?? null} card={conversation ? model.tasks.get(conversation.taskId) : undefined} onResume={(id) => void startTask(id)} />
       <PermissionsDialog open={permissionsOpen} onClose={() => setPermissionsOpen(false)} info={presence.info} refresh={presence.refresh} />

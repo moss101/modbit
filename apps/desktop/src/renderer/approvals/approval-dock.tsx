@@ -7,8 +7,8 @@
  * refuses any other (INTENT_MISMATCH) and main checks it again before a rule is
  * made. Skip is a typed user decision (denied by user); there is no batch.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
-import { trays } from "@modbit/ui";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTrayStore } from "@modbit/ui";
 import type { DockApprovalView } from "../../shared/control-types.ts";
 import { ApprovalDeck } from "./approval-deck.tsx";
 import { defaultPrefix, humanTitle, isIrreversible, refusalWords, surfacedIndex } from "./model.ts";
@@ -25,10 +25,15 @@ export interface ApprovalDockProps {
   onChangeMode: () => void;
   titleOf: (taskId: string) => string;
   onOpenTask: (taskId: string) => void;
+  /** Tasks shown beside this one in split view (REQ-PX-204): their approvals are on their own card there, so they are not docked here as another agent's. */
+  shownBeside?: readonly string[] | undefined;
 }
 
-export function ApprovalDock({ sessionId, taskId, connected, onChangeMode, titleOf, onOpenTask }: ApprovalDockProps) {
-  const { approvals, expired, refresh } = useDockApprovals(sessionId, taskId, connected);
+export function ApprovalDock({ sessionId, taskId, connected, onChangeMode, titleOf, onOpenTask, shownBeside }: ApprovalDockProps) {
+  const trays = useTrayStore();
+  const { approvals: listed, expired, refresh } = useDockApprovals(sessionId, taskId, connected);
+  const besideKey = (shownBeside ?? []).join(" ");
+  const approvals = useMemo(() => (besideKey ? listed.filter((a) => !besideKey.split(" ").includes(a.taskId)) : listed), [listed, besideKey]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -141,9 +146,9 @@ export function ApprovalDock({ sessionId, taskId, connected, onChangeMode, title
         />
       ),
     });
-  }, [approvals, index, current, busy, confirming, prefix, scope, note, run, decide, always, changeMode, taskId, titleOfStable, openTask]);
+  }, [trays, approvals, index, current, busy, confirming, prefix, scope, note, run, decide, always, changeMode, taskId, titleOfStable, openTask]);
 
-  useEffect(() => () => trays.dismiss(TRAY_ID), []);
+  useEffect(() => () => trays.dismiss(TRAY_ID), [trays]);
   // What the last decision did stays on screen after its card is gone, and is announced.
   useEffect(() => {
     setNote(null);

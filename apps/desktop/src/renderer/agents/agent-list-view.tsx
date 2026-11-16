@@ -62,6 +62,10 @@ export interface AgentListViewProps {
   note: string | null;
   onQuery: (q: string) => void;
   onSelect: (taskId: string, rowId?: string) => void;
+  /** Opens a task in split view beside the one in the centre (MWS-11, REQ-PX-204): Alt+click on a row and the preview card's Open in split view. */
+  onSplit?: ((taskId: string) => void) | undefined;
+  /** The two tasks side by side while split view is open: both rows are marked as open. */
+  splitIds?: readonly string[] | undefined;
   onPin: (taskId: string) => void;
   onUnpin: (taskId: string) => void;
   onArchive: (taskId: string) => void;
@@ -448,9 +452,10 @@ export function AgentListView(p: AgentListViewProps) {
                 previewId={preview?.taskId ?? null}
                 onRowEnter={onRowEnter}
                 onRowLeave={leavePointer}
-                onOpen={(id) => {
+                onOpen={(id, split) => {
                   closePreview();
-                  p.onSelect(id);
+                  if (split && p.onSplit) p.onSplit(id);
+                  else p.onSelect(id);
                 }}
               />
             ))}
@@ -474,6 +479,15 @@ export function AgentListView(p: AgentListViewProps) {
             closePreview();
             p.onSelect(id);
           }}
+          onSplit={
+            p.onSplit
+              ? () => {
+                  const id = preview.taskId;
+                  closePreview();
+                  p.onSplit?.(id);
+                }
+              : undefined
+          }
           onClose={(restoreFocus) => closePreview(restoreFocus ? preview.taskId : undefined)}
           onPointerEnter={() => clearTimer(leaveTimer)}
           onPointerLeave={() => {
@@ -588,7 +602,8 @@ interface ItemViewProps {
   previewId: string | null;
   onRowEnter: (taskId: string) => void;
   onRowLeave: () => void;
-  onOpen: (taskId: string) => void;
+  /** `split`: Alt was held (MWS-11): open the task in split view instead. */
+  onOpen: (taskId: string, split?: boolean) => void;
 }
 
 function ItemView({ item, top, p, metrics, pinned, selected, tabStop, titles, previewId, onRowEnter, onRowLeave, onOpen }: ItemViewProps) {
@@ -639,7 +654,8 @@ function ItemView({ item, top, p, metrics, pinned, selected, tabStop, titles, pr
       data-subagent={h.subagent}
       data-class={h.statusClass}
       data-unread={h.unread}
-      data-selected={selected === h.taskId}
+      data-selected={selected === h.taskId || (p.splitIds?.includes(h.taskId) ?? false)}
+      data-in-split={p.splitIds?.includes(h.taskId) ? "true" : undefined}
       data-pinned={isPinned}
       data-lines={item.twoLine ? 2 : 1}
       data-depth={item.depth}
@@ -662,7 +678,7 @@ function ItemView({ item, top, p, metrics, pinned, selected, tabStop, titles, pr
         aria-current={selected === h.taskId ? "true" : undefined}
         aria-label={rowLabel(h, isPinned, facts, parentTitle)}
         title={rowTitle(h, facts, localMachine(), p.nowMs)}
-        onClick={() => onOpen(h.taskId)}
+        onClick={(e) => onOpen(h.taskId, e.altKey)}
       >
         {item.depth > 0 && <span className="agents-tree" data-testid="agent-child-mark" aria-hidden="true" />}
         <span className="agents-text">

@@ -1,7 +1,7 @@
 # Modbit Dossier Manifest — V3.3 EPR v1.1
 
 > **Authority date:** 2026-09-05  
-> **Generated:** 2026-11-15 by `tools/build_manifest.py`  
+> **Generated:** 2026-11-16 by `tools/build_manifest.py`  
 > **Scope:** every specification file in `docs/` plus the root governing files and tooling. The previous `99_MANIFEST.md` covered only 39 Part 2 files; this manifest covers all 97 docs.
 > **Machine-readable twin:** `manifest.json` (same content, same hashes).
 
@@ -878,6 +878,17 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-203/ci-run-43709635767.json` | retained evidence | 65329 | `42098042cd836008e7d9eadde0e0534a2aa6d455981b81a882a62005e5a327a3` |
 | `evidence/m10/PX-203/desktop-e2e-full-results.txt` | retained evidence | 42246 | `e59968bfa4483367cbbfb60b2575d43b4d88a27fcc7a31b4c298c493b84dfee7` |
 | `evidence/m10/PX-203/evidence.json` | retained evidence | 7055 | `ce735f0e69938cceab6b943a457eae697c231b51caa34ff4433c685fcc341f61` |
+| `evidence/m10/PX-204/TASK_CARD.md` | retained evidence | 18573 | `f3ad7b14de8ff3bde0743c8748153639c47252e4c515866f3aa0ad105b4f8a11` |
+| `evidence/m10/PX-204/after/split-comfortable-dark.png` | retained evidence | 356533 | `0b1f42e1f6ffe49afa67fa4555d648ccc0cda8ec7b7ed69d8ec56289ae4b912d` |
+| `evidence/m10/PX-204/after/split-comfortable-light.png` | retained evidence | 357825 | `ed33da70211899957b1643f2b3798cde49a253e0fedff268d7c3ca3121dd164d` |
+| `evidence/m10/PX-204/after/split-compact-dark.png` | retained evidence | 271552 | `575a934e4a3c2b815a2a3fd7e915f7d5c10f81a6b402df684351b1c75157836c` |
+| `evidence/m10/PX-204/after/split-compact-light.png` | retained evidence | 273469 | `4252f8d502b1c8e54a554d7e8583b2da8cb876f43b41f5745b1fd7cdad953fb8` |
+| `evidence/m10/PX-204/after/split-paused-narrow-dark.png` | retained evidence | 300930 | `7d6638d49ef24c4b2f88543394815267de3c04f2e4ecc9713d91feab617cc03c` |
+| `evidence/m10/PX-204/after/split-paused-narrow-light.png` | retained evidence | 302808 | `5ab76d7a87e4ae473ef2929e0ca4177053e7b9631902f17b7fc803a9d7b89a23` |
+| `evidence/m10/PX-204/after/split-refused-narrow-dark.png` | retained evidence | 300654 | `13ac5638be25375c6a45b72d0c89385e63e5d82cc8e366c8c0c606b0eea021d6` |
+| `evidence/m10/PX-204/after/split-refused-narrow-light.png` | retained evidence | 303136 | `6331f5f0195a8ec52861c289093f7460b877eba7c12606a306864840ed20117b` |
+| `evidence/m10/PX-204/desktop-e2e-full-results.txt` | retained evidence | 42165 | `d450226fcdd54da228545a889141c9dd6d7821d06f6dc4c1c3970cfdc96bbb51` |
+| `evidence/m10/PX-204/evidence.json` | retained evidence | 6398 | `1213ff2e1a83c4220bf513c5a81843e38b5d36a8b049c4f6932d6d672a44a66c` |
 | `evidence/m10/PX-210/TASK_CARD.md` | retained evidence | 11615 | `493c4c60c6a94d4a062040ba472476e08b5b9c7f30116221ff5eb56dd26873f4` |
 | `evidence/m10/PX-210/after/composer-after-tab-light.png` | retained evidence | 30362 | `a7b1367df855da4288ff969ddb1a68bb03d6a4ecbbc8071ad59d0e5dddabff4d` |
 | `evidence/m10/PX-210/after/composer-long-suggestion-dark-900.png` | retained evidence | 35124 | `14ec8efa1eafc089f6f688e72fb15a75e11555cdf3e48e237cb62fdeb3f3d36f` |
@@ -2378,8 +2389,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/zcode-ui/reference/zcode-colors-rgba.json` | retained evidence | 18690 | `76372c3edbcd50fe596d5e4b7fcd7991adab9686588ddc578a728afa24b4f028` |
 | `evidence/zcode-ui/reference/zcode-computed.json` | retained evidence | 718674 | `9ae8821ce72aa0fff3be44aacd0f4c9d995465c54bad7f17d1a81f92841d1c2d` |
 | `evidence/zcode-ui/reference/zcode-tokens-resolved.json` | retained evidence | 30635 | `066725c00059a05d073fbcdac9a8d965eab05f05c1f5df16e654854ff3e22b91` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 47706 | `4743ea4bb12987f107fdca87ed3fc2f614bf70cd125160e55b4faa0f3541393a` |
-| `graph/project-graph.json` | project driver graph with live status | 2633102 | `0b281b00849815f42b1ed2126ca15680ae730810efdb8eecf1ed83ff6e3277a6` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 47706 | `f64b7b0cee670ae859e38d66c1ba44bccbb569977ec8253457e7b4444862c1cf` |
+| `graph/project-graph.json` | project driver graph with live status | 2633102 | `94decb6ac9fd16d635bad38d1da5b9db899d72e20e9fc012fa10ddf2ed5e1242` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 69551 | `75bcc309c03df0b898705f3bf58a8c289431dc60cbaf52e1c38f4c5d41d06dd7` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |

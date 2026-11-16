@@ -10,9 +10,11 @@
  * inline approval and question cards live here.
  * Nothing in this file holds authority: every effect is a typed preload call.
  */
-import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Button, Icon, IconButton, StatusDot, TrayHost, useLayer } from "@modbit/ui";
+import { Button, Icon, IconButton, StatusDot, TrayHost, TrayStoreContext, trays as appTrays, useLayer, type TrayStore } from "@modbit/ui";
+import { KEY_FOCUS_ATTR } from "../key-focus.ts";
+import { LandmarkTaskContext } from "../landmark.ts";
 import { DENSITIES, type AgentHeaderView, type Density } from "../../shared/conversation-types.ts";
 import type { TerminalViewJson } from "../../preload/preload.ts";
 import type { TranscriptRowView } from "../../shared/conversation-types.ts";
@@ -70,6 +72,19 @@ export interface ConversationProps {
   /** Asks to cancel a child of this task. */
   onStopChild?: ((taskId: string) => void) | undefined;
   onCustomize?: (() => void) | undefined;
+  /**
+   * Split view (REQ-PX-204): whether this conversation has the keyboard. With one task it always has; with two, only the
+   * focused one, and every keyboard decision (the approval card's keys, approve, deny, steer) is routed to it.
+   */
+  keyFocus?: boolean | undefined;
+  /** The tray store this conversation docks its approval card, queue and context into; the app's one store by default. In split view each task has its own. */
+  trayStore?: TrayStore<ReactNode> | undefined;
+  /** Also host the app's own trays (limits, undo) above this composer: the focused task does in split view. */
+  hostsAppTrays?: boolean | undefined;
+  /** Tasks shown beside this one (split view): their approvals dock on their own card, not here as another agent's. */
+  shownBeside?: readonly string[] | undefined;
+  /** Split view: every landmark inside says whose it is ("Composer: title"), so two tasks' landmarks are told apart. */
+  nameLandmarks?: boolean | undefined;
 }
 
 const DENSITY_LABEL: Record<Density, string> = { COMPACT: "Compact", BALANCED: "Balanced", DETAILED: "Detailed" };
@@ -99,7 +114,9 @@ function collectTurnText(rows: readonly TranscriptRowView[], turnId: string, out
 }
 
 export function Conversation(props: ConversationProps) {
-  const { taskId, sessionId, connected, card, title, focusRowId, onResume, onNewTask, onOpenTerminal, onOpenTask, titleOf, topEndSlot, railSlot, subtasks, screenState, header, terminals, onTerminalsChanged, onReview, onBrowser, onCancelTask, onStopChild, onCustomize } = props;
+  const { taskId, sessionId, connected, card, title, focusRowId, onResume, onNewTask, onOpenTerminal, onOpenTask, titleOf, topEndSlot, railSlot, subtasks, screenState, header, terminals, onTerminalsChanged, onReview, onBrowser, onCancelTask, onStopChild, onCustomize, keyFocus = true, trayStore, hostsAppTrays = false, shownBeside, nameLandmarks = false } = props;
+  const store = trayStore ?? (appTrays as TrayStore<ReactNode>);
+  const section = useRef<HTMLElement>(null);
   const [prefs, setPrefs] = useState<ConversationPrefs>(loadConversationPrefs);
   useEffect(() => saveConversationPrefs(prefs), [prefs]);
   const conv = useConversation(taskId, sessionId, prefs.density, connected);
@@ -124,7 +141,7 @@ export function Conversation(props: ConversationProps) {
     const el = moreEl.current;
     if (!moreOpen || !el) return;
     const fit = () => {
-      const card = document.querySelector<HTMLElement>('.mb-tray[data-tray-id="approvals"]');
+      const card = section.current?.querySelector<HTMLElement>('.mb-tray[data-tray-id="approvals"]') ?? null;
       const limit = moreMaxHeight(el.getBoundingClientRect(), card ? card.getBoundingClientRect() : null);
       el.style.maxHeight = limit === null ? "" : `${limit}px`;
       el.dataset.bounded = limit === null ? "false" : "true";
@@ -132,7 +149,7 @@ export function Conversation(props: ConversationProps) {
     fit();
     const ro = new ResizeObserver(fit);
     ro.observe(document.body);
-    const host = document.querySelector<HTMLElement>(".conv > .mb-tray-host");
+    const host = section.current?.querySelector<HTMLElement>(":scope > .mb-tray-host") ?? null;
     if (host) ro.observe(host);
     return () => ro.disconnect();
   }, [moreOpen, cardsWaiting, railSlot]);
@@ -336,7 +353,9 @@ export function Conversation(props: ConversationProps) {
   );
 
   return (
-    <section className="conv" aria-label={`Conversation: ${title}`} data-testid="conversation" data-task-id={taskId} data-density={prefs.density} data-loaded={conv.loaded}>
+    <TrayStoreContext.Provider value={store}>
+    <LandmarkTaskContext.Provider value={nameLandmarks ? title : ""}>
+    <section ref={section} className="conv" aria-label={`Conversation: ${title}`} data-testid="conversation" data-task-id={taskId} data-density={prefs.density} data-loaded={conv.loaded} {...{ [KEY_FOCUS_ATTR]: keyFocus }}>
       <span className="mb-sr-only" data-testid="conv-status">
         {card ? `${card.state}${card.waitReason ? `, waiting on ${card.waitReason}` : ""}` : conv.taskState}
       </span>
@@ -380,7 +399,7 @@ export function Conversation(props: ConversationProps) {
           topEndSlot,
         )}
       <div className="conv-body">
-        <div ref={scroller} className="conv-scroll" role="region" aria-label="Messages" tabIndex={0} onScroll={onScrollEvent} onKeyDown={onKeyDown} data-testid="conv-scroll" data-pinned={follow.pinned} data-row-count={placed.rows.length}>
+        <div ref={scroller} className="conv-scroll" role="region" aria-label={nameLandmarks ? `Messages: ${title}` : "Messages"} tabIndex={0} onScroll={onScrollEvent} onKeyDown={onKeyDown} data-testid="conv-scroll" data-pinned={follow.pinned} data-row-count={placed.rows.length}>
           <div ref={inner} className="conv-inner">
           {!conv.loaded && !conv.error && (
             <p className="meta conv-empty" role="status" data-testid="conv-loading">
@@ -436,15 +455,19 @@ export function Conversation(props: ConversationProps) {
       )}
       {ckpt.bar}
       <ModeProposalDock sessionId={sessionId} taskId={taskId} connected={connected} />
-      <ApprovalDock sessionId={sessionId} taskId={taskId} connected={connected} onChangeMode={() => setModeOpen(true)} titleOf={titleOf ?? ((id) => id.slice(0, 8))} onOpenTask={onOpenTask ?? (() => {})} />
+      <ApprovalDock sessionId={sessionId} taskId={taskId} connected={connected} onChangeMode={() => setModeOpen(true)} titleOf={titleOf ?? ((id) => id.slice(0, 8))} onOpenTask={onOpenTask ?? (() => {})} shownBeside={shownBeside} />
       {ckpt.overlay}
-      {/* The one tray host: docked directly above the composer, never beside or below it (AFW-H01). */}
-      <TrayHost />
+      {/* The app's own trays (limits, undo) dock above the focused task's composer when this task has a store of its own. */}
+      {hostsAppTrays && store !== appTrays && <TrayHost store={appTrays as TrayStore<ReactNode>} />}
+      {/* The task's tray host: docked directly above the composer, never beside or below it (AFW-H01). */}
+      <TrayHost label={nameLandmarks ? `Notices: ${title}` : undefined} />
       <Composer taskId={taskId} sessionId={sessionId} connected={connected} card={card} approvalPending={conv.approvals.length > 0} lastUserText={lastUserText} hasMessages={conv.rows.length > 0} onResume={onResume} onNewTask={onNewTask} onOpenTerminal={onOpenTerminal} onReview={onReview}
         runMode={<RunModeControl sessionId={sessionId} taskId={taskId} state={runMode} open={modeOpen} onOpenChange={setModeOpen} />}
         ring={connected ? <ContextRingView accounting={usage.accounting} /> : null}
       />
     </section>
+    </LandmarkTaskContext.Provider>
+    </TrayStoreContext.Provider>
   );
 }
 
