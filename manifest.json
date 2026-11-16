@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2289,
+    "root_and_tooling": 2290,
     "docs_bytes": 2408986
   },
   "sections": [
@@ -4715,8 +4715,8 @@
     },
     {
       "path": "evidence/m10/PX-205/TASK_CARD.md",
-      "bytes": 17479,
-      "sha256": "5ac66b52ffcd9ba143e9dfeeb5bef2803b2f4a0f5dd03201d0551a07ed02ede2"
+      "bytes": 18005,
+      "sha256": "9f7d2e7235126c9b5b8ea5de112f0050a33d5fcd4b693211c6b9eebf80af85fb"
     },
     {
       "path": "evidence/m10/PX-205/after/home-destructive-opens-task-comfortable-dark.png",
@@ -4797,6 +4797,11 @@
       "path": "evidence/m10/PX-205/after/home-waiting-compact-light.png",
       "bytes": 167208,
       "sha256": "f4ebed7cd04f69a85757cf1f8d9cf1d01b0aee9edf7ea6373062271a63e83357"
+    },
+    {
+      "path": "evidence/m10/PX-205/ci-run-43821013355.json",
+      "bytes": 65329,
+      "sha256": "666ac9f738d878ad127054fd2f94e33c363b1a7bcbeb1a4d9b53fb05582c902f"
     },
     {
       "path": "evidence/m10/PX-205/desktop-e2e-full-results.txt",
@@ -12311,12 +12316,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 47635,
-      "sha256": "e2320d0d973bc62d2d9c995dc6aff4aa8d1100ad8e8caa1da69faca7fc5bffb1"
+      "sha256": "41895b52314d5f0d72c4818f438696206e2b7592f3638ed7ad8d4d0791ca7e39"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2653162,
-      "sha256": "38f3d81fdbf03fa63a4404aadac6344be2b30a31aa2d3481b09f46ff75b97747"
+      "bytes": 2653306,
+      "sha256": "dbd8c9887c450a42a42b162d380717284427bea551519a77c2d8bb5bea2fc634"
     },
     {
       "path": "tools/build_graph.py",

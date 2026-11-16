@@ -87,3 +87,9 @@ Whole desktop suite, local, macOS arm64, once (see `desktop-e2e-full-results.txt
 - CI is recorded in `evidence.json`. CI run 1 (43808273820) failed on Ubuntu in this spec: with the Linux location name ("This computer") and a long folder path the strip wrapped and the run mode went to a second line, which `trayDrift` caught. The strip is now one line where the folder gives way (its path ends in an ellipsis and stays whole in its title), and the spec checks the strip at 1100 and 900 wide as well. CI run 2 (43814166045) failed on the macOS runner in `awl.spec.ts` homeDrift and this spec's `trayDrift`, both "not centred": that Mac draws scroll bars that take room and first-run home is taller than its window, so the column moved by half a scroll bar. Home now keeps a scroll-bar gutter on both edges (checked locally with a 15 px scroll bar forced on: the tray's offset from the centre is 0).
 - The task list's rows still say "shell.exec asks for a …" as their reason line (the Core's attention text, PX-199's surface); not changed here.
 - The owner has not seen the screenshots. No graph status was set.
+
+## Closure (2026-11-16)
+
+- CI run 43821013355 on head e04f148a: every job passed. Merged to main as 1a8298f5 (moss101/modbit#223).
+- The owner reviewed the screenshots of the running app beside board A1 and answered "Yes, seal when green" on 2026-11-16.
+- Left open at the seal: the folder shows a long raw path; task-list reason lines still read "shell.exec asks for…" (PX-199's surface); the provider form opens fully expanded on first run; no branch chip, Cloud | This Mac switch, "/" button or Dismiss as on the board.
