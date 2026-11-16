@@ -201,7 +201,8 @@ input.settings-toggle.settings-toggle::after, input.settings-toggle.settings-tog
 .home-folder input::placeholder { color: var(--mb-color-text-muted); opacity: 1; }
 .home-folder:focus-within { box-shadow: inset 0 0 0 1px var(--mb-color-focus); }
 .home-switch { position: relative; cursor: pointer; }
-.home-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+/* The input itself covers the whole switch, so a press anywhere on it (or a script that checks it) reaches the input. */
+.home-switch input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: inherit; z-index: 1; }
 .home-switch-track { position: relative; flex: none; width: 26px; height: 16px; border-radius: 999px; background: var(--mb-color-border-control); transition: background var(--mb-motion-base); }
 .home-switch-track::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--mb-color-raised); transition: transform var(--mb-motion-base); }
 .home-switch input:checked + .home-switch-track { background: var(--mb-color-accent); }
