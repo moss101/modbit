@@ -104,3 +104,10 @@ Whole desktop suite, local, macOS arm64, once (see `desktop-e2e-full-results.txt
 - The proof is local (macOS arm64); CI is recorded in `evidence.json` (run 1, 43755695976: the PX-204 spec raced a window resize on Ubuntu, fixed; three other failures not in this change's paths).
 - Shift+Enter (Always allow) on the card is routed by the same `ownsKeys` check as Enter and Escape and is not driven separately in the spec.
 - The owner has not seen the screenshots. No graph status was set.
+
+## Closure (2026-11-16)
+
+- CI run 43762302238 on head 209d21f0: all 19 checks passed after one rerun of failed jobs (release supply chain had been cancelled after hanging past its reproducible-build check). Merged to main as 9da82128 (moss101/modbit#221).
+- The owner reviewed the screenshots of the running app beside board C2 and answered "Yes, seal when green" on 2026-11-16.
+- Run 1's `packaged-update.spec.ts:108` failure (an update staged after the signed manifest was tampered with) is not caused by this change; it is being investigated in its own session as a suspected test race.
+- Left open at the seal: the focus marker is a thin accent line only; "Notice: Queued messages" and "Queued follow_up" are raw wording; opening split view from the palette and a shortcut to move focus between columns are not built.
