@@ -24,6 +24,8 @@ export interface TopBarProps {
   onPane: (kind: AppKind) => void;
   /** The details rail's toggle (MWS-09): whether the rail is shown now. Absent where no task is open or the task area has no room for the rail (its facts are then under More). */
   details?: { shown: boolean; onToggle: () => void } | undefined;
+  /** Split view (MWS-11, REQ-PX-204): this bar heads one of two tasks side by side; Close leaves split view with the other task in the centre. */
+  onLeaveSplit?: (() => void) | undefined;
 }
 
 export const APP_ICON: Record<AppKind, IconName> = { changes: "file-diff", terminal: "terminal", browser: "globe", files: "file-text", evidence: "eye", activity: "clock", background: "layers", "pull-request": "git-compare" };
@@ -131,6 +133,7 @@ export function TopBar(p: TopBarProps) {
       {p.details && <IconButton label="Details" title={p.details.shown ? "Hide details" : "Show details"} icon={<Icon name="panel-right" />} pressed={p.details.shown} data-open={p.details.shown} data-testid="details-toggle" onClick={p.details.onToggle} />}
       <PaneToggles panes={p.panes} onPane={p.onPane} fit={fit} />
       <span className="topbar-end" ref={p.endSlotRef} />
+      {p.onLeaveSplit && <IconButton label="Close: leave split view" title="Leave split view: the other task stays open" icon={<Icon name="x" />} data-testid="split-close" onClick={p.onLeaveSplit} />}
     </header>
   );
 }

@@ -1,4 +1,4 @@
-import { useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Button } from "./button.tsx";
 import { useKeyScope, useLayer } from "./hooks.ts";
 import { bindingsScope } from "./keys.ts";
@@ -8,17 +8,31 @@ import { trays as defaultStore, type TrayDef, type TrayStore } from "./trays.ts"
 const TONE_LABEL = { info: "Notice", warn: "Warning", error: "Error", attention: "Needs you" } as const;
 
 /**
+ * The tray store a subtree presents into (REQ-PX-204): the app's one store by default; a task's conversation in split view
+ * gives its subtree a store of its own, so two tasks side by side each dock their own approval card, queue and context above
+ * their own composer, and an id one presents never replaces the other's.
+ */
+export const TrayStoreContext = createContext<TrayStore<ReactNode>>(defaultStore as TrayStore<ReactNode>);
+
+/** The tray store of the nearest provider, else the app's one store. */
+export function useTrayStore(): TrayStore<ReactNode> {
+  return useContext(TrayStoreContext);
+}
+
+/**
  * The tray host (AFW-H01): docked above the composer, never a modal. The
  * active tray is shown in full and owns its actions' chords while it is
  * active; the others are one-line rows that bring themselves forward. Trays
  * stay until resolved or dismissed, wherever the person navigates.
  */
-export function TrayHost({ store = defaultStore as TrayStore<ReactNode> }: { store?: TrayStore<ReactNode> | undefined }) {
+export function TrayHost({ store: given, label = "Notices" }: { store?: TrayStore<ReactNode> | undefined; /** The landmark's name; two hosts in one page need two names. */ label?: string | undefined }) {
+  const scoped = useTrayStore();
+  const store = given ?? scoped;
   const snap = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
   const active = snap.trays.find((t) => t.id === snap.activeId) ?? null;
   const others = snap.trays.filter((t) => t.id !== snap.activeId);
   return (
-    <section className="mb-tray-host" aria-label="Notices" data-testid="tray-host" data-count={snap.trays.length}>
+    <section className="mb-tray-host" aria-label={label} data-testid="tray-host" data-count={snap.trays.length}>
       {others.map((t) => (
         <button key={t.id} type="button" className="mb-tray-chip" data-tone={t.tone} data-testid="tray-pending" data-tray-id={t.id} onClick={() => store.activate(t.id)}>
           <span className="mb-tray-chip-tone">{TONE_LABEL[t.tone]}:</span> {t.title}

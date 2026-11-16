@@ -6,6 +6,7 @@
  * behaviour settings. They show Core facts and call typed commands through
  * callbacks; there is no queue or interrupt logic in the renderer.
  */
+import { useLandmarkName } from "../landmark.ts";
 import { useEffect, useRef, useState } from "react";
 import { Badge, Button, Icon, IconButton } from "@modbit/ui";
 import type { SendBehaviorState } from "../../shared/composer-types.ts";
@@ -33,6 +34,7 @@ export interface QueueTrayProps {
  * now and Remove; editing it (the row itself, or Edit) and moving it are PX-055's and stay beside them.
  */
 export function QueueTray(p: QueueTrayProps) {
+  const named = useLandmarkName();
   const [collapsed, setCollapsed] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -50,7 +52,7 @@ export function QueueTray(p: QueueTrayProps) {
   };
   if (p.rows.length === 0) return null;
   return (
-    <section className="cmp-tray cmp-queue" aria-label="Queued messages" data-testid="queue-tray" data-count={p.rows.length}>
+    <section className="cmp-tray cmp-queue" aria-label={named("Queued messages")} data-testid="queue-tray" data-count={p.rows.length}>
       <header className="cmp-tray-head">
         <strong data-testid="queue-header">{queueHeader(p.rows.length)}</strong>
         <span className="meta">{p.runAlive ? "They run in order after the current turn." : "They run when the task runs again."}</span>
@@ -168,8 +170,9 @@ export function QueueTray(p: QueueTrayProps) {
 // -------------------------------------------------- attention-style trays
 
 export function EducationTray({ onKeep, onSettings }: { onKeep: () => void; onSettings: () => void }) {
+  const named = useLandmarkName();
   return (
-    <section className="cmp-tray cmp-attn" data-tone="info" aria-label={EDUCATION.title} data-testid="education-tray">
+    <section className="cmp-tray cmp-attn" data-tone="info" aria-label={named(EDUCATION.title)} data-testid="education-tray">
       <strong>{EDUCATION.title}</strong>
       <ul className="cmp-lines">
         {EDUCATION.lines.map((l) => (
@@ -189,8 +192,9 @@ export function EducationTray({ onKeep, onSettings }: { onKeep: () => void; onSe
 }
 
 export function StoppedTray({ text, onEdit, onContinue, onDismiss, canContinue }: { text: string; onEdit: () => void; onContinue: () => void; onDismiss: () => void; canContinue: boolean }) {
+  const named = useLandmarkName();
   return (
-    <section className="cmp-tray cmp-attn" data-tone="warn" role="status" aria-label="Stopped" data-testid="stopped-tray">
+    <section className="cmp-tray cmp-attn" data-tone="warn" role="status" aria-label={named("Stopped")} data-testid="stopped-tray">
       <strong>Stopped by you.</strong> <span className="meta">The turn ended at a safe point. Nothing was sent again.</span>
       {text && (
         <p className="cmp-stopped-text" data-testid="stopped-text">
@@ -215,8 +219,9 @@ export function StoppedTray({ text, onEdit, onContinue, onDismiss, canContinue }
 }
 
 export function PolicyTray({ model, code, reason, onAuto, onCopy, onDismiss, note }: { model: string; code: string; reason: string; onAuto: () => void; onCopy: () => void; onDismiss: () => void; note: string }) {
+  const named = useLandmarkName();
   return (
-    <section className="cmp-tray cmp-attn" data-tone="error" role="alert" aria-label="Model not available" data-testid="policy-tray" data-code={code}>
+    <section className="cmp-tray cmp-attn" data-tone="error" role="alert" aria-label={named("Model not available")} data-testid="policy-tray" data-code={code}>
       <strong data-testid="policy-title">{model} is not available to you</strong>
       {/* The one policy entry (REQ-PX-060): the Core's words, the cause, and that nothing was sent. */}
       <div data-testid="tray-policy-text">
@@ -258,6 +263,7 @@ export function TerminalsChip({ count, open, onToggle }: { count: number; open: 
 }
 
 export function TerminalsTray({ terminals, onOpen, onKill, killing }: { terminals: readonly TerminalViewJson[]; onOpen: (terminalId: string) => void; onKill: (terminalId: string) => Promise<void>; killing: string | null }) {
+  const named = useLandmarkName();
   const [now, setNow] = useState(() => Date.now());
   const [confirm, setConfirm] = useState<string | null>(null);
   useEffect(() => {
@@ -265,7 +271,7 @@ export function TerminalsTray({ terminals, onOpen, onKill, killing }: { terminal
     return () => clearInterval(t);
   }, []);
   return (
-    <section className="cmp-tray" aria-label="Background terminals" data-testid="terminals-tray">
+    <section className="cmp-tray" aria-label={named("Background terminals")} data-testid="terminals-tray">
       <ul className="cmp-qlist">
         {terminals.map((t) => (
           <li key={t.terminalId} className="cmp-qrow" data-testid="terminal-tray-row" data-terminal-id={t.terminalId}>
@@ -307,6 +313,7 @@ export function TerminalsTray({ terminals, onOpen, onKill, killing }: { terminal
 // ---------------------------------------------------------- side question
 
 export function SideQuestionPanel({ onAsk, onAdd, onClose }: { onAsk: (q: string) => Promise<{ text: string; tokens: string } | string>; onAdd: (text: string) => void; onClose: () => void }) {
+  const named = useLandmarkName();
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
   const [answer, setAnswer] = useState<{ text: string; tokens: string } | null>(null);
@@ -321,7 +328,7 @@ export function SideQuestionPanel({ onAsk, onAdd, onClose }: { onAsk: (q: string
     else setAnswer(r);
   };
   return (
-    <section className="cmp-tray" aria-label="Side question" data-testid="side-panel">
+    <section className="cmp-tray" aria-label={named("Side question")} data-testid="side-panel">
       <header className="cmp-tray-head">
         <strong>Side question</strong>
         <span className="meta">Answered from a snapshot of this task. It is not added to the conversation.</span>
@@ -372,8 +379,9 @@ const WHILE_LABEL: Record<string, string> = { QUEUE: "Queue", COLLECT: "Collect"
 const NOW_LABEL: Record<string, string> = { INTERRUPT: "Interrupt", STEER: "Steer" };
 
 export function SendBehaviorPanel({ behavior, onSet, onClose }: { behavior: SendBehaviorState; onSet: (whileRunning: string, sendNow: string) => Promise<void>; onClose: () => void }) {
+  const named = useLandmarkName();
   return (
-    <section className="cmp-tray" aria-label="Send behavior" data-testid="behavior-panel">
+    <section className="cmp-tray" aria-label={named("Send behavior")} data-testid="behavior-panel">
       <header className="cmp-tray-head">
         <strong>What Enter does while a turn runs</strong>
         <span className="cmp-spacer" />

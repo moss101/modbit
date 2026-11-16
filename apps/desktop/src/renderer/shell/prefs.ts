@@ -1,6 +1,6 @@
 /**
  * Renderer-local UI preferences (AFW-A03, A06, A09, A13; MWS-03): list width and
- * collapse, panel ratio, each task's pane dock, theme, zoom and density. A per-viewer
+ * collapse, panel ratio, each task's pane dock, theme, zoom, density and split view. A per-viewer
  * convenience in the renderer's own storage, like the notification
  * preferences; never task state and never authoritative. Everything read back
  * is validated and clamped, and a missing or hostile value falls back to the
@@ -8,6 +8,7 @@
  */
 import { GEOMETRY, isDensity, isThemePreference, type Density, type ThemePreference } from "@modbit/design-tokens";
 import { clampListWidth, clampPanelRatio } from "./layout.ts";
+import { parseSplit, type SplitState } from "./split.ts";
 
 /** The panes a task can show (DR-PX-2026-11-11-021 MWS-10): the five apps PX-048 owns, then Activity, Background tasks and Pull request. */
 export const APP_KINDS = ["changes", "terminal", "browser", "files", "evidence", "activity", "background", "pull-request"] as const;
@@ -79,6 +80,8 @@ export interface UiPrefs {
   density: Density;
   /** The details rail beside the conversation is shown where it fits (MWS-09). A profile stored before it existed reads as shown. */
   detailsOpen: boolean;
+  /** Two tasks side by side (MWS-11): their ids, the left column's share and which has the keyboard. Null for one task. */
+  split: SplitState | null;
 }
 
 export const UI_PREFS_KEY = "modbit.ui.v1";
@@ -87,7 +90,7 @@ export const ZOOM_MIN = 0.68;
 export const ZOOM_MAX = 1.64;
 const MAX_TASK_ENTRIES = 200;
 
-export const DEFAULT_UI_PREFS: UiPrefs = { listWidth: GEOMETRY.listDefault, listCollapsed: false, panelRatio: GEOMETRY.panelRatioDefault, panelByTask: {}, theme: "system", zoom: 1, density: "comfortable", detailsOpen: true };
+export const DEFAULT_UI_PREFS: UiPrefs = { listWidth: GEOMETRY.listDefault, listCollapsed: false, panelRatio: GEOMETRY.panelRatioDefault, panelByTask: {}, theme: "system", zoom: 1, density: "comfortable", detailsOpen: true, split: null };
 
 export function clampZoom(z: number): number {
   const stepped = 1 + Math.round((z - 1) / ZOOM_STEP) * ZOOM_STEP;
@@ -122,6 +125,7 @@ export function parseUiPrefs(raw: string | null): UiPrefs {
     zoom: typeof v.zoom === "number" && Number.isFinite(v.zoom) ? clampZoom(v.zoom) : 1,
     density: isDensity(v.density) ? v.density : DEFAULT_UI_PREFS.density,
     detailsOpen: v.detailsOpen !== false,
+    split: parseSplit(v.split),
   };
 }
 

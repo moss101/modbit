@@ -2,8 +2,9 @@
  * A task's preview card (DR-PX-2026-11-11-021 MWS-04): it opens when the pointer rests on a row and on Space, beside the list.
  * It shows the Core's state with its reason or next action, the last line the assistant wrote (MWS-20, REQ-PX-218: the header's
  * own field, capped and redacted by the Core), the size of the change, the context in use and Open. Everything on it is the
- * task's header and the facts the list already holds: it makes no read of its own and opens no transcript. The pull request and
- * split view wait for the rows that deliver them (MWS-17, MWS-11).
+ * task's header and the facts the list already holds: it makes no read of its own and opens no transcript. Open in split view
+ * puts the task beside the one in the centre (MWS-11, REQ-PX-204), or says why it cannot. The pull request waits for the row
+ * that delivers it (MWS-17).
  */
 import { useEffect, useRef } from "react";
 import { Button, StatusDot, useLayer } from "@modbit/ui";
@@ -17,6 +18,8 @@ export interface PreviewCardProps {
   /** Opened with Space: focus moves to Open, and leaving the card closes it. Opened by the pointer it takes no focus. */
   byKeyboard: boolean;
   onOpen: () => void;
+  /** Opens the task in split view beside the one in the centre; the shell refuses it with its reason where it cannot. */
+  onSplit?: (() => void) | undefined;
   /** `restoreFocus` is true when the card was dismissed with Escape from the keyboard: focus goes back to the row. */
   onClose: (restoreFocus: boolean) => void;
   onPointerEnter: () => void;
@@ -97,6 +100,11 @@ export function PreviewCard(p: PreviewCardProps) {
         <Button ref={open} size="sm" onClick={p.onOpen} data-testid="agent-preview-open">
           Open
         </Button>
+        {p.onSplit && (
+          <Button size="sm" variant="ghost" onClick={p.onSplit} data-testid="agent-preview-split">
+            Open in split view
+          </Button>
+        )}
       </div>
     </div>
   );

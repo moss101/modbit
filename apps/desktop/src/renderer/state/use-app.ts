@@ -1,4 +1,5 @@
 /** The renderer's one controller hook: the Core connection, the task model, the screens' states and the keyboard commands (moved out of the single index.tsx; behaviour unchanged). */
+import { keyConversation, keyTaskId } from "../key-focus.ts";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { applyEvent, columns, emptyModel, fromSnapshot, type Event, type Model, type Snapshot, type TaskCard } from "../model.ts";
 import { fleetState, newTaskState, settingsState } from "../screens.ts";
@@ -377,8 +378,9 @@ export function useApp() {
   const runKeyCommand = useCallback(
     async (cmd: Command) => {
       const sessionId = modelRef.current.sessionId;
-      // The focused task: its row or conversation, or an attention item about it (approve, deny, cancel and steer act on that task).
-      const taskId = document.activeElement?.closest("[data-task-id]")?.getAttribute("data-task-id") ?? document.querySelector('[data-testid="conversation"]')?.getAttribute("data-task-id") ?? null;
+      // The focused task: its row or conversation, or an attention item about it (approve, deny, cancel and steer act on that task);
+      // with two tasks side by side, the one whose conversation has the keyboard (REQ-PX-204), never the first in the page.
+      const taskId = keyTaskId();
       const task = taskId ? modelRef.current.tasks.get(taskId) : undefined;
       switch (cmd) {
         case "newTask":
@@ -423,7 +425,7 @@ export function useApp() {
           setConfirm({ kind: "cancel", taskId: task.taskId, text: `Cancel “${task.goalText}”? The run stops at its next safe boundary; the task cannot be resumed.` });
           return;
         case "steerTask":
-          document.querySelector<HTMLElement>('[data-testid="composer-input"]')?.focus();
+          (keyConversation() ?? document).querySelector<HTMLElement>('[data-testid="composer-input"]')?.focus();
           return;
         case "confirm": {
           const c = confirm;

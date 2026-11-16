@@ -60,9 +60,13 @@ export interface AgentListProps {
   onNewTaskIn?: ((root: string) => void) | undefined;
   /** Hands the shell the list's pin and archive, for the open task's title menu; null when the list goes away. */
   onTaskActions?: ((actions: TaskActions | null) => void) | undefined;
+  /** Opens a task in split view (MWS-11, REQ-PX-204): Alt+click on a row and the preview card. */
+  onSplit?: ((taskId: string) => void) | undefined;
+  /** The two tasks side by side while split view is open. */
+  splitIds?: readonly string[] | undefined;
 }
 
-export function AgentList({ sessionId, connected, selectedTaskId, onSelect, onHeaders, onHeaderList, facts, projects, selectedProjectId = null, onOpenProject, onProjectArchived, parents, density, onSearch, onNewTaskIn, onTaskActions }: AgentListProps) {
+export function AgentList({ onSplit, splitIds, sessionId, connected, selectedTaskId, onSelect, onHeaders, onHeaderList, facts, projects, selectedProjectId = null, onOpenProject, onProjectArchived, parents, density, onSearch, onNewTaskIn, onTaskActions }: AgentListProps) {
   const [prefs, setPrefs] = useState<ListPrefs>(loadListPrefs);
   const update = useCallback((f: (p: ListPrefs) => ListPrefs) => setPrefs((p) => f(p)), []);
   useEffect(() => saveListPrefs(prefs), [prefs]);
@@ -304,6 +308,8 @@ export function AgentList({ sessionId, connected, selectedTaskId, onSelect, onHe
         focusRequest={focusRequest}
         onQuery={setQuery}
         onSelect={(id, rowId) => onSelect(id, rowId)}
+        onSplit={onSplit}
+        splitIds={splitIds}
         onPin={onPin}
         onUnpin={onUnpin}
         onArchive={requestArchive}

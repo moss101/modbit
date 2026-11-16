@@ -13,6 +13,7 @@ import type { KeyScope } from "@modbit/ui/logic";
 import type { DockApprovalView } from "../../shared/control-types.ts";
 import { ComputerApprovalBody } from "../computer/approval-body.tsx";
 import { approvalTitle } from "../computer/model.ts";
+import { ownsKeys } from "../key-focus.ts";
 import { alwaysAvailable, askClassLabel, cardKey, commandLine, effectWords, humanTitle, isIrreversible, prefixLadder, prefixWords, SCOPE_WORDS, stepIndex, whyAsked, type CardKey, type KeyFacts } from "./model.ts";
 
 export interface DeckProps {
@@ -62,6 +63,8 @@ export function ApprovalDeck(props: DeckProps) {
         const p = latest.current;
         const cur = p.approvals[p.index];
         if (!cur || p.busy) return null;
+        // Two tasks side by side (REQ-PX-204): only the card of the conversation that has the keyboard takes a key.
+        if (!ownsKeys(root.current)) return null;
         const active = document.activeElement;
         const facts: KeyFacts = {
           key: e.key,

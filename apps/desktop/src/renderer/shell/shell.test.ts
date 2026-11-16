@@ -122,7 +122,8 @@ test("persisted UI preferences round-trip, and hostile or corrupt storage falls 
 
 test("a layout preference is renderer-local: it never carries task state", () => {
   const keys = Object.keys(JSON.parse(serializeUiPrefs(DEFAULT_UI_PREFS)));
-  assert.deepEqual(keys.sort(), ["density", "detailsOpen", "listCollapsed", "listWidth", "panelByTask", "panelRatio", "theme", "zoom"]);
+  // REQ-PX-204: split view's two task ids, ratio and focus are a view choice like the dock per task (ids, never a task's state).
+  assert.deepEqual(keys.sort(), ["density", "detailsOpen", "listCollapsed", "listWidth", "panelByTask", "panelRatio", "split", "theme", "zoom"]);
 });
 
 test("MWS-03: density is one layout preference with a default, separate from zoom, and a profile stored before it reads as Comfortable", () => {
