@@ -27,8 +27,12 @@ export function FilesApp({ taskId, refreshKey, reveal = null }: { taskId: string
     },
     [taskId],
   );
-  // A different task starts at its own root; the open directories are read again when the task moves.
+  // A different task starts at its own root; the open directories are read again when the task moves. The first task's
+  // state is the initial state already, so nothing is reset on mount (a file the palette asked for is opened then).
+  const shownTask = useRef(taskId);
   useEffect(() => {
+    if (shownTask.current === taskId) return;
+    shownTask.current = taskId;
     setDirs({});
     setOpen({ "": true });
     setFile(null);
