@@ -192,12 +192,16 @@ input.settings-toggle.settings-toggle::after, input.settings-toggle.settings-tog
 .home-issue::placeholder { color: var(--mb-color-text-muted); opacity: 1; }
 .home-issue:focus-visible { box-shadow: inset 0 -1px 0 var(--mb-color-focus); }
 .home-issue-remove.home-issue-remove { flex: none; min-height: 0; width: var(--mb-control-xs); height: var(--mb-control-xs); padding: 0; display: inline-grid; place-items: center; background: transparent; color: var(--mb-color-text-muted); }
-.home-env { display: flex; flex-wrap: wrap; align-items: center; gap: var(--mb-space-0_5); padding: var(--mb-space-1_5) var(--mb-space-1_5) var(--mb-space-0_5); }
+/* One line: the folder gives way (its path ends in an ellipsis; the whole path is its title) before anything wraps. */
+.home-env { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--mb-space-0_5); padding: var(--mb-space-1_5) var(--mb-space-1_5) var(--mb-space-0_5); }
 .home-env .cmp-chip.home-chip, .home-chip { box-sizing: border-box; min-height: var(--mb-control-md); height: var(--mb-control-md); display: inline-flex; align-items: center; gap: var(--mb-space-1_5); padding: 0 var(--mb-space-2); border-radius: var(--radius-lg); font-size: var(--mb-type-chrome-size); color: var(--mb-color-text-muted); background: transparent; }
 .home-chip svg { flex: none; }
-.home-folder { flex: 0 1 auto; min-width: 0; max-width: 300px; }
+.home-env > * { flex-shrink: 0; }
+.home-env > .home-folder { flex-shrink: 1; }
+.home-env > .cmp-spacer { flex: 1 1 0; min-width: 0; }
+.home-folder { flex: 0 1 auto; min-width: 72px; max-width: 300px; }
 .home-folder:hover, .home-switch:hover { background: var(--mb-color-hover); }
-.home-folder input { flex: 0 1 auto; field-sizing: content; min-width: 6ch; box-sizing: border-box; border: 0; background: transparent; color: var(--mb-color-text); font: inherit; font-size: var(--mb-type-chrome-size); padding: 0; outline: none; text-overflow: ellipsis; }
+.home-folder input { flex: 0 1 auto; field-sizing: content; min-width: 0; box-sizing: border-box; border: 0; background: transparent; color: var(--mb-color-text); font: inherit; font-size: var(--mb-type-chrome-size); padding: 0; outline: none; text-overflow: ellipsis; }
 .home-folder input::placeholder { color: var(--mb-color-text-muted); opacity: 1; }
 .home-folder:focus-within { box-shadow: inset 0 0 0 1px var(--mb-color-focus); }
 .home-switch { position: relative; cursor: pointer; }

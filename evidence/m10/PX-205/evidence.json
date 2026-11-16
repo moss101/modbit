@@ -65,10 +65,10 @@
  "screenshots": "after/*.png: the running app against a real Core at 1440 x 900 (captured at 2x), written by e2e/px-205-home.spec.ts with MODBIT_SHOTS_DIR set, each in comfortable and compact, light and dark. home-first-run-*: a fresh profile, no provider, no trusted folder. home-location-menu-*: the location menu open with cloud disabled and its reason (provider and folder set). home-waiting-*: two tasks waiting, a protected write with Skip and Allow once, a destructive one with Cannot be undone and Open to decide. home-destructive-opens-task-*: the destructive task opened from home, its card on the second step.",
  "build_digest": {
   "dist/renderer/index.js": "sha256:b00bef876bfb67e44ecd30ee3bd153c867cf076c69314c166a9405e39a9be7c2",
-  "dist/renderer/app.css": "sha256:9ef7b28be837d7c7d6c4fe574b86786f96e774d7f62eefb6589a4a26535b19b6",
+  "dist/renderer/app.css": "sha256:b943c5d28332dfe4e30bab2d18cfd5436eee50532e65de6ecfc11148304c3c29",
   "dist/preload/preload.cjs": "sha256:91365bcfca1d747a1a96ab101bce7a96942c2872665042634fbda087d3e7bbf1",
   "dist/main/main.cjs": "sha256:3878cc18e3b0a5ca59be7dd91d23f089d27edff080129fd8a68bc85f747c8b14",
-  "note": "the final build: the screenshots and the reruns used it; the whole suite (run 1) ran on the build before the switch fix (app.css sha256:f36af4d1...); preload and main unchanged from PX-204"
+  "note": "the final build: the screenshots and the last reruns used it; the whole local suite (run 1) ran on an earlier build (app.css sha256:f36af4d1...) before the switch and strip fixes; preload and main unchanged from PX-204"
  },
  "core_binary": {
   "path": "research/desktop-2/bin/modbit-core (prebuilt from main's Rust; not in the repository)",
@@ -76,5 +76,7 @@
  },
  "full_suite_results": "evidence/m10/PX-205/desktop-e2e-full-results.txt",
  "full_suite": "run 1: 213 passed, 2 failed, 3 skipped (the two live-model specs and the Windows-only one). Both failures were caused by this change: keyboard.spec.ts:80 (home tab order; moved with the surface) and worktrees.spec.ts:64 (the own-worktree switch input was 1 px and the track took the click; the input now covers the switch). After the fixes: keyboard.spec.ts 1 of 1, worktrees.spec.ts 4 of 4, px-205-home.spec.ts 2 of 2. The whole suite was not run a second time.",
- "ci": {}
+ "ci": {
+  "run_1": "43808273820 on 8c48c2c6 (draft pull request 223): desktop E2E ubuntu failed in px-205-home.spec.ts:408, caused by this change: with the Linux location name (This computer) and a long folder path the environment strip wrapped and the run mode went to a second line (trayDrift caught it). Fixed: the strip is one line and the folder gives way; the spec now also checks the strip at 1100 and 900 wide. The rest of the ubuntu suite: 214 passed, 3 skipped. Other jobs at the time of the fix: see run_2."
+ }
 }

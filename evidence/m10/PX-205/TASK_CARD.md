@@ -84,6 +84,6 @@ Whole desktop suite, local, macOS arm64, once (see `desktop-e2e-full-results.txt
 
 ## Limitations
 
-- The proof is local (macOS arm64); CI is recorded in `evidence.json`.
+- CI is recorded in `evidence.json`. CI run 1 (43808273820) failed on Ubuntu in this spec: with the Linux location name ("This computer") and a long folder path the strip wrapped and the run mode went to a second line, which `trayDrift` caught. The strip is now one line where the folder gives way (its path ends in an ellipsis and stays whole in its title), and the spec checks the strip at 1100 and 900 wide as well.
 - The task list's rows still say "shell.exec asks for a …" as their reason line (the Core's attention text, PX-199's surface); not changed here.
 - The owner has not seen the screenshots. No graph status was set.

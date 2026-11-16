@@ -444,6 +444,12 @@ test("PX-205 waiting: a protected write is decided from home's list with a real 
     const items = page.getByTestId("home-waiting-item");
     await expect(items).toHaveCount(2);
     expect(await trayDrift(page)).toEqual([]);
+    // A long folder path and a narrower window (the 900 minimum gives the centre 612) keep the strip on one line: the folder gives way.
+    for (const width of [1100, 900]) {
+      await setContentSize(app, page, width, 800);
+      expect(await trayDrift(page), `at ${width} wide`).toEqual([]);
+    }
+    await setContentSize(app, page, 1440, 900);
     const writeRow = page.locator(`[data-testid="home-waiting-item"][data-approval-id="${write.approvalId}"]`);
     const destructiveRow = page.locator(`[data-testid="home-waiting-item"][data-approval-id="${destructive.approvalId}"]`);
     await expect(writeRow).toContainText(ADD);
