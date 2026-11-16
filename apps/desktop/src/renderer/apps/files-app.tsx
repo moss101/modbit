@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { WorkspaceEntry } from "../../preload/preload.ts";
 import { formatBytes, refusalText, withheldText } from "./files-model.ts";
 
@@ -11,7 +11,7 @@ type Dir = { entries: WorkspaceEntry[]; truncated: boolean } | { error: string }
  * Core has not listed, and a refusal (outside the workspace, protected, binary,
  * too large) is shown in the Core's terms instead of an empty pane.
  */
-export function FilesApp({ taskId, refreshKey }: { taskId: string; refreshKey: string }) {
+export function FilesApp({ taskId, refreshKey, reveal = null }: { taskId: string; refreshKey: string; reveal?: { path: string; n: number } | null }) {
   const [dirs, setDirs] = useState<Record<string, Dir>>({});
   const [open, setOpen] = useState<Record<string, boolean>>({ "": true });
   const [file, setFile] = useState<{ path: string; text: string | null; note: string | null; language: string } | null>(null);
@@ -37,6 +37,28 @@ export function FilesApp({ taskId, refreshKey }: { taskId: string; refreshKey: s
     for (const [p, isOpen] of Object.entries(open)) if (isOpen) void loadDir(p);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId, refreshKey]);
+
+  // REQ-PX-209: a file the palette chose is shown with its folders open, and the keyboard is on it in the tree. The path is one
+  // the Core listed for this task; it is read here like any other, so the Core's path policy decides again.
+  const root = useRef<HTMLDivElement>(null);
+  const revealed = useRef<number | null>(null);
+  useEffect(() => {
+    if (!reveal || revealed.current === reveal.n) return;
+    revealed.current = reveal.n;
+    const parts = reveal.path.split("/");
+    const folders = parts.slice(0, -1).map((_, i) => parts.slice(0, i + 1).join("/"));
+    setOpen((o) => ({ ...o, "": true, ...Object.fromEntries(folders.map((f) => [f, true])) }));
+    void (async () => {
+      for (const f of ["", ...folders]) await loadDir(f);
+      await show(reveal.path);
+      requestAnimationFrame(() => {
+        const el = root.current?.querySelector<HTMLElement>(`[data-testid="files-entry"][data-path="${CSS.escape(reveal.path)}"] button`);
+        el?.scrollIntoView({ block: "nearest" });
+        el?.focus();
+      });
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reveal, loadDir]);
 
   const toggle = (path: string) => {
     const next = !open[path];
@@ -90,7 +112,7 @@ export function FilesApp({ taskId, refreshKey }: { taskId: string; refreshKey: s
   };
 
   return (
-    <div className="files-app" data-testid="app-files">
+    <div ref={root} className="files-app" data-testid="app-files">
       <ul className="files-tree" aria-label="Workspace files" data-testid="files-tree">
         {tree("", 0)}
       </ul>
