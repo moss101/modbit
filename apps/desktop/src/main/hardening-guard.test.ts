@@ -39,7 +39,13 @@ const PINS = {
   // `pane:return`. Main answers a pane window only on the channels its pane needs, for its own task and session
   // (pane-windows.ts PANE_CHANNELS, an allow list); no channel that decides an approval is on it. The window is made by the one
   // factory with the same webPreferences, preload and page (the pins below are unchanged; `windowFactoryDrift` checks the rest).
-  preloadSha256: "76e83c38eb21ecebb78b88166be888fc7de17123e2213a51c1d0b4fba8fb85c2",
+  // PX-206 (2026-11-16, for review with its pull request): Inbox's record of updates. Four request channels without free
+  // text: `inbox:updates` (no argument), `inbox:markRead` (an update id of 32 hex characters, validated by main, which moves
+  // the Core's own read marker for that update's task through the existing MarkRead), `inbox:markAllRead` and `inbox:clear`
+  // (no argument). Two events it hears: `inbox:changed` (no payload) and `notify:open` (a task id the preload re-validates as
+  // 32 hex characters, or null), sent by main's click handler on a notification the OS showed. No renderer call can add an
+  // entry to the record: main notes entries from the Core's headers only.
+  preloadSha256: "b13e2933ec58dd608581ebbd9723dd49bac8f5ac19185360fcf94d13379a2c34",
   cspSha256: "e8c3fcc4286ba170b02ea95b02189f132b16228341d2002412facfec6eb929d1",
   webPreferencesSha256: "28515878dc43e119f2360de779e5a3733283d120b31a113837f7f7a6cf2356ee",
   windowOptionKeys: ["width", "height", "minWidth", "minHeight", "show", "webPreferences"],

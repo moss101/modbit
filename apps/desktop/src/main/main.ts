@@ -15,7 +15,8 @@ import { serializeEvent, type WireEvent } from "./events.js";
 import { BrowserHost } from "./browser.js";
 import { CredentialStore } from "./credentials.js";
 import { platformState } from "./platform.js";
-import { observeStreamEvent, registerConversationHandlers } from "./conversation-ipc.js";
+import { headersView, observeStreamEvent, registerConversationHandlers } from "./conversation-ipc.js";
+import { notificationTarget, UpdatesRecord, withReadState, type HeaderFacts } from "./inbox-record.js";
 import { registerComposerHandlers, requireSkillNames } from "./composer-ipc.js";
 import { registerChangesHandlers } from "./changes-ipc.js";
 import { registerCustomizeHandlers } from "./customize-ipc.js";
@@ -162,6 +163,37 @@ function sendToPanes(channel: string, payload: unknown, taskId: string | null): 
   for (const p of paneWindows.values()) if (!p.win.isDestroyed() && (taskId === null || p.ref.taskId === taskId)) p.win.webContents.send(channel, payload);
 }
 
+/**
+ * REQ-PX-206 (DR-PX-2026-11-11-021 MWS-13): Inbox's record of updates, kept here under the data directory (inbox-record.ts).
+ * It is noted from the Core's agent headers when the Core's events pass this process, whichever page the renderer shows, and
+ * again when the Core connects; no renderer call adds to it. Its read state is the Core's read marker for each task.
+ */
+const updates = new UpdatesRecord(join(dataDir, "inbox-updates.json"));
+let updatesTimer: ReturnType<typeof setTimeout> | null = null;
+const updatesSession = (): string | null => subscription?.sessionId ?? loadLocalState().sessionId ?? null;
+async function coreHeaders(c: CoreClient, sid: string): Promise<HeaderFacts[]> {
+  return headersView(sid, await c.getAgentHeaders(sid, true)).headers.map((h) => ({ taskId: h.taskId, title: h.title, statusClass: h.statusClass, subagent: h.subagent, origin: h.origin, lastOffset: h.lastOffset, readOffset: h.readOffset, updatedAtMs: h.updatedAtMs }));
+}
+/** Notes what the Core's headers say now; tells the renderer when the record changed. */
+async function noteUpdates(): Promise<HeaderFacts[] | null> {
+  const c = supervisor.current();
+  const sid = updatesSession();
+  if (!c || !sid || !HEX32.test(sid)) return null;
+  const headers = await coreHeaders(c, sid);
+  if (updates.observe(headers)) {
+    updates.save();
+    send("inbox:changed", null);
+  }
+  return headers;
+}
+function scheduleUpdates(): void {
+  if (updatesTimer) return;
+  updatesTimer = setTimeout(() => {
+    updatesTimer = null;
+    void noteUpdates().catch(() => {});
+  }, 250);
+}
+
 const supervisor = new CoreSupervisor(
   coreBin,
   dataDir,
@@ -186,6 +218,8 @@ const supervisor = new CoreSupervisor(
         if (ev.eventType === "SessionLeaseAcquired" && ev.sessionId) browserHost.sessionLeaseAcquired(ev.sessionId, Number((ev.payload as { lease_generation?: unknown } | null)?.lease_generation ?? 0));
         send("core:event", ev);
         if (ev.taskId) sendToPanes("core:event", ev, ev.taskId);
+        // REQ-PX-206: a task's state may have moved; the record notes it from the Core's headers.
+        if (ev.taskId && ev.aggregateType !== "assistant_stream") scheduleUpdates();
       };
       // Recovery: re-take the session lease (a new generation fences any stale
       // owner), re-attach the live subscription from the last cursor we delivered,
@@ -195,6 +229,8 @@ const supervisor = new CoreSupervisor(
       void handCredentialsToCore(c);
       const leaseJoined = local.sessionId ? c.joinSessionLease(local.sessionId, `desktop ${app.getVersion()}`).then(() => undefined, () => undefined) : Promise.resolve();
       if (subscription) c.subscribe(subscription.sessionId, subscription.cursor);
+      // REQ-PX-206: what happened while the Core was away is noted from its headers once it is back.
+      scheduleUpdates();
       // M7.1: the views this process still holds attach again to their sessions.
       void browserHost.reattachAll();
       void c
@@ -795,15 +831,66 @@ handle("browser:probe", (_e: IpcMainInvokeEvent, browserSessionId: unknown) => {
 // instead of watching the notification centre). No secret, no path, no
 // Core payload is in a notification: title and one line.
 const deliveredNotifications: { id: string; title: string; body: string; atMs: number; shown: boolean }[] = [];
+// REQ-PX-206: a click on a notification opens what it is about (its task, or Inbox), the link an update opens. The shown
+// notifications are held so their click handlers live as long as the OS may show them.
+const shownNotifications: Notification[] = [];
+function openFromNotification(id: string): void {
+  if (win && !win.isDestroyed()) {
+    if (win.isMinimized()) win.restore();
+    win.show();
+    win.focus();
+  }
+  send("notify:open", notificationTarget(id));
+}
 handle("notify:deliver", (_e: IpcMainInvokeEvent, id: unknown, title: unknown, body: unknown) => {
   if (typeof id !== "string" || id.length > 128 || typeof title !== "string" || title.length > 200 || typeof body !== "string" || body.length > 1000) throw new Error("BAD_ARGUMENT: notification");
   const shown = Notification.isSupported() && process.env.MODBIT_SUPPRESS_OS_NOTIFICATIONS !== "1";
-  if (shown) new Notification({ title, body, silent: true }).show();
+  if (shown) {
+    const n = new Notification({ title, body, silent: true });
+    n.on("click", () => openFromNotification(id));
+    shownNotifications.push(n);
+    if (shownNotifications.length > 20) shownNotifications.splice(0, shownNotifications.length - 20);
+    n.show();
+  }
   deliveredNotifications.push({ id, title, body, atMs: Date.now(), shown });
   if (deliveredNotifications.length > 200) deliveredNotifications.splice(0, deliveredNotifications.length - 200);
   return { shown };
 });
 handle("notify:log", () => deliveredNotifications.slice());
+// REQ-PX-206: Inbox's updates. List reads the Core's headers (and notes them), so every read state is the Core's; mark read
+// moves the Core's read marker for the update's task to the update's offset; clear is the person's. Nothing here takes text.
+async function updatesView(): Promise<{ updates: ReturnType<typeof withReadState>; unread: number; cap: number }> {
+  const headers = (await noteUpdates().catch(() => null)) ?? [];
+  const list = withReadState(updates.entries(), headers);
+  return { updates: list, unread: list.filter((u) => !u.read).length, cap: updates.cap };
+}
+async function markTaskRead(taskId: string, offset: string): Promise<void> {
+  const sid = updatesSession();
+  if (!sid) throw new Error("CORE_UNAVAILABLE: no session");
+  const c = requireClient();
+  await ensureSessionLease(c, sid);
+  await c.markRead(sid, taskId, BigInt(offset));
+}
+handle("inbox:updates", () => updatesView());
+handle("inbox:markRead", async (_e: IpcMainInvokeEvent, id: unknown) => {
+  if (typeof id !== "string" || !HEX32.test(id)) throw new Error("BAD_ARGUMENT: update id must be 32 hex chars");
+  const u = updates.get(id);
+  if (!u) throw new Error("UNKNOWN_UPDATE: that update is not in the record");
+  await markTaskRead(u.taskId, u.offset);
+  return updatesView();
+});
+handle("inbox:markAllRead", async () => {
+  const unread = (await updatesView()).updates.filter((u) => !u.read);
+  const upTo = new Map<string, bigint>();
+  for (const u of unread) if ((upTo.get(u.taskId) ?? -1n) < BigInt(u.offset)) upTo.set(u.taskId, BigInt(u.offset));
+  for (const [taskId, offset] of upTo) await markTaskRead(taskId, offset.toString());
+  return updatesView();
+});
+handle("inbox:clear", async () => {
+  updates.clear();
+  updates.save();
+  return updatesView();
+});
 // ---- Credentials (M7.8): the secret crosses main once, from the renderer's
 // input to safeStorage; what comes back is a handle. The Core is told the
 // handle, label, origin and account name.

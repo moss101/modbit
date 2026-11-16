@@ -527,6 +527,17 @@ export function useApp() {
       // per-viewer convenience only; nothing depends on it persisting
     }
   }, []);
+  // REQ-PX-206: a click on a notification the OS showed opens what it is about: its task, or Inbox for a burst (main's
+  // click handler sends the target; the link is the one an update in Inbox opens).
+  useEffect(
+    () =>
+      window.modbit.onNotificationOpen(({ taskId }) => {
+        setReviewing(null);
+        if (taskId) requestNav({ kind: "task", taskId });
+        else requestNav({ kind: "inbox" });
+      }),
+    [requestNav],
+  );
   const open = useCallback((link: AppNotification["deepLink"]) => {
     if (link.screen === "review" && link.taskId) {
       setReviewing(link.taskId);

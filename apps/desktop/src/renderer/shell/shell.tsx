@@ -25,6 +25,7 @@ import { Review } from "../review/review.tsx";
 import { SettingsNav } from "../settings/settings-nav.tsx";
 import { SettingsPage } from "../settings/settings-page.tsx";
 import { Inbox } from "../approvals/inbox.tsx";
+import { inboxCount } from "../approvals/inbox-model.ts";
 import { childrenOf } from "../model.ts";
 import { taskState } from "../screens.ts";
 import type { AgentHeaderView } from "../../shared/conversation-types.ts";
@@ -726,7 +727,7 @@ export function Shell({ app }: { app: AppState }) {
             rail={rail}
             canExpand={prefs.listCollapsed}
             taskCount={tasks.length}
-            attentionCount={cols.needsAttention.length}
+            attentionCount={inboxCount(app.attentionLoaded ? attentionItems : [])}
             onNewTask={() => actions.focusNewTask()}
             homeOpen={!actions.canGoBack()}
             onExpand={() => actions.toggleAgentList()}
@@ -876,7 +877,7 @@ export function Shell({ app }: { app: AppState }) {
               <Customize connected={core.state === "connected"} sessionId={model.sessionId} taskId={conversation?.taskId ?? selectedTaskId ?? [...model.tasks.keys()][0] ?? null} onClose={() => setCustomizeOpen(false)} />
             </div>
           ) : inboxOpen ? (
-            <Inbox app={app} onOpenTask={(id) => openConversation(id)} />
+            <Inbox app={app} onOpenTask={(id) => openConversation(id)} onNotificationSettings={() => actions.focusSettingsSection("notification-preferences")} />
           ) : automationsOpen ? (
             <div className="autos-scroll" data-testid="automations-region">
               <Automations connected={core.state === "connected"} onOpenTask={(id) => openConversation(id)} onClose={() => setAutomationsOpen(false)} />

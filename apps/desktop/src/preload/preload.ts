@@ -12,6 +12,7 @@ import type { CustomizeHooksView, HookEnabledInfo, MemoryForgetInfo, MemoryPromo
 import type { ChangesStateInfo, CommitPushAckInfo, CommitPushInput, DecideHunkAckInfo, DecideHunkInput, RevertAckInfo, RevertInput, StageAckInfo } from "../shared/changes-types.ts";
 import type { ComputerCardsInfo, ComputerFrameInfo, ComputerPresenceInfo, ComputerStopInfo, OpenSettingsInfo, PermissionName } from "../shared/computer-types.ts";
 import type { AccountingInfo, AddRuleInput, AllowRuleInfo, CheckpointListInfo, CheckpointTargetInput, DockApprovalView, ExpiredApprovalView, ForkOutcome, ModeProposalDecisionInfo, ModeProposalListInfo, RestoreOutcome, RewindPreviewInfo, RunModeInfo, TaskBudgetsInfo } from "../shared/control-types.ts";
+import type { UpdatesView } from "../shared/inbox-types.ts";
 
 export type { TerminalFrameJson, TerminalViewJson };
 
@@ -534,6 +535,17 @@ export interface ModbitBridge {
   /** PX-023: hand one notification to the OS (main keeps a delivery log). */
   deliverNotification(id: string, title: string, body: string): Promise<{ shown: boolean }>;
   notificationLog(): Promise<{ id: string; title: string; body: string; atMs: number; shown: boolean }[]>;
+  /** REQ-PX-206: a click on a delivered notification; the task it names opens (null: Inbox). */
+  onNotificationOpen(cb: (target: { taskId: string | null }) => void): () => void;
+  /** REQ-PX-206: Inbox's record of updates, kept by main from the Core's headers; each read state is the Core's. */
+  inboxUpdates(): Promise<UpdatesView>;
+  /** Marks one update read: the Core's read marker for its task moves to the update's offset. */
+  markUpdateRead(updateId: string): Promise<UpdatesView>;
+  markAllUpdatesRead(): Promise<UpdatesView>;
+  /** The person clears the record. */
+  clearUpdates(): Promise<UpdatesView>;
+  /** The record gained an update. */
+  onInboxChanged(cb: () => void): () => void;
   subscribe(sessionId: string, afterOffset: string): Promise<void>;
   onEvent(cb: (e: unknown) => void): () => void;
   onCoreStatus(cb: (s: unknown) => void): () => void;
@@ -746,6 +758,23 @@ const bridge: ModbitBridge = {
   },
   deliverNotification: (id, title, body) => ipcRenderer.invoke("notify:deliver", id, title, body),
   notificationLog: () => ipcRenderer.invoke("notify:log"),
+  onNotificationOpen: (cb) => {
+    const listener = (_: unknown, t: unknown) => {
+      const taskId = (t as { taskId?: unknown } | null)?.taskId;
+      cb({ taskId: typeof taskId === "string" && /^[0-9a-f]{32}$/.test(taskId) ? taskId : null });
+    };
+    ipcRenderer.on("notify:open", listener);
+    return () => ipcRenderer.removeListener("notify:open", listener);
+  },
+  inboxUpdates: () => ipcRenderer.invoke("inbox:updates"),
+  markUpdateRead: (updateId) => ipcRenderer.invoke("inbox:markRead", updateId),
+  markAllUpdatesRead: () => ipcRenderer.invoke("inbox:markAllRead"),
+  clearUpdates: () => ipcRenderer.invoke("inbox:clear"),
+  onInboxChanged: (cb) => {
+    const listener = () => cb();
+    ipcRenderer.on("inbox:changed", listener);
+    return () => ipcRenderer.removeListener("inbox:changed", listener);
+  },
   subscribe: (sessionId, afterOffset) => ipcRenderer.invoke("events:subscribe", sessionId, afterOffset),
   onEvent: (cb) => {
     const listener = (_: unknown, e: unknown) => cb(e);
