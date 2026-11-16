@@ -106,11 +106,31 @@ test("a build with no pinned key verifies nothing and offers no update", async (
 });
 
 test("hostile feeds are refused with their own reason and nothing is staged", async () => {
+  // Every step below must be judged by the check its own click started, and
+  // that check must be over before the next step rewrites the feed. The app
+  // also checks once by itself 5 s after start (UpdateService.start). In CI run
+  // 43755695976 that startup check answered step 2's assertions within 8 ms,
+  // the click's own check was still downloading when step 3 put the genuine
+  // artifact back, and it staged a correctly signed, correctly hashed 0.0.2.
+  // That staging was right; the test was reading someone else's answer.
+  // So: let the startup check run against an empty feed and finish first,
+  // then wait for each click's check to return before asserting.
+  feed.routes.delete("manifest.json");
+  const manifestFetches = () => feed.requests.filter((r) => r === "manifest.json").length;
+  const before = manifestFetches();
   const { app, page } = await launch();
   try {
     await expect(state(page)).toHaveAttribute("data-version", OLD);
+    await expect.poll(manifestFetches, { timeout: 30_000, message: "the startup check asked the feed" }).toBeGreaterThan(before);
+    await expect(state(page)).toHaveAttribute("data-state", "error", { timeout: 30_000 });
+    await expect(state(page)).toContainText(/ARTIFACT_MISSING/);
     const refuses = async (stateName: string, text: RegExp) => {
+      const asked = manifestFetches();
       await check(page);
+      // The click's check has read this step's feed; the button stays disabled until that check has returned.
+      await expect.poll(manifestFetches, { timeout: 30_000 }).toBeGreaterThan(asked);
+      await expect(page.getByTestId("update-check")).toBeEnabled({ timeout: 30_000 });
+      expect(manifestFetches(), "exactly one check ran in this step").toBe(asked + 1);
       await expect(state(page)).toHaveAttribute("data-state", stateName, { timeout: 30_000 });
       await expect(state(page)).toContainText(text);
       expect(existsSync(pendingFile()), "nothing staged").toBe(false);
