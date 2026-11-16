@@ -51,6 +51,9 @@ export function useApp() {
   // What the home composer asks of the new task, held until the task exists: CreateTask has no such fields, so the Core hears them before StartTask.
   const [newMode, setNewMode] = useState<TaskModeId>("AGENT");
   const [newModel, setNewModel] = useState<DraftModel | null>(null);
+  // REQ-PX-205: who approves the new task's effects, chosen on home's environment strip; null keeps the Core's default (Supervised).
+  // A mode that approves more carries the person's acknowledgement, given in home's dialog; the Core refuses it otherwise.
+  const [newRunMode, setNewRunMode] = useState<{ mode: string; acknowledged: boolean } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [reviewing, setReviewing] = useState<string | null>(null);
   // PX-045: the task the person last focused; the apps panel follows it.
@@ -233,10 +236,12 @@ export function useApp() {
         setCreateError(null);
         setNewMode("AGENT");
         setNewModel(null);
+        setNewRunMode(null);
         requestNav({ kind: "task", taskId: r.taskId });
         try {
           if (newMode !== "AGENT") await window.modbit.composerSetMode(sessionId, r.taskId, newMode);
           if (newModel) await window.modbit.composerSetPreference(sessionId, r.taskId, draftPatch(newModel));
+          if (newRunMode) await window.modbit.setRunMode(sessionId, r.taskId, newRunMode.mode, newRunMode.acknowledged);
         } catch (e) {
           // The task exists, and it does not run on anything other than what was asked for: it stays unstarted and says why.
           setError(`The task was created and not started, because the Core refused what was chosen for it: ${(e as Error).message}`);
@@ -250,7 +255,7 @@ export function useApp() {
         setSubmitting(false);
       }
     },
-    [goal, issueUrl, workspaceRoot, submitting, trusted, isolate, newMode, newModel, provider?.configured, requestNav],
+    [goal, issueUrl, workspaceRoot, submitting, trusted, isolate, newMode, newModel, newRunMode, provider?.configured, requestNav],
   );
 
   const startTask = useCallback(async (taskId: string) => {
@@ -536,7 +541,7 @@ export function useApp() {
   // and no tasks keeps it up with step 3.
   const onboarding = core.state === "connected" && provider !== null && (!provider.configured || model.tasks.size === 0);
 
-  return { selectedTaskId, setSelectedTaskId, core, setCore, model, setModel, screen, setScreen, platform, setPlatform, error, setError, recovered, setRecovered, recovery, setRecovery, goal, setGoal, issueUrl, setIssueUrl, languages, setLanguages, attentionItems, setAttentionItems, attentionLoaded, setAttentionLoaded, attentionTimer, refreshAttention, workspaceRoot, setWorkspaceRoot, isolate, setIsolate, newMode, setNewMode, newModel, setNewModel, submitting, setSubmitting, reviewing, setReviewing, dashboardOpen, setDashboardOpen, browsing, setBrowsing, provider, setProvider, credentials, setCredentials, credentialForm, setCredentialForm, credentialError, setCredentialError, refreshCredentials, providerKind, setProviderKind, providerKey, setProviderKey, providerUrl, setProviderUrl, providerBusy, setProviderBusy, providerResult, setProviderResult, trustRoot, setTrustRoot, trusted, setTrusted, trustBusy, setTrustBusy, trustError, setTrustError, starters, setStarters, autoReview, setAutoReview, createError, setCreateError, navRequest, requestNav, helpOpen, setHelpOpen, confirm, setConfirm, announcement, setAnnouncement, seenAttention, prefs, setPrefs, delivered, setDelivered, previousNotifications, modelRef, wasRestarting, load, submit, startTask, openBrowser, setupProvider, trustRepository, runStarter, cols, attention, runKeyCommand, tasks, fleet, composer, settings, notifications, savePrefs, open, onboarding };
+  return { selectedTaskId, setSelectedTaskId, core, setCore, model, setModel, screen, setScreen, platform, setPlatform, error, setError, recovered, setRecovered, recovery, setRecovery, goal, setGoal, issueUrl, setIssueUrl, languages, setLanguages, attentionItems, setAttentionItems, attentionLoaded, setAttentionLoaded, attentionTimer, refreshAttention, workspaceRoot, setWorkspaceRoot, isolate, setIsolate, newMode, setNewMode, newModel, setNewModel, newRunMode, setNewRunMode, submitting, setSubmitting, reviewing, setReviewing, dashboardOpen, setDashboardOpen, browsing, setBrowsing, provider, setProvider, credentials, setCredentials, credentialForm, setCredentialForm, credentialError, setCredentialError, refreshCredentials, providerKind, setProviderKind, providerKey, setProviderKey, providerUrl, setProviderUrl, providerBusy, setProviderBusy, providerResult, setProviderResult, trustRoot, setTrustRoot, trusted, setTrusted, trustBusy, setTrustBusy, trustError, setTrustError, starters, setStarters, autoReview, setAutoReview, createError, setCreateError, navRequest, requestNav, helpOpen, setHelpOpen, confirm, setConfirm, announcement, setAnnouncement, seenAttention, prefs, setPrefs, delivered, setDelivered, previousNotifications, modelRef, wasRestarting, load, submit, startTask, openBrowser, setupProvider, trustRepository, runStarter, cols, attention, runKeyCommand, tasks, fleet, composer, settings, notifications, savePrefs, open, onboarding };
 }
 
 export type AppState = ReturnType<typeof useApp>;
