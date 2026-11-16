@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2270,
+    "root_and_tooling": 2289,
     "docs_bytes": 2408986
   },
   "sections": [
@@ -4712,6 +4712,101 @@
       "path": "evidence/m10/PX-204/evidence.json",
       "bytes": 6398,
       "sha256": "1213ff2e1a83c4220bf513c5a81843e38b5d36a8b049c4f6932d6d672a44a66c"
+    },
+    {
+      "path": "evidence/m10/PX-205/TASK_CARD.md",
+      "bytes": 16733,
+      "sha256": "557d883b17aa450f73513972e54512593a74ddff99400009c3b86ba45ee39124"
+    },
+    {
+      "path": "evidence/m10/PX-205/after/home-destructive-opens-task-comfortable-dark.png",
+      "bytes": 264265,
+      "sha256": "5c52c5fa779876cb62c3154df737513244273eb1805c6e4162c19809145658bb"
+    },
+    {
+      "path": "evidence/m10/PX-205/after/home-destructive-opens-task-comfortable-light.png",
+      "bytes": 265272,
+      "sha256": "e22768afcafbd7861bf083b51aa4acce7b1b0f1cabf19fc7dc4923e90c9e52f8"
+    },
+    {
+      "path": "evidence/m10/PX-205/after/home-destructive-opens-task-compact-dark.png",
+      "bytes": 250655,
+      "sha256": "e24b464c320e0e0aec5ed612673f2c23c0d6dfd6db63b19e5e04fc0adabc30bb"
+    },
+    {
+      "path": "evidence/m10/PX-205/after/home-destructive-opens-task-compact-light.png",
+      "bytes": 252548,
+      "sha256": "a96165a3198c2815d85457f4299076e22ef434d4e03af81d115b3f6ff5d0c79d"
+    },
+    {
+      "path": "evidence/m10/PX-205/after/home-first-run-comfortable-dark.png",
+      "bytes": 164646,
+      "sha256": "1fb10bd2e1a641843dd361d6442cc3d41c9bb4ae7fce698d551437e9144daee3"
+    },
+    {
+      "path": "evidence/m10/PX-205/after/home-first-run-comfortable-light.png",
+      "bytes": 164310,
+      "sha256": "05fc6a3683b5d498c6608e28e34d599bdcb9dfc5ef9392a1685dbaaa52e9951f"
+    },
+    {
+      "path": "evidence/m10/PX-205/after/home-first-run-compact-dark.png",
+      "bytes": 156561,
+      "sha256": "26199e396d9a30b49f5271d0138da948afe6233b7825853883e4b1ddaed834a3"
+    },
+    {
+      "path": "evidence/m10/PX-205/after/home-first-run-compact-light.png",
+      "bytes": 156660,
+      "sha256": "c5e9d5b59599e4cf9022ed97df6d2bef0c49210f8475150f04e2c8716155903e"
+    },
+    {
+      "path": "evidence/m10/PX-205/after/home-location-menu-comfortable-dark.png",
+      "bytes": 196528,
+      "sha256": "a6908874a88731a38c04a4535a0e0d0943a9f658283977d3133afec0bd57153d"
+    },
+    {
+      "path": "evidence/m10/PX-205/after/home-location-menu-comfortable-light.png",
+      "bytes": 196507,
+      "sha256": "59c421d4bbfcacb41fe8b65d2b5907514d7dce5e4686cdcd3ade909ff471b029"
+    },
+    {
+      "path": "evidence/m10/PX-205/after/home-location-menu-compact-dark.png",
+      "bytes": 187097,
+      "sha256": "0579566c2d6517e85a5529acb05d91d48c4a238c117ab12a42ee31f2ffe98b38"
+    },
+    {
+      "path": "evidence/m10/PX-205/after/home-location-menu-compact-light.png",
+      "bytes": 188276,
+      "sha256": "3230f305dacd6fc3b5df6633a5e7445e143af0d8bbc1f138e3b4e1002a00abf5"
+    },
+    {
+      "path": "evidence/m10/PX-205/after/home-waiting-comfortable-dark.png",
+      "bytes": 177072,
+      "sha256": "dd59b0ec972f07cb19b40e11e6185540195fa80b4f5ff9d2854429e25deecc27"
+    },
+    {
+      "path": "evidence/m10/PX-205/after/home-waiting-comfortable-light.png",
+      "bytes": 176551,
+      "sha256": "5883f8ee4fe17b449b023c05f5508ff17ac472f6411d1d490c049bab27dc2240"
+    },
+    {
+      "path": "evidence/m10/PX-205/after/home-waiting-compact-dark.png",
+      "bytes": 167017,
+      "sha256": "a1cae95e0704a40b3ee61ac65c3f728321f90db52e3a783a9524d94ec3879559"
+    },
+    {
+      "path": "evidence/m10/PX-205/after/home-waiting-compact-light.png",
+      "bytes": 167580,
+      "sha256": "521021e5d1f746e45ad519e8d8a0468d71044237a0215982a3138087f8422ec4"
+    },
+    {
+      "path": "evidence/m10/PX-205/desktop-e2e-full-results.txt",
+      "bytes": 42301,
+      "sha256": "06218b382a9448ca492096250e7ce82608196c45925bb10a2c67adf4b99a017b"
+    },
+    {
+      "path": "evidence/m10/PX-205/evidence.json",
+      "bytes": 6283,
+      "sha256": "8cc53f808f2c424dd41707b4ea5c5723db5ab5e0f1cfe63b4f8079967b8a1eec"
     },
     {
       "path": "evidence/m10/PX-210/TASK_CARD.md",
