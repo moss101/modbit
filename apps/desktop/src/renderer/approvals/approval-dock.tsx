@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTrayStore } from "@modbit/ui";
 import type { DockApprovalView } from "../../shared/control-types.ts";
 import { ApprovalDeck } from "./approval-deck.tsx";
+import { resolveShown } from "./decide.ts";
 import { defaultPrefix, humanTitle, isIrreversible, refusalWords, surfacedIndex } from "./model.ts";
 import { useDockApprovals } from "./use-dock-approvals.ts";
 
@@ -69,7 +70,7 @@ export function ApprovalDock({ sessionId, taskId, connected, onChangeMode, title
       setNote(null);
       try {
         // The hash is the one this card showed; the Core refuses any other.
-        const r = await window.modbit.resolveApproval(sessionId, a.approvalId, approve, approve ? "approved on the approval card" : "skipped by the user", a.intentHash);
+        const r = await resolveShown(sessionId, a, approve, approve ? "approved on the approval card" : "skipped by the user");
         setNote({ kind: "ok", text: approve ? (a.toolName === "task.budget.raise" ? `Approved (${r.status.toLowerCase()}). Press the button in the limit tray to apply it; it applies once.` : `Approved (${r.status.toLowerCase()}). It runs once.`) : "Skipped. The agent is told you skipped it." });
       } catch (e) {
         setNote({ kind: "refused", text: refusalWords((e as Error).message) });
