@@ -115,7 +115,8 @@ None weakened. Each moved with its fact:
 - The task list's rows still say "shell.exec asks for a …" as their reason line (the Core's attention text on PX-199's surface; visible in the screenshots); not changed here.
 - The derived OS notification's body is still in the Core's words ("FAILURE: …"); unchanged (PX-023's surface).
 - CI (`evidence.json`): run 43944465930 on 6c169b19, after one rerun of failed jobs: desktop E2E green on macOS (216 passed), Ubuntu (216) and Windows (213), `px-206-inbox.spec.ts` passing on all three; every other job green except supply chain (`cargo-machete` fails to install upstream, as on main) and the summary that depends on it. Run 2 (43942067980) failed on this change: the thin-client static proof flagged the record's `node:fs` import; it is now a sanctioned exception with its reason (`packages/ide-adapter-core/src/conformance.test.ts`). The first attempt of run 3 had a Windows Rust property-test failure drawing the reserved name `prn` (no Rust changed; passed on rerun) and two macOS jobs no runner took.
-- The owner has not seen the screenshots. No graph status was set.
+- CI run 44044552025 on 7f2a52db (the count fix): attempt 1 green except desktop E2E Ubuntu (`states.spec.ts:189`, the spec's "provider down" port answered by another service on the runner) and the release supply chain (cancelled at its 90-minute limit); after the one rerun the release supply chain passed and desktop E2E Ubuntu failed in `px-202-pane-dock.spec.ts:234` (px-206 passing), which led to the bridge-load measurement and the px-202 timing fix above. macOS and Windows desktop E2E, Rust ×3, node ×3, packaged ×3, cloud, protocol, dossier and the locked-files check passed.
+- The owner has seen the first screenshots and asked for the count fix; the retaken ones are in `after/`. No graph status was set.
 
 ## Retained mutations (each asserted to fail)
 

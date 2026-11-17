@@ -906,7 +906,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-205/ci-run-43821013355.json` | retained evidence | 65329 | `666ac9f738d878ad127054fd2f94e33c363b1a7bcbeb1a4d9b53fb05582c902f` |
 | `evidence/m10/PX-205/desktop-e2e-full-results.txt` | retained evidence | 42301 | `06218b382a9448ca492096250e7ce82608196c45925bb10a2c67adf4b99a017b` |
 | `evidence/m10/PX-205/evidence.json` | retained evidence | 7774 | `a0cfe49c794c0b3cb25e04707a00af8db23f185e4e2d0df64fa03cbb8de18779` |
-| `evidence/m10/PX-206/TASK_CARD.md` | retained evidence | 25721 | `3e8ee5571ef4206b6253ae998682cdc78184f3befea4b5f48ade15f4be511e9d` |
+| `evidence/m10/PX-206/TASK_CARD.md` | retained evidence | 28767 | `1eb5ee2161ef673e5e8dc245ffd7e04d909a75867cfa3a5693683cc7c3d70e4e` |
 | `evidence/m10/PX-206/after/inbox-after-restart-comfortable-dark.png` | retained evidence | 294074 | `94ab6adf6c00cf390daa5c285d2fa834cc9eeadfce01e7c327fbe40a7ff00fcd` |
 | `evidence/m10/PX-206/after/inbox-after-restart-comfortable-light.png` | retained evidence | 294366 | `6932827941964e49b29e696d583534fdf4b02404e7e925332ff902bd2b1ba7c5` |
 | `evidence/m10/PX-206/after/inbox-after-restart-compact-dark.png` | retained evidence | 275642 | `7cadb0dbb9fae09f6604a5db6a82f281890de5749de7a6594f31bca5f10c4510` |
@@ -928,7 +928,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-206/after/inbox-updates-read-unread-compact-dark.png` | retained evidence | 180949 | `85c7531f501b4002dc5abf0b6492770a244f68677c9cfb096b108b25cee2c248` |
 | `evidence/m10/PX-206/after/inbox-updates-read-unread-compact-light.png` | retained evidence | 181190 | `7e29ad7c5bd34ea416be3bc742c1a30612962418333fe52fcf78e89d6dca4002` |
 | `evidence/m10/PX-206/desktop-e2e-full-results.txt` | retained evidence | 2946 | `e4937181267d3b05ab7392231607f0cbd9528880856dee497c641ba6aea5e13e` |
-| `evidence/m10/PX-206/evidence.json` | retained evidence | 10551 | `0e590808e7a2cf6ee13c465100a0d26690df607687b7799c182f75cb111c7f82` |
+| `evidence/m10/PX-206/evidence.json` | retained evidence | 12484 | `9c3d5267ed37822becc1e5460041b9c36755c68d8ac340ea6090a72d9966f8ab` |
 | `evidence/m10/PX-209/TASK_CARD.md` | retained evidence | 13996 | `0a8a0afb81f546db485f3509645e1e3ccc34ce7d42e0fda15712c7db5b6dd5e1` |
 | `evidence/m10/PX-209/after/palette-conversation-hit-comfortable-dark.png` | retained evidence | 269025 | `1cd8f5ff2b8a94493b73ffeac0acdab5de3b63e77bbdaa30cb37e677d84d3a89` |
 | `evidence/m10/PX-209/after/palette-conversation-hit-comfortable-light.png` | retained evidence | 277811 | `1ac6e2ae61e8501706e0fa7f4c2d4ce84b6fd2052edcda4c67d9793f99cfe25a` |
