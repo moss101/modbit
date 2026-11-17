@@ -2,12 +2,12 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-11-16",
+  "generated_on": "2026-11-17",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2309,
+    "root_and_tooling": 2310,
     "docs_bytes": 2408986
   },
   "sections": [
@@ -4815,8 +4815,8 @@
     },
     {
       "path": "evidence/m10/PX-209/TASK_CARD.md",
-      "bytes": 13174,
-      "sha256": "961c0f802e6d9901ea6545b6af440fd3ea240177747e78834b97ee500d3476af"
+      "bytes": 13996,
+      "sha256": "0a8a0afb81f546db485f3509645e1e3ccc34ce7d42e0fda15712c7db5b6dd5e1"
     },
     {
       "path": "evidence/m10/PX-209/after/palette-conversation-hit-comfortable-dark.png",
@@ -4897,6 +4897,11 @@
       "path": "evidence/m10/PX-209/after/palette-four-kinds-compact-light.png",
       "bytes": 301953,
       "sha256": "70c6fda14659de024f098dce3041485cfab869bc817ee9e3cb0f2a8b34b08f6d"
+    },
+    {
+      "path": "evidence/m10/PX-209/ci-run-43983243937.json",
+      "bytes": 65329,
+      "sha256": "048ab2e232bce65c8cc69298a5ee18ab42c3b7b0255d5ee8e28eb5b89401325c"
     },
     {
       "path": "evidence/m10/PX-209/desktop-e2e-full-results.txt",
@@ -12411,12 +12416,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 47635,
-      "sha256": "41895b52314d5f0d72c4818f438696206e2b7592f3638ed7ad8d4d0791ca7e39"
+      "sha256": "8f8d87b032247c6ff8a139ea215106e9fb9d4aca15182bf1b6bc59660748c260"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2653306,
-      "sha256": "dbd8c9887c450a42a42b162d380717284427bea551519a77c2d8bb5bea2fc634"
+      "bytes": 2653450,
+      "sha256": "ac4ce2617b6652a2e3f6a2c6eae0c0472673d4e2ba734e0512d6cdd9dbe613ea"
     },
     {
       "path": "tools/build_graph.py",
