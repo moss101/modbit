@@ -90,3 +90,9 @@ Adjacent specs on the final build: `shell.spec.ts` 10 of 10 (PX-045 palette incl
 
 - The proof is local (macOS arm64); CI is recorded in `evidence.json`.
 - The owner has not seen the screenshots. No graph status was set.
+
+## Closure (2026-11-17)
+
+- CI run 43983243937 on head 407c98c3 (the branch updated onto main bdb4f072, which pinned the supply-chain tools): all 19 checks passed after one rerun. The first attempt failed macOS `terminal-history.spec.ts:94` (seen on main before) and Windows Rust `a_protected_name_is_refused_under_any_prefix` (a test bug: a `prn` prefix is refused as Invalid on Windows; fixed separately in moss101/modbit#227). Merged to main as e429d951 (moss101/modbit#224).
+- The owner reviewed the screenshots of the running app beside board C3 and answered "Yes, seal when green" on 2026-11-17.
+- Left open at the seal: the board's "New task about …" and "Change run mode" rows; conversations in other sessions; files under `.git`, `node_modules` or past 400 folders; opening a file in a popped-out Files window.
