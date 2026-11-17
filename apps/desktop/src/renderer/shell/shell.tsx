@@ -120,7 +120,7 @@ export function Shell({ app }: { app: AppState }) {
   const connected = core.state === "connected";
   // REQ-PX-206 (the owner's review, 2026-11-17): what waits on the person, read from the Core once, here. The task list's Inbox badge
   // and Inbox's "Needs you · N" are the same number: the rows Needs you draws. Before the Core's attention view is read, no item is counted.
-  const needsYou = useNeedsYou(model.sessionId, connected, app.attentionLoaded ? attentionItems : [], inboxOpen);
+  const needsYou = useNeedsYou(model.sessionId, connected, app.attentionLoaded ? attentionItems : []);
   // PX-074: who holds the machine and which permissions the helper reports, as the Core says (nothing of it is kept here).
   const presence = useComputerPresence(connected);
   const computerStop = useComputerStop(model.sessionId, presence.refresh);

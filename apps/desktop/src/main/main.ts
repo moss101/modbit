@@ -186,12 +186,32 @@ async function noteUpdates(): Promise<HeaderFacts[] | null> {
   }
   return headers;
 }
+// The headers are read for the record at most once a second, one read at a time: a request while one is in flight or within the
+// second is kept for one read after it (trailing edge), so a burst of events costs one read, not one per event.
+const UPDATES_MIN_GAP_MS = 1000;
+let updatesInFlight = false;
+let updatesAgain = false;
+let updatesLastMs = 0;
 function scheduleUpdates(): void {
+  if (updatesInFlight) {
+    updatesAgain = true;
+    return;
+  }
   if (updatesTimer) return;
   updatesTimer = setTimeout(() => {
     updatesTimer = null;
-    void noteUpdates().catch(() => {});
-  }, 250);
+    updatesInFlight = true;
+    updatesLastMs = Date.now();
+    void noteUpdates()
+      .catch(() => {})
+      .finally(() => {
+        updatesInFlight = false;
+        if (updatesAgain) {
+          updatesAgain = false;
+          scheduleUpdates();
+        }
+      });
+  }, Math.max(250, UPDATES_MIN_GAP_MS - (Date.now() - updatesLastMs)));
 }
 
 const supervisor = new CoreSupervisor(
@@ -218,8 +238,8 @@ const supervisor = new CoreSupervisor(
         if (ev.eventType === "SessionLeaseAcquired" && ev.sessionId) browserHost.sessionLeaseAcquired(ev.sessionId, Number((ev.payload as { lease_generation?: unknown } | null)?.lease_generation ?? 0));
         send("core:event", ev);
         if (ev.taskId) sendToPanes("core:event", ev, ev.taskId);
-        // REQ-PX-206: a task's state may have moved; the record notes it from the Core's headers.
-        if (ev.taskId && ev.aggregateType !== "assistant_stream") scheduleUpdates();
+        // REQ-PX-206: a task's state may have moved (only a task's own lifecycle events move it); the record notes it from the Core's headers.
+        if (ev.taskId && ev.eventType.startsWith("Task")) scheduleUpdates();
       };
       // Recovery: re-take the session lease (a new generation fences any stale
       // owner), re-attach the live subscription from the last cursor we delivered,

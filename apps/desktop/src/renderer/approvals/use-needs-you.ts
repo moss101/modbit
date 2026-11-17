@@ -28,10 +28,13 @@ export interface NeedsYou {
   refresh: () => void;
 }
 
-/** `fast`: Inbox is open (proposals are then read about once a second; otherwise every few seconds and on each task event). */
-export function useNeedsYou(sessionId: string | null, connected: boolean, attention: readonly AttentionItem[], fast: boolean): NeedsYou {
-  const { approvals, refresh: refreshApprovals } = useDockApprovals(sessionId, null, connected);
-  const pendingSeen = useSessionProposals(sessionId, connected, fast ? 1000 : 5000);
+/** An approval's own events, and a task's end (which closes what it was waiting on): the only events after which the list can differ. */
+const approvalEvent = (e: { eventType?: string }): boolean => /^Approval|^Task(Completed|Cancelled|Failed|ReadyForReview)$/.test(e.eventType ?? "");
+
+/** Read on the events that can change each list (see use-inbox.ts and `approvalEvent`), one read at a time, so it adds little to the bridge. */
+export function useNeedsYou(sessionId: string | null, connected: boolean, attention: readonly AttentionItem[]): NeedsYou {
+  const { approvals, refresh: refreshApprovals } = useDockApprovals(sessionId, null, connected, approvalEvent);
+  const pendingSeen = useSessionProposals(sessionId, connected);
   const refreshProposals = pendingSeen.refresh;
   const refresh = useCallback(() => {
     refreshApprovals();

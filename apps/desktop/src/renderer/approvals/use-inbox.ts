@@ -7,7 +7,7 @@ import type { ModeProposalInfo } from "../../shared/control-types.ts";
 import type { UpdatesView } from "../../shared/inbox-types.ts";
 
 const HOLD_MS = 150;
-/** While Inbox is open, or a proposal is pending, the Core's proposals are read about once a second: one waits 15 seconds for an answer. */
+/** While a proposal is pending the Core's proposals are read about once a second: one waits 15 seconds for an answer. */
 const PROPOSALS_EVERY_MS = 1000;
 /** The status classes of a task that is still running or waiting: only such a task can have a pending proposal. */
 const LIVE = new Set(["RUNNING", "WAITING", "NEEDS_ATTENTION"]);
@@ -71,9 +71,10 @@ export function useInboxUpdates(connected: boolean): InboxUpdates {
   }, [connected, load]);
   useEffect(() => {
     const offChanged = window.modbit.onInboxChanged(refresh);
+    // A task's lifecycle moves what is noticed; the read marker moves what is read. Nothing else changes the list.
     const offEvent = window.modbit.onEvent((raw) => {
-      const e = raw as WireEventLike;
-      if (e.taskId && e.aggregateType !== "assistant_stream") refresh();
+      const e = raw as WireEventLike & { eventType?: string };
+      if (e.taskId && (/^Task/.test(e.eventType ?? "") || e.eventType === "ConversationRead")) refresh();
     });
     return () => {
       offChanged();
@@ -89,12 +90,26 @@ export function useInboxUpdates(connected: boolean): InboxUpdates {
   };
 }
 
-/** Every proposal the Core holds pending across the session's live tasks, with the skew of the Core's clock to this machine's. */
-export function useSessionProposals(sessionId: string | null, connected: boolean, everyMs: number = PROPOSALS_EVERY_MS): { proposals: ModeProposalInfo[]; skewMs: number; refresh: () => void } {
+/** The events after which the Core's list of proposals can differ (recorded on the task's log; an expiry is a decision too). */
+export const PROPOSAL_EVENTS = new Set(["ModeSwitchProposed", "ModeSwitchDecided"]);
+/** With no proposal pending the list is read again only on those events, and as a safety net this often. */
+const PROPOSALS_IDLE_MS = 30_000;
+
+/**
+ * Every proposal the Core holds pending across the session's live tasks, with the skew of the Core's clock to this machine's.
+ * Read on a proposal's own events; about once a second while one is pending (its 15 s are shown and its expiry seen); otherwise
+ * every 30 s. One read at a time: a request while one is in flight is kept for one more read after it (trailing edge).
+ */
+export function useSessionProposals(sessionId: string | null, connected: boolean): { proposals: ModeProposalInfo[]; skewMs: number; refresh: () => void } {
   const [state, setState] = useState<{ proposals: ModeProposalInfo[]; skewMs: number }>({ proposals: [], skewMs: 0 });
   const inFlight = useRef(false);
+  const again = useRef(false);
   const load = useCallback(async () => {
-    if (!sessionId || inFlight.current) return;
+    if (!sessionId) return;
+    if (inFlight.current) {
+      again.current = true;
+      return;
+    }
     inFlight.current = true;
     try {
       const headers = await window.modbit.agentHeaders(sessionId);
@@ -112,20 +127,24 @@ export function useSessionProposals(sessionId: string | null, connected: boolean
       // Unreachable Core: the last list stays.
     } finally {
       inFlight.current = false;
+      if (again.current) {
+        again.current = false;
+        void load();
+      }
     }
   }, [sessionId]);
   const refresh = useHeldRefresh(load);
+  const pending = state.proposals.length > 0;
   useEffect(() => {
     if (!sessionId || !connected) return;
     void load();
-    const t = setInterval(() => void load(), everyMs);
+    const t = setInterval(() => void load(), pending ? PROPOSALS_EVERY_MS : PROPOSALS_IDLE_MS);
     return () => clearInterval(t);
-  }, [sessionId, connected, load, everyMs]);
-  // A proposal is recorded on its task's log: a task's event reads the list again at once.
+  }, [sessionId, connected, load, pending]);
   useEffect(() => {
     const off = window.modbit.onEvent((raw) => {
-      const e = raw as WireEventLike;
-      if (e.taskId && e.aggregateType !== "assistant_stream") refresh();
+      const e = raw as WireEventLike & { eventType?: string };
+      if (e.taskId && PROPOSAL_EVENTS.has(e.eventType ?? "")) refresh();
     });
     return off;
   }, [refresh]);

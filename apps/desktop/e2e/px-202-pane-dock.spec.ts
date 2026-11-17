@@ -231,7 +231,8 @@ test("PX-202: panes open together and tile; the set and the sizes are the task's
     // ---- MWS-10 and the owner's review: the bar holds Changes and Terminal; the Panes menu holds every pane, the three new ones among them; none open, and the rail beside the conversation.
     const bar = page.getByTestId("top-bar");
     const ALL = ["changes", "terminal", "browser", "files", "evidence", "activity", "background", "pull-request"];
-    expect(await bar.locator('[data-testid^="pane-toggle-"]').evaluateAll((els) => els.map((e) => `${e.getAttribute("data-testid")}:${e.getAttribute("data-state")}`))).toEqual(["pane-toggle-changes:closed", "pane-toggle-terminal:closed"]);
+    // The terminals are the Core's once listed above; the title bar draws Terminal after the renderer's own terminal read, so the check waits for the same toggles (PX-206: a test-timing fix).
+    await expect.poll(() => bar.locator('[data-testid^="pane-toggle-"]').evaluateAll((els) => els.map((e) => `${e.getAttribute("data-testid")}:${e.getAttribute("data-state")}`)), { timeout: 15_000 }).toEqual(["pane-toggle-changes:closed", "pane-toggle-terminal:closed"]);
     expect(await panesMenuDrift(page, ALL, {}), "every pane is in the Panes menu, closed").toEqual([]);
     expect(await titleBarDrift(page)).toEqual([]);
     await expect(page.getByTestId("region-apps")).toHaveCount(0);

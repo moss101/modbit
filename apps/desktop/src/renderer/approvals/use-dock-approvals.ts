@@ -17,12 +17,15 @@ const HOLD_MS = 120;
  * With no task open (home's waiting list, REQ-PX-205) every pending approval of the session is listed, oldest first, and
  * nothing is said about expiries: those are named on the card of the task that saw them.
  */
-export function useDockApprovals(sessionId: string | null, taskId: string | null, connected: boolean): { approvals: DockApprovalView[]; expired: ExpiredApprovalView[]; loaded: boolean; refresh: () => void } {
+export function useDockApprovals(sessionId: string | null, taskId: string | null, connected: boolean, relevant?: (e: { eventType?: string }) => boolean): { approvals: DockApprovalView[]; expired: ExpiredApprovalView[]; loaded: boolean; refresh: () => void } {
   const [approvals, setApprovals] = useState<DockApprovalView[]>([]);
   // REQ-PX-058: approvals this card saw waiting that the Core has since closed as expired. They are named, never silently dropped.
   const [expired, setExpired] = useState<ExpiredApprovalView[]>([]);
   const seen = useRef(new Set<string>());
   const [loaded, setLoaded] = useState(false);
+  // REQ-PX-206: a reader that knows which events can change the list (Inbox's count in the shell) reads on those only.
+  const relevantRef = useRef(relevant);
+  relevantRef.current = relevant;
   const key = useRef({ sessionId, taskId });
   key.current = { sessionId, taskId };
   const inFlight = useRef(false);
@@ -81,6 +84,7 @@ export function useDockApprovals(sessionId: string | null, taskId: string | null
     const off = window.modbit.onEvent((raw) => {
       const e = raw as WireEventLike;
       if (!e.taskId || e.aggregateType === "assistant_stream") return;
+      if (relevantRef.current && !relevantRef.current(e)) return;
       refresh();
     });
     return () => {
