@@ -1,7 +1,7 @@
 # Modbit Dossier Manifest — V3.3 EPR v1.1
 
 > **Authority date:** 2026-09-05  
-> **Generated:** 2026-11-16 by `tools/build_manifest.py`  
+> **Generated:** 2026-11-17 by `tools/build_manifest.py`  
 > **Scope:** every specification file in `docs/` plus the root governing files and tooling. The previous `99_MANIFEST.md` covered only 39 Part 2 files; this manifest covers all 97 docs.
 > **Machine-readable twin:** `manifest.json` (same content, same hashes).
 
@@ -910,6 +910,25 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-205/ci-run-43821013355.json` | retained evidence | 65329 | `666ac9f738d878ad127054fd2f94e33c363b1a7bcbeb1a4d9b53fb05582c902f` |
 | `evidence/m10/PX-205/desktop-e2e-full-results.txt` | retained evidence | 42301 | `06218b382a9448ca492096250e7ce82608196c45925bb10a2c67adf4b99a017b` |
 | `evidence/m10/PX-205/evidence.json` | retained evidence | 7774 | `a0cfe49c794c0b3cb25e04707a00af8db23f185e4e2d0df64fa03cbb8de18779` |
+| `evidence/m10/PX-209/TASK_CARD.md` | retained evidence | 13174 | `961c0f802e6d9901ea6545b6af440fd3ea240177747e78834b97ee500d3476af` |
+| `evidence/m10/PX-209/after/palette-conversation-hit-comfortable-dark.png` | retained evidence | 269025 | `1cd8f5ff2b8a94493b73ffeac0acdab5de3b63e77bbdaa30cb37e677d84d3a89` |
+| `evidence/m10/PX-209/after/palette-conversation-hit-comfortable-light.png` | retained evidence | 277811 | `1ac6e2ae61e8501706e0fa7f4c2d4ce84b6fd2052edcda4c67d9793f99cfe25a` |
+| `evidence/m10/PX-209/after/palette-conversation-hit-compact-dark.png` | retained evidence | 252952 | `296b1f29d954f85a5592bee04778abd575c49f8ae5f5dfca4760a1093063a9b0` |
+| `evidence/m10/PX-209/after/palette-conversation-hit-compact-light.png` | retained evidence | 259388 | `ab33e8d7dc2bcad0e52699f815d3026cad3b54981f16a22aa82e8f2c9610a1e4` |
+| `evidence/m10/PX-209/after/palette-empty-comfortable-dark.png` | retained evidence | 358702 | `ccf3146143fe138c1aa44c62ece6ef8889bf6da10c3b7f21e3223a2a9a395c19` |
+| `evidence/m10/PX-209/after/palette-empty-comfortable-light.png` | retained evidence | 366787 | `5c42819f35b95f979e27c6b5509bb4a5c59e8fde100230a13fca1bd84a64ee87` |
+| `evidence/m10/PX-209/after/palette-empty-compact-dark.png` | retained evidence | 346187 | `c7f71b5b975fab5a6ff417fa2a090b7316f92d3b6b87b6f58969b37697cc3697` |
+| `evidence/m10/PX-209/after/palette-empty-compact-light.png` | retained evidence | 352990 | `57051067e3a8f4a29c1bdc91df7c716949ea9794617e99489792f6e8aa38356c` |
+| `evidence/m10/PX-209/after/palette-file-hit-comfortable-dark.png` | retained evidence | 272656 | `669878b1c476f28bc4a77f4fd6af63e8914e6e4efa52e76783a1773b0da10a24` |
+| `evidence/m10/PX-209/after/palette-file-hit-comfortable-light.png` | retained evidence | 281241 | `114eae16d98b59eb282b48b9a91e2e09033eb64b95fa119760def3ebbdace00b` |
+| `evidence/m10/PX-209/after/palette-file-hit-compact-dark.png` | retained evidence | 254858 | `756b8f51ba14cd9232253036c0cd701c16a3b204dc59ddb0ecd575ce03ce665b` |
+| `evidence/m10/PX-209/after/palette-file-hit-compact-light.png` | retained evidence | 262221 | `d9acbd8840041ce5784457eacecab2647eb18c6bc6539e8aa92ad3995ba8e384` |
+| `evidence/m10/PX-209/after/palette-four-kinds-comfortable-dark.png` | retained evidence | 313318 | `6576c4fb20627a221dfd5b50a8fa79827047e69523b21b47c4ab0c926334d2d7` |
+| `evidence/m10/PX-209/after/palette-four-kinds-comfortable-light.png` | retained evidence | 321805 | `b91ea5676b599670c2bb42d5091b2fb84aa45ccc0d4c139ba44594bd47d5c885` |
+| `evidence/m10/PX-209/after/palette-four-kinds-compact-dark.png` | retained evidence | 295484 | `de14cbf6b6a636e6b767e7df1fa9eef53a1e95ccd732b78093622bafe332f6e4` |
+| `evidence/m10/PX-209/after/palette-four-kinds-compact-light.png` | retained evidence | 301953 | `70c6fda14659de024f098dce3041485cfab869bc817ee9e3cb0f2a8b34b08f6d` |
+| `evidence/m10/PX-209/desktop-e2e-full-results.txt` | retained evidence | 42601 | `fedab2d98e75d96a6a2ff5c659b4c78212370c031db02d99cbf8b5651181ec37` |
+| `evidence/m10/PX-209/evidence.json` | retained evidence | 3918 | `7aba181122c6235970b95ed5af29f60343d2843373f6d42c197480ce22627a82` |
 | `evidence/m10/PX-210/TASK_CARD.md` | retained evidence | 11615 | `493c4c60c6a94d4a062040ba472476e08b5b9c7f30116221ff5eb56dd26873f4` |
 | `evidence/m10/PX-210/after/composer-after-tab-light.png` | retained evidence | 30362 | `a7b1367df855da4288ff969ddb1a68bb03d6a4ecbbc8071ad59d0e5dddabff4d` |
 | `evidence/m10/PX-210/after/composer-long-suggestion-dark-900.png` | retained evidence | 35124 | `14ec8efa1eafc089f6f688e72fb15a75e11555cdf3e48e237cb62fdeb3f3d36f` |
@@ -2410,8 +2429,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/zcode-ui/reference/zcode-colors-rgba.json` | retained evidence | 18690 | `76372c3edbcd50fe596d5e4b7fcd7991adab9686588ddc578a728afa24b4f028` |
 | `evidence/zcode-ui/reference/zcode-computed.json` | retained evidence | 718674 | `9ae8821ce72aa0fff3be44aacd0f4c9d995465c54bad7f17d1a81f92841d1c2d` |
 | `evidence/zcode-ui/reference/zcode-tokens-resolved.json` | retained evidence | 30635 | `066725c00059a05d073fbcdac9a8d965eab05f05c1f5df16e654854ff3e22b91` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 47706 | `72dcb42f0ac179d135bdaa6650e029513a55b874a748d9130eabd0835888471b` |
-| `graph/project-graph.json` | project driver graph with live status | 2633390 | `f04bb9a7f3f4122d583cd731bd727603d3abb2857ca3f4e499c4cac33a8162bd` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 47706 | `866b4ff2324fd9824974f4087a1ab4dc2b98bd271805e6ca9cb62483d0232f33` |
+| `graph/project-graph.json` | project driver graph with live status | 2633390 | `01e6f68e4ae164a9468a334d431325302e12899964f5cf7f2acb60a787843920` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 69551 | `75bcc309c03df0b898705f3bf58a8c289431dc60cbaf52e1c38f4c5d41d06dd7` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |
