@@ -97,7 +97,24 @@ proptest! {
         parts.push(name.to_owned());
         let p = parts.join("/");
         let r = policy.check(&p);
-        prop_assert!(matches!(r, Err(Error::Protected { .. })), "{p:?}: {r:?}");
+        // `[a-z]{1,8}` can spell a Windows device name (`con`, `prn`, `aux`,
+        // `nul`). On Windows that prefix is refused as `Invalid` (WIN-03)
+        // before the protected-name rule is reached; it is still a refusal,
+        // and the reason must name the device. Everywhere else, and for every
+        // other prefix, the refusal must be `Protected`.
+        let device_prefix = cfg!(windows)
+            && prefix
+                .iter()
+                .any(|s| ["CON", "PRN", "AUX", "NUL"].contains(&s.to_ascii_uppercase().as_str()));
+        if device_prefix {
+            prop_assert!(
+                matches!(&r, Err(Error::Invalid { detail, .. }) if detail.contains("reserved device name"))
+                    || matches!(r, Err(Error::Protected { .. })),
+                "{p:?}: {r:?}"
+            );
+        } else {
+            prop_assert!(matches!(r, Err(Error::Protected { .. })), "{p:?}: {r:?}");
+        }
     }
 }
 
