@@ -16,3 +16,10 @@
 # Rerun on the final build: the ten failed specs' files plus px-206
   1 skipped
   23 passed (1.6m)
+
+# 2026-11-17, after the owner's review (one Needs-you count), origin/main merged (PX-209, #226, #227): whole desktop suite, macOS arm64, prebuilt Core
+  1) e2e/px-206-inbox.spec.ts:238:1 › PX-206 Inbox: Needs you decides approvals and proposals, a destructive effect opens its task; Updates are listed with their time and the Core's read state; the record survives a Core kill and a restart, keeps its cap and is cleared; counts are the Core's 
+  1 failed
+  3 skipped
+  216 passed (22.2m)
+# the one failure was this spec's own check after the restart reading the expected count before Inbox had loaded; fixed (it now waits until badge, tab, rows and the Core agree); px-206-inbox.spec.ts then 1 of 1 four times; task-list, attention, keyboard and awl specs 6 of 6

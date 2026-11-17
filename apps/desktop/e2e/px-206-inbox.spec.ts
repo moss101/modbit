@@ -495,7 +495,7 @@ test("PX-206 Inbox: Needs you decides approvals and proposals, a destructive eff
     writeFileSync(mutated, JSON.stringify({ ...onDisk, entries: onDisk.entries.map((e, i) => (i === 0 ? { ...e, text: SAID } : e)) }));
     expect(recordDrift(mutated, [SAID, SUMMARY])).toEqual(["an update holds text beside its ids, title and time", `the record holds transcript text: "${SAID}"`]);
     // After the restart the one count still holds (the badge's mutation is retained at the proposals above).
-    await expectNeeds(page, sid, await page.locator('[data-testid="inbox"] [data-testid="attention-item"]').count());
+    await expect.poll(() => countDrift(page, sid), { timeout: 30_000 }).toEqual([]);
     // A control nobody proves fails the census.
     await page.getByTestId("inbox").evaluate((el) => {
       const b = document.createElement("button");

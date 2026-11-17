@@ -49,8 +49,7 @@
   "read_state": "not stored by main: the Core's read marker for the task (no second read-state owner); opening an update moves it through MarkRead",
   "cap": "200 (the record names no number; notify:log's cap)",
   "kinds": "READY_FOR_REVIEW, CHILD_FINISHED (subagent ready or completed), AUTOMATION_RAN (automation task ready or completed), FAILED; a state is noticed once per task",
-  "inbox_count": "tasks with an item in the Core's attention view (was the renderer store's needsAttention column)",
-  "needs_you_count": "the Core's pending approvals + its other attention items + pending proposals"
+  "needs_you_count": "one number, computed once (use-needs-you.ts, needsYouCount) for the task list's badge and the Needs you tab: the rows drawn = the Core's pending approvals + its other attention items (APPROVAL items are the same approvals, not counted again) + pending proposals"
  },
  "left_out": [
   "Always allow on Inbox's cards (a second path into rule-making; open the task)",
@@ -73,7 +72,7 @@
  "retained_mutations": [
   "a destructive effect resolved through the bridge while Inbox showed it: destructiveDecidedFromInbox fails; decideFromList(inbox) refuses Destructive approve and skip in inbox-model.test.ts with nothing reaching the bridge",
   "a record copy with text beside an entry: recordDrift fails (extra field and transcript text); inbox-record.test.ts: a header with the assistant's last line leaves nothing of it, a file with text/reason is read back without them",
-  "Inbox's count drawn from the renderer's own list: countDrift fails; inbox-model.test.ts: a store column of 1 against a Core count of 0",
+  "the badge set to the Core's task count while five items are pending: countDrift reports 'Inbox's badge is 3; Needs you holds 5'; inbox-model.test.ts: the task count (2) is not Needs you's 3 rows, and a store column of 1 against needsYouCount 0",
   "a button nobody proves added to Inbox's head: inertControls fails"
  ],
  "removed_test_ids": [
@@ -104,5 +103,12 @@
   "run_3": "43944465930 on 6c169b19 (attempt 1): desktop E2E ubuntu success (216 passed) and windows success (213 passed), px-206-inbox.spec.ts passing on both; node x3, cloud, protocol round trip, dossier integrity, locked-files DR check, packaged desktop x3, release supply chain, rust ubuntu: success. desktop E2E macOS and rust macOS: cancelled, 'The job was not acquired by Runner of type hosted even after multiple attempts' (runner capacity, no fix). rust windows: failure in crates/workspace/tests/property_paths.rs a_protected_name_is_refused_under_any_prefix (the property generator drew the Windows reserved name 'prn' as a prefix; no Rust changed here; main's latest windows rust job also fails, on another test). supply chain: failure installing cargo-machete v0.10.1 (E0658 path_is_empty, upstream; failing on main's last three runs too).",
   "run_3_rerun": "43944465930 attempt 2 (one rerun of failed jobs): desktop E2E macOS success (216 passed, px-206 passing), rust macOS success, rust windows success; supply chain failure (the same cargo-machete install) and therefore CI_COMPATIBLE summary failure. Every other job green.",
   "pushes": "4 (c74a25c3, 3667e694, 6c169b19, and this evidence-only push); one rerun used"
+ },
+ "owner_review": {
+  "date": "2026-11-17",
+  "finding": "Fix the count first: the badge (tasks with an attention item) and Needs you's tab (every item) disagreed side by side (3 vs 4, 1 vs 2)",
+  "change": "the badge shows the Needs you count; one read in the shell feeds both",
+  "proof": "px-206-inbox.spec.ts expectNeeds: badge = tab = rows = Core reads at 5, 4, 3, 2, 1 as each is decided; retained mutation badge = task count fails ('Inbox's badge is 3; Needs you holds 5'); screenshots retaken",
+  "runs": "unit 448/448; whole desktop suite once: 216 passed, 1 failed (this spec's post-restart check raced Inbox's first read; fixed), 3 skipped; px-206 1/1 x4; task-list, attention, keyboard, awl 6/6"
  }
 }
