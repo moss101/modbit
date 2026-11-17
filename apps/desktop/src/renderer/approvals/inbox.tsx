@@ -29,7 +29,6 @@ import {
   effectTag,
   exactLine,
   fullTime,
-  needsYouCount,
   proposalQuestion,
   UPDATE_WORDS,
   whenWords,
@@ -46,8 +45,8 @@ import {
   proposalRefusalWords,
   secondsLeft,
 } from "./proposal-model.ts";
-import { useDockApprovals } from "./use-dock-approvals.ts";
-import { useInboxUpdates, useSessionProposals } from "./use-inbox.ts";
+import { useInboxUpdates } from "./use-inbox.ts";
+import type { NeedsYou } from "./use-needs-you.ts";
 
 export interface InboxProps {
   app: AppState;
@@ -56,28 +55,22 @@ export interface InboxProps {
   onNotificationSettings: () => void;
   /** A count that rises each time the first item should take the focus (the `a` shortcut); honoured once an item is drawn. */
   focusRequest?: number;
+  /** Needs you, read once by the shell (its count is also the task list's Inbox badge). */
+  needsYou: NeedsYou;
 }
 
 type Note = { kind: "ok" | "refused"; text: string };
 
-export function Inbox({ app, onOpenTask, onNotificationSettings, focusRequest = 0 }: InboxProps) {
-  const { attentionItems, model, core, refreshAttention } = app;
+export function Inbox({ app, onOpenTask, onNotificationSettings, focusRequest = 0, needsYou }: InboxProps) {
+  const { model, core, refreshAttention } = app;
   const connected = core.state === "connected";
   const sessionId = model.sessionId;
   const titleOf = useCallback(
     (id: string) => model.tasks.get(id)?.goalText || id.slice(0, 8),
     [model],
   );
-  const { approvals, refresh: refreshApprovals } = useDockApprovals(
-    sessionId,
-    null,
-    connected,
-  );
-  const {
-    proposals,
-    skewMs,
-    refresh: refreshProposals,
-  } = useSessionProposals(sessionId, connected);
+  // What Needs you lists and its count come from the shell's one read (use-needs-you.ts), the same the task list's badge shows.
+  const { approvals, proposals, others, skewMs, count: needs, refresh: refreshNeeds } = needsYou;
   const updates = useInboxUpdates(connected);
   const [view, setView] = useState<InboxView>("all");
   const [busy, setBusy] = useState<string | null>(null);
@@ -92,17 +85,13 @@ export function Inbox({ app, onOpenTask, onNotificationSettings, focusRequest = 
     return () => clearInterval(t);
   }, [proposals.length]);
 
-  // Approvals come from the Core's approval list (with what each will do); its attention items for them are not repeated.
-  const others = attentionItems.filter((i) => i.kind !== "APPROVAL");
-  const needs = needsYouCount(attentionItems, approvals, proposals);
   const list = updates.view?.updates ?? [];
   const unread = updates.view?.unread ?? 0;
 
   const afterDecision = useCallback(() => {
-    refreshApprovals();
-    refreshProposals();
+    refreshNeeds();
     if (sessionId) refreshAttention(sessionId);
-  }, [refreshApprovals, refreshProposals, refreshAttention, sessionId]);
+  }, [refreshNeeds, refreshAttention, sessionId]);
 
   const decideApproval = useCallback(
     async (a: DockApprovalView, approve: boolean) => {

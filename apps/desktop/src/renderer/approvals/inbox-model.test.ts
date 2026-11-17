@@ -1,6 +1,7 @@
 /**
- * REQ-PX-206: Inbox's counts and words. The counts are the Core's: a store that says a task needs attention while the Core lists
- * nothing for it counts for nothing (retained mutation: the count taken from the store's column instead). A destructive effect
+ * REQ-PX-206: Inbox's counts and words. One count, the rows Needs you draws, is the badge and the tab (the owner's review of
+ * 2026-11-17); it is the Core's: a store that says a task needs attention while the Core lists nothing counts for nothing, and the
+ * task count the badge used to show is not it (retained mutations). A destructive effect
  * is refused by Inbox's decision before anything reaches the bridge, as on home.
  */
 import assert from "node:assert/strict";
@@ -8,34 +9,46 @@ import { test } from "node:test";
 import type { DockApprovalView } from "../../shared/control-types.ts";
 import { columns, emptyModel, type Model, type TaskCard } from "../model.ts";
 import { decideFromList, decideProposal } from "./decide.ts";
-import { askWords, effectTag, inboxCount, needsYouCount, proposalQuestion, UPDATE_WORDS, whenWords } from "./inbox-model.ts";
+import { askWords, effectTag, needsYouCount, needsYouOthers, proposalQuestion, UPDATE_WORDS, whenWords } from "./inbox-model.ts";
 
 const A = "a".repeat(32);
 const B = "b".repeat(32);
 
-test("Inbox's count is the Core's attention count: tasks the Core lists an item for, once each", () => {
-  assert.equal(inboxCount([]), 0);
-  assert.equal(inboxCount([{ taskId: A }, { taskId: A }, { taskId: B }]), 2);
+// The count the badge showed before the owner's review: the tasks the Core lists an item for. Kept here as the retained mutation.
+const taskCount = (attention: readonly { taskId: string }[]): number => new Set(attention.map((i) => i.taskId)).size;
+
+test("one count for the badge and the tab: the rows Needs you draws (approvals once, the Core's other items, pending proposals)", () => {
+  const attention = [
+    { kind: "APPROVAL", taskId: A, reference: "ap1" },
+    { kind: "APPROVAL", taskId: B, reference: "ap2" },
+    { kind: "STALL", taskId: A, reference: "s1" },
+    { kind: "QUESTION", taskId: B, reference: "q1" },
+  ];
+  const approvals = [{ approvalId: "ap1" }, { approvalId: "ap2" }];
+  const proposals = [{ proposalId: "p1" }];
+  // Rows: two approval cards, the stall and the question (an approval on the same task does not hide them), one proposal.
+  const rows = approvals.length + needsYouOthers(attention).length + proposals.length;
+  assert.deepEqual(needsYouOthers(attention).map((i) => i.kind), ["STALL", "QUESTION"]);
+  assert.equal(needsYouCount(attention, approvals, proposals), rows);
+  assert.equal(rows, 5);
+  // Deciding one lowers it by one.
+  assert.equal(needsYouCount(attention.slice(1), approvals.slice(1), proposals), 4);
+  assert.equal(needsYouCount([], [], []), 0);
 });
 
-test("retained mutation: a count read from the renderer's store differs from the Core's and is not what Inbox shows", () => {
+test("retained mutations: the task count, and a count from the renderer's store, are not Needs you's count", () => {
+  const attention = [
+    { kind: "APPROVAL", taskId: A, reference: "ap1" },
+    { kind: "APPROVAL", taskId: B, reference: "ap2" },
+  ];
+  // Two approvals and a proposal: Needs you draws three rows; the task count says two (the 3 against 4 the owner saw).
+  assert.equal(needsYouCount(attention, [{ approvalId: "ap1" }, { approvalId: "ap2" }], [{ proposalId: "p" }]), 3);
+  assert.equal(taskCount(attention), 2);
   // The store holds a task whose last event left a pending approval card; the Core has since resolved it and lists nothing.
   const card = { taskId: A, parentTaskId: null, origin: "desktop", createdAtMs: 1, state: "Waiting", approval: { approvalId: "x", toolName: "shell.exec", effectClass: "ProtectedWrite", intentHash: "h" }, question: null, nextAction: null } as unknown as TaskCard;
   const model: Model = { ...emptyModel(), tasks: new Map([[A, card]]) };
-  const fromStore = columns(model).needsAttention.length;
-  const fromCore = inboxCount([]);
-  assert.equal(fromStore, 1, "the store's column says the task needs attention");
-  assert.equal(fromCore, 0, "the Core lists nothing");
-  assert.notEqual(fromStore, fromCore, "a count taken from the store would show 1 where the Core says 0");
-});
-
-test("Needs you counts what it lists: approvals once, the Core's other items, pending proposals", () => {
-  const items = [
-    { kind: "APPROVAL", taskId: A, reference: "ap1" },
-    { kind: "QUESTION", taskId: B, reference: "q1" },
-  ];
-  assert.equal(needsYouCount(items, [{ approvalId: "ap1" }], [{ proposalId: "p1" }]), 3);
-  assert.equal(needsYouCount([], [], []), 0);
+  assert.equal(columns(model).needsAttention.length, 1, "the store's column says the task needs attention");
+  assert.equal(needsYouCount([], [], []), 0, "the Core lists nothing");
 });
 
 test("plain words: no tool name, effect class or Core command reaches the card's words", () => {

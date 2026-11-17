@@ -114,24 +114,34 @@ async function showInbox(page: Page): Promise<void> {
 }
 
 /**
- * The counts are the Core's (empty when they hold): Inbox's count in the task list is the number of tasks the Core lists an
- * attention item for; Needs you's is every pending approval, every other item and every pending proposal the Core lists.
+ * One count (the owner's review of 2026-11-17, empty when it holds): the task list's Inbox badge, the "Needs you · N" tab and the
+ * rows Needs you draws are one number, and it is the Core's: every pending approval, every other attention item and every pending
+ * proposal, read through the bridge at the same moment. Returns the number when asked.
  */
 async function countDrift(page: Page, sid: string): Promise<string[]> {
+  return (await needsCount(page, sid)).bad;
+}
+async function needsCount(page: Page, sid: string): Promise<{ bad: string[]; n: number }> {
   const core = await page.evaluate(async (s) => {
     const attention = await window.modbit.attention(s);
     const approvals = await window.modbit.dockApprovals(s);
     const headers = await window.modbit.agentHeaders(s);
     const lists = await Promise.all(headers.headers.filter((h) => ["RUNNING", "WAITING", "NEEDS_ATTENTION"].includes(h.statusClass)).map((h) => window.modbit.modeProposals(h.taskId)));
     const pending = lists.flatMap((l) => l.proposals).filter((p) => p.status === "PENDING").length;
-    return { tasks: new Set(attention.items.map((i) => i.taskId)).size, needs: approvals.length + attention.items.filter((i) => i.kind !== "APPROVAL").length + pending };
+    return { needs: approvals.length + attention.items.filter((i) => i.kind !== "APPROVAL").length + pending };
   }, sid);
   const bad: string[] = [];
-  const shown = (await page.getByTestId("open-inbox-count").count()) === 1 ? Number(await page.getByTestId("open-inbox-count").textContent()) : 0;
-  if (shown !== core.tasks) bad.push(`Inbox's count is ${shown}; the Core's attention count is ${core.tasks}`);
+  const badge = (await page.getByTestId("open-inbox-count").count()) === 1 ? Number(await page.getByTestId("open-inbox-count").textContent()) : 0;
   const label = (await page.getByTestId("inbox-view-needs").textContent()) ?? "";
+  const rows = await page.locator('[data-testid="inbox"] [data-testid="attention-item"]').count();
   if (label !== `Needs you · ${core.needs}`) bad.push(`Needs you says "${label}"; the Core lists ${core.needs}`);
-  return bad;
+  if (badge !== core.needs) bad.push(`Inbox's badge is ${badge}; Needs you holds ${core.needs}`);
+  if (rows !== core.needs) bad.push(`Needs you draws ${rows} rows; the Core lists ${core.needs}`);
+  return { bad, n: core.needs };
+}
+/** Waits until the badge, the tab and the rows all show `n` and agree with the Core. */
+async function expectNeeds(page: Page, sid: string, n: number): Promise<void> {
+  await expect.poll(async () => { const r = await needsCount(page, sid); return r.bad.length === 0 ? r.n : `${r.n}: ${r.bad.join("; ")}`; }, { timeout: 15_000 }).toBe(n);
 }
 
 /** Whether a destructive effect was decided while Inbox showed it: the Core must still list it, and Inbox must offer no decision for it. */
@@ -301,7 +311,7 @@ test("PX-206 Inbox: Needs you decides approvals and proposals, a destructive eff
     await expect(page.getByTestId("top-bar-title")).toHaveText("Inbox");
     const cards = page.getByTestId("inbox-approval");
     await expect(cards).toHaveCount(3, { timeout: 30_000 });
-    await expect.poll(() => countDrift(page, sid), { timeout: 15_000 }).toEqual([]);
+    await expectNeeds(page, sid, 3);
     const writeCard = page.locator(`[data-testid="inbox-approval"][data-approval-id="${write.approvalId}"]`);
     const skipCard = page.locator(`[data-testid="inbox-approval"][data-approval-id="${skip.approvalId}"]`);
     const destructiveCard = page.locator(`[data-testid="inbox-approval"][data-approval-id="${destructive.approvalId}"]`);
@@ -338,10 +348,13 @@ test("PX-206 Inbox: Needs you decides approvals and proposals, a destructive eff
       ids[SHOT] = await send(SHOT, true);
       await showInbox(page);
       await expect(page.locator(`[data-testid="inbox-proposal"][data-task-id="${ids[SHOT]}"]`)).toBeVisible({ timeout: 60_000 });
+      await expectNeeds(page, sid, 4);
       await shots(page, "inbox-needs-you", async () => {
         await showInbox(page);
         await expect(cards).toHaveCount(3);
       });
+      // The pictures' proposal is left to the Core's 15 s before the two that are decided are started.
+      await expect(page.locator(`[data-testid="inbox-proposal"][data-task-id="${ids[SHOT]}"]`)).toHaveCount(0, { timeout: 30_000 });
     }
     // Both are created in Plan without starting (Alt+Enter), then started together while Inbox is open: the Core's 15 s run from there.
     ids[SWITCH] = await send(SWITCH, true, repo, false);
@@ -355,8 +368,18 @@ test("PX-206 Inbox: Needs you decides approvals and proposals, a destructive eff
     await expect(keepRow).toBeVisible({ timeout: 60_000 });
     await expect(switchRow).toContainText("Switch to Agent mode?");
     await expect(switchRow.getByTestId("inbox-proposal-reason")).toHaveText("the parser plan is ready to carry out");
+    // Three approvals (one destructive) and two proposals: the badge, the tab and the rows are all 5.
+    await expectNeeds(page, sid, 5);
+    // Retained mutation: the badge drawn from the task count (what it showed before the owner's review) fails. Three tasks have an
+    // attention item here; Needs you holds five (the proposals are not attention items).
+    const tasksWaiting = await page.evaluate((s) => window.modbit.attention(s).then((a) => new Set(a.items.map((i) => i.taskId)).size), sid);
+    expect(tasksWaiting).toBe(3);
+    await page.getByTestId("open-inbox-count").evaluate((el, n) => (el.textContent = String(n)), tasksWaiting);
+    expect(await countDrift(page, sid)).toEqual(["Inbox's badge is 3; Needs you holds 5"]);
+    // Deciding one lowers both by one (the badge is drawn again from the one count).
     await switchRow.getByTestId("inbox-proposal-switch").click();
     await expect(page.getByTestId("inbox-note")).toContainText(`Switched “${SWITCH}” to Agent.`);
+    await expectNeeds(page, sid, 4);
     await keepRow.getByTestId("inbox-proposal-keep").click();
     await expect(page.getByTestId("inbox-note")).toContainText(`Kept “${KEEP}” in Plan.`);
     const outcome = async (t: string) => page.evaluate((x) => Promise.all([window.modbit.modeProposals(x), window.modbit.composerPosture(x)]).then(([l, p]) => [l.proposals.map((q) => q.outcomeReason).join(","), p.mode]), t);
@@ -366,15 +389,17 @@ test("PX-206 Inbox: Needs you decides approvals and proposals, a destructive eff
     await expect(keepRow).toHaveCount(0, { timeout: 15_000 });
 
     // ---- Approvals: Skip and Allow once in place, bound to the hash shown; each effect is real (or really absent).
+    await expectNeeds(page, sid, 3);
     await skipCard.getByTestId("inbox-approval-skip").click();
     await expect(page.getByTestId("inbox-note")).toContainText(`Skipped: “${SKIP}”`);
+    await expectNeeds(page, sid, 2);
     await writeCard.getByTestId("inbox-approval-allow").click();
     await expect(page.getByTestId("inbox-note")).toContainText(`Allowed once: “${ADD}” runs it now.`);
     await expect.poll(() => page.evaluate((s) => window.modbit.dockApprovals(s).then((l) => l.map((a) => a.approvalId)), sid), { timeout: 30_000 }).toEqual([destructive.approvalId]);
     await expect.poll(() => git(repo, "remote").trim().split(/\s+/), { timeout: 60_000 }).toContain("origin1");
     expect(git(repo, "remote").trim().split(/\s+/)).not.toContain("origin2");
     await expect(cards).toHaveCount(1);
-    await expect.poll(() => countDrift(page, sid), { timeout: 15_000 }).toEqual([]);
+    await expectNeeds(page, sid, 1);
 
     // ---- The protected write's task reaches review while Inbox is open: a second unread update.
     await expectTaskState(page, ids[ADD]!, "ReadyForReview", 90_000);
@@ -469,9 +494,8 @@ test("PX-206 Inbox: Needs you decides approvals and proposals, a destructive eff
     const mutated = join(tmp("mutated"), "inbox-updates.json");
     writeFileSync(mutated, JSON.stringify({ ...onDisk, entries: onDisk.entries.map((e, i) => (i === 0 ? { ...e, text: SAID } : e)) }));
     expect(recordDrift(mutated, [SAID, SUMMARY])).toEqual(["an update holds text beside its ids, title and time", `the record holds transcript text: "${SAID}"`]);
-    // Inbox's count drawn from the renderer's own list (every Needs you entry) instead of the Core's attention count fails.
-    await page.getByTestId("open-inbox-count").evaluate((el) => (el.textContent = String(document.querySelectorAll('[data-testid="attention-item"]').length + 1)));
-    expect((await countDrift(page, sid)).join("")).toMatch(/Inbox's count is \d+; the Core's attention count is \d+/);
+    // After the restart the one count still holds (the badge's mutation is retained at the proposals above).
+    await expectNeeds(page, sid, await page.locator('[data-testid="inbox"] [data-testid="attention-item"]').count());
     // A control nobody proves fails the census.
     await page.getByTestId("inbox").evaluate((el) => {
       const b = document.createElement("button");

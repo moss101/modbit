@@ -25,7 +25,7 @@ import { Review } from "../review/review.tsx";
 import { SettingsNav } from "../settings/settings-nav.tsx";
 import { SettingsPage } from "../settings/settings-page.tsx";
 import { Inbox } from "../approvals/inbox.tsx";
-import { inboxCount } from "../approvals/inbox-model.ts";
+import { useNeedsYou } from "../approvals/use-needs-you.ts";
 import { childrenOf } from "../model.ts";
 import { taskState } from "../screens.ts";
 import type { AgentHeaderView } from "../../shared/conversation-types.ts";
@@ -116,6 +116,9 @@ export function Shell({ app }: { app: AppState }) {
   const [projectPage, setProjectPage] = useState<string | null>(null);
   const [worktreesOpen, setWorktreesOpen] = useState(false);
   const connected = core.state === "connected";
+  // REQ-PX-206 (the owner's review, 2026-11-17): what waits on the person, read from the Core once, here. The task list's Inbox badge
+  // and Inbox's "Needs you · N" are the same number: the rows Needs you draws. Before the Core's attention view is read, no item is counted.
+  const needsYou = useNeedsYou(model.sessionId, connected, app.attentionLoaded ? attentionItems : [], inboxOpen);
   // PX-074: who holds the machine and which permissions the helper reports, as the Core says (nothing of it is kept here).
   const presence = useComputerPresence(connected);
   const computerStop = useComputerStop(model.sessionId, presence.refresh);
@@ -733,7 +736,7 @@ export function Shell({ app }: { app: AppState }) {
             rail={rail}
             canExpand={prefs.listCollapsed}
             taskCount={tasks.length}
-            attentionCount={inboxCount(app.attentionLoaded ? attentionItems : [])}
+            attentionCount={needsYou.count}
             onNewTask={() => actions.focusNewTask()}
             homeOpen={!actions.canGoBack()}
             onExpand={() => actions.toggleAgentList()}
@@ -883,7 +886,7 @@ export function Shell({ app }: { app: AppState }) {
               <Customize connected={core.state === "connected"} sessionId={model.sessionId} taskId={conversation?.taskId ?? selectedTaskId ?? [...model.tasks.keys()][0] ?? null} onClose={() => setCustomizeOpen(false)} />
             </div>
           ) : inboxOpen ? (
-            <Inbox app={app} onOpenTask={(id) => openConversation(id)} onNotificationSettings={() => actions.focusSettingsSection("notification-preferences")} focusRequest={inboxFocus} />
+            <Inbox app={app} onOpenTask={(id) => openConversation(id)} onNotificationSettings={() => actions.focusSettingsSection("notification-preferences")} focusRequest={inboxFocus} needsYou={needsYou} />
           ) : automationsOpen ? (
             <div className="autos-scroll" data-testid="automations-region">
               <Automations connected={core.state === "connected"} onOpenTask={(id) => openConversation(id)} onClose={() => setAutomationsOpen(false)} />

@@ -7,7 +7,7 @@ import type { ModeProposalInfo } from "../../shared/control-types.ts";
 import type { UpdatesView } from "../../shared/inbox-types.ts";
 
 const HOLD_MS = 150;
-/** While Inbox is open the Core's proposals are read about once a second: one waits 15 seconds for an answer. */
+/** While Inbox is open, or a proposal is pending, the Core's proposals are read about once a second: one waits 15 seconds for an answer. */
 const PROPOSALS_EVERY_MS = 1000;
 /** The status classes of a task that is still running or waiting: only such a task can have a pending proposal. */
 const LIVE = new Set(["RUNNING", "WAITING", "NEEDS_ATTENTION"]);
@@ -90,7 +90,7 @@ export function useInboxUpdates(connected: boolean): InboxUpdates {
 }
 
 /** Every proposal the Core holds pending across the session's live tasks, with the skew of the Core's clock to this machine's. */
-export function useSessionProposals(sessionId: string | null, connected: boolean): { proposals: ModeProposalInfo[]; skewMs: number; refresh: () => void } {
+export function useSessionProposals(sessionId: string | null, connected: boolean, everyMs: number = PROPOSALS_EVERY_MS): { proposals: ModeProposalInfo[]; skewMs: number; refresh: () => void } {
   const [state, setState] = useState<{ proposals: ModeProposalInfo[]; skewMs: number }>({ proposals: [], skewMs: 0 });
   const inFlight = useRef(false);
   const load = useCallback(async () => {
@@ -118,8 +118,16 @@ export function useSessionProposals(sessionId: string | null, connected: boolean
   useEffect(() => {
     if (!sessionId || !connected) return;
     void load();
-    const t = setInterval(() => void load(), PROPOSALS_EVERY_MS);
+    const t = setInterval(() => void load(), everyMs);
     return () => clearInterval(t);
-  }, [sessionId, connected, load]);
+  }, [sessionId, connected, load, everyMs]);
+  // A proposal is recorded on its task's log: a task's event reads the list again at once.
+  useEffect(() => {
+    const off = window.modbit.onEvent((raw) => {
+      const e = raw as WireEventLike;
+      if (e.taskId && e.aggregateType !== "assistant_stream") refresh();
+    });
+    return off;
+  }, [refresh]);
   return { ...state, refresh };
 }

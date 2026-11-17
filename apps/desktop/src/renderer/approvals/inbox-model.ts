@@ -1,8 +1,8 @@
 /**
  * Inbox's view model (REQ-PX-206; DR-PX-2026-11-11-021 MWS-13): pure words and counts over what the Core says. Nothing here
- * decides anything, and no count is taken from the renderer's own task store: Needs you counts the Core's attention items and
- * the Core's pending proposals; Inbox's count in the task list is the Core's attention count (tasks with an open item); the
- * unread count of Updates is the Core's read markers against main's record.
+ * decides anything, and no count is taken from the renderer's own task store: Needs you's count (also the task list's Inbox
+ * badge) is its rows, from the Core's approvals, attention items and proposals; the unread count of Updates is the Core's read
+ * markers against main's record.
  */
 import type { IconName } from "@modbit/ui";
 import type { DockApprovalView, ModeProposalInfo } from "../../shared/control-types.ts";
@@ -10,15 +10,17 @@ import type { UpdateKind } from "../../shared/inbox-types.ts";
 import { commandLine, humanTitle, isIrreversible } from "./model.ts";
 import { modeWords } from "./proposal-model.ts";
 
-/** Inbox's count in the task list: the tasks the Core lists an attention item for. */
-export function inboxCount(attention: readonly { taskId: string }[]): number {
-  return new Set(attention.map((i) => i.taskId)).size;
+/** The attention items Needs you lists beside the approvals: every one but APPROVAL, whose approvals are listed from the Core's approval list. */
+export function needsYouOthers<T extends { kind: string }>(attention: readonly T[]): T[] {
+  return attention.filter((i) => i.kind !== "APPROVAL");
 }
 
-/** Needs you's count: every item it lists, each one the Core's (a pending approval, another attention item, a proposal still pending). */
+/**
+ * The one count of Needs you (the owner's review, 2026-11-17): the rows it draws, which is what the task list's Inbox badge and the
+ * "Needs you · N" tab both show. One per pending approval, one per other attention item, one per pending proposal; all the Core's.
+ */
 export function needsYouCount(attention: readonly { kind: string }[], approvals: readonly unknown[], proposals: readonly unknown[]): number {
-  // Approvals are listed from the Core's approval list; the attention items that name them are not counted twice.
-  return approvals.length + attention.filter((i) => i.kind !== "APPROVAL").length + proposals.length;
+  return approvals.length + needsYouOthers(attention).length + proposals.length;
 }
 
 /** What an approval asks, as a question in words. */
