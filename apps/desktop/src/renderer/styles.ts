@@ -506,13 +506,28 @@ pre.codeview .add { background: var(--mb-color-ok-tint); color: var(--mb-color-t
 /* AWL-09: apps-panel headings are sentence-case captions; explanatory text is caption size and muted. */
 .apps-panel h2, .apps-panel h3 { font-size: var(--mb-type-caption-size); font-weight: 600; color: var(--mb-color-text-muted); margin: var(--mb-space-3) 0 var(--mb-space-1); }
 .apps-panel p.meta { margin: var(--mb-space-1) 0; font-size: var(--mb-type-caption-size); line-height: var(--mb-type-caption-line); }
-.palette { padding: var(--mb-space-2); }
-.palette-input { width: 100%; box-sizing: border-box; font-size: var(--mb-type-body-size); }
-.palette-list { list-style: none; margin: var(--mb-space-2) 0 0; padding: 0; max-height: 50vh; overflow: auto; }
-.palette-option { display: flex; align-items: center; gap: var(--mb-space-2); padding: var(--mb-space-1_5) var(--mb-space-2); border-radius: var(--radius-md); cursor: pointer; }
-.palette-option[data-active="true"] { background: var(--mb-color-selected); }
+/* MWS-15 (board C3): the palette is one search. A 640 wide sheet near the top: the field, the results under a heading per kind, the keys and what is searched. */
+.mb-dialog.palette { width: min(640px, calc(100vw - 32px)); padding: 0; gap: 0; align-self: flex-start; margin-top: min(112px, 12vh); max-height: calc(100vh - min(112px, 12vh) - 32px); display: flex; flex-direction: column; overflow: hidden; }
+.palette-field { flex: none; display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 var(--mb-space-4); border-bottom: 1px solid var(--mb-color-border); }
+.palette-field-icon { flex: none; display: inline-flex; color: var(--mb-color-icon-muted); }
+.palette-input.palette-input { flex: 1; min-width: 0; height: 100%; box-sizing: border-box; padding: 0; border: 0; outline: 0; background: transparent; box-shadow: none; font: inherit; font-size: var(--mb-type-title-size); line-height: var(--mb-type-title-line); color: var(--mb-color-text); }
+.palette-input::placeholder { color: var(--mb-color-text-muted); }
+.palette-list { flex: 1 1 auto; min-height: 0; margin: 0; padding: var(--mb-space-2); overflow: auto; }
+.palette-list:empty { display: none; }
+.palette-head { padding: var(--mb-space-1_5) 10px var(--mb-space-1); font-size: var(--mb-type-caption-size); line-height: var(--mb-type-caption-line); font-weight: 600; color: var(--mb-color-text-muted); }
+.palette-option { display: flex; align-items: center; gap: 10px; min-height: var(--mb-row); padding: var(--mb-space-1) 10px; border-radius: var(--mb-row-radius); cursor: pointer; font-size: var(--mb-type-chrome-size); line-height: var(--mb-type-chrome-line); color: var(--mb-color-text); }
+.palette-option[data-active="true"] { background: var(--mb-color-hover); }
 .palette-option[aria-disabled="true"] .palette-title { color: var(--mb-color-text-muted); }
+.palette-icon { flex: none; display: inline-flex; color: var(--mb-color-icon-muted); }
 .palette-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.palette-mono { font-family: var(--mb-font-mono); font-size: var(--mb-type-mono-size); line-height: var(--mb-type-mono-line); }
+.palette-title mark { background: transparent; color: inherit; font-weight: 600; }
+.palette-detail { flex: none; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--mb-type-caption-size); line-height: var(--mb-type-caption-line); color: var(--mb-color-text-muted); }
+.palette-row-action { flex: none; display: inline-flex; align-items: center; gap: var(--mb-space-1); white-space: nowrap; font-size: var(--mb-type-caption-size); line-height: var(--mb-type-caption-line); color: var(--mb-color-text-muted); }
+.palette-empty { margin: 0; padding: var(--mb-space-3) var(--mb-space-4); font-size: var(--mb-type-chrome-size); line-height: var(--mb-type-chrome-line); color: var(--mb-color-text-muted); }
+.palette-foot { flex: none; display: flex; align-items: center; gap: var(--mb-space-4); min-height: 40px; padding: var(--mb-space-1) var(--mb-space-4); border-top: 1px solid var(--mb-color-border); font-size: var(--mb-type-caption-size); line-height: var(--mb-type-caption-line); color: var(--mb-color-text-muted); }
+.palette-hint { flex: none; display: inline-flex; align-items: center; gap: var(--mb-space-1); white-space: nowrap; }
+.palette-scope { flex: 1 1 0; min-width: 0; text-align: right; overflow-wrap: anywhere; }
 .help-group { font-size: var(--mb-type-caption-size); font-weight: 600; margin: var(--mb-space-3) 0 var(--mb-space-1); color: var(--mb-color-text-muted); }
 .help-list { list-style: none; margin: 0; padding: 0; }
 .help-list li { display: flex; justify-content: space-between; gap: var(--mb-space-3); padding: var(--mb-space-0_5) 0; }

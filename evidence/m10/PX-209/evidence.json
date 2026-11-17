@@ -1,0 +1,63 @@
+{
+ "task": "PX-209",
+ "requirements": [
+  "REQ-PX-209",
+  "QUAL-PX-209",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-209"
+ ],
+ "scenarios": [
+  "QUAL-PX-209 / PX-E2E-209"
+ ],
+ "decision_record": "DR-PX-2026-11-11-021 (MWS-15; MWS-11 for the palette's way into split view; sections 5.11 and 9)",
+ "tier": "release-critical",
+ "branch": "wip/desktop-2-search",
+ "base": "origin/main 5802b4a3",
+ "status": "built and proven locally on macOS arm64; not sealed (graph.py was not run: sealing is not this task's)",
+ "audit": {
+  "classification": "IMPLEMENTED-PARTIAL: the palette over task titles and commands, the Core's conversation search (agent list, @ menu) and the folder listing and file read (Files pane) PRODUCTION-WORKING; the palette called neither, the Files pane could not be asked to show a file, and a palette item had one action",
+  "first_missing_link": "the palette's items were only what the window held (task titles, commands): nothing in it reached searchConversations or listWorkspaceDir, and FilesApp had no way to be told which file to show",
+  "traced": "CommandPalette -> usePaletteSearch -> window.modbit.searchConversations (main conversation:search -> Core SearchConversations) and window.modbit.listWorkspaceDir per folder (main files:list -> Core ListWorkspaceDir, path policy) -> rows; Enter -> openConversation(taskId, rowId) | setPanelState(openPane files) + FilesApp reveal -> readWorkspaceFile (files:read -> Core ReadWorkspaceFile) | shellRegistry.run | openConversation; Alt+Enter on a task -> openSplit (PX-204, requestSplit + splitRefusal)"
+ },
+ "bridge": {
+  "added": [],
+  "protocol_change": "none",
+  "preload_change": "none",
+  "main_change": "none",
+  "csp_change": "none",
+  "rust_change": "none",
+  "locked_files_changed": "none"
+ },
+ "decided_here": {
+  "groups": "Tasks, In conversations, Files, Commands, in that order; a group only when it has results",
+  "conversation_rows": "the Core's first snippet per hit, at most 8 hits, two characters or more, 150 ms after typing pauses; title-only hits are task rows",
+  "file_walk": "breadth first through listWorkspaceDir while the palette is open, at most 400 folders and 20000 names, protected folders, .git and node_modules not entered",
+  "file_match": "name prefix, then name, then path containing the text; no scattered letters",
+  "split": "Open in split view on the highlighted task row (Alt+Enter, Alt+click), PX-204's openSplit and its refusals unchanged; closes PX-204's left-out item"
+ },
+ "left_out": [
+  "a file result when the Files pane is in its own window (the window comes forward; it is not told the file)",
+  "files under node_modules and .git and beyond the walk's bound",
+  "conversations of other sessions (the Core's search is per session)",
+  "the board's New task about … and Change run mode rows (not in the command registry)"
+ ],
+ "tests": [
+  "apps/desktop/e2e/px-209-search.spec.ts",
+  "apps/desktop/src/renderer/shell/palette-search.test.ts",
+  "apps/desktop/e2e/shell.spec.ts",
+  "apps/desktop/e2e/keyboard.spec.ts",
+  "apps/desktop/e2e/computer-surface.spec.ts",
+  "apps/desktop/e2e/px-204-split-view.spec.ts",
+  "apps/desktop/e2e/apps-panel.spec.ts"
+ ],
+ "unit": "@modbit/desktop 436 of 436 (+6 palette-search.test.ts); pnpm typecheck clean.",
+ "proof": "e2e/px-209-search.spec.ts 1 of 1 locally against the real app and a real Core (sha256 c5ec630a...), see TASK_CARD.md Verification",
+ "retained_mutations": [
+  "B's file drawn as a Files row for A while A is open: filesOutside fails",
+  "the typed text sent through listProjects: leaks fails (\"quokka ledger\" went to projects:list)",
+  "the split's columns drawn the other way round: splitDrift fails"
+ ],
+ "removed_test_ids": [],
+ "removed_checks": [],
+ "screenshots": "after/palette-{empty,four-kinds,conversation-hit,file-hit}-{comfortable,compact}-{light,dark}.png, from the running app",
+ "ci": []
+}

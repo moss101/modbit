@@ -929,6 +929,26 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-206/after/inbox-updates-read-unread-compact-light.png` | retained evidence | 203914 | `e5eef49772bb6ac6143851112a901c0046129dd3f2d19ec01be8144908e4c0f4` |
 | `evidence/m10/PX-206/desktop-e2e-full-results.txt` | retained evidence | 2179 | `2d76c317ecf5582a468ade8f25ca0329dfd6a14b36a8f98d80f269d27def6534` |
 | `evidence/m10/PX-206/evidence.json` | retained evidence | 9663 | `084c3f6e33fa5b542c88d6130d184ec2357d6851b9abbbe941e53d9f1f695967` |
+| `evidence/m10/PX-209/TASK_CARD.md` | retained evidence | 13996 | `0a8a0afb81f546db485f3509645e1e3ccc34ce7d42e0fda15712c7db5b6dd5e1` |
+| `evidence/m10/PX-209/after/palette-conversation-hit-comfortable-dark.png` | retained evidence | 269025 | `1cd8f5ff2b8a94493b73ffeac0acdab5de3b63e77bbdaa30cb37e677d84d3a89` |
+| `evidence/m10/PX-209/after/palette-conversation-hit-comfortable-light.png` | retained evidence | 277811 | `1ac6e2ae61e8501706e0fa7f4c2d4ce84b6fd2052edcda4c67d9793f99cfe25a` |
+| `evidence/m10/PX-209/after/palette-conversation-hit-compact-dark.png` | retained evidence | 252952 | `296b1f29d954f85a5592bee04778abd575c49f8ae5f5dfca4760a1093063a9b0` |
+| `evidence/m10/PX-209/after/palette-conversation-hit-compact-light.png` | retained evidence | 259388 | `ab33e8d7dc2bcad0e52699f815d3026cad3b54981f16a22aa82e8f2c9610a1e4` |
+| `evidence/m10/PX-209/after/palette-empty-comfortable-dark.png` | retained evidence | 358702 | `ccf3146143fe138c1aa44c62ece6ef8889bf6da10c3b7f21e3223a2a9a395c19` |
+| `evidence/m10/PX-209/after/palette-empty-comfortable-light.png` | retained evidence | 366787 | `5c42819f35b95f979e27c6b5509bb4a5c59e8fde100230a13fca1bd84a64ee87` |
+| `evidence/m10/PX-209/after/palette-empty-compact-dark.png` | retained evidence | 346187 | `c7f71b5b975fab5a6ff417fa2a090b7316f92d3b6b87b6f58969b37697cc3697` |
+| `evidence/m10/PX-209/after/palette-empty-compact-light.png` | retained evidence | 352990 | `57051067e3a8f4a29c1bdc91df7c716949ea9794617e99489792f6e8aa38356c` |
+| `evidence/m10/PX-209/after/palette-file-hit-comfortable-dark.png` | retained evidence | 272656 | `669878b1c476f28bc4a77f4fd6af63e8914e6e4efa52e76783a1773b0da10a24` |
+| `evidence/m10/PX-209/after/palette-file-hit-comfortable-light.png` | retained evidence | 281241 | `114eae16d98b59eb282b48b9a91e2e09033eb64b95fa119760def3ebbdace00b` |
+| `evidence/m10/PX-209/after/palette-file-hit-compact-dark.png` | retained evidence | 254858 | `756b8f51ba14cd9232253036c0cd701c16a3b204dc59ddb0ecd575ce03ce665b` |
+| `evidence/m10/PX-209/after/palette-file-hit-compact-light.png` | retained evidence | 262221 | `d9acbd8840041ce5784457eacecab2647eb18c6bc6539e8aa92ad3995ba8e384` |
+| `evidence/m10/PX-209/after/palette-four-kinds-comfortable-dark.png` | retained evidence | 313318 | `6576c4fb20627a221dfd5b50a8fa79827047e69523b21b47c4ab0c926334d2d7` |
+| `evidence/m10/PX-209/after/palette-four-kinds-comfortable-light.png` | retained evidence | 321805 | `b91ea5676b599670c2bb42d5091b2fb84aa45ccc0d4c139ba44594bd47d5c885` |
+| `evidence/m10/PX-209/after/palette-four-kinds-compact-dark.png` | retained evidence | 295484 | `de14cbf6b6a636e6b767e7df1fa9eef53a1e95ccd732b78093622bafe332f6e4` |
+| `evidence/m10/PX-209/after/palette-four-kinds-compact-light.png` | retained evidence | 301953 | `70c6fda14659de024f098dce3041485cfab869bc817ee9e3cb0f2a8b34b08f6d` |
+| `evidence/m10/PX-209/ci-run-43983243937.json` | retained evidence | 65329 | `048ab2e232bce65c8cc69298a5ee18ab42c3b7b0255d5ee8e28eb5b89401325c` |
+| `evidence/m10/PX-209/desktop-e2e-full-results.txt` | retained evidence | 42601 | `fedab2d98e75d96a6a2ff5c659b4c78212370c031db02d99cbf8b5651181ec37` |
+| `evidence/m10/PX-209/evidence.json` | retained evidence | 3918 | `7aba181122c6235970b95ed5af29f60343d2843373f6d42c197480ce22627a82` |
 | `evidence/m10/PX-210/TASK_CARD.md` | retained evidence | 11615 | `493c4c60c6a94d4a062040ba472476e08b5b9c7f30116221ff5eb56dd26873f4` |
 | `evidence/m10/PX-210/after/composer-after-tab-light.png` | retained evidence | 30362 | `a7b1367df855da4288ff969ddb1a68bb03d6a4ecbbc8071ad59d0e5dddabff4d` |
 | `evidence/m10/PX-210/after/composer-long-suggestion-dark-900.png` | retained evidence | 35124 | `14ec8efa1eafc089f6f688e72fb15a75e11555cdf3e48e237cb62fdeb3f3d36f` |
@@ -2429,8 +2449,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/zcode-ui/reference/zcode-colors-rgba.json` | retained evidence | 18690 | `76372c3edbcd50fe596d5e4b7fcd7991adab9686588ddc578a728afa24b4f028` |
 | `evidence/zcode-ui/reference/zcode-computed.json` | retained evidence | 718674 | `9ae8821ce72aa0fff3be44aacd0f4c9d995465c54bad7f17d1a81f92841d1c2d` |
 | `evidence/zcode-ui/reference/zcode-tokens-resolved.json` | retained evidence | 30635 | `066725c00059a05d073fbcdac9a8d965eab05f05c1f5df16e654854ff3e22b91` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 47635 | `41895b52314d5f0d72c4818f438696206e2b7592f3638ed7ad8d4d0791ca7e39` |
-| `graph/project-graph.json` | project driver graph with live status | 2653306 | `dbd8c9887c450a42a42b162d380717284427bea551519a77c2d8bb5bea2fc634` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 47635 | `8f8d87b032247c6ff8a139ea215106e9fb9d4aca15182bf1b6bc59660748c260` |
+| `graph/project-graph.json` | project driver graph with live status | 2653450 | `ac4ce2617b6652a2e3f6a2c6eae0c0472673d4e2ba734e0512d6cdd9dbe613ea` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 67211 | `9d101fa8395609092e6a2134a32210fb214a94a0765a13e66b58cbf790267b9d` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |
