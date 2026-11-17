@@ -109,6 +109,30 @@
   "finding": "Fix the count first: the badge (tasks with an attention item) and Needs you's tab (every item) disagreed side by side (3 vs 4, 1 vs 2)",
   "change": "the badge shows the Needs you count; one read in the shell feeds both",
   "proof": "px-206-inbox.spec.ts expectNeeds: badge = tab = rows = Core reads at 5, 4, 3, 2, 1 as each is decided; retained mutation badge = task count fails ('Inbox's badge is 3; Needs you holds 5'); screenshots retaken",
-  "runs": "unit 448/448; whole desktop suite once: 216 passed, 1 failed (this spec's post-restart check raced Inbox's first read; fixed), 3 skipped; px-206 1/1 x4; task-list, attention, keyboard, awl 6/6"
- }
+  "runs": "unit 448/448; whole desktop suite once: 216 passed, 1 failed (this spec's post-restart check raced Inbox's first read; fixed), 3 skipped; px-206 1/1 x4; task-list, attention, keyboard, awl 6/6",
+  "bridge_load": {
+   "measured": "px-202-pane-dock.spec.ts:185, ~29 s, every Core command traced (temporary, not committed)",
+   "origin_main": {
+    "commands": 1222,
+    "GetAgentHeaders": 68,
+    "ListModeProposals": 61,
+    "ListApprovals": 126
+   },
+   "branch_first_count_fix": {
+    "commands": 1508,
+    "GetAgentHeaders": 166,
+    "ListModeProposals": 189,
+    "ListApprovals": 178
+   },
+   "branch_now": {
+    "commands": 1237,
+    "GetAgentHeaders": 75,
+    "ListModeProposals": 62,
+    "ListApprovals": 134
+   },
+   "rate": "main's record: headers read only on Task* events, at most one in flight, at most one per second, trailing edge; shell proposals: on ModeSwitchProposed/Decided, 1 s while pending else 30 s; shell approvals: on Approval* and a task's end"
+  },
+  "px202_local": "unthrottled: origin/main 3/3, branch 7/8 (one at :625, then 5/5); throttled (taskpolicy -c background): main 0/3 (:435, :394), branch 0/3 (:395, :436): same unwaited checks on both; px-206 6/6 incl. throttled; touched specs 18/18"
+ },
+ "changed_checks_px202": "px-202-pane-dock.spec.ts:234: the title-bar toggle check waits (expect.poll, 15 s) for the same expected value; a test-timing fix"
 }
