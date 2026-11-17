@@ -53,6 +53,8 @@ export interface AppsPanelProps {
   ownToggles?: { panes: readonly PaneToggle[]; onPane: (kind: AppKind) => void } | undefined;
   /** REQ-PX-203: moves a pane to a window of its own, at about its size here. Only the panes that can stand alone draw Pop out. */
   onPopOut?: ((kind: PaneWindowKind, size: { width: number; height: number } | undefined) => void) | undefined;
+  /** REQ-PX-209: a file the palette asked to show; the Files pane opens its folders and shows it (`n` changes per request). */
+  fileRequest?: { path: string; n: number } | null | undefined;
 }
 
 /** The panes that can stand in a window of their own (main decides the same list: pane-windows.ts). */
@@ -96,7 +98,7 @@ export function AppsPanel(p: AppsPanelProps) {
       case "browser":
         return <BrowserApp taskId={p.taskId} onOpenBrowser={p.onOpenBrowser} />;
       case "files":
-        return <FilesApp taskId={p.taskId} refreshKey={p.refreshKey} />;
+        return <FilesApp taskId={p.taskId} refreshKey={p.refreshKey} reveal={p.fileRequest ?? null} />;
       case "evidence":
         return <EvidenceApp taskId={p.taskId} refreshKey={p.refreshKey} />;
       case "activity":

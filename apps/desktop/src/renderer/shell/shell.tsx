@@ -36,7 +36,7 @@ import { AppsPanel } from "./apps-panel.tsx";
 import { Automations } from "../automations/automations.tsx";
 import { APP_LABEL, artifactsOf, panelTaskFor, panesOf } from "./artifacts.ts";
 import { shellRegistry, type ShellActions } from "./commands.ts";
-import { CommandPalette, type PaletteItem } from "./palette.tsx";
+import { CommandPalette, type PaletteItem, type PaletteSearchProps } from "./palette.tsx";
 import { clampZoom, EMPTY_DOCK, loadUiPrefs, saveUiPrefs, ZOOM_STEP, type AppKind, type PanelState, type UiPrefs } from "./prefs.ts";
 import { dockedOf, openPane, paneStateOf, popOutPane, tiledOf, toggleDock, togglePane } from "./dock.ts";
 import { paneView } from "./pane-view.ts";
@@ -84,6 +84,8 @@ export function Shell({ app }: { app: AppState }) {
   const [prefs, setPrefsState] = useState<UiPrefs>(loadUiPrefs);
   const setPrefs = useCallback((update: (p: UiPrefs) => UiPrefs) => setPrefsState(update), []);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // REQ-PX-209: a file the palette asked the Files pane to show (n: each request is acted on once).
+  const [fileRequest, setFileRequest] = useState<{ taskId: string; path: string; n: number } | null>(null);
   const [notice, setNotice] = useState("");
   // REQ-PX-086: the Automations surface fills the centre region while it is open.
   const [automationsOpen, setAutomationsOpen] = useState(false);
@@ -427,9 +429,12 @@ export function Shell({ app }: { app: AppState }) {
   );
   useKeyScope(confirm !== null, confirmScope);
 
+  // The split opener is defined with the split's state below; the palette's items call it through this ref.
+  const openSplitRef = useRef<(taskId: string) => void>(() => {});
   const rowFacts = useMemo(() => new Map(tasks.map((t) => [t.taskId, rowFactsOf(t, attentionItems)])), [tasks, attentionItems]);
   const paletteItems = useMemo<PaletteItem[]>(() => {
-    const agentItems: PaletteItem[] = tasks.map((t) => ({ id: `agent:${t.taskId}`, kind: "agent", title: t.goalText || t.taskId, detail: t.state, keywords: [t.taskId, t.state], run: () => openConversation(t.taskId) }));
+    // MWS-11: Alt+Enter opens the task beside the one in the centre, as Alt+click on its row does.
+    const agentItems: PaletteItem[] = tasks.map((t) => ({ id: `agent:${t.taskId}`, kind: "agent", title: t.goalText || t.taskId, detail: t.state, keywords: [t.taskId, t.state], run: () => openConversation(t.taskId), runAlt: () => openSplitRef.current(t.taskId) }));
     const commandItems: PaletteItem[] = shellRegistry
       .all()
       .filter((d) => d.palette !== false)
@@ -523,6 +528,27 @@ export function Shell({ app }: { app: AppState }) {
   const pageOpen = settingsOpen || customizeOpen || inboxOpen || automationsOpen || dashboardOpen || reviewing !== null || browsing !== null || projectPage !== null || worktreesOpen;
   const splitShown = split !== null && conversation !== null && !pageOpen && split.tasks.includes(conversation.taskId);
   const layoutRef = useRef<Layout | null>(null);
+  // REQ-PX-209: the palette searches the Core's conversation index and the folder of the task open in the centre, once it has one.
+  const fileTaskId = !pageOpen && conversation && conversation.taskId === panelTaskId && artifacts.includes("files") ? conversation.taskId : null;
+  const fileTaskTitle = fileTaskId ? (model.tasks.get(fileTaskId)?.goalText ?? "") || "this task" : "";
+  const paletteSearch = useMemo<PaletteSearchProps>(
+    () => ({
+      sessionId: model.sessionId,
+      fileTask: fileTaskId ? { taskId: fileTaskId, title: fileTaskTitle } : null,
+      onOpenMatch: (taskId, rowId) => openConversation(taskId, rowId),
+      onOpenFile: (taskId, path) => {
+        if (taskId !== panelTaskId) return;
+        if (popped.has("files")) {
+          void window.modbit.focusPaneWindow(taskId, "files");
+          setNotice(`The Files pane is in a window of its own: ${path} is there to open.`);
+          return;
+        }
+        setPanelState(taskId, (s) => openPane(s, "files"));
+        setFileRequest((r) => ({ taskId, path, n: (r?.n ?? 0) + 1 }));
+      },
+    }),
+    [model.sessionId, fileTaskId, fileTaskTitle, openConversation, panelTaskId, popped, setPanelState],
+  );
   // Each task in split view docks its approval card, queue and context into a tray store of its own (one task uses the app's).
   const splitStores = useRef(new Map<string, TrayStore<ReactNode>>());
   const storeFor = (id: string): TrayStore<ReactNode> => {
@@ -569,6 +595,7 @@ export function Shell({ app }: { app: AppState }) {
     setSelectedTaskId(taskId);
     setConversation({ taskId, rowId: null });
   };
+  openSplitRef.current = openSplit;
   const focusColumn = (column: 0 | 1) => {
     if (!split || split.focus === column) return;
     const id = split.tasks[column];
@@ -706,6 +733,7 @@ export function Shell({ app }: { app: AppState }) {
                 else setPanelState(panelTaskId, (d) => openPane(d, "terminal"));
               }}
               onPopOut={(kind, size) => popOut(panelTaskId, panelTask.goalText, kind, size)}
+              fileRequest={fileRequest && fileRequest.taskId === panelTaskId ? fileRequest : null}
             />
           ) : null
         }
@@ -920,7 +948,7 @@ export function Shell({ app }: { app: AppState }) {
       </ShellFrame>
       <TrayDirector core={{ state: core.state, reason: core.state === "restarting" || core.state === "failed" ? core.reason : "" }} sessionId={model.sessionId} taskId={conversation?.taskId ?? null} card={conversation ? model.tasks.get(conversation.taskId) : undefined} onResume={(id) => void startTask(id)} />
       <PermissionsDialog open={permissionsOpen} onClose={() => setPermissionsOpen(false)} info={presence.info} refresh={presence.refresh} />
-      <CommandPalette open={paletteOpen} items={paletteItems} onClose={() => setPaletteOpen(false)} announce={setNotice} />
+      <CommandPalette open={paletteOpen} items={paletteItems} onClose={() => setPaletteOpen(false)} announce={setNotice} search={paletteSearch} />
       <ShortcutHelp open={helpOpen} onClose={() => setHelpOpen(false)} registry={shellRegistry} />
     </>
   );
