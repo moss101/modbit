@@ -19,8 +19,10 @@ test("PX-106: the words are the Core's facts, not new ones", () => {
   assert.match(budgetText({ indexBudgetTokens: 400, indexUsedTokens: 400, indexOmitted: 2 }), /2 left out/);
   assert.equal(shareText({ indexed: true, indexTokens: 18, indexForm: "SHORT" }), "18 tokens (short)");
   assert.equal(shareText({ indexed: false, indexTokens: 0, indexForm: "NOT_INDEXED" }), "not in the index");
-  assert.equal(lastResult({ invocations: 0, lastOutcome: "", lastDetail: "", lastDurationMs: "0" }), "never ran");
-  assert.equal(lastResult({ invocations: 2, lastOutcome: "OK", lastDetail: "", lastDurationMs: "7" }), "OK after 7 ms (2 runs)");
+  // PX-207: the journal's outcome in words.
+  assert.equal(lastResult({ invocations: 0, lastOutcome: "", lastDetail: "", lastDurationMs: "0" }), "Has not run yet");
+  assert.equal(lastResult({ invocations: 2, lastOutcome: "OK", lastDetail: "", lastDurationMs: "7" }), "Last ran fine in 7 ms (2 runs)");
+  assert.equal(lastResult({ invocations: 1, lastOutcome: "TIMEOUT", lastDetail: "slow", lastDurationMs: "9" }), "Last timed out in 9 ms (1 run): slow");
   assert.equal(scopeWords("ADMIN"), "administrator");
   assert.equal(whyLocked({ canDisable: true, scope: "USER" }), "");
   assert.match(whyLocked({ canDisable: false, scope: "ADMIN" }), /above you/);
@@ -95,4 +97,21 @@ test("PX-207: the pages say the Core's codes in words", () => {
   assert.equal(hookName("config:user/rec"), "rec");
   assert.equal(signatureWords("UNSIGNED"), "not signed");
   assert.equal(signatureWords("VERIFIED:acme"), "signed by acme");
+});
+
+import { commandWords, folderOfRules, notLoadedWords, shortPath, toolWords, transportWords } from "./customize-model.ts";
+
+test("PX-207: paths are short in a row and whole in its title; a hook says what it runs and when in words", () => {
+  assert.equal(shortPath("/work/repo/.modbit/rules/a.md", { root: "/work/repo" }), ".modbit/rules/a.md");
+  assert.equal(shortPath("/Users/ann/Library/Modbit/rules/mine.md", { user: "ann" }), "~/Library/Modbit/rules/mine.md");
+  assert.equal(shortPath("/home/ann/x.md", { user: "ann" }), "~/x.md");
+  assert.equal(shortPath("/var/folders/ab/T/profile/rules/mine.md"), "…/profile/rules/mine.md");
+  assert.equal(shortPath("AGENTS.md", { root: "/work/repo" }), "AGENTS.md");
+  assert.equal(folderOfRules([{ layer: "repo-instructions", source: "AGENTS.md" }, { layer: "project", source: "/work/repo/.modbit/rules/a.md" }]), "/work/repo");
+  assert.equal(hookWhen({ point: "before_tool", mode: "observe", failPolicy: "closed", tools: ["fs.read"] }), "Before reading files · only watches · if it fails the step does not go ahead");
+  assert.equal(toolWords(["fs.read", "shell.exec"]), "reading files or running commands");
+  assert.equal(commandWords(["sh", "/tmp/a/kestrel-watch.sh"]), "kestrel-watch.sh");
+  assert.equal(commandWords(["cargo", "fmt"]), "cargo with 1 argument");
+  assert.equal(transportWords("stdio"), "runs on this machine");
+  assert.equal(notLoadedWords("not loaded: a repository's AGENTS.md is in force only once the session trusts the repository (TrustRepository)"), "a repository's AGENTS.md is in force only once the session trusts the repository");
 });

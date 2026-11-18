@@ -21,6 +21,11 @@ import {
   MEMORY_SHARE_SCOPES,
   baseName,
   budgetText,
+  commandWords,
+  folderOfRules,
+  notLoadedWords,
+  shortPath,
+  transportWords,
   customizeHits,
   extensionState,
   hookName,
@@ -41,6 +46,7 @@ import {
   shareText,
   shareWords,
   shortHash,
+  shortHashes,
   signatureWords,
   skillKey,
   skillScopeWords,
@@ -85,6 +91,14 @@ export function Customize({ connected, sessionId, taskId, taskTitle }: Customize
   const [reviewing, setReviewing] = useState<SkillRow | null>(null);
   const seq = useRef(0);
   const body = useRef<HTMLDivElement>(null);
+  // The person's account name (the one the task list's foot shows), to write paths under their home as ~/…
+  const [user, setUser] = useState("");
+  useEffect(() => {
+    void window.modbit
+      .localState()
+      .then((l) => setUser((l as { userName?: string }).userName ?? ""))
+      .catch(() => {});
+  }, []);
 
   const load = useCallback(async () => {
     if (!connected) return;
@@ -139,9 +153,10 @@ export function Customize({ connected, sessionId, taskId, taskTitle }: Customize
   };
 
   const ruleLists = useMemo(() => rulesOf(rules ?? []), [rules]);
+  const ruleRoot = useMemo(() => folderOfRules(rules ?? []), [rules]);
   const hits = useMemo(
-    () => customizeHits(query, { skills: skills?.skills ?? [], rules: rules ?? [], hooks: taskId ? (hooks?.hooks ?? []) : [], extensions: hooks?.extensions ?? [], memory: memory?.items ?? [] }),
-    [query, skills, rules, hooks, memory, taskId],
+    () => customizeHits(query, { skills: skills?.skills ?? [], rules: rules ?? [], hooks: taskId ? (hooks?.hooks ?? []) : [], extensions: hooks?.extensions ?? [], memory: memory?.items ?? [] }, user),
+    [query, skills, rules, hooks, memory, taskId, user],
   );
   const counts: Record<SectionId, number | null> = {
     skills: skills ? skills.skills.length : null,
@@ -196,6 +211,9 @@ export function Customize({ connected, sessionId, taskId, taskTitle }: Customize
     <section className="pg cz" aria-label="Customize" data-testid="customize" data-current={query.trim() ? "search" : section}>
       <header className="pg-head">
         <h2 className="mb-sr-only">Customize</h2>
+        <p className="pg-summary" role="status" data-testid="page-summary">
+          {query.trim() ? `${hits.length} ${hits.length === 1 ? "match" : "matches"}` : summaryOf(counts)}
+        </p>
         <span className="pg-grow" />
         <label className="cz-search">
           <Icon name="search" aria-hidden="true" />
@@ -306,8 +324,8 @@ export function Customize({ connected, sessionId, taskId, taskTitle }: Customize
                                   <span title={s.contentHash}>hash {shortHash(s.contentHash)}</span> · {invocationWords(s.invocation)} · {shareText(s)}
                                   {s.paths.length > 0 ? ` · applies to ${s.paths.join(", ")} (${s.pathsActive ? "in use now" : "not in use now"})` : ""}
                                 </span>
-                                <span className="pg-sub" data-testid="customize-skill-provenance">
-                                  {s.provenanceAuthor || s.provenanceSource || s.provenanceLicense ? `from ${s.provenanceAuthor || "unknown author"}${s.provenanceSource ? `, ${s.provenanceSource}` : ""}${s.provenanceLicense ? `, ${s.provenanceLicense}` : ""}` : "no provenance recorded"} · {s.trustDetail || trustWords(s.trust)}
+                                <span className="pg-sub" data-testid="customize-skill-provenance" title={s.trustDetail}>
+                                  {s.provenanceAuthor || s.provenanceSource || s.provenanceLicense ? `from ${s.provenanceAuthor || "unknown author"}${s.provenanceSource ? `, ${s.provenanceSource}` : ""}${s.provenanceLicense ? `, ${s.provenanceLicense}` : ""}` : "no provenance recorded"} · {shortHashes(s.trustDetail) || trustWords(s.trust)}
                                 </span>
                               </div>
                               <span className="pg-tag" data-tone={tag.tone} title={trustWords(s.trust)}>
@@ -386,8 +404,11 @@ export function Customize({ connected, sessionId, taskId, taskTitle }: Customize
                             {ruleWhen(r.reason)}
                             {ruleSize(r) ? ` · ${ruleSize(r)}` : ""}
                           </span>
-                          <span className="pg-sub pg-mono" title={r.contentHash}>
-                            {r.source} · hash {shortHash(r.contentHash)}
+                          <span className="pg-sub" title={`${r.source}\nsha256 ${r.contentHash}`}>
+                            <span className="pg-mono" data-testid="customize-rule-path">
+                              {shortPath(r.source, { root: ruleRoot, user })}
+                            </span>{" "}
+                            · hash <span className="pg-mono">{shortHash(r.contentHash)}</span>
                           </span>
                           {r.scannerFindings.length > 0 && (
                             <span className="pg-sub pg-warn" data-testid="customize-rule-findings">
@@ -409,8 +430,8 @@ export function Customize({ connected, sessionId, taskId, taskTitle }: Customize
                     <summary>Files the Core found and did not load ({ruleLists.notLoaded.length})</summary>
                     <ul className="pg-notes">
                       {ruleLists.notLoaded.map((r) => (
-                        <li key={r.source} className="meta" data-testid="customize-rule-not-loaded" data-source={r.source}>
-                          <span className="pg-mono">{r.source}</span>: {r.notLoadedReason}
+                        <li key={r.source} className="meta" data-testid="customize-rule-not-loaded" data-source={r.source} title={`${r.source}\n${r.notLoadedReason}`}>
+                          <span className="pg-mono">{shortPath(r.source, { root: ruleRoot, user })}</span>: {notLoadedWords(r.notLoadedReason)}
                         </li>
                       ))}
                     </ul>
@@ -437,14 +458,13 @@ export function Customize({ connected, sessionId, taskId, taskTitle }: Customize
                           <span className="pg-title-line">
                             <strong>{hookName(h.id)}</strong> <span className="pg-dim">set by {scopeWords(h.scope)}</span>
                           </span>
-                          <span className="pg-sub">{hookWhen(h)}</span>
-                          <span className="pg-sub">
-                            runs <code>{h.command.join(" ")}</code>
-                            {h.tools.length > 0 ? ` · for ${h.tools.join(", ")}` : ""}
+                          <span className="pg-sub" data-testid="customize-hook-when">{hookWhen(h)}</span>
+                          <span className="pg-sub" title={h.command.join(" ")}>
+                            Runs <span className="pg-mono" data-testid="customize-hook-command">{commandWords(h.command)}</span>
                             {h.trustedWorkspaceGate ? " · in force only while you trust this repository" : ""}
                           </span>
                           <span className="pg-sub" data-testid="customize-hook-last">
-                            Last result: {lastResult(h)}
+                            {lastResult(h)}
                           </span>
                           {whyLocked(h) && (
                             <span className="pg-sub" data-testid="customize-hook-locked">
@@ -506,7 +526,7 @@ export function Customize({ connected, sessionId, taskId, taskTitle }: Customize
                             <ul className="pg-notes" aria-label={`Tool servers of ${e.name}`}>
                               {e.servers.map((s) => (
                                 <li key={s.name} className="pg-sub" data-testid="customize-server" data-name={s.name} data-state={s.state}>
-                                  Tool server {s.name} ({s.transport}): {serverWords(s)}
+                                  Tool server {s.name}, {transportWords(s.transport)}: {serverWords(s)}
                                   {s.scopes.length > 0 ? ` · scopes ${s.scopes.join(", ")}` : ""}
                                 </li>
                               ))}
@@ -641,6 +661,7 @@ export function Customize({ connected, sessionId, taskId, taskTitle }: Customize
         </div>
       </div>
       <SkillReview
+        user={user}
         skill={reviewing}
         busy={busy}
         onClose={() => setReviewing(null)}
@@ -658,7 +679,13 @@ export function Customize({ connected, sessionId, taskId, taskTitle }: Customize
  * The review a skill that is not trusted needs before it can reach the model: everything the Core lists of it, with the exact
  * content hash a trust decision is bound to. Trust sends that hash and nothing else; the Core refuses any other.
  */
-function SkillReview({ skill: s, busy, onClose, onOpenSource, onTrust }: { skill: SkillRow | null; busy: boolean; onClose: () => void; onOpenSource: (s: SkillRow) => void; onTrust: (s: SkillRow) => void }) {
+/** The head's summary: what the page holds, in the Core's counts. */
+function summaryOf(c: Record<SectionId, number | null>): string {
+  const part = (n: number | null, one: string, many: string) => (n === null ? null : `${n} ${n === 1 ? one : many}`);
+  return [part(c.skills, "skill", "skills"), part(c.rules, "rule", "rules"), part(c.hooks, "hook", "hooks"), part(c.extensions, "extension", "extensions")].filter(Boolean).join(" · ");
+}
+
+function SkillReview({ user, skill: s, busy, onClose, onOpenSource, onTrust }: { user: string; skill: SkillRow | null; busy: boolean; onClose: () => void; onOpenSource: (s: SkillRow) => void; onTrust: (s: SkillRow) => void }) {
   return (
     <Dialog open={s !== null} title={s ? `Review ${s.name}` : "Review"} onClose={onClose} testId="customize-skill-review-dialog" description="Trusting lets this exact content reach the model. If the file changes, it is not trusted again until you review it.">
       {s && (
@@ -670,7 +697,10 @@ function SkillReview({ skill: s, busy, onClose, onOpenSource, onTrust }: { skill
             <dd>{s.version}</dd>
             <dt>Where it comes from</dt>
             <dd>
-              {skillScopeWords(s.scope)} · <span className="pg-mono">{s.source}</span>
+              {skillScopeWords(s.scope)} ·{" "}
+              <span className="pg-mono" title={s.source}>
+                {shortPath(s.source, { user })}
+              </span>
             </dd>
             <dt>Who can call it</dt>
             <dd>{invocationWords(s.invocation)}</dd>
@@ -684,8 +714,8 @@ function SkillReview({ skill: s, busy, onClose, onOpenSource, onTrust }: { skill
             <dd>{s.provenanceAuthor || s.provenanceSource || s.provenanceLicense ? [s.provenanceAuthor || "unknown author", s.provenanceSource, s.provenanceLicense].filter(Boolean).join(", ") : "none recorded"}</dd>
             <dt>Now</dt>
             <dd>{trustWords(s.trust)}</dd>
-            <dt>Content hash</dt>
-            <dd className="pg-mono" data-testid="customize-review-hash">
+            <dt className="cz-secondary">Content hash</dt>
+            <dd className="pg-mono cz-secondary" data-testid="customize-review-hash">
               {s.contentHash}
             </dd>
           </dl>

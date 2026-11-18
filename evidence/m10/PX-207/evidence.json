@@ -47,14 +47,15 @@
   "apps/desktop/src/main/customize-ipc.test.ts",
   "apps/desktop/src/main/hardening-guard.test.ts"
  ],
- "unit": "@modbit/desktop 453 of 453 (448 before the new tests, +5: 3 customize-model, 2 customize-ipc); tsc -p apps/desktop clean (src and e2e).",
+ "unit": "@modbit/desktop 455 of 455 (448 before PX-207, +7); tsc -p apps/desktop clean (src and e2e).",
  "proof": "e2e/px-207-automations-customize.spec.ts 5 of 5 locally against the real app and a real Core; whole desktop suite once: 217 passed, 5 failed (all gallery, caused by this change: duplicate region landmarks in the rail and a schedule trigger without its UTC slot), 3 skipped; after the fix the four gallery specs 11 of 11 and the affected specs 18 of 18 (desktop-e2e-full-results.txt)",
  "retained_mutations": [
   "a rule row the Core did not load appended to Rules: rulesDrift reports 'rule /tmp/never-loaded.md is shown and the Core did not load it'",
   "a textarea and a contenteditable heading in a rule row: editableRules reports both",
   "after the rule result opened its section, another section shown: openedDrift reports the wrong section and the focus elsewhere",
   "a button in the skill row that trusts without the review: trustedWithoutReview reports it from the bridge tap",
-  "the Automations page head pushed back to 40 px: pageDrift reports 'the head is 40 px, not 45'"
+  "the Automations page head pushed back to 40 px: pageDrift reports 'the head is 40 px, not 45'",
+  "a raw person id and a tool name added to Customize's words: rawWords reports 'user:b1b1b1b1-b1b1' and 'fs.read'"
  ],
  "removed_test_ids": [
   "customize-close",
@@ -64,8 +65,24 @@
  "removed_checks": [],
  "changed_checks": [
   "px-106-customize.spec.ts: trust goes through customize-skill-review then customize-skill-trust (4 places); tab order starts on the review button; 'signature UNSIGNED' -> data-signature=UNSIGNED and 'not signed'",
-  "automations.spec.ts:304: run-reason text SOURCE_CHANGED -> data-code=SOURCE_CHANGED and its words"
+  "automations.spec.ts:304: run-reason text SOURCE_CHANGED -> data-code=SOURCE_CHANGED and its words",
+  "px-106-customize.spec.ts:147: customize-hook-last 'OK after' -> 'Last ran fine in'",
+  "automations.spec.ts:127/270/316: detail-hash full text -> data-hash (full) plus 12-character text",
+  "automations.spec.ts:442: run row text tick@<slot> -> data-event-id",
+  "customize-model.test.ts: lastResult 'never ran'/'OK after 7 ms' -> 'Has not run yet'/'Last ran fine in 7 ms'"
  ],
  "screenshots": "after/{automations-rail,customize-search,customize-rules,customize-review}-{light,dark}-{comfortable,compact}.png, from the running app",
- "ci": []
+ "ci": [],
+ "wording_pass": {
+  "trigger": "owner on 2026-11-18 after the first screenshots: \"Fix wording first\"",
+  "changes": [
+   "approver: 'you' when the Core's id is the one it recorded for the definition's versions (myIds), else 'another person (<8 chars>)'; the id is data-approver and the title",
+   "definition hash: 12 characters with Copy (full hash on the clipboard, data-hash and title); approved hash 12 characters with title; review dialog keeps the full content hash in a secondary caption style",
+   "page heads: a summary at the left ('2 automations · 1 enabled'; '2 skills · 3 rules · 1 hook · 0 extensions'; 'N matches' while searching)",
+   "'Folder whose .modbit/automations files to read' -> 'Read automations from a folder'; 'Load definitions from the repository' -> 'Read definitions'; 'manual / test run' -> 'By hand' (all trigger summaries in words); 'Run started (running).' -> 'The run started.'; principal 'creator' -> 'whoever saved it'; run event id moved to the time's title and data-event-id; repository problem codes to the title",
+   "hooks: 'Before reading files · only watches · ...' (tools in words), 'Runs kestrel-watch.sh' with the full command in the title, 'Last ran fine in 7 ms'; tool servers 'runs on this machine'",
+   "paths: Rules and skill sources relative to the task's folder, ~/... under home, else the last three parts; the full path in the title; not-loaded reasons without the Core command name; full fingerprints in Core sentences cut to 12",
+   "Kill... kept: QUAL-PX-207 and docs/68 name the kill switch"
+  ]
+ }
 }

@@ -17,7 +17,7 @@ import type { AutoAttention, AutoDetail, AutoRun, AutoView } from "../../shared/
 import { bridgeCalls, newCommandId, type AutomationCalls } from "./calls.ts";
 import { EnableDialog, KillDialog, TestRunDialog } from "./dialogs.tsx";
 import { DefinitionEditor, type EditorTarget } from "./editor.tsx";
-import { ATTENTION_META, approvalBlocked, attentionAction, costWords, durationWords, effectWords, nextDueWords, reasonWords, refusalSentence, relativeTo, runKinds, runStatusMeta, runSummary, STARTER_DEFINITION, stateMeta, utcMinute } from "./model.ts";
+import { ATTENTION_META, approvalBlocked, attentionAction, costWords, durationWords, effectWords, myIds, nextDueWords, personWords, principalWords, triggerWords, reasonWords, refusalSentence, relativeTo, runKinds, runStatusMeta, runSummary, STARTER_DEFINITION, stateMeta, utcMinute } from "./model.ts";
 import { useAutomations } from "./use-automations.ts";
 
 const WORKSPACE_KEY = "modbit.automations.workspace";
@@ -163,7 +163,7 @@ export function Automations({ calls = bridgeCalls, connected, onOpenTask, initia
   const manualRun = (v: AutoView) =>
     act(async () => {
       const res = await calls.run({ automationId: v.automationId }, newCommandId());
-      if (res.status === "running" || res.status === "queued" || res.status === "pending") say(`Run started (${res.status}).`);
+      if (res.status === "running" || res.status === "queued" || res.status === "pending") say(res.status === "running" ? "The run started." : "The run is queued and starts when there is room.");
       else say(`The run was recorded as ${res.status}${res.reason ? ` (${res.reason})` : ""}: ${res.detail}`, res.status === "failed" ? "error" : "info");
     });
 
@@ -174,6 +174,9 @@ export function Automations({ calls = bridgeCalls, connected, onOpenTask, initia
     <section className="pg autos" aria-label={`Automations${suffix}`} data-testid="automations" data-loaded={data.loaded} data-rail={selected ? "open" : "closed"}>
       <header className="pg-head">
         <h2 className="mb-sr-only">Automations</h2>
+        <p className="pg-summary" role="status" data-testid="page-summary">
+          {list ? `${views.length} ${views.length === 1 ? "automation" : "automations"} · ${views.filter((v) => v.state === "ENABLED").length} enabled${views.some((v) => v.state === "PAUSED") ? ` · ${views.filter((v) => v.state === "PAUSED").length} paused` : ""}` : "Reading the automations…"}
+        </p>
         <span className="pg-grow" />
         <Button size="sm" variant="ghost" aria-pressed={globalPaused} onClick={() => void act(async () => void (await calls.pause("", !globalPaused)))} disabled={busy || !list} data-testid="global-pause" data-paused={globalPaused}>
           {globalPaused ? "Resume all" : "Pause all"}
@@ -199,11 +202,11 @@ export function Automations({ calls = bridgeCalls, connected, onOpenTask, initia
           </p>
           <div className="autos-bar">
             <label className="autos-field autos-field-wide">
-              <span>Folder whose .modbit/automations files to read</span>
-              <input value={workspace} onChange={(e) => setWorkspace(e.target.value)} placeholder="/path/to/a/trusted/repository" spellCheck={false} data-testid="automations-workspace" />
+              <span>Read automations from a folder</span>
+              <input value={workspace} onChange={(e) => setWorkspace(e.target.value)} placeholder="A repository you trust" spellCheck={false} data-testid="automations-workspace" />
             </label>
             <Button size="sm" onClick={() => void loadRepository(workspace)} disabled={!reachable || busy} data-testid="repository-load">
-              Load definitions from the repository
+              Read definitions
             </Button>
           </div>
           {notice && (
@@ -215,7 +218,7 @@ export function Automations({ calls = bridgeCalls, connected, onOpenTask, initia
             <ul className="autos-issues" aria-label="Repository files that could not be loaded" data-testid="repo-problems">
               {repoProblems.map((p, i) => (
                 <li key={i} data-testid="repo-problem" data-code={p.code}>
-                  <code className="autos-issue-path">{p.path}</code> <strong className="autos-issue-code">{p.code}</strong> <span>{p.message}</span>
+                  <code className="autos-issue-path">{p.path}</code> <span title={p.code}>{p.message}</span>
                 </li>
               ))}
             </ul>
@@ -315,8 +318,8 @@ export function Automations({ calls = bridgeCalls, connected, onOpenTask, initia
                     </span>
                     <ul className="autos-cell autos-cell-trig" data-testid="automation-triggers" aria-label={`Triggers of ${v.name}`}>
                       {v.triggers.map((t) => (
-                        <li key={t.id} data-kind={t.kind} data-next-due={t.nextDueMs} title={t.kind === "schedule" ? nextDueWords(t, nowMs) : t.summary}>
-                          {t.summary}
+                        <li key={t.id} data-kind={t.kind} data-next-due={t.nextDueMs} title={t.kind === "schedule" ? nextDueWords(t, nowMs) : triggerWords(t)}>
+                          {triggerWords(t)}
                           {t.kind === "schedule" && <span className="autos-next">{t.nextDueMs ? `next ${utcMinute(t.nextDueMs)}` : "no slot due"}</span>}
                         </li>
                       ))}
@@ -432,6 +435,10 @@ export function Detail({ labelSuffix = "", view: v, detail, runs, nowMs, busy, o
   const repo = v.sourceKind === "repository";
   const live = v.state === "ENABLED" || v.state === "PAUSED";
   const folder = v.workspaceRoot.split(/[\\/]/).filter(Boolean).pop() ?? v.workspaceRoot;
+  // The person ids the Core recorded for this definition's versions: the approver among them is "you".
+  const mine = myIds(detail?.versions ?? []);
+  const [copied, setCopied] = useState(false);
+  useEffect(() => setCopied(false), [v.definitionHash]);
   return (
     <section className="autos-rail" aria-label={`Automation ${v.name}${labelSuffix}`} data-testid="automation-detail" data-automation-id={v.automationId} data-state={v.state} data-version={v.currentVersion}>
       <div className="rail-head autos-rail-head">
@@ -508,15 +515,14 @@ export function Detail({ labelSuffix = "", view: v, detail, runs, nowMs, busy, o
               <span className="rail-ico">
                 <Icon name={t.kind === "schedule" ? "clock" : t.kind === "event" ? "git-branch" : t.kind === "webhook" ? "globe" : "terminal"} aria-hidden="true" />
               </span>
-              <span className="rail-x" title={t.summary}>
-                {t.summary}
+              <span className="rail-x" title={triggerWords(t)}>
+                {triggerWords(t)}
               </span>
               {t.kind === "schedule" && (
                 <span className="rail-aside" title={nextDueWords(t, nowMs)}>
                   {t.nextDueMs ? `next ${relativeTo(t.nextDueMs, nowMs)}` : "no slot due"}
                 </span>
               )}
-              {t.kind === "manual" && <span className="rail-aside">by hand</span>}
             </li>
           ))}
         </ul>
@@ -538,8 +544,8 @@ export function Detail({ labelSuffix = "", view: v, detail, runs, nowMs, busy, o
             <Icon name="eye" aria-hidden="true" />
           </span>
           <span className="rail-x">Runs as</span>
-          <span className="rail-aside" data-testid="detail-principal">
-            {v.principal}
+          <span className="rail-aside" data-testid="detail-principal" data-principal={v.principal} title={v.principal}>
+            {principalWords(v.principal)}
           </span>
         </div>
       </div>
@@ -581,8 +587,16 @@ export function Detail({ labelSuffix = "", view: v, detail, runs, nowMs, busy, o
         <p className="autos-rail-text" data-testid="detail-approved">
           {v.enabled ? (
             <>
-              Approved: version {v.enabled.version}, hash <code>{v.enabled.definitionHash.slice(0, 12)}…</code>, by {v.enabled.approver || "the owner"}, {utcMinute(v.enabled.approvedMs)}
-              {v.enabled.repoRevision ? `, repository revision ${v.enabled.repoRevision.slice(0, 12)}` : ""}
+              Approved version {v.enabled.version}{" "}
+              <span title={v.enabled.definitionHash}>
+                (<span className="pg-mono">{v.enabled.definitionHash.slice(0, 12)}</span>)
+              </span>{" "}
+              by{" "}
+              <span data-testid="detail-approver" data-approver={v.enabled.approver} title={v.enabled.approver}>
+                {personWords(v.enabled.approver, mine)}
+              </span>
+              , {utcMinute(v.enabled.approvedMs)}
+              {v.enabled.repoRevision ? <span title={v.enabled.repoRevision}>, from repository revision <span className="pg-mono">{v.enabled.repoRevision.slice(0, 12)}</span></span> : null}
             </>
           ) : (
             "No version is approved."
@@ -597,9 +611,12 @@ export function Detail({ labelSuffix = "", view: v, detail, runs, nowMs, busy, o
         <h4 className="rail-h">Definition</h4>
         <p className="autos-rail-text">
           Hash{" "}
-          <code className="autos-hash" data-testid="detail-hash">
-            {v.definitionHash}
-          </code>
+          <span className="pg-mono" data-testid="detail-hash" data-hash={v.definitionHash} title={v.definitionHash}>
+            {v.definitionHash.slice(0, 12)}
+          </span>{" "}
+          <Button size="xs" variant="ghost" aria-label="Copy the full definition hash" onClick={() => void navigator.clipboard.writeText(v.definitionHash).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }, () => setCopied(false))} data-testid="detail-hash-copy">
+            {copied ? "Copied" : "Copy"}
+          </Button>
         </p>
         {detail && detail.versions.length > 0 && (
           <details className="autos-versions" data-testid="detail-versions">
@@ -607,7 +624,7 @@ export function Detail({ labelSuffix = "", view: v, detail, runs, nowMs, busy, o
             <ul className="rail-list">
               {detail.versions.map((ver) => (
                 <li key={ver.version} className="autos-rail-text" data-testid="version-row" data-version={ver.version} data-approved={ver.approved}>
-                  version {ver.version} · <code>{ver.definitionHash.slice(0, 12)}…</code> · {ver.sourceKind === "repository" ? `file ${ver.sourcePath}` : "saved here"} · {utcMinute(ver.createdMs)} · {ver.approved ? "the approved version" : "not approved"}
+                  version {ver.version} · <span className="pg-mono" title={ver.definitionHash}>{ver.definitionHash.slice(0, 12)}</span> · {ver.sourceKind === "repository" ? `file ${ver.sourcePath}` : "saved here"} · {utcMinute(ver.createdMs)} · {ver.approved ? "the approved version" : "not approved"}
                 </li>
               ))}
             </ul>
@@ -642,7 +659,7 @@ export function History({ runs, nowMs, onOpenTask, onAck }: { runs: readonly Aut
         const meta = runStatusMeta(r.status);
         const duration = durationWords(r);
         return (
-          <li key={r.dispatchKey} className="autos-run" data-testid="run-row" data-status={r.status} data-reason={r.reason} data-trigger-kind={r.triggerKind} data-test={r.test} data-catch-up={r.catchUp} data-dispatch-key={r.dispatchKey} data-task-id={r.taskId} data-findings={r.findings}>
+          <li key={r.dispatchKey} className="autos-run" data-testid="run-row" data-event-id={r.eventId} data-status={r.status} data-reason={r.reason} data-trigger-kind={r.triggerKind} data-test={r.test} data-catch-up={r.catchUp} data-dispatch-key={r.dispatchKey} data-task-id={r.taskId} data-findings={r.findings}>
             <div className="rail-row">
               <span data-testid="run-status" data-status={r.status}>
                 <StatusDot status={meta.tone} label={meta.label} showLabel />
@@ -667,7 +684,7 @@ export function History({ runs, nowMs, onOpenTask, onAck }: { runs: readonly Aut
               </p>
             )}
             <p className="autos-rail-text pg-dim" data-testid="run-trigger">
-              {utcMinute(r.firedMs)} · {runSummary(r)} · <span className="autos-event">{r.eventId}</span>
+              <span title={`event ${r.eventId}`}>{utcMinute(r.firedMs)}</span> · {runSummary(r)}
               {r.catchUp && (
                 <span data-testid="run-catch-up"> · one run for the whole missed window</span>
               )}

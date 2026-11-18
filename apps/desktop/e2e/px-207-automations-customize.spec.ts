@@ -152,15 +152,19 @@ async function trustedWithoutReview(): Promise<string[]> {
   return (await bridgeLog()).filter((c) => c.channel === "customize:skillTrust" && c.reviewOpen !== true).map((c) => `${String(c.args[0])} was trusted without its review open`);
 }
 
-/** Raw identifiers in a page's own words (a Core code such as NEEDS_APPROVAL or TRUSTED_BY_OWNER), outside code and hashes. */
+/**
+ * Raw identifiers in a page's own words, outside code and paths: a Core code (NEEDS_APPROVAL, TRUSTED_BY_OWNER), a person's id
+ * (user:<uuid>), a tool's name (fs.read), a snake_case label (read_only, before_tool), a full 64-digit fingerprint.
+ */
 async function rawWords(testId: string): Promise<string[]> {
   return page.getByTestId(testId).evaluate((root) => {
     const out = new Set<string>();
     const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     for (let n = walk.nextNode(); n; n = walk.nextNode()) {
       const el = n.parentElement;
-      if (!el || el.closest("code, .pg-mono, .autos-event, .autos-hash, [role='alert']") || !el.getClientRects().length) continue;
-      for (const m of (n.textContent ?? "").matchAll(/\b[A-Z][A-Z0-9]*_[A-Z0-9_]+\b/g)) out.add(m[0]);
+      if (!el || el.closest("code, [role='alert'], [role='dialog']") || !el.getClientRects().length) continue;
+      const t = n.textContent ?? "";
+      for (const re of [/\b[A-Z][A-Z0-9]*_[A-Z0-9_]+\b/g, /\buser:[0-9a-z-]{4,}/g, /\b(?:fs|shell|git|change|net|browser|computer)\.[a-z_]+\b/g, /\b[a-z]+_[a-z_]+\b/g, /\b[0-9a-f]{40,}\b/g]) for (const m of t.matchAll(re)) out.add(m[0]);
     }
     return [...out];
   });
@@ -178,6 +182,8 @@ async function pageDrift(testId: string, density: "comfortable" | "compact"): Pr
         const h = head.getBoundingClientRect().height;
         if (Math.abs(h - barPx!) > 0.5) out.push(`the head is ${h} px, not ${barPx}`);
         if (!head.querySelector("h2")) out.push("the head has no page name");
+        const summary = head.querySelector<HTMLElement>('[data-testid="page-summary"]');
+        if (!summary || !(summary.textContent ?? "").trim() || summary.getBoundingClientRect().left - head.getBoundingClientRect().left > 40) out.push("the head's left end is empty (no summary of the page)");
         if (head.querySelectorAll('.mb-btn[data-variant="primary"]').length > 1) out.push("the head has more than one primary action");
         if (getComputedStyle(head).borderBottomWidth !== "1px") out.push("the head has no 1 px edge");
       }
@@ -327,6 +333,20 @@ test("Rules lists the layers the Core loaded for the folder with their sources, 
   await expect(agents).toContainText("This repository's instructions");
   await expect(agents.getByTestId("customize-rule-when")).toContainText("Always in force");
   await expect(page.locator('[data-testid="customize-rule"][data-layer="user"]')).toContainText("Your rules, in every project");
+  // Paths are short in the row (relative to the task's folder, or under home, or their last parts) and whole in its title.
+  const style = page.locator('[data-testid="customize-rule"][data-source$="kestrel-style.md"]');
+  await expect(style.getByTestId("customize-rule-path")).toHaveText(join(".modbit", "rules", "kestrel-style.md"));
+  const minePath = (await page.locator('[data-testid="customize-rule"][data-layer="user"]').getByTestId("customize-rule-path").textContent())!;
+  const mineSource = (await page.locator('[data-testid="customize-rule"][data-layer="user"]').getAttribute("data-source"))!;
+  expect(minePath.length).toBeLessThan(mineSource.length);
+  expect(minePath.endsWith(join("rules", "mine.md"))).toBe(true);
+  expect(await page.locator('[data-testid="customize-rule"][data-layer="user"] [title]').first().getAttribute("title")).toContain(mineSource);
+  // A hook says when and what it runs in words; the full command is its title.
+  const hookRow = page.locator('[data-testid="customize-hook"][data-id$="/kestrel-watch"]');
+  await expect(hookRow.getByTestId("customize-hook-when")).toHaveText("Before reading files · only watches · if it fails the step does not go ahead");
+  await expect(hookRow.getByTestId("customize-hook-command")).toHaveText("kestrel-watch.sh");
+  await expect(hookRow.getByTestId("customize-hook-last")).toContainText("Last ran fine in");
+  await expect(page.getByTestId("page-summary")).toHaveText("2 skills · 3 rules · 1 hook · 0 extensions");
   // The dormant rule is nowhere; the broken one is only among the files found and not loaded, with the Core's reason.
   await expect(page.getByTestId("customize-rules")).not.toContainText("docs-only.md");
   const notLoaded = page.getByTestId("customize-rule-not-loaded");
@@ -348,6 +368,15 @@ test("Rules lists the layers the Core loaded for the folder with their sources, 
   expect((await revealed()).length).toBe(2);
   await accessible(page, "Customize at Rules", '[data-testid="customize"]');
   expect(await rawWords("customize")).toEqual([]);
+  // Retained mutation 6: a raw person id and a tool name in the page's words are caught.
+  await page.evaluate(() => {
+    const p = document.createElement("p");
+    p.setAttribute("data-mutation", "6");
+    p.textContent = "Approved by user:b1b1b1b1-b1b1 for fs.read";
+    document.querySelector('[data-testid="customize-rules"]')!.appendChild(p);
+  });
+  expect(await rawWords("customize")).toEqual(["user:b1b1b1b1-b1b1", "fs.read"]);
+  await page.evaluate(() => document.querySelector('[data-mutation="6"]')?.remove());
 
   // Retained mutation 1: a rule shown that the Core did not load is caught.
   await page.evaluate(() => {
@@ -386,6 +415,7 @@ test("one search finds a skill, a hook and a rule by text, and each result opens
   await search.fill("kestrel");
   const results = page.getByTestId("customize-result");
   await expect(results).toHaveCount(3);
+  await expect(page.getByTestId("page-summary")).toHaveText("3 matches");
   const found = await results.evaluateAll((els) => els.map((e) => `${e.getAttribute("data-section")}:${e.getAttribute("data-key")}`));
   expect(found.map((f) => f.split(":")[0])).toEqual(["skills", "rules", "hooks"]);
   expect(found[0]).toBe("skills:USER/kestrel-notes");
@@ -512,6 +542,19 @@ test("Automations: the list with a details rail; enable, run now, pause and kill
   await rail.getByTestId("detail-enable").click();
   await page.getByTestId("enable-confirm").click();
   await expect(row).toHaveAttribute("data-state", "ENABLED");
+  await expect(page.getByTestId("page-summary")).toHaveText("2 automations · 1 enabled");
+  // The approver is the person at this machine: "you", with the Core's id as data and title only.
+  await expect(rail.getByTestId("detail-approver")).toHaveText("you");
+  expect(await rail.getByTestId("detail-approver").getAttribute("data-approver")).toMatch(/^user:/);
+  await expect(rail.getByTestId("detail-approved")).not.toContainText("user:");
+  // The fingerprint is 12 characters in the rail; Copy puts the whole one on the clipboard.
+  const fullHash = (await rail.getByTestId("detail-hash").getAttribute("data-hash"))!;
+  expect(fullHash).toMatch(/^[0-9a-f]{64}$/);
+  await expect(rail.getByTestId("detail-hash")).toHaveText(fullHash.slice(0, 12));
+  await rail.getByTestId("detail-hash-copy").click();
+  await expect(rail.getByTestId("detail-hash-copy")).toHaveText("Copied");
+  expect(await app.evaluate(({ clipboard }) => clipboard.readText())).toBe(fullHash);
+  await expect(rail.getByTestId("detail-trigger")).toHaveText("By hand");
   // Run now: an ordinary task the Core records on the definition, with its history in the rail.
   await rail.getByTestId("detail-run").click();
   const run = rail.getByTestId("run-row").first();

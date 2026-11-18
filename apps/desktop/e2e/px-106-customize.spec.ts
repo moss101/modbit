@@ -144,7 +144,7 @@ test("each list shows the Core's scope, trust and provenance, and the first task
   // Hooks: scope, what a person may switch, and the journal's last result.
   await expect(hook("user-rec")).toHaveAttribute("data-scope", "USER");
   await expect(hook("user-rec")).toHaveAttribute("data-enabled", "true");
-  await expect(hook("user-rec").getByTestId("customize-hook-last")).toContainText("OK after");
+  await expect(hook("user-rec").getByTestId("customize-hook-last")).toContainText("Last ran fine in"); // PX-207: the journal's OK in words
   await expect(hook("admin-rec")).toHaveAttribute("data-scope", "ADMIN");
   await expect(hook("admin-rec")).toHaveAttribute("data-can-disable", "false");
   await expect(hook("admin-rec").getByTestId("customize-hook-locked")).toContainText("above you");
