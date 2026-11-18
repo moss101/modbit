@@ -4200,7 +4200,17 @@ async fn qual_px_153_the_count_survives_a_restart_because_it_is_folded_from_the_
     };
     decide(&mut c, &asked[0], false, g).await;
     wait_task(&mut c, &t, 60).await;
-    let events = replay(&core, &session).await;
+    // `replay` stops at the first 600 ms gap in the stream, so on a loaded runner it can end before the
+    // notice, the last event of the run, has been delivered. The notice is awaited, not assumed: a run
+    // that never parked still fails here, after the deadline, with the same message.
+    let deadline = Instant::now() + Duration::from_secs(30);
+    let events = loop {
+        let events = replay(&core, &session).await;
+        if !attention_notices(&events, &t).is_empty() || Instant::now() >= deadline {
+            break events;
+        }
+        tokio::time::sleep(Duration::from_millis(250)).await;
+    };
     assert_eq!(
         attention_notices(&events, &t).len(),
         1,
