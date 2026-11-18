@@ -72,7 +72,20 @@
   "customize-model.test.ts: lastResult 'never ran'/'OK after 7 ms' -> 'Has not run yet'/'Last ran fine in 7 ms'"
  ],
  "screenshots": "after/{automations-rail,customize-search,customize-rules,customize-review}-{light,dark}-{comfortable,compact}.png, from the running app",
- "ci": [],
+ "ci": [
+  {
+   "run": "44263042339",
+   "head": "da51dfb9bfb4a39d7914c25f9bdd647df06d0f32",
+   "conclusion": "success",
+   "note": "every job green after one rerun of failed jobs (first attempt: macOS Rust qual_px_179 known flake and qual_px_071; release supply chain hung after its reproducible build and was cancelled)"
+  },
+  {
+   "run": "44345295991",
+   "head": "78dbf5f305b48b621f187f4ad781c14c4c693844",
+   "conclusion": "incomplete",
+   "note": "wording pass: all desktop E2E (macOS, Ubuntu, Windows), packaged, node, dossier, lint, supply chain and Rust Ubuntu/Windows green; Rust macOS cancelled twice in the queue (no macOS runner), not run"
+  }
+ ],
  "wording_pass": {
   "trigger": "owner on 2026-11-18 after the first screenshots: \"Fix wording first\"",
   "changes": [
