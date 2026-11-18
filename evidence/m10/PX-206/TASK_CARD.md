@@ -125,3 +125,9 @@ None weakened. Each moved with its fact:
 - **An update that holds transcript text**: a copy of the record with `text` (the assistant's words) beside an entry: `recordDrift` reports "an update holds text beside its ids, title and time" and "the record holds transcript text". In `inbox-record.test.ts` a header carrying the assistant's last line leaves nothing of it in the record, and a file carrying `text`/`reason` is read back without them.
 - **A count that is not Needs you's** (the owner's review): in the spec, with five items pending, the badge is set to the Core's task count (3); `countDrift` reports "Inbox's badge is 3; Needs you holds 5". In `inbox-model.test.ts` the task count gives 2 where Needs you holds 3, and a store whose column says a task needs attention while the Core lists nothing gives 1 where `needsYouCount` gives 0.
 - **A control that does nothing**: a "Snooze" button added to the head; `inertControls` reports it.
+
+## Closure (2026-11-18)
+
+- CI run 44107179468 on head b69163c0 (the branch with main fa40268f merged, after the supply-chain pins #226 and the advisory ignores #228): all 19 checks passed. The first attempt failed macOS `terminal-history.spec.ts:94` (seen on main before); two reruns got no macOS runner and were cancelled; the fourth attempt passed. Merged to main as 094d83f4 (moss101/modbit#225).
+- The owner reviewed the screenshots, asked "Fix the count first", reviewed the retaken screenshots with the badge equal to Needs you, and answered "Yes, seal when green" on 2026-11-18.
+- Left open at the seal: task-list rows still read "shell.exec asks for…" (PX-199's surface); OS notification bodies in Core words (PX-023's surface); Always allow and answering questions in place are not on Inbox (they open their task); the Inbox keeps the shield icon.

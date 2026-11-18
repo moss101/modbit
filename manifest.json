@@ -2,12 +2,12 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-11-17",
+  "generated_on": "2026-11-18",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2333,
+    "root_and_tooling": 2334,
     "docs_bytes": 2408986
   },
   "sections": [
@@ -4815,8 +4815,8 @@
     },
     {
       "path": "evidence/m10/PX-206/TASK_CARD.md",
-      "bytes": 29458,
-      "sha256": "16471c0342e4fcd1615e3ba2d1dcf7a9a9dd63c4d29d48d747ee8c56569ea2b6"
+      "bytes": 30318,
+      "sha256": "f4b97b9870fc94bbe7bb0e74c4026cb169e7ea39cc443be44d2b83d5e8f9a9f5"
     },
     {
       "path": "evidence/m10/PX-206/after/inbox-after-restart-comfortable-dark.png",
@@ -4917,6 +4917,11 @@
       "path": "evidence/m10/PX-206/after/inbox-updates-read-unread-compact-light.png",
       "bytes": 181190,
       "sha256": "7e29ad7c5bd34ea416be3bc742c1a30612962418333fe52fcf78e89d6dca4002"
+    },
+    {
+      "path": "evidence/m10/PX-206/ci-run-44107179468.json",
+      "bytes": 65329,
+      "sha256": "b1d73689e58a2cb86a28ea66c5f1e64f357f63c8f600fe5a914585e15f7f4b8a"
     },
     {
       "path": "evidence/m10/PX-206/desktop-e2e-full-results.txt",
@@ -12531,12 +12536,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 47635,
-      "sha256": "8f8d87b032247c6ff8a139ea215106e9fb9d4aca15182bf1b6bc59660748c260"
+      "sha256": "b08531dd2ded83902c63a943577fa5dd01d89b6e6cdf1099887e3f3de840724e"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2653450,
-      "sha256": "ac4ce2617b6652a2e3f6a2c6eae0c0472673d4e2ba734e0512d6cdd9dbe613ea"
+      "bytes": 2653594,
+      "sha256": "bb046cff5b2dd7ec19184b27b53584af4d4fa9967b43984a7e399caa2e901386"
     },
     {
       "path": "tools/build_graph.py",
