@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2334,
+    "root_and_tooling": 2357,
     "docs_bytes": 2408986
   },
   "sections": [
@@ -4932,6 +4932,121 @@
       "path": "evidence/m10/PX-206/evidence.json",
       "bytes": 13209,
       "sha256": "52b02d942960b4b8bbe7bcade9517adec40cb16a2f98fcd9305af066e9a2dbd2"
+    },
+    {
+      "path": "evidence/m10/PX-208/TASK_CARD.md",
+      "bytes": 15369,
+      "sha256": "9c193685572ffd37f0afeb31092d7b7bf71dbc0639253e723e646e6d4c6672f0"
+    },
+    {
+      "path": "evidence/m10/PX-208/after/hunk-decision-comfortable-dark.png",
+      "bytes": 347873,
+      "sha256": "5aa6eecdda1d1d1fa22269a6150a7fb5d7e7561fecf551798f27dc7e20cc6531"
+    },
+    {
+      "path": "evidence/m10/PX-208/after/hunk-decision-comfortable-light.png",
+      "bytes": 345053,
+      "sha256": "f3f752a439e2d0c71c1e342eb39374b02da818f2526ec3469f622be670cb9d7b"
+    },
+    {
+      "path": "evidence/m10/PX-208/after/hunk-decision-compact-dark.png",
+      "bytes": 336496,
+      "sha256": "bf2c26d1ae95d13e09c4b0cec3799c92f3135369909e49087f722064add89b4c"
+    },
+    {
+      "path": "evidence/m10/PX-208/after/hunk-decision-compact-light.png",
+      "bytes": 333763,
+      "sha256": "969f4661e7ea9e578a02d865ee3145e2ae828be4c313c553a7ad689d573b6c69"
+    },
+    {
+      "path": "evidence/m10/PX-208/after/review-page-comfortable-dark.png",
+      "bytes": 193748,
+      "sha256": "466eb4dc9f6f1ab268e6172ab0faeb412a9fce688c701dd57af9a074a1d7e949"
+    },
+    {
+      "path": "evidence/m10/PX-208/after/review-page-comfortable-light.png",
+      "bytes": 193705,
+      "sha256": "4bb895a4baa32839972e1ff577bdb5a1e24c8c8b1457da1f95c4a872c02e05a4"
+    },
+    {
+      "path": "evidence/m10/PX-208/after/review-page-compact-dark.png",
+      "bytes": 178536,
+      "sha256": "083c53b5d4331e87fdbe2f8f2579e2c9eca6b4737e3d98d8657a9825dcf4a247"
+    },
+    {
+      "path": "evidence/m10/PX-208/after/review-page-compact-light.png",
+      "bytes": 178649,
+      "sha256": "4e7fd46c8e9e3359da9c910cb496d50c7ea5c52e0fd41170259c25152e929a87"
+    },
+    {
+      "path": "evidence/m10/PX-208/after/settings-appearance-comfortable-dark.png",
+      "bytes": 258772,
+      "sha256": "22e12d91eedf4291e1891f0a6a5c710b7d1a9313a2e20efcd8366ca7c5f28e6c"
+    },
+    {
+      "path": "evidence/m10/PX-208/after/settings-appearance-comfortable-light.png",
+      "bytes": 259486,
+      "sha256": "5b0b1266840f33ea2762bbb1ae81626ea175bea439b1f73853cfa8add5ac5ba3"
+    },
+    {
+      "path": "evidence/m10/PX-208/after/settings-appearance-compact-dark.png",
+      "bytes": 247854,
+      "sha256": "d92debd1e2d16f4b83f19ef50ce776278069554dbc811d1924cdcc1e2519f6ce"
+    },
+    {
+      "path": "evidence/m10/PX-208/after/settings-appearance-compact-light.png",
+      "bytes": 248546,
+      "sha256": "eeaae8f697db97ffd15223cfe78e57e5be87be5694b665e64f2dcaf8337a6ae4"
+    },
+    {
+      "path": "evidence/m10/PX-208/after/settings-shortcuts-comfortable-dark.png",
+      "bytes": 202053,
+      "sha256": "31af4bdf721ebb500428c836cf4d71166e0f29d4e16bedc218ee0284304aa417"
+    },
+    {
+      "path": "evidence/m10/PX-208/after/settings-shortcuts-comfortable-light.png",
+      "bytes": 201850,
+      "sha256": "1c8fc73e7864add9e3e86ea46519e7a5dd69b775a2775cff345be97ad101e133"
+    },
+    {
+      "path": "evidence/m10/PX-208/after/settings-shortcuts-compact-dark.png",
+      "bytes": 189982,
+      "sha256": "a8a936e08d48048a7257bba69ed3c60af41a32b45b8a3e96ff037176d0da2de7"
+    },
+    {
+      "path": "evidence/m10/PX-208/after/settings-shortcuts-compact-light.png",
+      "bytes": 190712,
+      "sha256": "c1dbd7bf569f4595324a97a4b1ec8ff8b3a5640e6e2dd5f0902b112138614487"
+    },
+    {
+      "path": "evidence/m10/PX-208/after/sidebar-with-review-comfortable-dark.png",
+      "bytes": 118840,
+      "sha256": "aa7f2d5a21b246423b8d5a513b8b8cfff6deef5ec75ce371cff10beb974b0864"
+    },
+    {
+      "path": "evidence/m10/PX-208/after/sidebar-with-review-comfortable-light.png",
+      "bytes": 117903,
+      "sha256": "e68a41eca3b95c8ef9441368af4254bb6ae087573f00775bb41888cce2d8a026"
+    },
+    {
+      "path": "evidence/m10/PX-208/after/sidebar-with-review-compact-dark.png",
+      "bytes": 113575,
+      "sha256": "0ab68beaa9be880c48e45212080fef135f68831857aaec15fa2528aef511f14e"
+    },
+    {
+      "path": "evidence/m10/PX-208/after/sidebar-with-review-compact-light.png",
+      "bytes": 113036,
+      "sha256": "7cfcb52be0bb59ff5973358256def74511d5e0419bd4ebbca99a6a5763c5df0f"
+    },
+    {
+      "path": "evidence/m10/PX-208/desktop-e2e-full-results.txt",
+      "bytes": 42045,
+      "sha256": "7ad196640a222ce954ad56d364ce58b282d805d8fa6d7594d9801904f3b6a6b4"
+    },
+    {
+      "path": "evidence/m10/PX-208/evidence.json",
+      "bytes": 4097,
+      "sha256": "ca52324e5c60e76b1a733460c91ed4290da1ea894c08a264810ad463d931f9d6"
     },
     {
       "path": "evidence/m10/PX-209/TASK_CARD.md",
