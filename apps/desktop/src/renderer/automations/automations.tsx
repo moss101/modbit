@@ -315,8 +315,9 @@ export function Automations({ calls = bridgeCalls, connected, onOpenTask, initia
                     </span>
                     <ul className="autos-cell autos-cell-trig" data-testid="automation-triggers" aria-label={`Triggers of ${v.name}`}>
                       {v.triggers.map((t) => (
-                        <li key={t.id} data-kind={t.kind} data-next-due={t.nextDueMs} title={t.kind === "schedule" ? nextDueWords(t, nowMs) : undefined}>
+                        <li key={t.id} data-kind={t.kind} data-next-due={t.nextDueMs} title={t.kind === "schedule" ? nextDueWords(t, nowMs) : t.summary}>
                           {t.summary}
+                          {t.kind === "schedule" && <span className="autos-next">{t.nextDueMs ? `next ${utcMinute(t.nextDueMs)}` : "no slot due"}</span>}
                         </li>
                       ))}
                     </ul>
@@ -499,7 +500,7 @@ export function Detail({ labelSuffix = "", view: v, detail, runs, nowMs, busy, o
         </p>
       )}
 
-      <section className="rail-sec" aria-label="Trigger">
+      <div className="rail-sec">
         <h4 className="rail-h">Trigger</h4>
         <ul className="rail-list">
           {v.triggers.map((t) => (
@@ -519,9 +520,9 @@ export function Detail({ labelSuffix = "", view: v, detail, runs, nowMs, busy, o
             </li>
           ))}
         </ul>
-      </section>
+      </div>
 
-      <section className="rail-sec" aria-label="Runs in">
+      <div className="rail-sec">
         <h4 className="rail-h">Runs in</h4>
         <div className="rail-row">
           <span className="rail-ico">
@@ -541,9 +542,9 @@ export function Detail({ labelSuffix = "", view: v, detail, runs, nowMs, busy, o
             {v.principal}
           </span>
         </div>
-      </section>
+      </div>
 
-      <section className="rail-sec" aria-label="Limits">
+      <div className="rail-sec">
         <h4 className="rail-h">Limits</h4>
         <div className="rail-row">
           <span className="rail-ico">
@@ -590,9 +591,9 @@ export function Detail({ labelSuffix = "", view: v, detail, runs, nowMs, busy, o
         <p className="autos-rail-text pg-dim">
           {v.active} running, {v.queued} queued, {v.consecutiveFailures} {v.consecutiveFailures === 1 ? "failure" : "failures"} in a row
         </p>
-      </section>
+      </div>
 
-      <section className="rail-sec" aria-label="Definition">
+      <div className="rail-sec">
         <h4 className="rail-h">Definition</h4>
         <p className="autos-rail-text">
           Hash{" "}
@@ -612,14 +613,14 @@ export function Detail({ labelSuffix = "", view: v, detail, runs, nowMs, busy, o
             </ul>
           </details>
         )}
-      </section>
+      </div>
 
-      <section className="rail-sec" aria-label="Recent runs">
+      <div className="rail-sec">
         <h4 className="rail-h">
           Recent runs<span className="rail-h-aside">{runs.length > 0 ? runs.length : ""}</span>
         </h4>
         <History runs={runs} nowMs={nowMs} onOpenTask={onOpenTask} onAck={onAck} />
-      </section>
+      </div>
     </section>
   );
 }

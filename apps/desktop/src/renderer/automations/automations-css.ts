@@ -78,6 +78,7 @@ export const automationsCss = `
 .autos-cell-state { width: 128px; }
 .autos-cell-trig { width: 168px; list-style: none; margin: 0; padding: 0; }
 .autos-cell-trig li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.autos-next { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .autos-cell-last { width: 112px; display: block; color: var(--mb-color-text); }
 .autos-rail { flex: none; width: ${DETAILS_RAIL.width}px; min-width: ${DETAILS_RAIL.min}px; box-sizing: border-box; min-height: 0; overflow: auto; background: var(--mb-surface-conversation); border-left: 1px solid var(--color-tab-border); padding: var(--mb-space-1_5) 18px 18px; font-size: var(--mb-type-chrome-size); line-height: var(--mb-type-chrome-line); }
 .autos-rail-head { gap: var(--mb-space-2); }
