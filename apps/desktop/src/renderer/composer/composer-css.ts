@@ -38,7 +38,6 @@ export const composerCss = `
 .cmp-textarea { display: block; width: 100%; box-sizing: border-box; min-height: 44px; max-height: 40vh; resize: none; border: 0; border-radius: 0; outline: none; background: transparent; color: var(--mb-color-text); padding: 0; font: inherit; font-size: var(--mb-type-body-size); line-height: var(--mb-type-body-line); }
 .cmp-bar { display: flex; align-items: center; gap: 6px; min-width: 0; min-height: 24px; }
 .cmp-bar > * { flex: none; }
-.cmp-bar > .home-repo { flex: 1 1 0; }
 .cmp-foot { display: flex; align-items: center; gap: var(--mb-space-2); min-width: 0; padding: 0 4px; font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); }
 .cmp-foot-item { flex: none; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .cmp-foot button { -webkit-app-region: no-drag; }

@@ -160,7 +160,24 @@ fn sync_dir(dir: &Path) {
     }
 }
 
-#[cfg(not(unix))]
+#[cfg(windows)]
+fn sync_dir(dir: &Path) {
+    // A directory can only be opened with backup semantics, and a handle
+    // opened that way accepts FlushFileBuffers, so the just-completed rename
+    // is made durable exactly like the Unix fsync above (PX-030: the same
+    // crash-durability property on every platform).
+    use std::os::windows::fs::OpenOptionsExt;
+    const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
+    if let Ok(d) = std::fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
+        .open(dir)
+    {
+        let _ = d.sync_all();
+    }
+}
+
+#[cfg(not(any(unix, windows)))]
 fn sync_dir(_dir: &Path) {}
 
 impl IndexStore {

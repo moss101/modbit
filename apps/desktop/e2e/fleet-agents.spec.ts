@@ -121,7 +121,7 @@ test("M6.6: a delegating parent shows its phase, agents and the nested child; th
     await expect(page.getByTestId("child-goal")).toHaveText("create src/a/a.txt containing alpha");
     // A fast child may already have ended by now (a hosted macOS runner saw
     // it): the evidence line is the delegation or the child's completion.
-    await expect(page.getByTestId("task-evidence")).toContainText(/delegated child-a|child completed: created src\/a\/a\.txt/);
+    await expect(page.getByTestId("task-evidence")).toContainText(/Started a child task in the background: child-a|A child task finished: created src\/a\/a\.txt/);
     // The child is never a primary task of the list.
     await expect(primaryRows(page)).toHaveCount(1);
     // The child ends; the parent asks to discard its work, a protected
@@ -142,7 +142,7 @@ test("M6.6: a delegating parent shows its phase, agents and the nested child; th
     await openTaskDetails(page);
     // The latest evidence: the child's completion, or the acceptance gate
     // the run evaluated right after it (run events reach the task, PX-023).
-    await expect(page.getByTestId("task-evidence")).toContainText(/child completed: created src\/a\/a\.txt|acceptance gate (ACCEPT|INCONCLUSIVE|REJECT)/);
+    await expect(page.getByTestId("task-evidence")).toContainText(/A child task finished: created src\/a\/a\.txt|Final check before review: (passed|could not decide|did not pass)/);
     await expect(page.getByTestId("task-agents")).toHaveText("0/2");
     // The child has ended: it is counted under Background tasks, and listed once the count is opened (MWS-09).
     await expect(page.getByTestId("rail-finished")).toHaveAttribute("data-count", "1");

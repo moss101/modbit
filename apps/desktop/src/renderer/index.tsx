@@ -12,6 +12,7 @@ import { createRoot } from "react-dom/client";
 import { Shell } from "./shell/shell.tsx";
 import { useApp } from "./state/use-app.ts";
 import { Gallery } from "./gallery/gallery.tsx";
+import { PaneWindow } from "./pane-window.tsx";
 
 declare const __MODBIT_GALLERY__: boolean;
 
@@ -32,8 +33,6 @@ function Root() {
 
 if (/Mac/.test(navigator.platform)) document.documentElement.dataset.chrome = "mac";
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <Root />
-  </StrictMode>,
-);
+// REQ-PX-203: the main process opens a pane window at `#pane`; which pane it shows is main's answer, never the address.
+const paneWindow = location.hash === "#pane";
+createRoot(document.getElementById("root")!).render(<StrictMode>{paneWindow ? <PaneWindow /> : <Root />}</StrictMode>);

@@ -16,6 +16,11 @@ export const MODE_COPY: Record<string, { label: string; summary: string }> = {
   AUTONOMOUS: { label: "Autonomous", summary: "Runs the routine work of a coding task on its own: builds, tests, unfamiliar project tools and installing the project's declared dependencies. Network, secrets, deletions, pushes, writes outside the workspace and protected paths still ask. It lasts across a restart." },
 };
 
+/** The presets in the Core's order, least to most approving; what is listed where no task exists yet to read them from (home, REQ-PX-205). */
+export const RUN_MODES = ["ASK", "ALLOWLIST", "ALLOWLIST_SANDBOX", "RUN_EVERYTHING", "AUTONOMOUS"] as const;
+/** What a new task starts in unless the person chooses otherwise: the Core's default. */
+export const DEFAULT_RUN_MODE = "ALLOWLIST";
+
 export const modeLabel = (mode: string): string => MODE_COPY[mode]?.label ?? mode.replace(/_/g, " ").toLowerCase();
 
 /** The order the Core lists the modes in is least to most approving. */

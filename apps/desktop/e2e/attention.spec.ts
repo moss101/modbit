@@ -101,8 +101,12 @@ test("attention: a start refused for capacity is an item from the Core and clear
     await showInbox();
     await expect(items).toHaveCount(1, { timeout: 30_000 });
     await expect(items).toHaveAttribute("data-kind", "CAPACITY");
-    await expect(items).toContainText("model_concurrency");
-    await expect(items).toContainText("StartTask");
+    // The row says it in words (REQ-PX-206); the Core's own reason and the command that clears it stay the Core's, read here.
+    await expect(items).toContainText("Waiting for a free run slot");
+    const sid = (await page.evaluate(() => window.modbit.localState())).sessionId!;
+    const item = (await page.evaluate((s) => window.modbit.attention(s), sid)).items.find((i) => i.taskId === two)!;
+    expect(item.reason).toContain("model_concurrency");
+    expect(item.action).toContain("StartTask");
     await expect(items).toHaveAttribute("data-task-id", two);
     await expect(page.getByTestId("open-inbox-count")).toHaveText("1");
     // The first finishes; starting the second clears the item from its

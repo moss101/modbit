@@ -7,10 +7,11 @@
  * refuses any other (INTENT_MISMATCH) and main checks it again before a rule is
  * made. Skip is a typed user decision (denied by user); there is no batch.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
-import { trays } from "@modbit/ui";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTrayStore } from "@modbit/ui";
 import type { DockApprovalView } from "../../shared/control-types.ts";
 import { ApprovalDeck } from "./approval-deck.tsx";
+import { resolveShown } from "./decide.ts";
 import { defaultPrefix, humanTitle, isIrreversible, refusalWords, surfacedIndex } from "./model.ts";
 import { useDockApprovals } from "./use-dock-approvals.ts";
 
@@ -25,10 +26,15 @@ export interface ApprovalDockProps {
   onChangeMode: () => void;
   titleOf: (taskId: string) => string;
   onOpenTask: (taskId: string) => void;
+  /** Tasks shown beside this one in split view (REQ-PX-204): their approvals are on their own card there, so they are not docked here as another agent's. */
+  shownBeside?: readonly string[] | undefined;
 }
 
-export function ApprovalDock({ sessionId, taskId, connected, onChangeMode, titleOf, onOpenTask }: ApprovalDockProps) {
-  const { approvals, expired, refresh } = useDockApprovals(sessionId, taskId, connected);
+export function ApprovalDock({ sessionId, taskId, connected, onChangeMode, titleOf, onOpenTask, shownBeside }: ApprovalDockProps) {
+  const trays = useTrayStore();
+  const { approvals: listed, expired, refresh } = useDockApprovals(sessionId, taskId, connected);
+  const besideKey = (shownBeside ?? []).join(" ");
+  const approvals = useMemo(() => (besideKey ? listed.filter((a) => !besideKey.split(" ").includes(a.taskId)) : listed), [listed, besideKey]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -64,7 +70,7 @@ export function ApprovalDock({ sessionId, taskId, connected, onChangeMode, title
       setNote(null);
       try {
         // The hash is the one this card showed; the Core refuses any other.
-        const r = await window.modbit.resolveApproval(sessionId, a.approvalId, approve, approve ? "approved on the approval card" : "skipped by the user", a.intentHash);
+        const r = await resolveShown(sessionId, a, approve, approve ? "approved on the approval card" : "skipped by the user");
         setNote({ kind: "ok", text: approve ? (a.toolName === "task.budget.raise" ? `Approved (${r.status.toLowerCase()}). Press the button in the limit tray to apply it; it applies once.` : `Approved (${r.status.toLowerCase()}). It runs once.`) : "Skipped. The agent is told you skipped it." });
       } catch (e) {
         setNote({ kind: "refused", text: refusalWords((e as Error).message) });
@@ -141,9 +147,9 @@ export function ApprovalDock({ sessionId, taskId, connected, onChangeMode, title
         />
       ),
     });
-  }, [approvals, index, current, busy, confirming, prefix, scope, note, run, decide, always, changeMode, taskId, titleOfStable, openTask]);
+  }, [trays, approvals, index, current, busy, confirming, prefix, scope, note, run, decide, always, changeMode, taskId, titleOfStable, openTask]);
 
-  useEffect(() => () => trays.dismiss(TRAY_ID), []);
+  useEffect(() => () => trays.dismiss(TRAY_ID), [trays]);
   // What the last decision did stays on screen after its card is gone, and is announced.
   useEffect(() => {
     setNote(null);

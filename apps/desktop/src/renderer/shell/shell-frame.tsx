@@ -4,9 +4,9 @@
  * the real shell and the state gallery both render it, from the same
  * preferences type, so what the gallery shows is the geometry the app has.
  */
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { GEOMETRY } from "@modbit/design-tokens";
-import { computeLayout, ratioForPanel, clampListWidth, clampPanelRatio, DETAILS_RAIL, type Layout } from "./layout.ts";
+import { computeLayout, showsStackSegments, ratioForPanel, clampListWidth, clampPanelRatio, DETAILS_RAIL, type Layout } from "./layout.ts";
 import { Splitter } from "./splitter.tsx";
 import type { UiPrefs } from "./prefs.ts";
 
@@ -29,14 +29,19 @@ export interface ShellFrameProps {
   banner?: ReactNode | undefined;
   statusRow: ReactNode;
   tray: ReactNode;
-  children: ReactNode;
+  /** The centre's content; as a function it is given the layout (split view's two columns, MWS-11). */
+  children: ReactNode | ((layout: Layout) => ReactNode);
+  /** Two tasks side by side are wanted (REQ-PX-204): the left column's share. The layout gives them columns where they fit. */
+  split?: { ratio: number } | null | undefined;
+  /** Receives the layout of each render, for a decision made outside it (whether split view fits now). */
+  layoutRef?: MutableRefObject<Layout | null> | undefined;
   /** A fixed container width (the gallery); otherwise the frame follows its own box. */
   fixedWidth?: number | undefined;
   /** The content wrapper: the app's single <main>, or a plain div where the host page already has one (the gallery). */
   contentElement?: "main" | "div" | undefined;
 }
 
-export function ShellFrame({ prefs, onPrefs, panelOpen, panel, agents, topBar, details, detailsRef, banner, statusRow, tray, children, fixedWidth, contentElement = "main" }: ShellFrameProps) {
+export function ShellFrame({ prefs, onPrefs, panelOpen, panel, agents, topBar, details, detailsRef, banner, statusRow, tray, children, split, layoutRef, fixedWidth, contentElement = "main" }: ShellFrameProps) {
   const root = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(fixedWidth ?? (typeof window === "undefined" ? GEOMETRY.windowDefault.width : window.innerWidth));
   const [segment, setSegment] = useState<"conversation" | "apps">("conversation");
@@ -50,11 +55,13 @@ export function ShellFrame({ prefs, onPrefs, panelOpen, panel, agents, topBar, d
     return () => ro.disconnect();
   }, [fixedWidth]);
   const hasPanel = panel !== null;
-  const layout = computeLayout({ width: fixedWidth ?? width, listWidth: prefs.listWidth, listCollapsed: prefs.listCollapsed, panelRatio: prefs.panelRatio, panelOpen: hasPanel && panelOpen, detailsOpen: details === true });
-  const showApps = layout.stacked && segment === "apps";
+  const layout = computeLayout({ width: fixedWidth ?? width, listWidth: prefs.listWidth, listCollapsed: prefs.listCollapsed, panelRatio: prefs.panelRatio, panelOpen: hasPanel && panelOpen, detailsOpen: details === true, split });
+  if (layoutRef) layoutRef.current = layout;
+  const segments = showsStackSegments(layout);
+  const showApps = segments && segment === "apps";
   useEffect(() => {
-    if (!layout.stacked && segment !== "conversation") setSegment("conversation");
-  }, [layout.stacked, segment]);
+    if (!segments && segment !== "conversation") setSegment("conversation");
+  }, [segments, segment]);
 
   const rootLeft = () => root.current?.getBoundingClientRect().left ?? 0;
   const setList = useCallback((w: number) => onPrefs((p) => ({ ...p, listWidth: clampListWidth(w) })), [onPrefs]);
@@ -62,7 +69,7 @@ export function ShellFrame({ prefs, onPrefs, panelOpen, panel, agents, topBar, d
 
   const Content = contentElement;
   return (
-    <div ref={root} className="shell" data-testid="shell" data-list-px={layout.listPx} data-center-px={layout.centerPx} data-panel-px={layout.panelPx} data-rail={layout.rail} data-stacked={layout.stacked} data-single-pane={layout.singlePane} data-details-px={layout.detailsPx} style={fixedWidth === undefined ? undefined : { width: fixedWidth }}>
+    <div ref={root} className="shell" data-testid="shell" data-list-px={layout.listPx} data-center-px={layout.centerPx} data-panel-px={layout.panelPx} data-rail={layout.rail} data-stacked={segments} data-single-pane={layout.singlePane} data-details-px={layout.detailsPx} data-split={split ? (layout.split ? "shown" : "paused") : "none"} style={fixedWidth === undefined ? undefined : { width: fixedWidth }}>
       <nav className="shell-list" aria-label="Agents" data-testid="region-agents" data-rail={layout.rail} style={{ width: layout.listPx }}>
         <div className="shell-scroll">{agents(layout.rail)}</div>
         {!layout.rail && (
@@ -84,7 +91,7 @@ export function ShellFrame({ prefs, onPrefs, panelOpen, panel, agents, topBar, d
         <div className="shell-frame">
           {banner}
           {typeof topBar === "function" ? topBar(layout) : topBar}
-          {layout.stacked && (
+          {segments && (
             <nav aria-label="Conversation or apps" className="shell-segments" data-testid="stack-segments">
               <button type="button" className="mb-btn" data-variant="secondary" data-size="sm" aria-pressed={!showApps} data-testid="segment-conversation" onClick={() => setSegment("conversation")}>
                 Conversation
@@ -96,7 +103,7 @@ export function ShellFrame({ prefs, onPrefs, panelOpen, panel, agents, topBar, d
           )}
           <div className="shell-main">
             <Content className="shell-content" data-testid="shell-content">
-              {showApps ? panel : children}
+              {showApps ? panel : typeof children === "function" ? children(layout) : children}
             </Content>
             {/* MWS-09: the details rail, beside the conversation and inside the task area; the open conversation fills it. */}
             {layout.detailsPx > 0 && !showApps && <aside ref={detailsRef} className="details-rail" aria-label="Task details" data-testid="details-rail" style={{ width: layout.detailsPx, minWidth: DETAILS_RAIL.min }} />}
@@ -112,12 +119,12 @@ export function ShellFrame({ prefs, onPrefs, panelOpen, panel, agents, topBar, d
             testId="splitter-panel"
             edge="left"
             value={layout.panelPx}
-            min={GEOMETRY.panelMin}
+            min={layout.panelMin}
             max={layout.panelMax}
             growsLeft
             onDragTo={(x) => setPanel(rootLeft() + (fixedWidth ?? width) - x)}
             onNudge={(d) => setPanel(layout.panelPx + d)}
-            onJump={(to) => setPanel(to === "min" ? GEOMETRY.panelMin : layout.panelMax)}
+            onJump={(to) => setPanel(to === "min" ? layout.panelMin : layout.panelMax)}
             onReset={() => onPrefs((p) => ({ ...p, panelRatio: GEOMETRY.panelRatioDefault }))}
           />
           <div className="shell-scroll">{panel}</div>

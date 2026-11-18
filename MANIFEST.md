@@ -1,7 +1,7 @@
 # Modbit Dossier Manifest — V3.3 EPR v1.1
 
 > **Authority date:** 2026-09-05  
-> **Generated:** 2026-11-12 by `tools/build_manifest.py`  
+> **Generated:** 2026-11-18 by `tools/build_manifest.py`  
 > **Scope:** every specification file in `docs/` plus the root governing files and tooling. The previous `99_MANIFEST.md` covered only 39 Part 2 files; this manifest covers all 97 docs.
 > **Machine-readable twin:** `manifest.json` (same content, same hashes).
 
@@ -831,6 +831,145 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-201/ci-run-43268843557.json` | retained evidence | 65329 | `d2d158b8b1b85ea0a3f7eae7b90b0d6bbb72d6880264e368a5c2dd879eafb246` |
 | `evidence/m10/PX-201/desktop-e2e-full-results.txt` | retained evidence | 40002 | `14d7bb719e30e8c2aaf5791e4786c6d29999b6867720d1ff4be22afe7812adfd` |
 | `evidence/m10/PX-201/evidence.json` | retained evidence | 8062 | `0c41621f0b97424f0f334c9873016f4ca63458de004c7ea31e20f3654d21a11d` |
+| `evidence/m10/PX-202/TASK_CARD.md` | retained evidence | 36525 | `7c6a817a0851425e7d33ae58161263260adfd0d8fc805dadf4ea421c20add487` |
+| `evidence/m10/PX-202/after/activity-and-background-tasks-dark-comfortable.png` | retained evidence | 351411 | `cb5c8b6df9b60feb61dfdb3c8f5a620011d90d3b9b8c3eb487970284b1549377` |
+| `evidence/m10/PX-202/after/activity-and-background-tasks-dark-compact.png` | retained evidence | 333193 | `7276a7199b7ecf814ae2acf5939d37764ddb93f3024141d57ac824ae281d5d4e` |
+| `evidence/m10/PX-202/after/activity-and-background-tasks-light-comfortable.png` | retained evidence | 352922 | `90912e1eeee89549b4ab976b59f9adaf87e560ba53f3322e643f32cc44b46b39` |
+| `evidence/m10/PX-202/after/activity-and-background-tasks-light-compact.png` | retained evidence | 335097 | `da67b4a10a2582178e324f924afc7fe4e8a2430be6deffe6be2247bff0705570` |
+| `evidence/m10/PX-202/after/activity-filtered-dark-comfortable.png` | retained evidence | 244359 | `a3211df53e23dec05cf82615449e20b0449e3d9e00db37778eeb2155a908c250` |
+| `evidence/m10/PX-202/after/activity-filtered-dark-compact.png` | retained evidence | 229758 | `f0a65d103d4c8d311b9abcfbe3eab475999cd66a25987a23eb7188186708d768` |
+| `evidence/m10/PX-202/after/activity-filtered-light-comfortable.png` | retained evidence | 244641 | `571c8f4730f1539b8f9e37cb34dcf3d06a822239b6f2f39a8b71c92b718c242f` |
+| `evidence/m10/PX-202/after/activity-filtered-light-compact.png` | retained evidence | 230825 | `f1e7b2e2e913b545dd6502eaae46ca371399ec432cd50020b4b1d845b6b39801` |
+| `evidence/m10/PX-202/after/narrow-window-1000-dark-comfortable.png` | retained evidence | 244608 | `20f114b5ad3ffd719a22af35dfa2345f5a505f682f1c4b76af13fc1063c307a1` |
+| `evidence/m10/PX-202/after/narrow-window-1000-light-comfortable.png` | retained evidence | 245347 | `f65c2c63c6941c99d0470b2b88a75fd24369d66e0f355faf989f21c99689dee1` |
+| `evidence/m10/PX-202/after/narrow-window-more-over-approval-dark-comfortable.png` | retained evidence | 246662 | `7474b200eb6a0c159b8fc2fb86325f45c58a5c826b42153a386b11769cf5052f` |
+| `evidence/m10/PX-202/after/narrow-window-more-over-approval-light-comfortable.png` | retained evidence | 247770 | `a7b904ec663b5262d3053933fc66bb581c366e7008ef3b16f95d527a6cf3f798` |
+| `evidence/m10/PX-202/after/pull-request-checks-and-comments-dark-comfortable.png` | retained evidence | 379966 | `895576e0330ae5580f57b1db4336f34aeaa9210cc180d93e12ceb57b8fe50e69` |
+| `evidence/m10/PX-202/after/pull-request-checks-and-comments-dark-compact.png` | retained evidence | 357909 | `6f9aea06ac4b5808eb60ccbd9e780987a99ce888d34c16210eeb41aca013f5fc` |
+| `evidence/m10/PX-202/after/pull-request-checks-and-comments-light-comfortable.png` | retained evidence | 378884 | `4208156f542c9b308cfc410e876ce00ebe6b4979b417a83522541c4077526644` |
+| `evidence/m10/PX-202/after/pull-request-checks-and-comments-light-compact.png` | retained evidence | 357622 | `351bffc7084bcefabdc636f642dfba792044326e6f722481d5d19f1e6991fbe1` |
+| `evidence/m10/PX-202/after/pull-request-none-dark-comfortable.png` | retained evidence | 180283 | `d00b10dc628b5996ebbce227d681be804baaa618c1a3251809ed4a330a9a2a4d` |
+| `evidence/m10/PX-202/after/pull-request-none-light-comfortable.png` | retained evidence | 181300 | `b863c74a9874d42bf23cb2acab53060f36cd90b5ae9fcaf2331bae7143ca6cf0` |
+| `evidence/m10/PX-202/after/pull-request-waiting-on-approval-dark-comfortable.png` | retained evidence | 287879 | `76aa70213282fb3f172e3be9ca1e495ce720a9344cbb210d9560297440fa287c` |
+| `evidence/m10/PX-202/after/pull-request-waiting-on-approval-light-comfortable.png` | retained evidence | 288644 | `24e8dd76db07c8ef7b90a3090b9dca6ed3c23667e3d325eef732a15f413776ec` |
+| `evidence/m10/PX-202/after/terminal-minimized-dark-comfortable.png` | retained evidence | 404543 | `2d177dc73f647b1a8184f2e88b1b12de4fc0ba1b7fcb8bc29e7b54caeba40427` |
+| `evidence/m10/PX-202/after/terminal-minimized-light-comfortable.png` | retained evidence | 379498 | `84404ef495cdf3b9e34a2896f64da0c353bf5fa986e34d75f366f2896450a8f8` |
+| `evidence/m10/PX-202/after/three-panes-tiled-dark-comfortable.png` | retained evidence | 441755 | `d0c1eb61622b852929ca794a66b0f831e1c4809aab4d1c53f889afa843a6ee94` |
+| `evidence/m10/PX-202/after/three-panes-tiled-dark-compact.png` | retained evidence | 414617 | `e488ca07efdae7acd1c858571e454a7bb59db841c75e3c55b789d1ff68baeda8` |
+| `evidence/m10/PX-202/after/three-panes-tiled-light-comfortable.png` | retained evidence | 443537 | `cda3715b1d400578058749c46f710e428847133bad09981fc0ef40f122b2c5be` |
+| `evidence/m10/PX-202/after/three-panes-tiled-light-compact.png` | retained evidence | 416944 | `732f0aaeec08a00d47aaf8a66adb406864e5048c2f5a3c5b19636e07184d7530` |
+| `evidence/m10/PX-202/ci-run-43691278961.json` | retained evidence | 65329 | `ddc15f1fb4621c385c951972dcfef66c08faeeb60391a6a50cb1d0142f40050d` |
+| `evidence/m10/PX-202/desktop-e2e-full-results.txt` | retained evidence | 40912 | `84ef70030296473cd5c45d2201c32ff5b6c3af87d1ece9b2f5cd2de1032ea6a1` |
+| `evidence/m10/PX-202/evidence.json` | retained evidence | 11784 | `b3d70c76ab999676b5199eb39bef5e4236c65ca2a72dc9b22b7c8f550fe86c2e` |
+| `evidence/m10/PX-203/TASK_CARD.md` | retained evidence | 20432 | `d5510d433bed8a258fd55603e2fff0ea842799e1ec4e43d3ccb7b9f12d05448f` |
+| `evidence/m10/PX-203/after/changes-popped-out-dark.png` | retained evidence | 152684 | `fe5475e1494c4100b1d6adfefb01240595e6333487fe85f672c4fedf3e3629aa` |
+| `evidence/m10/PX-203/after/changes-popped-out-light.png` | retained evidence | 153329 | `10f76fad5100cd91c212152061e65c064b5fc9b4fcce84921ee8b4262b2dfacf` |
+| `evidence/m10/PX-203/after/dock-without-them-dark.png` | retained evidence | 402860 | `f29530dbebb3cb0f6b4c57f80f6f6c4b52f18e47136a1cefa5d03d3dd63e6b9d` |
+| `evidence/m10/PX-203/after/dock-without-them-light.png` | retained evidence | 402492 | `9abba7051c29cf384b1f05a5618b111496ad69069b77af070d17fb63c6160aa6` |
+| `evidence/m10/PX-203/after/quit-question.txt` | retained evidence | 711 | `18d9a95a6b4bb66ca5f1387095c843735321a37e3f30e2d1c532547fb626f693` |
+| `evidence/m10/PX-203/after/returned-dark.png` | retained evidence | 549142 | `80c542c030b9d4c3a2482df976959c26b34569e3a228b42ee558c28defd76984` |
+| `evidence/m10/PX-203/after/returned-light.png` | retained evidence | 547957 | `b0e73903f22e64103366416e0242342f2b31fd7f41843e3e1a3976731c442b37` |
+| `evidence/m10/PX-203/after/terminal-popped-out-dark.png` | retained evidence | 87504 | `e217b6b568ef50cd5d09e534f8b2f43a842ed312415c2950f49a177637996936` |
+| `evidence/m10/PX-203/after/terminal-popped-out-light.png` | retained evidence | 87537 | `bb6098c679ee201de1c16d04e39d394e85a38b4f35ece7b9028d0c75e4e934da` |
+| `evidence/m10/PX-203/ci-run-43709635767.json` | retained evidence | 65329 | `42098042cd836008e7d9eadde0e0534a2aa6d455981b81a882a62005e5a327a3` |
+| `evidence/m10/PX-203/desktop-e2e-full-results.txt` | retained evidence | 42246 | `e59968bfa4483367cbbfb60b2575d43b4d88a27fcc7a31b4c298c493b84dfee7` |
+| `evidence/m10/PX-203/evidence.json` | retained evidence | 7055 | `ce735f0e69938cceab6b943a457eae697c231b51caa34ff4433c685fcc341f61` |
+| `evidence/m10/PX-204/TASK_CARD.md` | retained evidence | 19396 | `ac4c6165c977c988da7b0b722fa7fca269c5c0b42c6e249b5a64f913ae450a1a` |
+| `evidence/m10/PX-204/after/split-comfortable-dark.png` | retained evidence | 356533 | `0b1f42e1f6ffe49afa67fa4555d648ccc0cda8ec7b7ed69d8ec56289ae4b912d` |
+| `evidence/m10/PX-204/after/split-comfortable-light.png` | retained evidence | 357825 | `ed33da70211899957b1643f2b3798cde49a253e0fedff268d7c3ca3121dd164d` |
+| `evidence/m10/PX-204/after/split-compact-dark.png` | retained evidence | 271552 | `575a934e4a3c2b815a2a3fd7e915f7d5c10f81a6b402df684351b1c75157836c` |
+| `evidence/m10/PX-204/after/split-compact-light.png` | retained evidence | 273469 | `4252f8d502b1c8e54a554d7e8583b2da8cb876f43b41f5745b1fd7cdad953fb8` |
+| `evidence/m10/PX-204/after/split-paused-narrow-dark.png` | retained evidence | 300930 | `7d6638d49ef24c4b2f88543394815267de3c04f2e4ecc9713d91feab617cc03c` |
+| `evidence/m10/PX-204/after/split-paused-narrow-light.png` | retained evidence | 302808 | `5ab76d7a87e4ae473ef2929e0ca4177053e7b9631902f17b7fc803a9d7b89a23` |
+| `evidence/m10/PX-204/after/split-refused-narrow-dark.png` | retained evidence | 300654 | `13ac5638be25375c6a45b72d0c89385e63e5d82cc8e366c8c0c606b0eea021d6` |
+| `evidence/m10/PX-204/after/split-refused-narrow-light.png` | retained evidence | 303136 | `6331f5f0195a8ec52861c289093f7460b877eba7c12606a306864840ed20117b` |
+| `evidence/m10/PX-204/ci-run-43762302238.json` | retained evidence | 65329 | `8f3b2cf1c666e0a2205e0b1ee4256ee06d470b3b287202e170096cf9de74b43c` |
+| `evidence/m10/PX-204/desktop-e2e-full-results.txt` | retained evidence | 42165 | `d450226fcdd54da228545a889141c9dd6d7821d06f6dc4c1c3970cfdc96bbb51` |
+| `evidence/m10/PX-204/evidence.json` | retained evidence | 6398 | `1213ff2e1a83c4220bf513c5a81843e38b5d36a8b049c4f6932d6d672a44a66c` |
+| `evidence/m10/PX-205/TASK_CARD.md` | retained evidence | 18005 | `9f7d2e7235126c9b5b8ea5de112f0050a33d5fcd4b693211c6b9eebf80af85fb` |
+| `evidence/m10/PX-205/after/home-destructive-opens-task-comfortable-dark.png` | retained evidence | 263533 | `e3d1bf1c2a9ec449aa7d25f8c6e814f59d6f3d8f4573b86fa3639ac5013b5294` |
+| `evidence/m10/PX-205/after/home-destructive-opens-task-comfortable-light.png` | retained evidence | 264402 | `860f44ea7938ef1a010145b56b0d442e838fdf65c30ce0be309447f1a0fd648e` |
+| `evidence/m10/PX-205/after/home-destructive-opens-task-compact-dark.png` | retained evidence | 250353 | `e464ce4d8cc40f376059d948dd17bf8ec32290b25307d7de22a3c5628064e2e9` |
+| `evidence/m10/PX-205/after/home-destructive-opens-task-compact-light.png` | retained evidence | 251820 | `53ba8ec1a8d62e5562bb7a9addd03b8b55847145d72ebbd2aa97e6f0162097d5` |
+| `evidence/m10/PX-205/after/home-first-run-comfortable-dark.png` | retained evidence | 163826 | `b5df4ce786f64bda2fd9bdfdb085b9e2f99cc3e8f9bd42cf05de2e16d88c77a2` |
+| `evidence/m10/PX-205/after/home-first-run-comfortable-light.png` | retained evidence | 163588 | `7cfb32fd0c42c3234d83432b3f414a56223dee710f20bd551dc33d3a3dd5cb67` |
+| `evidence/m10/PX-205/after/home-first-run-compact-dark.png` | retained evidence | 156090 | `b287d034acddeba9a78110f0673feb70ededfb974ba16265d7ebc2da4dbb9986` |
+| `evidence/m10/PX-205/after/home-first-run-compact-light.png` | retained evidence | 156030 | `47e3098cff247e845733f32771f06c27c714bc31f7b55ffd0c0cff39e0505bc9` |
+| `evidence/m10/PX-205/after/home-location-menu-comfortable-dark.png` | retained evidence | 196255 | `7ab91ef1e543e33fc6472f7e57c3b51bd32e8414da39c19b29a1938b77c6e29e` |
+| `evidence/m10/PX-205/after/home-location-menu-comfortable-light.png` | retained evidence | 197213 | `1baa92de6a586bf5dc740a4afef3f0de861d783a638f4b2d54d3d1a1e98efbd4` |
+| `evidence/m10/PX-205/after/home-location-menu-compact-dark.png` | retained evidence | 186425 | `a8703af184473e197b9436e07bf4ae29bb025472ed5be3a8fccd8cdf25aeee35` |
+| `evidence/m10/PX-205/after/home-location-menu-compact-light.png` | retained evidence | 187787 | `8e36de1fc7e5a942bbd2b557ffb3469eb7faa5c10726506c087f8b7ec49bcb8c` |
+| `evidence/m10/PX-205/after/home-waiting-comfortable-dark.png` | retained evidence | 176589 | `cfdd5efb713d37ea977635153e299c624f270ca5aacd39a1b64200a8cdd9abc7` |
+| `evidence/m10/PX-205/after/home-waiting-comfortable-light.png` | retained evidence | 176159 | `37eeefd01204c58989f6f4b7bb25a48d2429be104fac9a6b3558c42006bab4bb` |
+| `evidence/m10/PX-205/after/home-waiting-compact-dark.png` | retained evidence | 166637 | `e295f9f23d6842884e0c2aefb6f99fe42b636386b7dc7c4486a1304a8f1c3298` |
+| `evidence/m10/PX-205/after/home-waiting-compact-light.png` | retained evidence | 167208 | `f4ebed7cd04f69a85757cf1f8d9cf1d01b0aee9edf7ea6373062271a63e83357` |
+| `evidence/m10/PX-205/ci-run-43821013355.json` | retained evidence | 65329 | `666ac9f738d878ad127054fd2f94e33c363b1a7bcbeb1a4d9b53fb05582c902f` |
+| `evidence/m10/PX-205/desktop-e2e-full-results.txt` | retained evidence | 42301 | `06218b382a9448ca492096250e7ce82608196c45925bb10a2c67adf4b99a017b` |
+| `evidence/m10/PX-205/evidence.json` | retained evidence | 7774 | `a0cfe49c794c0b3cb25e04707a00af8db23f185e4e2d0df64fa03cbb8de18779` |
+| `evidence/m10/PX-206/TASK_CARD.md` | retained evidence | 30318 | `f4b97b9870fc94bbe7bb0e74c4026cb169e7ea39cc443be44d2b83d5e8f9a9f5` |
+| `evidence/m10/PX-206/after/inbox-after-restart-comfortable-dark.png` | retained evidence | 294074 | `94ab6adf6c00cf390daa5c285d2fa834cc9eeadfce01e7c327fbe40a7ff00fcd` |
+| `evidence/m10/PX-206/after/inbox-after-restart-comfortable-light.png` | retained evidence | 294366 | `6932827941964e49b29e696d583534fdf4b02404e7e925332ff902bd2b1ba7c5` |
+| `evidence/m10/PX-206/after/inbox-after-restart-compact-dark.png` | retained evidence | 275642 | `7cadb0dbb9fae09f6604a5db6a82f281890de5749de7a6594f31bca5f10c4510` |
+| `evidence/m10/PX-206/after/inbox-after-restart-compact-light.png` | retained evidence | 276350 | `c782fad3596dd6a311a1e4c917ffa0ee6c740c2c11863cd09367f56d2a5c7bf8` |
+| `evidence/m10/PX-206/after/inbox-destructive-comfortable-dark.png` | retained evidence | 191785 | `9abadc01c585c1f6bfc2157a1c882bed644d61d8c402111b5f1e8f2bb1d317a6` |
+| `evidence/m10/PX-206/after/inbox-destructive-comfortable-light.png` | retained evidence | 191445 | `79864636e5a4a6f0553940015c189ae4a8a230f67489ff90b943cdf773673813` |
+| `evidence/m10/PX-206/after/inbox-destructive-compact-dark.png` | retained evidence | 180997 | `3c2798219d9a36baa32bb50df07a855f060ddc325836d7c09c5c094711642ed6` |
+| `evidence/m10/PX-206/after/inbox-destructive-compact-light.png` | retained evidence | 181125 | `8df39db1d7dfc89c52f5b1e73769ca0babe7399884c483031fb3cd43b1025329` |
+| `evidence/m10/PX-206/after/inbox-destructive-opens-task-comfortable-dark.png` | retained evidence | 300151 | `0fdc6607946db1617d85befa2ac3007572f222c07c359df395b7f7bf76c35180` |
+| `evidence/m10/PX-206/after/inbox-destructive-opens-task-comfortable-light.png` | retained evidence | 301494 | `d4a98a15fe57cfe0f3d68bc085a7c031584d5d9abf241cfe1bbffcea0950cee7` |
+| `evidence/m10/PX-206/after/inbox-destructive-opens-task-compact-dark.png` | retained evidence | 283479 | `b51b24129f08a441295132fdbaf34b43fe23a465d6dce0032c2d8a9852344ab5` |
+| `evidence/m10/PX-206/after/inbox-destructive-opens-task-compact-light.png` | retained evidence | 284715 | `e84bd6ecb05e2a424c2eb740789143cf75d6d10f21febc4931beaed654a3efcc` |
+| `evidence/m10/PX-206/after/inbox-needs-you-comfortable-dark.png` | retained evidence | 285255 | `9b25ab5e3025ba8c78f0f2ba9034f2c9a6420202779496c090210425fdcb5ada` |
+| `evidence/m10/PX-206/after/inbox-needs-you-comfortable-light.png` | retained evidence | 284452 | `c7a423925027e766fb96cbf33ab6f5f497ca339c934d263be388254728bf832d` |
+| `evidence/m10/PX-206/after/inbox-needs-you-compact-dark.png` | retained evidence | 269269 | `28d9ef6fcbff015e78c76e7825403c6f4557b1b4538ed5011d4a86b139876fd7` |
+| `evidence/m10/PX-206/after/inbox-needs-you-compact-light.png` | retained evidence | 269291 | `34a6a2ececdfebc7608e0f7c4bb7a090086a398fc47edde282a972f1bc941aed` |
+| `evidence/m10/PX-206/after/inbox-updates-read-unread-comfortable-dark.png` | retained evidence | 191899 | `ef7f3db17f6382ed6527e756047e478d66e47f1e373b35ac8b575e35cfa446a7` |
+| `evidence/m10/PX-206/after/inbox-updates-read-unread-comfortable-light.png` | retained evidence | 191281 | `dc47574e7619997787fdb9d5de5079e85625e4199b2c360c255c73cad3194bce` |
+| `evidence/m10/PX-206/after/inbox-updates-read-unread-compact-dark.png` | retained evidence | 180949 | `85c7531f501b4002dc5abf0b6492770a244f68677c9cfb096b108b25cee2c248` |
+| `evidence/m10/PX-206/after/inbox-updates-read-unread-compact-light.png` | retained evidence | 181190 | `7e29ad7c5bd34ea416be3bc742c1a30612962418333fe52fcf78e89d6dca4002` |
+| `evidence/m10/PX-206/ci-run-44107179468.json` | retained evidence | 65329 | `b1d73689e58a2cb86a28ea66c5f1e64f357f63c8f600fe5a914585e15f7f4b8a` |
+| `evidence/m10/PX-206/desktop-e2e-full-results.txt` | retained evidence | 2946 | `e4937181267d3b05ab7392231607f0cbd9528880856dee497c641ba6aea5e13e` |
+| `evidence/m10/PX-206/evidence.json` | retained evidence | 13209 | `52b02d942960b4b8bbe7bcade9517adec40cb16a2f98fcd9305af066e9a2dbd2` |
+| `evidence/m10/PX-207/TASK_CARD.md` | retained evidence | 19773 | `38fe0550db91769863d3e715233cbeddeaf08403bd4bb3c04a85aba0542dfb1f` |
+| `evidence/m10/PX-207/after/automations-rail-dark-comfortable.png` | retained evidence | 304020 | `3f52dd047f6e26a13c8bb13c82c79c89ff3135e406c3d378bf8758b1fde82591` |
+| `evidence/m10/PX-207/after/automations-rail-dark-compact.png` | retained evidence | 294037 | `44a1bc99c99f0c41ba255105829e40bdf56df006d651df5e5ac956fb002654bf` |
+| `evidence/m10/PX-207/after/automations-rail-light-comfortable.png` | retained evidence | 304506 | `bc28ef9f207819653aaf707c825646e50056fb9167c69530a1e89ec23491b4d9` |
+| `evidence/m10/PX-207/after/automations-rail-light-compact.png` | retained evidence | 295224 | `2a6ffbebe460e9e0acdda91ad43ccec6a0ebf8f6601c9d9b9d18f32cf0d8c22f` |
+| `evidence/m10/PX-207/after/customize-review-dark-comfortable.png` | retained evidence | 328807 | `e2e5ff86ee9db085cd71fac63fea3c154af5203d3f0680d62107114215986ea2` |
+| `evidence/m10/PX-207/after/customize-review-dark-compact.png` | retained evidence | 305518 | `caadaf241d8e2ed8a8c2c8f27b11ba38f73eb2e210daf8a27840c880fc549e72` |
+| `evidence/m10/PX-207/after/customize-review-light-comfortable.png` | retained evidence | 341491 | `410a88c44e2825e5a33443a3655a47e1928e9b8565f1594e3a585f5414ad15f7` |
+| `evidence/m10/PX-207/after/customize-review-light-compact.png` | retained evidence | 316334 | `450971f5ead8ae61dca1e963c15eb7b9a97a0f1a9e934c469e68cb43afb1216c` |
+| `evidence/m10/PX-207/after/customize-rules-dark-comfortable.png` | retained evidence | 322940 | `1374da7158de23d5da39dc3d3fa10e2309b85c7a3cde380c92ee6c716efcd0a5` |
+| `evidence/m10/PX-207/after/customize-rules-dark-compact.png` | retained evidence | 325101 | `f2f1716e127c05f93d76b3e568d99c6cc7be29f60b1293d695c430cf1649291c` |
+| `evidence/m10/PX-207/after/customize-rules-light-comfortable.png` | retained evidence | 322294 | `d41ad5ffbb294ca1e341bb18c94b360200238d7b28af779a9f78bc97d1f4ba53` |
+| `evidence/m10/PX-207/after/customize-rules-light-compact.png` | retained evidence | 325520 | `fae240613f5157c10a6300ea89ad80dc33dc919b15dcf3b0e81536e17165d39e` |
+| `evidence/m10/PX-207/after/customize-search-dark-comfortable.png` | retained evidence | 138620 | `4c505046b66150fb64980af12212c4623f59eb58f2f31412293fe4429be4dd0c` |
+| `evidence/m10/PX-207/after/customize-search-dark-compact.png` | retained evidence | 131302 | `d1c42394a17f390d7a128ce97343acf48529d81b2b31e3a04a67c1b0a38c2e9c` |
+| `evidence/m10/PX-207/after/customize-search-light-comfortable.png` | retained evidence | 138406 | `c00d638aa0334ff60ac452cc052f93e75437d2cb717fe3684004c3b3b9f1d656` |
+| `evidence/m10/PX-207/after/customize-search-light-compact.png` | retained evidence | 131575 | `2402ae435957a0f19d709565d6498925e94f991cddac23a9f2753add4a9380be` |
+| `evidence/m10/PX-207/ci-run-44364563619.json` | retained evidence | 65329 | `b68a7c5ec03ec8e97b0b051e38a6d565db4b1c1dd2a6074f398ece7098ce09cd` |
+| `evidence/m10/PX-207/desktop-e2e-full-results.txt` | retained evidence | 42432 | `53fb5294ff038ff70792d78bd90233893ed75bf66bdb70146a7649be23bf8b54` |
+| `evidence/m10/PX-207/evidence.json` | retained evidence | 7532 | `f44861e7059c7a55a77aecb914a9699ef80f91ea3369d7484b2b6f7dd9dec13a` |
+| `evidence/m10/PX-209/TASK_CARD.md` | retained evidence | 13996 | `0a8a0afb81f546db485f3509645e1e3ccc34ce7d42e0fda15712c7db5b6dd5e1` |
+| `evidence/m10/PX-209/after/palette-conversation-hit-comfortable-dark.png` | retained evidence | 269025 | `1cd8f5ff2b8a94493b73ffeac0acdab5de3b63e77bbdaa30cb37e677d84d3a89` |
+| `evidence/m10/PX-209/after/palette-conversation-hit-comfortable-light.png` | retained evidence | 277811 | `1ac6e2ae61e8501706e0fa7f4c2d4ce84b6fd2052edcda4c67d9793f99cfe25a` |
+| `evidence/m10/PX-209/after/palette-conversation-hit-compact-dark.png` | retained evidence | 252952 | `296b1f29d954f85a5592bee04778abd575c49f8ae5f5dfca4760a1093063a9b0` |
+| `evidence/m10/PX-209/after/palette-conversation-hit-compact-light.png` | retained evidence | 259388 | `ab33e8d7dc2bcad0e52699f815d3026cad3b54981f16a22aa82e8f2c9610a1e4` |
+| `evidence/m10/PX-209/after/palette-empty-comfortable-dark.png` | retained evidence | 358702 | `ccf3146143fe138c1aa44c62ece6ef8889bf6da10c3b7f21e3223a2a9a395c19` |
+| `evidence/m10/PX-209/after/palette-empty-comfortable-light.png` | retained evidence | 366787 | `5c42819f35b95f979e27c6b5509bb4a5c59e8fde100230a13fca1bd84a64ee87` |
+| `evidence/m10/PX-209/after/palette-empty-compact-dark.png` | retained evidence | 346187 | `c7f71b5b975fab5a6ff417fa2a090b7316f92d3b6b87b6f58969b37697cc3697` |
+| `evidence/m10/PX-209/after/palette-empty-compact-light.png` | retained evidence | 352990 | `57051067e3a8f4a29c1bdc91df7c716949ea9794617e99489792f6e8aa38356c` |
+| `evidence/m10/PX-209/after/palette-file-hit-comfortable-dark.png` | retained evidence | 272656 | `669878b1c476f28bc4a77f4fd6af63e8914e6e4efa52e76783a1773b0da10a24` |
+| `evidence/m10/PX-209/after/palette-file-hit-comfortable-light.png` | retained evidence | 281241 | `114eae16d98b59eb282b48b9a91e2e09033eb64b95fa119760def3ebbdace00b` |
+| `evidence/m10/PX-209/after/palette-file-hit-compact-dark.png` | retained evidence | 254858 | `756b8f51ba14cd9232253036c0cd701c16a3b204dc59ddb0ecd575ce03ce665b` |
+| `evidence/m10/PX-209/after/palette-file-hit-compact-light.png` | retained evidence | 262221 | `d9acbd8840041ce5784457eacecab2647eb18c6bc6539e8aa92ad3995ba8e384` |
+| `evidence/m10/PX-209/after/palette-four-kinds-comfortable-dark.png` | retained evidence | 313318 | `6576c4fb20627a221dfd5b50a8fa79827047e69523b21b47c4ab0c926334d2d7` |
+| `evidence/m10/PX-209/after/palette-four-kinds-comfortable-light.png` | retained evidence | 321805 | `b91ea5676b599670c2bb42d5091b2fb84aa45ccc0d4c139ba44594bd47d5c885` |
+| `evidence/m10/PX-209/after/palette-four-kinds-compact-dark.png` | retained evidence | 295484 | `de14cbf6b6a636e6b767e7df1fa9eef53a1e95ccd732b78093622bafe332f6e4` |
+| `evidence/m10/PX-209/after/palette-four-kinds-compact-light.png` | retained evidence | 301953 | `70c6fda14659de024f098dce3041485cfab869bc817ee9e3cb0f2a8b34b08f6d` |
+| `evidence/m10/PX-209/ci-run-43983243937.json` | retained evidence | 65329 | `048ab2e232bce65c8cc69298a5ee18ab42c3b7b0255d5ee8e28eb5b89401325c` |
+| `evidence/m10/PX-209/desktop-e2e-full-results.txt` | retained evidence | 42601 | `fedab2d98e75d96a6a2ff5c659b4c78212370c031db02d99cbf8b5651181ec37` |
+| `evidence/m10/PX-209/evidence.json` | retained evidence | 3918 | `7aba181122c6235970b95ed5af29f60343d2843373f6d42c197480ce22627a82` |
 | `evidence/m10/PX-210/TASK_CARD.md` | retained evidence | 11615 | `493c4c60c6a94d4a062040ba472476e08b5b9c7f30116221ff5eb56dd26873f4` |
 | `evidence/m10/PX-210/after/composer-after-tab-light.png` | retained evidence | 30362 | `a7b1367df855da4288ff969ddb1a68bb03d6a4ecbbc8071ad59d0e5dddabff4d` |
 | `evidence/m10/PX-210/after/composer-long-suggestion-dark-900.png` | retained evidence | 35124 | `14ec8efa1eafc089f6f688e72fb15a75e11555cdf3e48e237cb62fdeb3f3d36f` |
@@ -2331,8 +2470,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/zcode-ui/reference/zcode-colors-rgba.json` | retained evidence | 18690 | `76372c3edbcd50fe596d5e4b7fcd7991adab9686588ddc578a728afa24b4f028` |
 | `evidence/zcode-ui/reference/zcode-computed.json` | retained evidence | 718674 | `9ae8821ce72aa0fff3be44aacd0f4c9d995465c54bad7f17d1a81f92841d1c2d` |
 | `evidence/zcode-ui/reference/zcode-tokens-resolved.json` | retained evidence | 30635 | `066725c00059a05d073fbcdac9a8d965eab05f05c1f5df16e654854ff3e22b91` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 47635 | `d50209563ca59ad0f6cd529fd274d903919e10f4891790e638edf5a997b79517` |
-| `graph/project-graph.json` | project driver graph with live status | 2652730 | `ebb11033750ab55ec70453aff91c9492aad67a5125208139fcbd6457c2c79461` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 47635 | `7c7fbb9e720925fa3a527e5eea737db04651048adef2ca2a8782e63284f456c4` |
+| `graph/project-graph.json` | project driver graph with live status | 2653738 | `84524b1169a631e26659580647a4105496df747d241bf7e030c48da8e5e6e37e` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 67211 | `9d101fa8395609092e6a2134a32210fb214a94a0765a13e66b58cbf790267b9d` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |

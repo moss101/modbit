@@ -13,11 +13,12 @@ function out(attachId: string, cursor: number, text: string): TerminalFrame {
 
 function fake() {
   const calls: string[] = [];
+  let attaches = 0;
   const client = {
     leaseGeneration: () => 1n,
     async attachTerminal(_s: string, _t: string, terminalId: string, after: bigint, o: { takeInputLease?: boolean }) {
       calls.push(`attach:${terminalId}:${after}:${o.takeInputLease === true}`);
-      return { attachId: "att1", terminal: { sessionId: terminalId, taskId: { value: new Uint8Array(16).fill(0xaa) }, owner: "agent", argv: [], title: "x", state: "RUNNING", startedAtMs: 0n, elapsedMs: 0n, bytesSoFar: 0n, oldestCursor: 0n, replayWindowBytes: 0n, pty: true, rows: 24, cols: 80, inputLeaseHolder: "", outputRef: "", cwd: "", timedOut: false }, afterCursor: after, windowBytes: 4096n, stallMs: 0n, inputLeaseHeld: o.takeInputLease === true };
+      return { attachId: `att${++attaches}`, terminal: { sessionId: terminalId, taskId: { value: new Uint8Array(16).fill(0xaa) }, owner: "agent", argv: [], title: "x", state: "RUNNING", startedAtMs: 0n, elapsedMs: 0n, bytesSoFar: 0n, oldestCursor: 0n, replayWindowBytes: 0n, pty: true, rows: 24, cols: 80, inputLeaseHolder: "", outputRef: "", cwd: "", timedOut: false }, afterCursor: after, windowBytes: 4096n, stallMs: 0n, inputLeaseHeld: o.takeInputLease === true };
     },
     async ackTerminal(a: string, c: bigint) {
       calls.push(`ack:${a}:${c}`);
@@ -41,14 +42,18 @@ function fake() {
     },
   } as unknown as CoreClient;
   const sent: TerminalFrameJson[] = [];
-  const host = new TerminalHost(() => client, async () => undefined, (f) => sent.push(f));
-  return { host, calls, sent };
+  const to: number[] = [];
+  const host = new TerminalHost(() => client, async () => undefined, (f, owner) => {
+    sent.push(f);
+    to.push(owner);
+  });
+  return { host, calls, sent, to };
 }
 
 test("PX-048: only frames of attachments this window opened reach the renderer", async () => {
   const { host, sent } = fake();
   host.onFrame(out("stranger", 0, "x"));
-  await host.attach(SID, TID, "t1", 0n, { windowBytes: 0n, takeInputLease: false, stealInputLease: false });
+  await host.attach(SID, TID, "t1", 0n, { windowBytes: 0n, takeInputLease: false, stealInputLease: false, owner: 1 });
   host.onFrame(out("att1", 0, "hello"));
   host.onFrame(out("other", 0, "no"));
   const f = sent.find((s) => s.kind === "output");
@@ -63,7 +68,7 @@ test("PX-048: a frame that beats the attach's own registration is held and relea
   host.onFrame(out("att1", 0, "first"));
   host.onFrame(out("att1", 5, "second"));
   assert.equal(sent.length, 0, "nothing is sent for an id this window has not registered");
-  await host.attach(SID, TID, "t1", 0n, { windowBytes: 0n, takeInputLease: false, stealInputLease: false });
+  await host.attach(SID, TID, "t1", 0n, { windowBytes: 0n, takeInputLease: false, stealInputLease: false, owner: 1 });
   await new Promise((r) => setImmediate(r));
   assert.deepEqual(sent.map((s) => (s.kind === "output" ? new TextDecoder().decode(s.data) : "")), ["first", "second"]);
 });
@@ -72,7 +77,7 @@ test("PX-048: a frame that arrives after the attach registers but before the hel
   const { host, sent } = fake();
   host.onFrame(out("att1", 0, "first"));
   host.onFrame(out("att1", 5, "second"));
-  await host.attach(SID, TID, "t1", 0n, { windowBytes: 0n, takeInputLease: false, stealInputLease: false });
+  await host.attach(SID, TID, "t1", 0n, { windowBytes: 0n, takeInputLease: false, stealInputLease: false, owner: 1 });
   // The Core's next read lands in the same turn of the event loop as the attach's answer, before the release.
   host.onFrame(out("att1", 11, "third"));
   await new Promise((r) => setImmediate(r));
@@ -87,38 +92,39 @@ test("PX-048: a frame that arrives after the attach registers but before the hel
 test("PX-048: frames held for an attachment that is detached before their release are dropped", async () => {
   const { host, sent } = fake();
   host.onFrame(out("att1", 0, "first"));
-  await host.attach(SID, TID, "t1", 0n, { windowBytes: 0n, takeInputLease: false, stealInputLease: false });
+  await host.attach(SID, TID, "t1", 0n, { windowBytes: 0n, takeInputLease: false, stealInputLease: false, owner: 1 });
   host.onFrame(out("att1", 5, "second"));
-  await host.detach("att1");
+  await host.detach("att1", 1);
   await new Promise((r) => setImmediate(r));
   assert.equal(sent.filter((s) => s.kind === "output").length, 0);
 });
 
 test("PX-048: acknowledgements only move forward and only for attachments this window holds", async () => {
   const { host, calls } = fake();
-  await host.attach(SID, TID, "t1", 100n, { windowBytes: 0n, takeInputLease: false, stealInputLease: false });
-  await host.ack("att1", 150n);
-  await host.ack("att1", 150n);
-  await host.ack("att1", 120n);
-  await host.ack("att1", 200n);
+  await host.attach(SID, TID, "t1", 100n, { windowBytes: 0n, takeInputLease: false, stealInputLease: false, owner: 1 });
+  await host.ack("att1", 150n, 1);
+  await host.ack("att1", 150n, 1);
+  await host.ack("att1", 120n, 1);
+  await host.ack("att1", 200n, 1);
   assert.deepEqual(calls.filter((c) => c.startsWith("ack:")), ["ack:att1:150", "ack:att1:200"]);
-  await assert.rejects(() => host.ack("nope", 1n), /UNKNOWN_ATTACHMENT/);
-  await assert.rejects(() => host.write("nope", new Uint8Array(1)), /UNKNOWN_ATTACHMENT/);
-  await assert.rejects(() => host.input("nope", true, false), /UNKNOWN_ATTACHMENT/);
-  await assert.rejects(() => host.resize("nope", 1, 1), /UNKNOWN_ATTACHMENT/);
+  await assert.rejects(() => host.ack("nope", 1n, 1), /UNKNOWN_ATTACHMENT/);
+  await assert.rejects(() => host.write("nope", new Uint8Array(1), 1), /UNKNOWN_ATTACHMENT/);
+  await assert.rejects(() => host.input("nope", true, false, 1), /UNKNOWN_ATTACHMENT/);
+  await assert.rejects(() => host.resize("nope", 1, 1, 1), /UNKNOWN_ATTACHMENT/);
 });
 
 test("PX-048: a window that reloads detaches everything it opened; a lost Core connection tells the renderer to reattach", async () => {
   const { host, calls, sent } = fake();
-  await host.attach(SID, TID, "t1", 0n, { windowBytes: 0n, takeInputLease: true, stealInputLease: false });
+  await host.attach(SID, TID, "t1", 0n, { windowBytes: 0n, takeInputLease: true, stealInputLease: false, owner: 1 });
   assert.deepEqual(host.open().map((a) => a.attachId), ["att1"]);
   host.connectionLost();
   assert.equal(host.open().length, 0);
   const ended = sent.at(-1);
   assert.ok(ended && ended.kind === "ended" && ended.reason === "CORE_RESTARTED");
-  await host.attach(SID, TID, "t1", 0n, { windowBytes: 0n, takeInputLease: false, stealInputLease: false });
-  await host.detachAll();
-  assert.ok(calls.includes("detach:att1"));
+  await host.attach(SID, TID, "t1", 0n, { windowBytes: 0n, takeInputLease: false, stealInputLease: false, owner: 1 });
+  await host.detachAll(1);
+  // The fake numbers its attachments, so the second one is att2.
+  assert.ok(calls.includes("detach:att2"));
   assert.equal(host.open().length, 0);
 });
 
@@ -128,4 +134,37 @@ test("PX-048: frames convert to the renderer's shape with cursors as decimal str
   const ended = frameJson({ attachId: "a", sessionId: "t", body: { case: "ended", value: { reason: "SLOW_CONSUMER", message: "m", oldestCursor: 1n, resumeCursor: 2n } } } as unknown as TerminalFrame);
   assert.deepEqual(ended, { attachId: "a", terminalId: "t", kind: "ended", reason: "SLOW_CONSUMER", message: "m", oldestCursor: "1", resumeCursor: "2" });
   assert.equal(frameJson({ attachId: "a", sessionId: "t", body: { case: undefined } } as unknown as TerminalFrame), null);
+});
+
+test("PX-203: an attachment is its window's: its frames go to that window only, another window cannot use it, and a window that goes detaches only its own", async () => {
+  const { host, calls, sent, to } = fake();
+  const APP = 1;
+  const PANE = 7;
+  await host.attach(SID, TID, "t1", 0n, { windowBytes: 0n, takeInputLease: false, stealInputLease: false, owner: APP });
+  await host.attach(SID, TID, "t1", 0n, { windowBytes: 0n, takeInputLease: false, stealInputLease: false, owner: PANE });
+  host.onFrame(out("att1", 0, "to the app"));
+  host.onFrame(out("att2", 0, "to the pane"));
+  assert.deepEqual(
+    sent.map((f, i) => `${f.attachId}>${to[i]}`),
+    ["att1>1", "att2>7"],
+    "each frame goes to the window that opened its attachment",
+  );
+  // The pane window cannot type into, resize, acknowledge or detach the app window's attachment, nor the other way round.
+  await assert.rejects(() => host.write("att1", new Uint8Array(1), PANE), /UNKNOWN_ATTACHMENT/);
+  await assert.rejects(() => host.input("att1", true, false, PANE), /UNKNOWN_ATTACHMENT/);
+  await assert.rejects(() => host.resize("att1", 1, 1, PANE), /UNKNOWN_ATTACHMENT/);
+  await assert.rejects(() => host.ack("att1", 5n, PANE), /UNKNOWN_ATTACHMENT/);
+  await assert.rejects(() => host.detach("att2", APP), /UNKNOWN_ATTACHMENT/);
+  assert.equal(calls.filter((c) => c.startsWith("write:") || c.startsWith("input:") || c.startsWith("resize:") || c.startsWith("ack:")).length, 0, "nothing reached the Core");
+  await host.write("att2", new Uint8Array(2), PANE);
+  assert.ok(calls.includes("write:att2:2"));
+  // The app window reloads: its attachment ends, the pane window's goes on.
+  await host.detachAll(APP);
+  assert.deepEqual(host.open().map((a) => a.attachId), ["att2"]);
+  assert.ok(calls.includes("detach:att1") && !calls.includes("detach:att2"));
+  // A lost connection tells each window about its own attachments.
+  sent.length = 0;
+  to.length = 0;
+  host.connectionLost();
+  assert.deepEqual(sent.map((f, i) => `${f.kind}:${f.attachId}>${to[i]}`), ["ended:att2>7"]);
 });

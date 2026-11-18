@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Badge, Button } from "@modbit/ui";
 import type { ContextInspectorSummary, ReceiptView, ReviewBundleView } from "../../preload/preload.ts";
 import { categoryLabel, percent, repairLine, repairSummary, windowLine } from "./evidence-model.ts";
+import { PaneActions } from "../shell/pane.tsx";
 
 interface Loaded {
   bundle: ReviewBundleView | null;
@@ -52,12 +53,12 @@ export function EvidenceApp({ taskId, refreshKey }: { taskId: string; refreshKey
   const acc = inspector?.accounting ?? null;
   return (
     <div className="evidence-app" data-testid="app-evidence">
-      <div className="changes-head">
-        <span className="meta">Read-only: what the Core recorded for this task.</span>
-        <Button size="sm" onClick={() => setTick((t) => t + 1)} data-testid="evidence-refresh">
+      <PaneActions className="changes-head">
+        <Button size="sm" variant="outline" onClick={() => setTick((t) => t + 1)} data-testid="evidence-refresh">
           Refresh
         </Button>
-      </div>
+      </PaneActions>
+      <p className="meta">Read-only: what the Core recorded for this task.</p>
 
       <section aria-labelledby="ev-receipts" data-testid="evidence-receipts">
         <h2 id="ev-receipts">Effect receipts</h2>

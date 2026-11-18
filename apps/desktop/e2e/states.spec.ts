@@ -194,18 +194,17 @@ test("screen states: provider down, human continuation, review gate and a denied
     await expect(fleet.getByTestId("fleet-state-label")).toHaveText("provider down");
     await expect(fleet.getByTestId("fleet-state-cause")).toContainText("CONNECT_FAILED");
     await expect(fleet.getByTestId("fleet-state-evidence")).toContainText(taskId.slice(0, 8));
-    // One attention notification for the task (the Core's FAILURE item),
-    // deep-linked to the task; not delivered to the OS inside quiet hours.
+    // The Core's FAILURE item for the task is in Inbox's Needs you, in words, and opens the task (REQ-PX-206: Inbox lists the
+    // Core's items and main's updates; the derived notification is what the OS is given). Not delivered inside quiet hours.
     await page.getByTestId("open-inbox").click();
-    const notification = page.getByTestId("notification");
-    await expect(notification).toHaveCount(1, { timeout: 15_000 });
-    await expect(notification).toHaveAttribute("data-kind", "attention");
-    await expect(notification).toHaveAttribute("data-id", `task:${taskId}`);
-    await expect(notification).toContainText("FAILURE:");
-    await expect(notification).toContainText("StartTask to retry");
-    await expect(notification).toHaveAttribute("data-delivered", "false");
+    const failure = page.locator(`[data-testid="attention-item"][data-task-id="${taskId}"]`);
+    await expect(failure).toHaveCount(1, { timeout: 15_000 });
+    await expect(failure).toHaveAttribute("data-kind", "FAILURE");
+    await expect(failure).toContainText("Stopped:");
+    const sid0 = (await page.evaluate(() => window.modbit.localState())).sessionId!;
+    expect((await page.evaluate((s) => window.modbit.attention(s), sid0)).items.find((i) => i.taskId === taskId)!.action).toContain("StartTask to retry");
     expect(await page.evaluate(() => window.modbit.notificationLog())).toEqual([]);
-    await notification.getByTestId("notification-open").click();
+    await failure.click();
     await expect(page.getByTestId("conversation")).toHaveAttribute("data-task-id", taskId);
     // Quiet hours off: what is new from now on reaches the OS (main's log).
     await gearMenu(page, "settings.open");
@@ -225,8 +224,9 @@ test("screen states: provider down, human continuation, review gate and a denied
     await expect(fleet).toHaveAttribute("data-kind", "populated");
     await expect(page.getByTestId("review")).toBeVisible({ timeout: 15_000 });
     await page.getByTestId("open-inbox").click();
-    await expect(notification).toHaveAttribute("data-kind", "completion", { timeout: 15_000 });
-    await expect(notification).toHaveAttribute("data-delivered", "true", { timeout: 15_000 });
+    // The completion is an update in Inbox, and the OS was given its notification (main's log).
+    await expect(page.locator(`[data-testid="inbox-update"][data-task-id="${taskId}"]`)).toHaveAttribute("data-kind", "READY_FOR_REVIEW", { timeout: 15_000 });
+    await expect.poll(() => page.evaluate(() => window.modbit.notificationLog().then((l) => l.length)), { timeout: 15_000 }).toBe(1);
     const log = await page.evaluate(() => window.modbit.notificationLog());
     expect(log.map((l) => l.id)).toEqual([`task:${taskId}`]);
     expect(log[0]!.shown).toBe(false);
@@ -234,7 +234,8 @@ test("screen states: provider down, human continuation, review gate and a denied
     // Review: its state follows the acceptance gate the Core recorded on the run.
     await openTask(page, taskId);
     await openTaskDetails(page);
-    const gate = await page.getByTestId("task-evidence").textContent();
+    // The line is said in plain words (PX-202); the Core's own text, with its verdict code, is on the element.
+    const gate = await page.getByTestId("task-evidence").getAttribute("data-core");
     await page.getByTestId("task-review").click();
     const reviewState = page.getByTestId("review-state");
     await expect(reviewState).toHaveAttribute("data-kind", /populated|degraded/, { timeout: 30_000 });
@@ -351,11 +352,11 @@ test("screen states: a Core that dies before committing a tool outcome comes bac
     // The restart is an attention notification (the Core's RESTART item),
     // delivered once opted in and outside quiet hours.
     await page.getByTestId("open-inbox").click();
-    const notification = page.getByTestId("notification");
-    await expect(notification).toHaveCount(1, { timeout: 15_000 });
-    await expect(notification).toHaveAttribute("data-kind", "attention");
-    await expect(notification).toContainText("RESTART:");
-    await expect(notification).toHaveAttribute("data-delivered", "true", { timeout: 15_000 });
+    const restart = page.locator(`[data-testid="attention-item"][data-task-id="${taskId}"]`);
+    await expect(restart).toHaveCount(1, { timeout: 15_000 });
+    await expect(restart).toHaveAttribute("data-kind", "RESTART");
+    await expect(restart).toContainText("Paused by a restart");
+    await expect.poll(() => page.evaluate(() => window.modbit.notificationLog().then((l) => l.map((n) => [n.id, n.body.startsWith("RESTART:")]))), { timeout: 15_000 }).toContainEqual([`task:${taskId}`, true]);
     await closeApp(app);
   } finally {
     model.close();
@@ -397,10 +398,10 @@ test("task workspace: awaiting your answer (the agent's typed question) and awai
     const question = page.getByTestId("conv-question");
     await expect(question.getByTestId("conv-answer-option")).toHaveCount(2);
     await page.getByTestId("open-inbox").click();
-    const notification = page.getByTestId("notification");
-    await expect(notification).toHaveCount(1, { timeout: 15_000 });
-    await expect(notification).toHaveAttribute("data-kind", "attention");
-    await expect(notification).toContainText("QUESTION: Close the held worktree too?");
+    const asked = page.locator(`[data-testid="attention-item"][data-task-id="${taskId}"]`);
+    await expect(asked).toHaveCount(1, { timeout: 15_000 });
+    await expect(asked).toHaveAttribute("data-kind", "QUESTION");
+    await expect(asked).toContainText("Asks you: Close the held worktree too?");
     await openTask(page, taskId);
     // Answer in the conversation, then resume: the answer is the tool's result.
     await question.getByTestId("conv-answer-option").filter({ hasText: "yes, close it" }).click();
@@ -418,7 +419,11 @@ test("task workspace: awaiting your answer (the agent's typed question) and awai
     await expect(taskState.getByTestId("task-screen-state-cause")).toContainText("git.worktree.close asks for a Destructive effect");
     expect(existsSync(wt)).toBe(true);
     await page.getByTestId("open-inbox").click();
-    await expect(notification).toContainText("APPROVAL: git.worktree.close", { timeout: 15_000 });
+    // In Inbox the approval is a card in words; it cannot be undone, so it opens its task.
+    const card = page.locator(`[data-testid="inbox-approval"][data-task-id="${taskId}"]`);
+    await expect(card).toContainText("Close a worktree?", { timeout: 15_000 });
+    await expect(card.getByTestId("inbox-approval-tag")).toHaveText("Cannot be undone");
+    await expect(card.getByTestId("inbox-approval-open")).toBeVisible();
     await openTask(page, taskId);
     // Approved (it cannot be undone, so it asks twice): the same call runs once, the task reaches review.
     await page.getByTestId("approval-run").click();
@@ -427,7 +432,7 @@ test("task workspace: awaiting your answer (the agent's typed question) and awai
     await expect(agentRow(page, taskId)).toHaveAttribute("data-state", "ReadyForReview", { timeout: 90_000 });
     expect(existsSync(wt)).toBe(false);
     await page.getByTestId("open-inbox").click();
-    await expect(notification).toHaveAttribute("data-kind", "completion", { timeout: 15_000 });
+    await expect(page.locator(`[data-testid="inbox-update"][data-task-id="${taskId}"]`)).toHaveAttribute("data-kind", "READY_FOR_REVIEW", { timeout: 15_000 });
     await closeApp(app);
   } finally {
     model.close();

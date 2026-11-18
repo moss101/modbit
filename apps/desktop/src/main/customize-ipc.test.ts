@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { create } from "@bufbuild/protobuf";
 import { ExtensionRowSchema, HookListViewSchema, HookViewSchema, ImportReportViewSchema, SkillListSchema, SkillViewSchema, ToolServerRowSchema } from "@modbit/surface-protocol";
-import { extensionInfo, hooksView, importInfo, registerCustomizeHandlers, skillsView, validContentHash, validHookId, validImportName, validManifestDigest, validSkillName } from "./customize-ipc.ts";
+import { extensionInfo, hooksView, importInfo, registerCustomizeHandlers, rulePath, skillsView, validRuleSource, validContentHash, validHookId, validImportName, validManifestDigest, validSkillName } from "./customize-ipc.ts";
 import type { Registrar } from "./conversation-ipc.ts";
 
 const SID = "0123456789abcdef0123456789abcdef";
@@ -133,4 +133,30 @@ test("PX-106: the Core's rows become plain shapes with nothing added or dropped"
   assert.deepEqual([hv.hooks[0]?.timeoutMs, hv.hooks[0]?.lastDurationMs, hv.hooks[0]?.enabled, hv.extensions.length, hv.refused.length], ["5000", "7", false, 1, 1]);
   const i = importInfo(create(ImportReportViewSchema, { name: "mixed", extensionPath: "/p", mapped: 3, skipped: 1, conflicts: 1, manifestDigest: HASH, signature: "UNSIGNED" }), "unsigned: inert until trusted");
   assert.deepEqual([i.mapped, i.skipped, i.conflicts, i.quarantined], [3, 1, 1, "unsigned: inert until trusted"]);
+});
+
+test("PX-207: a rule is opened only by the source the Core recorded; main validates it before asking the Core", async () => {
+  const h = harness();
+  const refused = async (...args: unknown[]) => assert.match(await h.call("customize:openSource", ...args), /BAD_ARGUMENT/, JSON.stringify(args));
+  await refused("rule", "", SID, TID);
+  await refused("rule", "a\u0000b", SID, TID);
+  await refused("rule", "x".repeat(4097), SID, TID);
+  await refused("rule", "AGENTS.md", "nope", TID);
+  await refused("rule", "AGENTS.md", SID, "nope");
+  await refused("rule", "AGENTS.md", SID);
+  // A valid request reaches the Core (here the client explodes): whether the source is loaded is the Core's answer.
+  assert.match(await h.call("customize:openSource", "rule", "AGENTS.md", SID, TID), /CLIENT_TOUCHED/);
+  assert.equal(validRuleSource("/r/.modbit/rules/a.md"), "/r/.modbit/rules/a.md");
+});
+
+test("PX-207: a relative rule source resolves inside the task's folder and never outside it", () => {
+  const root = process.platform === "win32" ? "C:\\work\\repo" : "/work/repo";
+  const abs = process.platform === "win32" ? "C:\\profile\\rules\\mine.md" : "/profile/rules/mine.md";
+  assert.equal(rulePath(abs, root), abs, "an absolute source is where the Core read it");
+  assert.ok(rulePath("AGENTS.md", root)?.endsWith("AGENTS.md"));
+  assert.ok(rulePath("pkg/AGENTS.md", root)?.startsWith(root));
+  assert.equal(rulePath("../outside/AGENTS.md", root), undefined);
+  assert.equal(rulePath("pkg/../../x.md", root), undefined);
+  assert.equal(rulePath("AGENTS.md", ""), undefined, "a relative source needs the task's folder");
+  assert.equal(rulePath(".", root), undefined);
 });

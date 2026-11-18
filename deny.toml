@@ -20,6 +20,12 @@ ignore = [
   { id = "RUSTSEC-2026-0391", reason = "zstd via tantivy-sstable over locally written index files; the reused-context path is not used; no compatible patched release" },
   { id = "RUSTSEC-2026-0398", reason = "zstd-safe via tantivy; Seekable decompress is not called" },
   { id = "RUSTSEC-2026-0403", reason = "zstd-safe via tantivy; legacy-frame streaming decompression is not called on index data" },
+  # chrono and humantime were declared unmaintained on 2026-09-14 (informational,
+  # no vulnerability, no patched version). Both are reached only through
+  # object_store's S3 client (timestamps and durations in its config and
+  # responses). Revisit when object_store moves to jiff or time.
+  { id = "RUSTSEC-2026-0543", reason = "chrono unmaintained (informational, no vulnerability); only via object_store; replace when object_store drops it" },
+  { id = "RUSTSEC-2026-0542", reason = "humantime unmaintained because it wraps chrono (informational, no vulnerability); only via object_store; same path as RUSTSEC-2026-0543" },
 ]
 
 [licenses]

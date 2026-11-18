@@ -214,15 +214,23 @@ impl Trap {
 }
 
 /// Install every repository-owned executable the audit names, each writing
-/// `RAN_<what>` into `trap`.
-#[cfg(unix)]
+/// `RAN_<what>` into `trap`. Git for Windows runs shebang hooks and filter
+/// one-liners through its bundled sh without any executable bit, so the arm
+/// works on every OS: the trap path is spelled with forward slashes for the
+/// shell snippets, and the chmod stays Unix-only (PX-030).
 fn arm(repo: &Repo, trap: &Path) {
-    use std::os::unix::fs::PermissionsExt;
-    let t = trap.display();
+    #[cfg(unix)]
+    let t = trap.display().to_string();
+    #[cfg(windows)]
+    let t = trap.display().to_string().replace('\\', "/");
     let script = |name: &str, body: &str| -> PathBuf {
         let p = trap.join(name);
         std::fs::write(&p, format!("#!/bin/sh\n{body}\n")).unwrap();
-        std::fs::set_permissions(&p, std::fs::Permissions::from_mode(0o755)).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&p, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
         p
     };
     let hooks = repo.dir().join(".git/hooks");
@@ -239,17 +247,44 @@ fn arm(repo: &Repo, trap: &Path) {
     ] {
         let p = hooks.join(h);
         std::fs::write(&p, format!("#!/bin/sh\ntouch '{t}/RAN_hook_{h}'\n")).unwrap();
-        std::fs::set_permissions(&p, std::fs::Permissions::from_mode(0o755)).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&p, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
     }
     let fsmon = script(
         "fsmon.sh",
         &format!("touch '{t}/RAN_fsmonitor'\nprintf '\\0'"),
     );
+    #[cfg(unix)]
     let gpg = script("gpg.sh", &format!("touch '{t}/RAN_gpg'\nexit 1"));
+    #[cfg(unix)]
+    let (fsmon_value, gpg_value) = (fsmon.display().to_string(), gpg.display().to_string());
+    #[cfg(windows)]
+    let (fsmon_value, gpg_value) = (
+        // git runs the fsmonitor command through a shell, so the bundled sh
+        // and a forward-slash path work; gpg.program is spawned directly via
+        // CreateProcess, which cannot exec a shebang script, so the signer
+        // trap on Windows is a native .cmd program instead.
+        format!("sh '{}'", fsmon.display().to_string().replace('\\', "/")),
+        {
+            let gpg_cmd = trap.join("gpg.cmd");
+            std::fs::write(
+                &gpg_cmd,
+                format!(
+                    "@echo off\r\ntype nul > \"{}\\RAN_gpg\"\r\nexit 1\r\n",
+                    trap.display()
+                ),
+            )
+            .unwrap();
+            gpg_cmd.display().to_string()
+        },
+    );
     let cfg = |k: &str, v: &str| plain_ok(repo.dir(), &["config", k, v]);
-    cfg("core.fsmonitor", &fsmon.display().to_string());
+    cfg("core.fsmonitor", &fsmon_value);
     cfg("commit.gpgsign", "true");
-    cfg("gpg.program", &gpg.display().to_string());
+    cfg("gpg.program", &gpg_value);
     cfg(
         "filter.evil.clean",
         &format!("touch '{t}/RAN_filter_clean'; cat"),
@@ -278,7 +313,6 @@ fn arm(repo: &Repo, trap: &Path) {
 
 /// The control: with plain git the armed repository really does run its
 /// programs on this machine, so the negative results below mean something.
-#[cfg(unix)]
 #[test]
 fn control_plain_git_runs_the_repository_programs() {
     let (d, repo) = seed();
@@ -350,7 +384,6 @@ fn control_plain_git_runs_the_repository_programs() {
 }
 
 /// Every typed operation on an armed repository: nothing runs.
-#[cfg(unix)]
 #[test]
 fn armed_repository_runs_no_hook_fsmonitor_filter_driver_textconv_or_signer() {
     let (d, repo) = seed();

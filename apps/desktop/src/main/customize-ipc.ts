@@ -28,6 +28,7 @@ import {
 } from "@modbit/ide-adapter-core";
 import type { ExtensionRow, HookListView, ImportReportView, SkillList, SkillTrustResult } from "@modbit/surface-protocol";
 import type { CustomizeHooksView, MemoryForgetInfo, MemoryPromoteInfo, MemoryRememberInfo, MemoryShareInfo, MemoryView, ExtensionRowInfo, HookEnabledInfo, ImportReportInfo, SkillRow, SkillsView, SkillTrustInfo } from "../shared/customize-types.ts";
+import { isAbsolute, relative, resolve } from "node:path";
 import { bad, validBool } from "./control-args.ts";
 import type { Registrar } from "./conversation-ipc.ts";
 
@@ -81,6 +82,25 @@ export function validManifestDigest(v: unknown): string {
 export function validImportName(v: unknown): string {
   if (typeof v !== "string" || !/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(v)) return bad("an import name is letters, digits, - and _ (at most 64)");
   return v;
+}
+
+/** A rule's source as the Core recorded it: printable and bounded. Whether it names a loaded rule is the Core's answer. */
+export function validRuleSource(v: unknown): string {
+  if (typeof v !== "string" || v.length === 0 || v.length > 4096 || CONTROL.test(v)) return bad("a rule is named by the source the Core recorded");
+  return v;
+}
+
+/**
+ * The file a loaded rule's source names: an absolute source as it is (the Core read it there), a relative one inside the task's
+ * folder; undefined when a relative source has no folder or would leave it.
+ */
+export function rulePath(source: string, workspaceRoot: string): string | undefined {
+  if (isAbsolute(source)) return source;
+  if (!workspaceRoot) return undefined;
+  const root = resolve(workspaceRoot);
+  const p = resolve(root, source);
+  const rel = relative(root, p);
+  return rel !== "" && !rel.startsWith("..") && !isAbsolute(rel) ? p : undefined;
 }
 
 // --------------------------------------------------------------- conversion
@@ -322,9 +342,21 @@ export function registerCustomizeHandlers(r: Registrar, host: CustomizeHost): vo
   // Open the source of a row: the path comes from the Core's own listing, looked up by the row's key, never from the renderer.
   r.handle("customize:openSource", async (...a) => {
     const kind = a[0];
-    if (kind !== "skill" && kind !== "extension") bad("kind must be skill or extension");
+    if (kind !== "skill" && kind !== "extension" && kind !== "rule") bad("kind must be skill, extension or rule");
     let path: string | undefined;
-    if (kind === "skill") {
+    if (kind === "rule") {
+      // REQ-PX-207: a rule is opened only if the Core recorded it as loaded for this task; a relative source is the task's own
+      // folder's (AGENTS.md, CLAUDE.md), resolved against the folder the Core holds for the task and never outside it.
+      const source = validRuleSource(a[1]);
+      const sid = r.sessionId(a[2]);
+      const tid = r.taskId(a[3]);
+      const c = r.client();
+      const layer = (await c.contextInspector(tid)).instructions.find((l) => l.loaded && l.source === source);
+      if (layer) {
+        const task = (await c.getSessionSnapshot(sid)).tasks.find((t) => Buffer.from(t.taskId?.value ?? []).toString("hex") === tid);
+        path = rulePath(source, task?.workspaceRoot ?? "");
+      }
+    } else if (kind === "skill") {
       const name = validSkillName(a[1]);
       const tid = optionalTask(r, a[3]);
       path = (await r.client().listSkills(tid)).skills.find((s) => s.name === name)?.source;

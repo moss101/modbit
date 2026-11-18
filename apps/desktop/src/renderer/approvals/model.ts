@@ -115,6 +115,26 @@ export function alwaysAvailable(a: DockApprovalView): { ok: true } | { ok: false
   return { ok: true };
 }
 
+/**
+ * Whether a pending approval may be decided from a list away from its task (home's waiting list, REQ-PX-205; DR-PX-2026-11-11-021
+ * MWS-12 and section 9), and if not, why. An effect that cannot be undone asks twice, and that second step lives on the task's own
+ * card: from a list it is never decided, it opens its task. Native computer control shows what it will touch on the task's card; a
+ * budget raise is applied from the task's limit tray. Everything else is decided in place with Skip or Allow once, bound to the
+ * intent hash the list showed, exactly as on the card. The Core checks the hash; this is the list's own rule, not the Core's.
+ */
+export function decidableFromList(a: Pick<DockApprovalView, "effectClass" | "toolName" | "computer">): { ok: true } | { ok: false; why: string } {
+  if (isIrreversible(a.effectClass)) return { ok: false, why: "It cannot be undone, so it is decided in its task, where it asks twice." };
+  if (a.computer || a.toolName.startsWith("computer.")) return { ok: false, why: "It controls an application on this computer; its task shows what it will touch." };
+  if (a.toolName === "task.budget.raise") return { ok: false, why: "A budget raise is applied from its task." };
+  return { ok: true };
+}
+
+/** What a waiting approval wants, in one line for a list: the exact command where there is one, else the action in words. */
+export function wantsLine(a: Pick<DockApprovalView, "toolName" | "intent">): string {
+  const command = a.intent.argv && a.intent.argv.length > 0 ? commandLine(a.intent.argv) : a.intent.command;
+  return command ? `Wants to run ${command}` : `Wants to: ${humanTitle(a.toolName).toLowerCase()}`;
+}
+
 /** The deck's order: the open task's approvals first, then the other agents', each group oldest request first (ties are stable). */
 export function deckOrder(list: readonly DockApprovalView[], openTaskId: string | null = null): DockApprovalView[] {
   const own = (a: DockApprovalView): number => (openTaskId !== null && a.taskId === openTaskId ? 0 : 1);

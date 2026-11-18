@@ -12,8 +12,28 @@ import type { CustomizeHooksView, HookEnabledInfo, MemoryForgetInfo, MemoryPromo
 import type { ChangesStateInfo, CommitPushAckInfo, CommitPushInput, DecideHunkAckInfo, DecideHunkInput, RevertAckInfo, RevertInput, StageAckInfo } from "../shared/changes-types.ts";
 import type { ComputerCardsInfo, ComputerFrameInfo, ComputerPresenceInfo, ComputerStopInfo, OpenSettingsInfo, PermissionName } from "../shared/computer-types.ts";
 import type { AccountingInfo, AddRuleInput, AllowRuleInfo, CheckpointListInfo, CheckpointTargetInput, DockApprovalView, ExpiredApprovalView, ForkOutcome, ModeProposalDecisionInfo, ModeProposalListInfo, RestoreOutcome, RewindPreviewInfo, RunModeInfo, TaskBudgetsInfo } from "../shared/control-types.ts";
+import type { UpdatesView } from "../shared/inbox-types.ts";
 
 export type { TerminalFrameJson, TerminalViewJson };
+
+/** REQ-PX-203: the panes that can stand in a window of their own, and what one shows (main's types, pane-windows.ts). */
+export type PaneWindowKind = "terminal" | "changes" | "files" | "evidence";
+export interface PaneWindowRef {
+  taskId: string;
+  kind: PaneWindowKind;
+}
+export interface PaneViewStateDto {
+  terminalId?: string;
+  path?: string;
+  scrollTop?: number;
+}
+export interface PaneContextDto {
+  sessionId: string;
+  taskId: string;
+  kind: PaneWindowKind;
+  title: string;
+  state: PaneViewStateDto;
+}
 
 export interface UpdateViewDto {
   enabled: boolean;
@@ -152,6 +172,27 @@ export interface ContextInspectorEntry {
   stub: boolean;
 }
 
+/**
+ * REQ-PX-107 / REQ-PX-207: one instruction layer the Core recorded for the task's last turn (its newest `RulesSelected`): a
+ * layer in force (`loaded`), or a file that exists and is not, with the Core's reason. Text in these files is project
+ * instruction data; the desktop only lists them and opens their source.
+ */
+export interface InstructionLayer {
+  /** project | repo-instructions | extension:<id> | user (empty for a file that is not loaded). */
+  layer: string;
+  id: string;
+  /** The file as the Core names it: relative to the task's folder for AGENTS.md / CLAUDE.md, absolute otherwise. */
+  source: string;
+  contentHash: string;
+  /** GLOBAL, or `PATH:<active path> matched <glob>`. */
+  reason: string;
+  loaded: boolean;
+  notLoadedReason: string;
+  bytes: string;
+  truncated: boolean;
+  scannerFindings: string[];
+}
+
 export interface ContextInspectorSummary {
   packId: string;
   workspaceRevision: string;
@@ -173,6 +214,8 @@ export interface ContextInspectorSummary {
   manifestRef: string;
   prefixCacheHits: number;
   prefixCacheMisses: number;
+  /** REQ-PX-207: the instruction layers the Core recorded for the task, as it recorded them. */
+  instructions: InstructionLayer[];
 }
 
 /** M10.1: one session's operations picture, from the Core's log. Counts
@@ -339,8 +382,8 @@ export interface ModbitBridge {
   customizeExtensionUnload(sessionId: string, extensionId: string): Promise<{ extensionId: string; name: string; removed: string[] }>;
   /** Import another agent's configuration through the Core's importer; the person picks the folder in the OS dialog. It arrives quarantined. Null when they cancel. */
   customizeImport(sessionId: string, name: string): Promise<ImportReportInfo | null>;
-  /** Show a skill's or an extension's source folder (the path is the Core's listing, not the renderer's). */
-  customizeOpenSource(kind: "skill" | "extension", key: string, sessionId?: string, taskId?: string): Promise<{ opened: string }>;
+  /** Show a row's source in the file manager: a skill or an extension by the key the Core listed, or (REQ-PX-207) a rule by the source the Core recorded as loaded for the task (session and task required). */
+  customizeOpenSource(kind: "skill" | "extension" | "rule", key: string, sessionId?: string, taskId?: string): Promise<{ opened: string }>;
   coreStatus(): Promise<unknown>;
   /** M10.2: the updater's state and the three things a person can ask of it. */
   updateView(): Promise<UpdateViewDto>;
@@ -515,6 +558,17 @@ export interface ModbitBridge {
   /** PX-023: hand one notification to the OS (main keeps a delivery log). */
   deliverNotification(id: string, title: string, body: string): Promise<{ shown: boolean }>;
   notificationLog(): Promise<{ id: string; title: string; body: string; atMs: number; shown: boolean }[]>;
+  /** REQ-PX-206: a click on a delivered notification; the task it names opens (null: Inbox). */
+  onNotificationOpen(cb: (target: { taskId: string | null }) => void): () => void;
+  /** REQ-PX-206: Inbox's record of updates, kept by main from the Core's headers; each read state is the Core's. */
+  inboxUpdates(): Promise<UpdatesView>;
+  /** Marks one update read: the Core's read marker for its task moves to the update's offset. */
+  markUpdateRead(updateId: string): Promise<UpdatesView>;
+  markAllUpdatesRead(): Promise<UpdatesView>;
+  /** The person clears the record. */
+  clearUpdates(): Promise<UpdatesView>;
+  /** The record gained an update. */
+  onInboxChanged(cb: () => void): () => void;
   subscribe(sessionId: string, afterOffset: string): Promise<void>;
   onEvent(cb: (e: unknown) => void): () => void;
   onCoreStatus(cb: (s: unknown) => void): () => void;
@@ -524,6 +578,20 @@ export interface ModbitBridge {
   debugIpcRefusals(): Promise<{ channel: string; senderId: number; frameUrl: string; reason: string; atMs: number }[]>;
   /** REQ-EV-0076: the renderer's own process endings and whether main loaded it again. */
   debugRendererLog(): Promise<{ reason: string; exitCode: number; reloaded: boolean; atMs: number }[]>;
+  // REQ-PX-203: pane windows. The app's window pops a pane of a task out, lists and brings forward the pane windows, and hears
+  // when one closes (with what it was showing) and when one asks it to show something. A pane window asks who it is, says what
+  // it shows, asks the app's window to show the task's review, a call or the waiting approval, and goes back to the dock. Main
+  // decides who may ask which; a pane window may ask nothing that decides an approval.
+  popOutPane(sessionId: string, taskId: string, kind: PaneWindowKind, state: PaneViewStateDto, title: string, size?: { width: number; height: number }): Promise<PaneWindowRef[]>;
+  paneWindows(): Promise<PaneWindowRef[]>;
+  focusPaneWindow(taskId: string, kind: PaneWindowKind): Promise<boolean>;
+  onPaneWindows(cb: (list: PaneWindowRef[]) => void): () => void;
+  onPaneReturned(cb: (r: PaneWindowRef & { state: PaneViewStateDto }) => void): () => void;
+  onPaneShow(cb: (r: { taskId: string; what: "review" | "approval" | "call"; toolCallId?: string }) => void): () => void;
+  paneContext(): Promise<PaneContextDto>;
+  reportPaneState(state: PaneViewStateDto): Promise<void>;
+  paneShow(request: { what: "review" } | { what: "approval" } | { what: "call"; toolCallId: string }): Promise<boolean>;
+  returnPane(state?: PaneViewStateDto): Promise<void>;
   // Onboarding (REQ-PX-022). The key goes to main and never comes back.
   setupProvider(provider: "openai" | "anthropic", apiKey: string, baseUrl?: string): Promise<{ endpoint: string; model: string; ok: boolean; errorCode: string; errorMessage: string; persisted: boolean; keychainAvailable: boolean }>;
   providerStatus(): Promise<{ configured: boolean; endpoints: string[]; stored: boolean; provider: string; keychainAvailable: boolean; keychainBackend: string }>;
@@ -713,6 +781,23 @@ const bridge: ModbitBridge = {
   },
   deliverNotification: (id, title, body) => ipcRenderer.invoke("notify:deliver", id, title, body),
   notificationLog: () => ipcRenderer.invoke("notify:log"),
+  onNotificationOpen: (cb) => {
+    const listener = (_: unknown, t: unknown) => {
+      const taskId = (t as { taskId?: unknown } | null)?.taskId;
+      cb({ taskId: typeof taskId === "string" && /^[0-9a-f]{32}$/.test(taskId) ? taskId : null });
+    };
+    ipcRenderer.on("notify:open", listener);
+    return () => ipcRenderer.removeListener("notify:open", listener);
+  },
+  inboxUpdates: () => ipcRenderer.invoke("inbox:updates"),
+  markUpdateRead: (updateId) => ipcRenderer.invoke("inbox:markRead", updateId),
+  markAllUpdatesRead: () => ipcRenderer.invoke("inbox:markAllRead"),
+  clearUpdates: () => ipcRenderer.invoke("inbox:clear"),
+  onInboxChanged: (cb) => {
+    const listener = () => cb();
+    ipcRenderer.on("inbox:changed", listener);
+    return () => ipcRenderer.removeListener("inbox:changed", listener);
+  },
   subscribe: (sessionId, afterOffset) => ipcRenderer.invoke("events:subscribe", sessionId, afterOffset),
   onEvent: (cb) => {
     const listener = (_: unknown, e: unknown) => cb(e);
@@ -732,6 +817,28 @@ const bridge: ModbitBridge = {
   debugCoreInfo: () => ipcRenderer.invoke("debug:coreInfo"),
   debugIpcRefusals: () => ipcRenderer.invoke("debug:ipcRefusals"),
   debugRendererLog: () => ipcRenderer.invoke("debug:rendererLog"),
+  popOutPane: (sessionId, taskId, kind, state, title, size) => ipcRenderer.invoke("pane:popOut", sessionId, taskId, kind, state, title, size ?? null),
+  paneWindows: () => ipcRenderer.invoke("pane:windows"),
+  focusPaneWindow: (taskId, kind) => ipcRenderer.invoke("pane:focus", taskId, kind),
+  onPaneWindows: (cb) => {
+    const listener = (_: unknown, l: unknown) => cb(l as PaneWindowRef[]);
+    ipcRenderer.on("pane:windows", listener);
+    return () => ipcRenderer.removeListener("pane:windows", listener);
+  },
+  onPaneReturned: (cb) => {
+    const listener = (_: unknown, r: unknown) => cb(r as PaneWindowRef & { state: PaneViewStateDto });
+    ipcRenderer.on("pane:returned", listener);
+    return () => ipcRenderer.removeListener("pane:returned", listener);
+  },
+  onPaneShow: (cb) => {
+    const listener = (_: unknown, r: unknown) => cb(r as { taskId: string; what: "review" | "approval" | "call"; toolCallId?: string });
+    ipcRenderer.on("pane:show", listener);
+    return () => ipcRenderer.removeListener("pane:show", listener);
+  },
+  paneContext: () => ipcRenderer.invoke("pane:context"),
+  reportPaneState: (state) => ipcRenderer.invoke("pane:state", state),
+  paneShow: (request) => ipcRenderer.invoke("pane:show", request),
+  returnPane: (state) => ipcRenderer.invoke("pane:return", state),
   setupProvider: (provider, apiKey, baseUrl) => ipcRenderer.invoke("onboarding:provider", provider, apiKey, baseUrl ?? ""),
   providerStatus: () => ipcRenderer.invoke("onboarding:providerStatus"),
   trustRepository: (sessionId, workspaceRoot) => ipcRenderer.invoke("onboarding:trust", sessionId, workspaceRoot),

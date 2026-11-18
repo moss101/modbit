@@ -578,9 +578,9 @@ test("PX-199: the keyboard alone reaches every row, pins, archives with undo and
     const header = (await page.evaluate((s) => window.modbit.agentHeaders(s, false), sid)).headers.find((h) => h.taskId === ids.ready)!;
     await expect(card.getByTestId("agent-preview-changes")).toHaveText(`+${header.linesAdded} −${header.linesRemoved} · ${header.filesChanged} files`);
     await expect(card.getByTestId("agent-preview-open")).toHaveText("Open");
-    // The header's later fields and split view belong to later rows: none of them is drawn here.
-    await expect(card.getByRole("button")).toHaveCount(1);
-    await expect(card).not.toContainText(/pull request|split view/i);
+    // The pull request belongs to a later row and is not drawn; split view is PX-204's: Open and Open in split view are the card's only buttons.
+    await expect(card.getByRole("button")).toHaveText(["Open", "Open in split view"]);
+    await expect(card).not.toContainText(/pull request/i);
     // The card sits beside the list, level with its row.
     const rowBox = (await agentRow(page, ids.ready).boundingBox())!;
     const cardBox = (await card.boundingBox())!;
@@ -607,6 +607,9 @@ test("PX-199: the keyboard alone reaches every row, pins, archives with undo and
     // Space again closes it from the row as well; leaving the card with Tab closes it.
     await page.keyboard.press("Space");
     await expect(card).toBeVisible();
+    // Tab moves from Open to Open in split view (PX-204), still inside the card; the next Tab leaves it.
+    await page.keyboard.press("Tab");
+    await expect(card.getByTestId("agent-preview-split")).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(card).toHaveCount(0);
 

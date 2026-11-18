@@ -1,0 +1,82 @@
+{
+ "task": "PX-204",
+ "requirements": [
+  "REQ-PX-204",
+  "QUAL-PX-204",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-204"
+ ],
+ "scenarios": [
+  "QUAL-PX-204 / PX-E2E-204"
+ ],
+ "decision_record": "DR-PX-2026-11-11-021 (MWS-11, sections 5.1, 5.6 and 5.11)",
+ "tier": "release-critical",
+ "branch": "wip/desktop-2-split-view",
+ "base": "origin/main ddeda3bc",
+ "status": "built and proven locally on macOS arm64; not sealed (graph.py was not run: sealing is not this task's)",
+ "audit": {
+  "classification": "NOT-FOUND for split view; one conversation PRODUCTION-WORKING (self-contained per task), but trays and keys assume one",
+  "first_missing_link": "one module-level tray store with fixed ids (a second conversation's approval card, queue and context would replace the first's) and keyboard decisions chosen by key-scope stacking order and page order (ApprovalDeck scope, runKeyCommand's first conversation), not by which conversation has the keyboard",
+  "traced": "AgentListView row click (altKey) / PreviewCard Open in split view -> Shell.openSplit -> requestSplit + SPLIT_NEED -> prefs.split (modbit.ui.v1) -> ShellFrame computeLayout({split}) -> SplitView columns -> TopBar + Conversation (own TrayStore via TrayStoreContext, data-key-focus) -> ApprovalDock/ApprovalDeck (ownsKeys) -> window.modbit.resolveApproval; Composer -> window.modbit.composerQueueInput(own taskId); use-app runKeyCommand -> keyTaskId() -> resolveApproval"
+ },
+ "bridge": {
+  "added": [],
+  "protocol_change": "none",
+  "preload_change": "none",
+  "main_change": "none",
+  "csp_change": "none",
+  "rust_change": "none",
+  "locked_files_changed": "none"
+ },
+ "decided_here": {
+  "column_minimum": "424 (GEOMETRY.centerMin); 560 (REQ-PX-202 conversation minimum) beside an open dock; two columns need 848 of task area",
+  "details_rail": "not beside two columns; each task's rail under its own More",
+  "pane_dock": "serves the focused task; beside the two only where each keeps 560, else stacked behind Conversation | Apps",
+  "narrow": "entry refused with its reason below 848; an open split pauses with the focused task alone and returns when wider",
+  "plain_open_in_split": "a task in a column takes the keyboard; another task replaces the focused column; split view stays at two",
+  "exit": "Close in either column's title bar; Back and New task leave it for home"
+ },
+ "left_out": [
+  "the palette's way into split view (MWS-11; not in QUAL-PX-204)",
+  "Open in split view in the task's title menu (MWS-05)",
+  "a shortcut that moves the keyboard between columns",
+  "a split holding another session's automation task closes on start"
+ ],
+ "tests": [
+  "apps/desktop/e2e/px-204-split-view.spec.ts",
+  "apps/desktop/src/renderer/shell/split.test.ts",
+  "apps/desktop/src/renderer/shell/shell.test.ts",
+  "apps/desktop/e2e/task-list.spec.ts"
+ ],
+ "unit": "@modbit/desktop 424 of 424; @modbit/ui 11 of 11; pnpm typecheck clean.",
+ "proof": "e2e/px-204-split-view.spec.ts 1 of 1 locally against the real app and a real Core (see TASK_CARD.md Verification)",
+ "retained_mutations": [
+  "a key that decides the unfocused task's approval: data-key-focus moved to the unfocused conversation, Enter decides its approval, unfocusedDecided fails",
+  "a queued message that reaches the other task: queued on A as if typed in B, misrouted fails",
+  "a third task accepted: a third column drawn, splitDrift fails; a stored split of three reads as none in the app and in split.test.ts"
+ ],
+ "removed_test_ids": [],
+ "removed_checks": [],
+ "changed_checks": [
+  "shell.test.ts stored keys gain split",
+  "task-list.spec.ts:579 the preview card's buttons are Open and Open in split view (was one button, no split view)",
+  "task-list.spec.ts:607 Tab focuses Open in split view, the next Tab leaves the card (was one Tab)"
+ ],
+ "screenshots": "after/*.png: the running app against a real Core at 1440 x 900 (captured at 2x), written by e2e/px-204-split-view.spec.ts with MODBIT_SHOTS_DIR set. split-comfortable-*: two tasks, the right one waiting on approval with the keyboard (accent rule), each composer with its queued message. split-compact-*: the same in Compact. split-paused-narrow-*: an open split at 1100 wide, paused. split-refused-narrow-*: entry refused at 1100 wide with its reason. Light and dark.",
+ "build_digest": {
+  "dist/renderer/index.js": "sha256:72ba14c8641a140bee071d5d992004af81a29860f126b5d6e71418a065737349",
+  "dist/renderer/app.css": "sha256:d779d6443379767b6870a86b9ed7f2f1a1d0b5ffd130541ea1939a436ef7cb42",
+  "dist/preload/preload.cjs": "sha256:91365bcfca1d747a1a96ab101bce7a96942c2872665042634fbda087d3e7bbf1",
+  "dist/main/main.cjs": "sha256:3878cc18e3b0a5ca59be7dd91d23f089d27edff080129fd8a68bc85f747c8b14",
+  "note": "the build the screenshots and the full local suite used; preload and main unchanged from PX-203"
+ },
+ "core_binary": {
+  "path": "research/desktop-2/bin/modbit-core (prebuilt from main's Rust; not in the repository)",
+  "sha256": "c5ec630a2c92680ceaccf3dc72a663ecf0e3f369c3e1309e146a691807234fcb"
+ },
+ "full_suite_results": "evidence/m10/PX-204/desktop-e2e-full-results.txt",
+ "full_suite": "run 1: 212 passed, 1 failed (task-list.spec.ts:492, caused by this change; two assertions moved with their fact, then 2 of 2), 3 skipped",
+ "ci": {
+  "run_1": "43755695976 on 33d03e96 (draft pull request 221): passed: desktop E2E windows, packaged desktop ubuntu and windows, node on all three, protocol, cloud, supply chain, locked files, dossier, rust ubuntu. Failed: desktop E2E ubuntu: px-204-split-view.spec.ts (caused by this change: the spec clicked Close at 1100 before the shell had measured the narrower window, so two Close buttons were still drawn; it now waits for data-split=paused, and for the shell to measure 1440 before the next Alt+click) and px-202-pane-dock.spec.ts:234 (the title bar's toggles read once with no wait: the Terminal toggle was not yet drawn; not changed here, not investigated as caused by this change); desktop E2E macos: terminal-history.spec.ts:94 (the task went Waiting instead of Running; no renderer path of this change; not caused by it); packaged desktop macos: packaged-update.spec.ts:108 (the updater staged a hostile feed's update; main process, untouched here; not caused by it). rust macOS and Windows and release supply chain had not reported when the watch ended."
+ },
+ "owner_review": "not yet seen"
+}

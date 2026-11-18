@@ -230,10 +230,12 @@ async fn worktree_create_is_confined_to_the_worktree_root() {
     assert!(!f.outer.path().join("escaped").exists());
 
     // A symlink inside the worktree root that points out is not a way out.
-    #[cfg(unix)]
     {
         std::fs::create_dir_all(&wt_root).unwrap();
+        #[cfg(unix)]
         std::os::unix::fs::symlink(f.evidence(), wt_root.join("link")).unwrap();
+        #[cfg(windows)]
+        std::os::windows::fs::symlink_dir(f.evidence(), wt_root.join("link")).unwrap();
         let o = f
             .call(
                 "git.worktree.create",
@@ -334,33 +336,40 @@ async fn worktree_close_refuses_anything_but_a_registered_worktree_under_the_roo
 
 /// FIX-01(b,c): the read/write git tools on a repository armed with a
 /// `post-checkout` hook and a `core.fsmonitor` command run neither.
-#[cfg(unix)]
 #[tokio::test]
 async fn git_tools_do_not_run_repository_hooks_or_fsmonitor() {
-    use std::os::unix::fs::PermissionsExt;
     let f = fixture();
     let trap = f.evidence();
+    // The trap path is spelled with forward slashes for the shell snippets,
+    // and the exec bit stays Unix-only: Git for Windows runs shebang hooks
+    // and shell-evaluated commands without it (PX-030).
+    #[cfg(unix)]
+    let t = trap.display().to_string();
+    #[cfg(windows)]
+    let t = trap.display().to_string().replace('\\', "/");
     let hook = f.root.join(".git/hooks/post-checkout");
-    std::fs::write(
-        &hook,
-        format!("#!/bin/sh\ntouch '{}/RAN_post_checkout'\n", trap.display()),
-    )
-    .unwrap();
-    std::fs::set_permissions(&hook, std::fs::Permissions::from_mode(0o755)).unwrap();
+    std::fs::write(&hook, format!("#!/bin/sh\ntouch '{t}/RAN_post_checkout'\n")).unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&hook, std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
     let fsmon = trap.join("fsmon.sh");
     std::fs::write(
         &fsmon,
-        format!(
-            "#!/bin/sh\ntouch '{}/RAN_fsmonitor'\nprintf '\\0'\n",
-            trap.display()
-        ),
+        format!("#!/bin/sh\ntouch '{t}/RAN_fsmonitor'\nprintf '\\0'\n"),
     )
     .unwrap();
-    std::fs::set_permissions(&fsmon, std::fs::Permissions::from_mode(0o755)).unwrap();
-    git(
-        &f.root,
-        &["config", "core.fsmonitor", &fsmon.display().to_string()],
-    );
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&fsmon, std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
+    #[cfg(unix)]
+    let fsmon_value = fsmon.display().to_string();
+    #[cfg(windows)]
+    let fsmon_value = format!("sh '{}'", fsmon.display().to_string().replace('\\', "/"));
+    git(&f.root, &["config", "core.fsmonitor", &fsmon_value]);
 
     // Control: plain git runs both (so a clean result below means something).
     git(&f.root, &["status", "--porcelain"]);
