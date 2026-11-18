@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-11-18",
+ "generated_on": "2026-11-19",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -41398,8 +41398,13 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-207",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:44364563619",
+    "commit:a47a8928",
+    "artifact:evidence/m10/PX-207/evidence.json"
+   ],
+   "status_changed_on": "2026-11-18T20:59:06Z"
   },
   {
    "id": "PX-208",

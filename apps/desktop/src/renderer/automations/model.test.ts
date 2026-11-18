@@ -85,3 +85,19 @@ test("REQ-PX-086: which triggers a definition can be run by hand, tested with a 
   assert.deepEqual(k.schedule.map((t) => t.id), ["s"]);
   assert.equal(runKinds(view({ triggers: [] })).manual, null);
 });
+
+import { myIds, personWords, principalWords, triggerWords } from "./model.ts";
+
+test("PX-207: triggers and people in words; a raw person id is never the words", () => {
+  assert.equal(triggerWords({ kind: "manual", summary: "manual / test run" }), "By hand");
+  assert.equal(triggerWords({ kind: "schedule", summary: "every 60 min" }), "Every 60 min");
+  assert.equal(triggerWords({ kind: "schedule", summary: "cron 0 2 * * * (UTC)" }), "On a schedule: 0 2 * * * (UTC)");
+  assert.equal(triggerWords({ kind: "event", summary: "forge pull_request (opened)" }), "On pull request (opened) from forge");
+  assert.equal(triggerWords({ kind: "webhook", summary: "signed webhook `deploy`" }), "Signed webhook deploy");
+  const id = "user:b1b1b1b1-b1b1-b1b1-b1b1-b1b1b1b1b1b1";
+  assert.equal(personWords(id, myIds([{ createdBy: id }])), "you");
+  assert.equal(personWords(id, new Set()), "another person (b1b1b1b1)");
+  assert.equal(personWords("", new Set()), "the owner");
+  assert.equal(principalWords("creator"), "whoever saved it");
+  assert.ok(!personWords(id, new Set()).includes("user:"));
+});
