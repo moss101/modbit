@@ -71,7 +71,11 @@
  ],
  "removed_checks": [],
  "screenshots": "after/{sidebar-with-review,review-page,hunk-decision,settings-appearance,settings-shortcuts}-{comfortable,compact}-{light,dark}.png, from the running app",
- "ci": [],
+ "ci": {
+  "pull_request": "https://github.com/moss101/modbit/pull/230 (draft)",
+  "run_1": "44263235263 on 48be2e9a (before the wording pass): 18 of 19 checks passed; desktop E2E on ubuntu failed fleet-agents.spec.ts:80 (child-goal not found within 15 s after the child card appeared; outside this change's paths; passed locally). One rerun of the failed jobs: attempt 2 all green.",
+  "run_2": "44345701253 on f58233e0 (the wording pass): all 19 checks passed on the first attempt (ci-run-44345701253.json)"
+ },
  "full_suite": "desktop e2e, local macOS arm64, once: 221 tests, 218 passed, 0 failed, 3 skipped (desktop-e2e-full-results.txt)",
  "wording_pass": "2026-11-18 after the owner's review ('Fix wording first'): plain words in the task's review (meta, file heads, hunk controls, checks, forge checks and comments, plan, self-review, folded evidence, pull request block), the review state line, the restart notice and Settings (platform, locations, account, credentials, languages); raw facts kept as data attributes and tooltips; rawWords guard with a retained mutation; every changed assertion is listed in TASK_CARD.md",
  "affected_specs_after_wording": "15 spec files (review, forge-evidence, user-patch, states, lifecycle, session-end, keyboard, onboarding, fleet, shell, px-104-live-review, review-escape, browser, awl, px-208-review-settings): 48 passed locally"

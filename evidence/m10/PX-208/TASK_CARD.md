@@ -122,5 +122,5 @@ The owner read the first screenshots and asked for plain words before anything e
 
 ## Limitations
 
-- The proof is local (macOS arm64); CI is recorded in `evidence.json`.
+- CI (`evidence.json`, `ci-run-44345701253.json`): run 44263235263 on 48be2e9a, green after one rerun of a Linux `fleet-agents.spec.ts:80` failure outside this change; run 44345701253 on f58233e0 (the wording pass), 19 of 19 checks green on the first attempt.
 - The owner has not seen the screenshots. No graph status was set.
