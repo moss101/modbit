@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2357,
+    "root_and_tooling": 2358,
     "docs_bytes": 2408986
   },
   "sections": [
@@ -4935,8 +4935,8 @@
     },
     {
       "path": "evidence/m10/PX-208/TASK_CARD.md",
-      "bytes": 22692,
-      "sha256": "f4f504733eb368401efc29482ea4aa10a1c5ffa977418f231f8ce4808780bb10"
+      "bytes": 22881,
+      "sha256": "e458d0b08b1d1c9654e2d0d53dbbbcdc70f1623fb559113f1ed1a8112e7e4c00"
     },
     {
       "path": "evidence/m10/PX-208/after/hunk-decision-comfortable-dark.png",
@@ -5039,14 +5039,19 @@
       "sha256": "74c31cc96952fd19f746029f011520f89ccb3d3a4643b4247731af44998e77a1"
     },
     {
+      "path": "evidence/m10/PX-208/ci-run-44345701253.json",
+      "bytes": 65329,
+      "sha256": "9624b87b8a2fe404270ad18af8124732ca3c301a43d51390076fb880a8abf352"
+    },
+    {
       "path": "evidence/m10/PX-208/desktop-e2e-full-results.txt",
       "bytes": 42045,
       "sha256": "7ad196640a222ce954ad56d364ce58b282d805d8fa6d7594d9801904f3b6a6b4"
     },
     {
       "path": "evidence/m10/PX-208/evidence.json",
-      "bytes": 5492,
-      "sha256": "03eb1027b10ae2bebe7a23380331825fd2ea758c04a8fc2ebc10e761e7934cf7"
+      "bytes": 5995,
+      "sha256": "c7f2cb86783b3468855420fb385c830e90f5b778489ab0e63a2f9ca7d7e6eb26"
     },
     {
       "path": "evidence/m10/PX-209/TASK_CARD.md",

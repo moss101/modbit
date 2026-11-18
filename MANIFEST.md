@@ -930,7 +930,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-206/ci-run-44107179468.json` | retained evidence | 65329 | `b1d73689e58a2cb86a28ea66c5f1e64f357f63c8f600fe5a914585e15f7f4b8a` |
 | `evidence/m10/PX-206/desktop-e2e-full-results.txt` | retained evidence | 2946 | `e4937181267d3b05ab7392231607f0cbd9528880856dee497c641ba6aea5e13e` |
 | `evidence/m10/PX-206/evidence.json` | retained evidence | 13209 | `52b02d942960b4b8bbe7bcade9517adec40cb16a2f98fcd9305af066e9a2dbd2` |
-| `evidence/m10/PX-208/TASK_CARD.md` | retained evidence | 22692 | `f4f504733eb368401efc29482ea4aa10a1c5ffa977418f231f8ce4808780bb10` |
+| `evidence/m10/PX-208/TASK_CARD.md` | retained evidence | 22881 | `e458d0b08b1d1c9654e2d0d53dbbbcdc70f1623fb559113f1ed1a8112e7e4c00` |
 | `evidence/m10/PX-208/after/hunk-decision-comfortable-dark.png` | retained evidence | 289706 | `01213e0f2d63d2b7709bf2d61cbcc99cc6ec3cf29cdb601b04a9836411f05116` |
 | `evidence/m10/PX-208/after/hunk-decision-comfortable-light.png` | retained evidence | 289150 | `f6a3c37b22fa930442d177c9604e0fe0f6af72fb31abe3e0363d47aefc3d0f98` |
 | `evidence/m10/PX-208/after/hunk-decision-compact-dark.png` | retained evidence | 280828 | `523b0ebe177f8a18661981de4565f73df130baf294c3a8ca995f4745a0361bb0` |
@@ -951,8 +951,9 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-208/after/sidebar-with-review-comfortable-light.png` | retained evidence | 117703 | `53ba107a947a2066735e0b2e09c4cdd2f00fa5cad2bbd0ffe900b075b895343f` |
 | `evidence/m10/PX-208/after/sidebar-with-review-compact-dark.png` | retained evidence | 112995 | `067498a82aac23355bb126ec59e8503e762d2b7d023c59b72983bc4f4dec4a12` |
 | `evidence/m10/PX-208/after/sidebar-with-review-compact-light.png` | retained evidence | 112705 | `74c31cc96952fd19f746029f011520f89ccb3d3a4643b4247731af44998e77a1` |
+| `evidence/m10/PX-208/ci-run-44345701253.json` | retained evidence | 65329 | `9624b87b8a2fe404270ad18af8124732ca3c301a43d51390076fb880a8abf352` |
 | `evidence/m10/PX-208/desktop-e2e-full-results.txt` | retained evidence | 42045 | `7ad196640a222ce954ad56d364ce58b282d805d8fa6d7594d9801904f3b6a6b4` |
-| `evidence/m10/PX-208/evidence.json` | retained evidence | 5492 | `03eb1027b10ae2bebe7a23380331825fd2ea758c04a8fc2ebc10e761e7934cf7` |
+| `evidence/m10/PX-208/evidence.json` | retained evidence | 5995 | `c7f2cb86783b3468855420fb385c830e90f5b778489ab0e63a2f9ca7d7e6eb26` |
 | `evidence/m10/PX-209/TASK_CARD.md` | retained evidence | 13996 | `0a8a0afb81f546db485f3509645e1e3ccc34ce7d42e0fda15712c7db5b6dd5e1` |
 | `evidence/m10/PX-209/after/palette-conversation-hit-comfortable-dark.png` | retained evidence | 269025 | `1cd8f5ff2b8a94493b73ffeac0acdab5de3b63e77bbdaa30cb37e677d84d3a89` |
 | `evidence/m10/PX-209/after/palette-conversation-hit-comfortable-light.png` | retained evidence | 277811 | `1ac6e2ae61e8501706e0fa7f4c2d4ce84b6fd2052edcda4c67d9793f99cfe25a` |
