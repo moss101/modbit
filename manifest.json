@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2310,
+    "root_and_tooling": 2333,
     "docs_bytes": 2408986
   },
   "sections": [
@@ -4812,6 +4812,121 @@
       "path": "evidence/m10/PX-205/evidence.json",
       "bytes": 7774,
       "sha256": "a0cfe49c794c0b3cb25e04707a00af8db23f185e4e2d0df64fa03cbb8de18779"
+    },
+    {
+      "path": "evidence/m10/PX-206/TASK_CARD.md",
+      "bytes": 29458,
+      "sha256": "16471c0342e4fcd1615e3ba2d1dcf7a9a9dd63c4d29d48d747ee8c56569ea2b6"
+    },
+    {
+      "path": "evidence/m10/PX-206/after/inbox-after-restart-comfortable-dark.png",
+      "bytes": 294074,
+      "sha256": "94ab6adf6c00cf390daa5c285d2fa834cc9eeadfce01e7c327fbe40a7ff00fcd"
+    },
+    {
+      "path": "evidence/m10/PX-206/after/inbox-after-restart-comfortable-light.png",
+      "bytes": 294366,
+      "sha256": "6932827941964e49b29e696d583534fdf4b02404e7e925332ff902bd2b1ba7c5"
+    },
+    {
+      "path": "evidence/m10/PX-206/after/inbox-after-restart-compact-dark.png",
+      "bytes": 275642,
+      "sha256": "7cadb0dbb9fae09f6604a5db6a82f281890de5749de7a6594f31bca5f10c4510"
+    },
+    {
+      "path": "evidence/m10/PX-206/after/inbox-after-restart-compact-light.png",
+      "bytes": 276350,
+      "sha256": "c782fad3596dd6a311a1e4c917ffa0ee6c740c2c11863cd09367f56d2a5c7bf8"
+    },
+    {
+      "path": "evidence/m10/PX-206/after/inbox-destructive-comfortable-dark.png",
+      "bytes": 191785,
+      "sha256": "9abadc01c585c1f6bfc2157a1c882bed644d61d8c402111b5f1e8f2bb1d317a6"
+    },
+    {
+      "path": "evidence/m10/PX-206/after/inbox-destructive-comfortable-light.png",
+      "bytes": 191445,
+      "sha256": "79864636e5a4a6f0553940015c189ae4a8a230f67489ff90b943cdf773673813"
+    },
+    {
+      "path": "evidence/m10/PX-206/after/inbox-destructive-compact-dark.png",
+      "bytes": 180997,
+      "sha256": "3c2798219d9a36baa32bb50df07a855f060ddc325836d7c09c5c094711642ed6"
+    },
+    {
+      "path": "evidence/m10/PX-206/after/inbox-destructive-compact-light.png",
+      "bytes": 181125,
+      "sha256": "8df39db1d7dfc89c52f5b1e73769ca0babe7399884c483031fb3cd43b1025329"
+    },
+    {
+      "path": "evidence/m10/PX-206/after/inbox-destructive-opens-task-comfortable-dark.png",
+      "bytes": 300151,
+      "sha256": "0fdc6607946db1617d85befa2ac3007572f222c07c359df395b7f7bf76c35180"
+    },
+    {
+      "path": "evidence/m10/PX-206/after/inbox-destructive-opens-task-comfortable-light.png",
+      "bytes": 301494,
+      "sha256": "d4a98a15fe57cfe0f3d68bc085a7c031584d5d9abf241cfe1bbffcea0950cee7"
+    },
+    {
+      "path": "evidence/m10/PX-206/after/inbox-destructive-opens-task-compact-dark.png",
+      "bytes": 283479,
+      "sha256": "b51b24129f08a441295132fdbaf34b43fe23a465d6dce0032c2d8a9852344ab5"
+    },
+    {
+      "path": "evidence/m10/PX-206/after/inbox-destructive-opens-task-compact-light.png",
+      "bytes": 284715,
+      "sha256": "e84bd6ecb05e2a424c2eb740789143cf75d6d10f21febc4931beaed654a3efcc"
+    },
+    {
+      "path": "evidence/m10/PX-206/after/inbox-needs-you-comfortable-dark.png",
+      "bytes": 285255,
+      "sha256": "9b25ab5e3025ba8c78f0f2ba9034f2c9a6420202779496c090210425fdcb5ada"
+    },
+    {
+      "path": "evidence/m10/PX-206/after/inbox-needs-you-comfortable-light.png",
+      "bytes": 284452,
+      "sha256": "c7a423925027e766fb96cbf33ab6f5f497ca339c934d263be388254728bf832d"
+    },
+    {
+      "path": "evidence/m10/PX-206/after/inbox-needs-you-compact-dark.png",
+      "bytes": 269269,
+      "sha256": "28d9ef6fcbff015e78c76e7825403c6f4557b1b4538ed5011d4a86b139876fd7"
+    },
+    {
+      "path": "evidence/m10/PX-206/after/inbox-needs-you-compact-light.png",
+      "bytes": 269291,
+      "sha256": "34a6a2ececdfebc7608e0f7c4bb7a090086a398fc47edde282a972f1bc941aed"
+    },
+    {
+      "path": "evidence/m10/PX-206/after/inbox-updates-read-unread-comfortable-dark.png",
+      "bytes": 191899,
+      "sha256": "ef7f3db17f6382ed6527e756047e478d66e47f1e373b35ac8b575e35cfa446a7"
+    },
+    {
+      "path": "evidence/m10/PX-206/after/inbox-updates-read-unread-comfortable-light.png",
+      "bytes": 191281,
+      "sha256": "dc47574e7619997787fdb9d5de5079e85625e4199b2c360c255c73cad3194bce"
+    },
+    {
+      "path": "evidence/m10/PX-206/after/inbox-updates-read-unread-compact-dark.png",
+      "bytes": 180949,
+      "sha256": "85c7531f501b4002dc5abf0b6492770a244f68677c9cfb096b108b25cee2c248"
+    },
+    {
+      "path": "evidence/m10/PX-206/after/inbox-updates-read-unread-compact-light.png",
+      "bytes": 181190,
+      "sha256": "7e29ad7c5bd34ea416be3bc742c1a30612962418333fe52fcf78e89d6dca4002"
+    },
+    {
+      "path": "evidence/m10/PX-206/desktop-e2e-full-results.txt",
+      "bytes": 2946,
+      "sha256": "e4937181267d3b05ab7392231607f0cbd9528880856dee497c641ba6aea5e13e"
+    },
+    {
+      "path": "evidence/m10/PX-206/evidence.json",
+      "bytes": 13209,
+      "sha256": "52b02d942960b4b8bbe7bcade9517adec40cb16a2f98fcd9305af066e9a2dbd2"
     },
     {
       "path": "evidence/m10/PX-209/TASK_CARD.md",
