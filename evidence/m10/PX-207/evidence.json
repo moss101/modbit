@@ -1,0 +1,101 @@
+{
+ "task": "PX-207",
+ "requirements": [
+  "REQ-PX-207",
+  "QUAL-PX-207",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-207"
+ ],
+ "scenarios": [
+  "QUAL-PX-207 / PX-E2E-207"
+ ],
+ "decision_record": "DR-PX-2026-11-11-021 (MWS-14; MWS-09's rail shape; sections 5.11 and 9)",
+ "tier": "release-critical",
+ "branch": "wip/desktop-2-automations",
+ "base": "origin/main 68f39e5e",
+ "status": "built and proven locally on macOS arm64; not sealed (graph.py was not run: sealing is not this task's)",
+ "audit": {
+  "classification": "Automations and Customize behaviour PRODUCTION-WORKING (automations.spec.ts, px-106-customize.spec.ts, px-188-memory.spec.ts against a real Core); layout not in the page shape; Rules DOCUMENTED-ONLY on the desktop (the Core's ContextInspectorView.instructions, REQ-PX-107, existed and was dropped by main)",
+  "first_missing_link": "main's context:inspector handler did not pass the Core's `instructions` (field 180) through, and customize:openSource took no rule; no protocol was needed",
+  "traced": "Customize -> window.modbit.contextInspector(taskId) -> main context:inspector -> Core ContextInspector (inspector.rs task_context_log: newest RulesSelected) -> instructions; Open source -> customize:openSource('rule', source, session, task) -> Core ContextInspector (loaded source must match) + GetSessionSnapshot (task's workspace root) -> rulePath -> shell.showItemInFolder. Automations unchanged: automations:* -> Core automation commands"
+ },
+ "bridge": {
+  "added": [],
+  "protocol_change": "none",
+  "preload_change": "types only: ContextInspectorSummary.instructions (InstructionLayer[]) and customizeOpenSource kind 'rule'; no channel or method; preload pin moved in hardening-guard.test.ts with a review note",
+  "main_change": "context:inspector passes instructions; customize:openSource accepts 'rule' (validRuleSource, rulePath: a loaded source only, relative sources inside the task's folder)",
+  "csp_change": "none",
+  "rust_change": "none",
+  "locked_files_changed": "none"
+ },
+ "core_binary": {
+  "path": "research/desktop-2/bin/modbit-core (prebuilt, not committed)",
+  "sha256": "c5ec630a2c92680ceaccf3dc72a663ecf0e3f369c3e1309e146a691807234fcb"
+ },
+ "left_out": [
+  "Customize Add and the Applies to filter (no row provides them)",
+  "per-skill and per-server switches, a separate Tool servers section (no Core switch outside trust and the extension)",
+  "Rules for a folder without a task (the Core records layers per task)",
+  "the Automations segmented trigger control, Edit prompt, Tell me, budget in currency; Cloud as a place to run (PX-128)"
+ ],
+ "tests": [
+  "apps/desktop/e2e/px-207-automations-customize.spec.ts",
+  "apps/desktop/e2e/automations.spec.ts",
+  "apps/desktop/e2e/px-106-customize.spec.ts",
+  "apps/desktop/e2e/px-188-memory.spec.ts",
+  "apps/desktop/e2e/gallery-automations.spec.ts",
+  "apps/desktop/src/renderer/customize/customize-model.test.ts",
+  "apps/desktop/src/main/customize-ipc.test.ts",
+  "apps/desktop/src/main/hardening-guard.test.ts"
+ ],
+ "unit": "@modbit/desktop 455 of 455 (448 before PX-207, +7); tsc -p apps/desktop clean (src and e2e).",
+ "proof": "e2e/px-207-automations-customize.spec.ts 5 of 5 locally against the real app and a real Core; whole desktop suite once: 217 passed, 5 failed (all gallery, caused by this change: duplicate region landmarks in the rail and a schedule trigger without its UTC slot), 3 skipped; after the fix the four gallery specs 11 of 11 and the affected specs 18 of 18 (desktop-e2e-full-results.txt)",
+ "retained_mutations": [
+  "a rule row the Core did not load appended to Rules: rulesDrift reports 'rule /tmp/never-loaded.md is shown and the Core did not load it'",
+  "a textarea and a contenteditable heading in a rule row: editableRules reports both",
+  "after the rule result opened its section, another section shown: openedDrift reports the wrong section and the focus elsewhere",
+  "a button in the skill row that trusts without the review: trustedWithoutReview reports it from the bridge tap",
+  "the Automations page head pushed back to 40 px: pageDrift reports 'the head is 40 px, not 45'",
+  "a raw person id and a tool name added to Customize's words: rawWords reports 'user:b1b1b1b1-b1b1' and 'fs.read'"
+ ],
+ "removed_test_ids": [
+  "customize-close",
+  "automations-close",
+  "automation-principal (now detail-principal in the rail)"
+ ],
+ "removed_checks": [],
+ "changed_checks": [
+  "px-106-customize.spec.ts: trust goes through customize-skill-review then customize-skill-trust (4 places); tab order starts on the review button; 'signature UNSIGNED' -> data-signature=UNSIGNED and 'not signed'",
+  "automations.spec.ts:304: run-reason text SOURCE_CHANGED -> data-code=SOURCE_CHANGED and its words",
+  "px-106-customize.spec.ts:147: customize-hook-last 'OK after' -> 'Last ran fine in'",
+  "automations.spec.ts:127/270/316: detail-hash full text -> data-hash (full) plus 12-character text",
+  "automations.spec.ts:442: run row text tick@<slot> -> data-event-id",
+  "customize-model.test.ts: lastResult 'never ran'/'OK after 7 ms' -> 'Has not run yet'/'Last ran fine in 7 ms'"
+ ],
+ "screenshots": "after/{automations-rail,customize-search,customize-rules,customize-review}-{light,dark}-{comfortable,compact}.png, from the running app",
+ "ci": [
+  {
+   "run": "44263042339",
+   "head": "da51dfb9bfb4a39d7914c25f9bdd647df06d0f32",
+   "conclusion": "success",
+   "note": "every job green after one rerun of failed jobs (first attempt: macOS Rust qual_px_179 known flake and qual_px_071; release supply chain hung after its reproducible build and was cancelled)"
+  },
+  {
+   "run": "44345295991",
+   "head": "78dbf5f305b48b621f187f4ad781c14c4c693844",
+   "conclusion": "incomplete",
+   "note": "wording pass: all desktop E2E (macOS, Ubuntu, Windows), packaged, node, dossier, lint, supply chain and Rust Ubuntu/Windows green; Rust macOS cancelled twice in the queue (no macOS runner), not run"
+  }
+ ],
+ "wording_pass": {
+  "trigger": "owner on 2026-11-18 after the first screenshots: \"Fix wording first\"",
+  "changes": [
+   "approver: 'you' when the Core's id is the one it recorded for the definition's versions (myIds), else 'another person (<8 chars>)'; the id is data-approver and the title",
+   "definition hash: 12 characters with Copy (full hash on the clipboard, data-hash and title); approved hash 12 characters with title; review dialog keeps the full content hash in a secondary caption style",
+   "page heads: a summary at the left ('2 automations · 1 enabled'; '2 skills · 3 rules · 1 hook · 0 extensions'; 'N matches' while searching)",
+   "'Folder whose .modbit/automations files to read' -> 'Read automations from a folder'; 'Load definitions from the repository' -> 'Read definitions'; 'manual / test run' -> 'By hand' (all trigger summaries in words); 'Run started (running).' -> 'The run started.'; principal 'creator' -> 'whoever saved it'; run event id moved to the time's title and data-event-id; repository problem codes to the title",
+   "hooks: 'Before reading files · only watches · ...' (tools in words), 'Runs kestrel-watch.sh' with the full command in the title, 'Last ran fine in 7 ms'; tool servers 'runs on this machine'",
+   "paths: Rules and skill sources relative to the task's folder, ~/... under home, else the last three parts; the full path in the title; not-loaded reasons without the Core command name; full fingerprints in Core sentences cut to 12",
+   "Kill... kept: QUAL-PX-207 and docs/68 name the kill switch"
+  ]
+ }
+}

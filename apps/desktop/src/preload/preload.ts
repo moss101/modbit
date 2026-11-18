@@ -172,6 +172,27 @@ export interface ContextInspectorEntry {
   stub: boolean;
 }
 
+/**
+ * REQ-PX-107 / REQ-PX-207: one instruction layer the Core recorded for the task's last turn (its newest `RulesSelected`): a
+ * layer in force (`loaded`), or a file that exists and is not, with the Core's reason. Text in these files is project
+ * instruction data; the desktop only lists them and opens their source.
+ */
+export interface InstructionLayer {
+  /** project | repo-instructions | extension:<id> | user (empty for a file that is not loaded). */
+  layer: string;
+  id: string;
+  /** The file as the Core names it: relative to the task's folder for AGENTS.md / CLAUDE.md, absolute otherwise. */
+  source: string;
+  contentHash: string;
+  /** GLOBAL, or `PATH:<active path> matched <glob>`. */
+  reason: string;
+  loaded: boolean;
+  notLoadedReason: string;
+  bytes: string;
+  truncated: boolean;
+  scannerFindings: string[];
+}
+
 export interface ContextInspectorSummary {
   packId: string;
   workspaceRevision: string;
@@ -193,6 +214,8 @@ export interface ContextInspectorSummary {
   manifestRef: string;
   prefixCacheHits: number;
   prefixCacheMisses: number;
+  /** REQ-PX-207: the instruction layers the Core recorded for the task, as it recorded them. */
+  instructions: InstructionLayer[];
 }
 
 /** M10.1: one session's operations picture, from the Core's log. Counts
@@ -359,8 +382,8 @@ export interface ModbitBridge {
   customizeExtensionUnload(sessionId: string, extensionId: string): Promise<{ extensionId: string; name: string; removed: string[] }>;
   /** Import another agent's configuration through the Core's importer; the person picks the folder in the OS dialog. It arrives quarantined. Null when they cancel. */
   customizeImport(sessionId: string, name: string): Promise<ImportReportInfo | null>;
-  /** Show a skill's or an extension's source folder (the path is the Core's listing, not the renderer's). */
-  customizeOpenSource(kind: "skill" | "extension", key: string, sessionId?: string, taskId?: string): Promise<{ opened: string }>;
+  /** Show a row's source in the file manager: a skill or an extension by the key the Core listed, or (REQ-PX-207) a rule by the source the Core recorded as loaded for the task (session and task required). */
+  customizeOpenSource(kind: "skill" | "extension" | "rule", key: string, sessionId?: string, taskId?: string): Promise<{ opened: string }>;
   coreStatus(): Promise<unknown>;
   /** M10.2: the updater's state and the three things a person can ask of it. */
   updateView(): Promise<UpdateViewDto>;

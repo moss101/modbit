@@ -495,6 +495,8 @@ export function Shell({ app }: { app: AppState }) {
   const openedProject = projectPage ? projects.projects.find((p) => p.projectId === projectPage) : undefined;
   const title = settingsOpen ? "Settings" : customizeOpen ? "Customize" : inboxOpen ? "Inbox" : automationsOpen ? "Automations" : dashboardOpen ? "Dashboard" : reviewing || browsing ? (overlayTitle ?? "Task") : projectPage ? (openedProject?.name ?? "Project") : worktreesOpen ? "Worktrees" : (overlayTitle ?? "New task");
   const openedHeader = conversation ? headers.find((h) => h.taskId === conversation.taskId) : undefined;
+  // REQ-PX-106 / PX-207: the task Customize reads hooks, memory and the Core's loaded rules for.
+  const customizeTask = conversation?.taskId ?? selectedTaskId ?? [...model.tasks.keys()][0] ?? null;
   const panelRefreshKey = useThrottled(`${panelTask?.state ?? ""}:${panelTask?.lastOffset ?? ""}`, 1200);
   // MWS-05: one toggle per pane the task in the centre can show, each with its state. A page that is not a task, and a task that has not started, have none.
   const shownTaskId = settingsOpen || customizeOpen || inboxOpen || automationsOpen || dashboardOpen ? null : (reviewing ?? browsing?.taskId ?? (projectPage || worktreesOpen ? null : (conversation?.taskId ?? null)));
@@ -911,13 +913,13 @@ export function Shell({ app }: { app: AppState }) {
             />
           ) : customizeOpen ? (
             <div className="autos-scroll" data-testid="customize-region">
-              <Customize connected={core.state === "connected"} sessionId={model.sessionId} taskId={conversation?.taskId ?? selectedTaskId ?? [...model.tasks.keys()][0] ?? null} onClose={() => setCustomizeOpen(false)} />
+              <Customize connected={core.state === "connected"} sessionId={model.sessionId} taskId={customizeTask} taskTitle={customizeTask ? (model.tasks.get(customizeTask)?.goalText ?? null) : null} />
             </div>
           ) : inboxOpen ? (
             <Inbox app={app} onOpenTask={(id) => openConversation(id)} onNotificationSettings={() => actions.focusSettingsSection("notification-preferences")} focusRequest={inboxFocus} needsYou={needsYou} />
           ) : automationsOpen ? (
             <div className="autos-scroll" data-testid="automations-region">
-              <Automations connected={core.state === "connected"} onOpenTask={(id) => openConversation(id)} onClose={() => setAutomationsOpen(false)} />
+              <Automations connected={core.state === "connected"} onOpenTask={(id) => openConversation(id)} />
             </div>
           ) : dashboardOpen && model.sessionId ? (
             <div className="autos-scroll">
