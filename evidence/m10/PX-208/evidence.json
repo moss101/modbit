@@ -1,0 +1,66 @@
+{
+ "task": "PX-208",
+ "requirements": [
+  "REQ-PX-208",
+  "QUAL-PX-208",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-208"
+ ],
+ "scenarios": [
+  "QUAL-PX-208 / PX-E2E-208"
+ ],
+ "decision_record": "DR-PX-2026-11-11-021 (MWS-14; MWS-04 for the Review row; section 12 Shortcuts; sections 5.11 and 9)",
+ "tier": "release-critical",
+ "branch": "wip/desktop-2-review",
+ "base": "origin/main 68f39e5e",
+ "status": "built and proven locally on macOS arm64; not sealed (graph.py was not run: sealing is not this task's)",
+ "audit": {
+  "classification": "IMPLEMENTED-PARTIAL: the task's own review (bundle, per-hunk reject, accept/return via review:decide, PR flow, forge reads) and Settings with theme/zoom/density PRODUCTION-WORKING; no Review page or navigation row, no task-row or grouping option under Appearance (the list's preferences lived in the list's React state), no shortcut list derived from the key maps",
+  "first_missing_link": "no Review entry or page listing tasks with changes; Appearance could not reach the mounted list's preferences; the shortcut list was hand-written beside the maps",
+  "traced": "open-review -> ReviewPage(headers from AgentList onHeaderList) -> window.modbit.reviewBundle (main review:bundle -> Core ReviewBundle); Open review -> setReviewing -> Review -> decideReview (review:decide -> Core DecideReview); Settings Appearance -> updateListPrefs (modbit.agents.v1, the list's entry) -> AgentList subscription; Shortcuts -> shortcutSheet(shellRegistry, commandFor, rowKeyAction)"
+ },
+ "bridge": {
+  "added": [],
+  "protocol_change": "none",
+  "preload_change": "none",
+  "main_change": "none",
+  "csp_change": "none",
+  "rust_change": "none",
+  "locked_files_changed": "none"
+ },
+ "decided_here": {
+  "pull_requests": "a task is under Pull requests only when the Core answered this window that it opened or updated one (PX-211 seam)",
+  "findings": "the bundle's findings: failed checks of the latest verification run, broken change rules, self-review items (open first), failed forge checks; skipped checks counted, not findings",
+  "list_prefs": "one observable copy of the list's existing preferences entry, shared by the list and Settings",
+  "shortcuts": "generated from the registry, commandFor and rowKeyAction; each key resolved back through its own map; COMMAND_WORDS and ROW_KEY_WORDS are records over the command types"
+ },
+ "left_out": [
+  "pull request state, checks, merge, auto-fix and the board's filters (PX-211..213)",
+  "reviewer findings one by one with Fix this one (PX-214)",
+  "comment Address actions",
+  "the task's own review body words (its meta line still shows the state enum and revisions)",
+  "the help dialog keeps its own SHORTCUTS/LIST_KEYS list"
+ ],
+ "tests": [
+  "apps/desktop/e2e/px-208-review-settings.spec.ts",
+  "apps/desktop/src/renderer/settings/shortcut-sheet.test.ts",
+  "apps/desktop/src/renderer/review/review-model.test.ts",
+  "apps/desktop/e2e/task-list.spec.ts",
+  "apps/desktop/e2e/awl.spec.ts"
+ ],
+ "unit": "@modbit/desktop 457 of 457 (+6 shortcut-sheet.test.ts, +3 review-model.test.ts); pnpm typecheck clean",
+ "proof": "e2e/px-208-review-settings.spec.ts 1 of 1 locally against the real app and a real Core (sha256 c5ec630a2c92680c...), see TASK_CARD.md Verification",
+ "retained_mutations": [
+  "a row for an unbound key m added to Shortcuts: unboundListed fails",
+  "a Run mode control added to Settings: perTaskAsGlobal fails",
+  "the density left unapplied after Compact: densityDrift fails"
+ ],
+ "removed_test_ids": [],
+ "changed_checks": [
+  "task-list.spec.ts orderDrift: 'no Review navigation row' becomes 'the Review row drawn once'; expected navigation includes Review",
+  "awl.spec.ts and task-list.spec.ts NAV gain open-review"
+ ],
+ "removed_checks": [],
+ "screenshots": "after/{sidebar-with-review,review-page,hunk-decision,settings-appearance,settings-shortcuts}-{comfortable,compact}-{light,dark}.png, from the running app",
+ "ci": [],
+ "full_suite": "desktop e2e, local macOS arm64, once: 221 tests, 218 passed, 0 failed, 3 skipped (desktop-e2e-full-results.txt)"
+}
