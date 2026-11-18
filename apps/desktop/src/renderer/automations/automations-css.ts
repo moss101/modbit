@@ -5,12 +5,13 @@
  * and lists of rows of at least 44 px with a 1 px edge; Automations has a details rail the width of the task's (MWS-09) beside its
  * list. State is never colour alone: every state, status and attention kind has a glyph and words in the markup.
  */
+import { DETAILS_RAIL } from "../shell/layout.ts";
+
 export const automationsCss = `
 /* MWS-14: the page shape shared by Automations and Customize. */
 .pg { height: 100%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--mb-surface-conversation); container-type: inline-size; container-name: page; }
 .pg-head { flex: none; box-sizing: border-box; height: var(--mb-top-bar); display: flex; align-items: center; gap: var(--mb-space-2); padding: 0 var(--mb-space-2) 0 var(--mb-space-5); border-bottom: 1px solid var(--color-tab-border); font-size: var(--mb-type-chrome-size); }
 .pg-head .mb-btn { white-space: nowrap; }
-.pg-title { margin: 0; font-size: var(--mb-type-chrome-size); line-height: var(--mb-type-chrome-line); font-weight: 600; white-space: nowrap; }
 .pg-grow { flex: 1 1 auto; }
 .pg-split { flex: 1 1 auto; min-height: 0; display: flex; }
 .pg-body { flex: 1 1 auto; min-width: 0; min-height: 0; overflow: auto; scrollbar-gutter: stable; box-sizing: border-box; padding: var(--mb-space-4) var(--mb-space-5) var(--mb-space-8); display: flex; flex-direction: column; gap: var(--mb-space-2); font-size: var(--mb-type-chrome-size); line-height: var(--mb-type-chrome-line); }
@@ -78,7 +79,7 @@ export const automationsCss = `
 .autos-cell-trig { width: 168px; list-style: none; margin: 0; padding: 0; }
 .autos-cell-trig li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .autos-cell-last { width: 112px; display: block; color: var(--mb-color-text); }
-.autos-rail { flex: none; width: var(--mb-rail); min-width: 280px; box-sizing: border-box; min-height: 0; overflow: auto; background: var(--mb-surface-conversation); border-left: 1px solid var(--color-tab-border); padding: var(--mb-space-1_5) 18px 18px; font-size: var(--mb-type-chrome-size); line-height: var(--mb-type-chrome-line); }
+.autos-rail { flex: none; width: ${DETAILS_RAIL.width}px; min-width: ${DETAILS_RAIL.min}px; box-sizing: border-box; min-height: 0; overflow: auto; background: var(--mb-surface-conversation); border-left: 1px solid var(--color-tab-border); padding: var(--mb-space-1_5) 18px 18px; font-size: var(--mb-type-chrome-size); line-height: var(--mb-type-chrome-line); }
 .autos-rail-head { gap: var(--mb-space-2); }
 .autos-rail-title { flex: 1 1 auto; min-width: 0; margin: 0; font-size: var(--mb-type-chrome-size); line-height: var(--mb-type-chrome-line); font-weight: 600; overflow-wrap: anywhere; }
 .autos-rail-state { margin: 0 0 var(--mb-space-1); font-size: var(--mb-type-caption-size); line-height: var(--mb-type-caption-line); }

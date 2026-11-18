@@ -169,8 +169,9 @@ test("the view offers no catalog, no install from the network and no update flow
 
 test("trusting a skill by the hash it shows is the Core's record, reaches the next request, and revoking removes it", async () => {
   const hash = (await skill("alpha-skill").getAttribute("data-hash"))!;
-  // By keyboard: the button names the version it trusts.
-  const trust = skill("alpha-skill").getByTestId("customize-skill-trust");
+  // By keyboard: the button names the version it trusts. It is in the review (PX-207): a skill that is not trusted is reviewed first.
+  await skill("alpha-skill").getByTestId("customize-skill-review").click();
+  const trust = page.getByTestId("customize-skill-trust");
   await expect(trust).toHaveAccessibleName(`Trust alpha-skill at ${hash.slice(0, 12)}`);
   await trust.focus();
   await page.keyboard.press("Enter");
@@ -200,14 +201,16 @@ test("trusting a skill by the hash it shows is the Core's record, reaches the ne
 test("a skill that changed under the view is refused with the Core's code, and trust is bound to the new hash", async () => {
   const shown = (await skill("beta-skill").getAttribute("data-hash"))!;
   writeFileSync(join(dataDir, "skills", "beta-skill", "SKILL.md"), skillText("beta-skill", BETA, "triggers: [never]\n"));
-  await skill("beta-skill").getByTestId("customize-skill-trust").click();
+  await skill("beta-skill").getByTestId("customize-skill-review").click();
+  await page.getByTestId("customize-skill-trust").click();
   await expect(page.getByTestId("customize-refusal")).toHaveAttribute("data-code", "HASH_MISMATCH");
   await expect(skill("beta-skill")).toHaveAttribute("data-trust", "UNTRUSTED");
   // Refreshed, the row shows the new hash, and trusting that works.
   await page.getByTestId("customize-refresh").click();
   const now = (await skill("beta-skill").getAttribute("data-hash"))!;
   expect(now).not.toBe(shown);
-  await skill("beta-skill").getByTestId("customize-skill-trust").click();
+  await skill("beta-skill").getByTestId("customize-skill-review").click();
+  await page.getByTestId("customize-skill-trust").click();
   await expect(skill("beta-skill")).toHaveAttribute("data-trust", "TRUSTED_BY_OWNER");
   await skill("beta-skill").getByTestId("customize-skill-revoke").click();
   await expect(skill("beta-skill")).toHaveAttribute("data-trust", "UNTRUSTED");
@@ -248,7 +251,9 @@ test("another agent's configuration imports quarantined; its skill is absent unt
   await expect(report).toContainText("Quarantined");
   const ext = extension("mixed");
   await expect(ext).toHaveAttribute("data-state", "QUARANTINED");
-  await expect(ext.getByTestId("customize-extension-state")).toContainText("signature UNSIGNED");
+  // PX-207: the Core's label is data on the row; the words say it plainly.
+  await expect(ext).toHaveAttribute("data-signature", "UNSIGNED");
+  await expect(ext.getByTestId("customize-extension-state")).toContainText("not signed");
   // Its tool servers are declared and inert: the Core never starts a quarantined extension's server.
   await expect(ext.locator('[data-testid="customize-server"][data-name="helper"]')).toHaveAttribute("data-state", "INERT");
   await expect(ext.locator('[data-testid="customize-server"][data-name="helper"]')).toContainText("inert (never started)");
@@ -262,7 +267,8 @@ test("another agent's configuration imports quarantined; its skill is absent unt
   // Its skill is listed now, as the extension's own, and cannot reach the model until trusted by hash.
   await expect(skill("pdf-extract")).toHaveAttribute("data-scope", "EXTENSION");
   await expect(skill("pdf-extract")).toHaveAttribute("data-enabled", "false");
-  await skill("pdf-extract").getByTestId("customize-skill-trust").click();
+  await skill("pdf-extract").getByTestId("customize-skill-review").click();
+  await page.getByTestId("customize-skill-trust").click();
   await expect(skill("pdf-extract")).toHaveAttribute("data-trust", "TRUSTED_BY_OWNER");
   await skill("pdf-extract").getByTestId("customize-skill-revoke").click();
   // Unloaded, none of it remains.
@@ -275,9 +281,9 @@ test("open source shows the folder the Core listed; every control works by keybo
   await skill("alpha-skill").getByTestId("customize-skill-open").focus();
   await page.keyboard.press("Enter");
   await expect.poll(async () => (await app.evaluate(() => (globalThis as unknown as { __revealed: string[] }).__revealed)).map((p) => realpathSync(p))).toEqual([realpathSync(join(dataDir, "skills", "alpha-skill"))]);
-  // Tab order reaches every action of the first skill row.
-  await expect(skill("alpha-skill").getByTestId("customize-skill-trust")).toBeEnabled();
-  await skill("alpha-skill").getByTestId("customize-skill-trust").focus();
+  // Tab order reaches every action of the first skill row (PX-207: its first is the review that holds the trust).
+  await expect(skill("alpha-skill").getByTestId("customize-skill-review")).toBeEnabled();
+  await skill("alpha-skill").getByTestId("customize-skill-review").focus();
   await page.keyboard.press("Tab");
   expect(await page.evaluate(() => document.activeElement?.getAttribute("data-testid"))).toBe("customize-skill-open");
   await accessible(page, "the Customize view after the actions", '[data-testid="customize"]');

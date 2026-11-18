@@ -173,7 +173,7 @@ export function Automations({ calls = bridgeCalls, connected, onOpenTask, initia
   return (
     <section className="pg autos" aria-label={`Automations${suffix}`} data-testid="automations" data-loaded={data.loaded} data-rail={selected ? "open" : "closed"}>
       <header className="pg-head">
-        <h2 className="pg-title">Automations</h2>
+        <h2 className="mb-sr-only">Automations</h2>
         <span className="pg-grow" />
         <Button size="sm" variant="ghost" aria-pressed={globalPaused} onClick={() => void act(async () => void (await calls.pause("", !globalPaused)))} disabled={busy || !list} data-testid="global-pause" data-paused={globalPaused}>
           {globalPaused ? "Resume all" : "Pause all"}
@@ -432,7 +432,7 @@ export function Detail({ labelSuffix = "", view: v, detail, runs, nowMs, busy, o
   const live = v.state === "ENABLED" || v.state === "PAUSED";
   const folder = v.workspaceRoot.split(/[\\/]/).filter(Boolean).pop() ?? v.workspaceRoot;
   return (
-    <aside className="autos-rail" aria-label={`Automation ${v.name}${labelSuffix}`} data-testid="automation-detail" data-automation-id={v.automationId} data-state={v.state} data-version={v.currentVersion}>
+    <section className="autos-rail" aria-label={`Automation ${v.name}${labelSuffix}`} data-testid="automation-detail" data-automation-id={v.automationId} data-state={v.state} data-version={v.currentVersion}>
       <div className="rail-head autos-rail-head">
         <h3 className="autos-rail-title">{v.name}</h3>
         <IconButton icon={<Icon name="x" />} label="Close the details" size="sm" onClick={onClose} data-testid="automation-rail-close" />
@@ -620,7 +620,7 @@ export function Detail({ labelSuffix = "", view: v, detail, runs, nowMs, busy, o
         </h4>
         <History runs={runs} nowMs={nowMs} onOpenTask={onOpenTask} onAck={onAck} />
       </section>
-    </aside>
+    </section>
   );
 }
 

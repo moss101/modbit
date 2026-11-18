@@ -176,7 +176,7 @@ export function Customize({ connected, sessionId, taskId, taskTitle }: Customize
     return (
       <section className="pg cz" aria-label="Customize" data-testid="customize-unavailable">
         <header className="pg-head">
-          <h2 className="pg-title">Customize</h2>
+          <h2 className="mb-sr-only">Customize</h2>
         </header>
         <div className="pg-body">
           <p className="meta" role="status" data-testid="customize-error">
@@ -193,9 +193,9 @@ export function Customize({ connected, sessionId, taskId, taskTitle }: Customize
   const isFound = (s: SectionId, key: string) => (found && found.section === s && found.key === key ? "true" : undefined);
 
   return (
-    <section className="pg cz" aria-label="Customize" data-testid="customize" data-section={section}>
+    <section className="pg cz" aria-label="Customize" data-testid="customize" data-current={query.trim() ? "search" : section}>
       <header className="pg-head">
-        <h2 className="pg-title">Customize</h2>
+        <h2 className="mb-sr-only">Customize</h2>
         <span className="pg-grow" />
         <label className="cz-search">
           <Icon name="search" aria-hidden="true" />
@@ -646,8 +646,8 @@ export function Customize({ connected, sessionId, taskId, taskTitle }: Customize
         onClose={() => setReviewing(null)}
         onOpenSource={(s) => void act(() => window.modbit.customizeOpenSource("skill", s.name, undefined, taskId ?? undefined))}
         onTrust={(s) => {
-          setReviewing(null);
-          void act(() => window.modbit.customizeSkillTrust(s.name, s.contentHash, taskId ?? undefined), (r) => `Trusted ${r.name} at ${shortHash(r.contentHash)}.`);
+          // The decision is sent from the review, which stays open (its buttons busy) until the Core has answered.
+          void act(() => window.modbit.customizeSkillTrust(s.name, s.contentHash, taskId ?? undefined), (r) => `Trusted ${r.name} at ${shortHash(r.contentHash)}.`).finally(() => setReviewing(null));
         }}
       />
     </section>

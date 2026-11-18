@@ -301,7 +301,9 @@ test("PX-086: a repository definition is data until its exact bytes are approved
     await expect(refusedRun).toHaveAttribute("data-status", "skipped");
     await expect(refusedRun).toHaveAttribute("data-reason", "SOURCE_CHANGED");
     await expect(refusedRun).toHaveAttribute("data-task-id", "");
-    await expect(refusedRun.getByTestId("run-reason")).toHaveText("SOURCE_CHANGED");
+    // PX-207: the Core's code is data on the reason; the words say it plainly.
+    await expect(refusedRun.getByTestId("run-reason")).toHaveAttribute("data-code", "SOURCE_CHANGED");
+    await expect(refusedRun.getByTestId("run-reason")).toHaveText("The repository file no longer matches the bytes that were approved.");
     // Approving the bytes that were read is refused: they are no longer the bytes on disk.
     await page.getByTestId("detail-enable").click();
     await page.getByTestId("enable-confirm").click();

@@ -47,3 +47,52 @@ test("PX-188: Share is offered for live private items only, and the words say wh
   assert.match(shareWords({ outcome: "shared", refusalCode: "", scope: "organization:t", existed: false }), /personal detail removed/);
   assert.match(shareWords({ outcome: "refused", refusalCode: "SHARE_NOT_OWNER", scope: "", existed: false }), /SHARE_NOT_OWNER/);
 });
+
+// ------------------------------------------------------------------ PX-207
+
+import { baseName, customizeHits, hookName, hookWhen, layerWords, ruleSize, ruleWhen, rulesOf, signatureWords, skillKey, skillScopeWords, skillTag, type RuleLayer } from "./customize-model.ts";
+import type { HookRow, SkillRow } from "../../shared/customize-types.ts";
+
+const layer = (o: Partial<RuleLayer>): RuleLayer => ({ layer: "project", id: "x", source: "/r/.modbit/rules/x.md", contentHash: "a".repeat(64), reason: "GLOBAL", loaded: true, notLoadedReason: "", bytes: "10", truncated: false, scannerFindings: [], ...o });
+const skillRow = (o: Partial<SkillRow>): SkillRow => ({ name: "s", version: "1", description: "", scope: "USER", contentHash: "a".repeat(64), trust: "UNTRUSTED", trustDetail: "", enabled: false, invocation: "BOTH", paths: [], pathsActive: false, indexTokens: 0, indexed: false, indexForm: "", source: "", provenanceSource: "", provenanceAuthor: "", provenanceLicense: "", lifecycle: "", ...o });
+const hookRow = (o: Partial<HookRow>): HookRow => ({ id: "config:user/h", source: "", point: "before_tool", mode: "observe", failPolicy: "closed", timeoutMs: "0", tools: [], command: ["sh"], scope: "USER", enabled: true, canDisable: true, trustedWorkspaceGate: false, lastOutcome: "", lastDetail: "", lastDurationMs: "0", invocations: 0, ...o });
+
+test("PX-207: Rules shows only the layers the Core recorded as loaded, in its order; the rest stand apart", () => {
+  const all = [layer({ source: "AGENTS.md", layer: "repo-instructions" }), layer({ source: "/r/b.md", loaded: false, layer: "", notLoadedReason: "unreadable" }), layer({ source: "/u/rules/mine.md", layer: "user" })];
+  const { loaded, notLoaded } = rulesOf(all);
+  assert.deepEqual(loaded.map((l) => l.source), ["AGENTS.md", "/u/rules/mine.md"]);
+  assert.deepEqual(notLoaded.map((l) => l.source), ["/r/b.md"]);
+  assert.equal(layerWords("repo-instructions"), "This repository's instructions");
+  assert.equal(layerWords("extension:kit"), "From the extension kit");
+  assert.equal(ruleWhen("GLOBAL"), "Always in force");
+  assert.equal(ruleWhen("PATH:src/a.rs matched src/**"), "In force because src/a.rs matches src/**");
+  assert.equal(ruleSize({ bytes: "2048", truncated: true }), "2.0 KB, cut to fit the prompt");
+  assert.equal(baseName("/r/.modbit/rules/style.md"), "style.md");
+  assert.equal(baseName("C:\\r\\rules\\style.md"), "style.md");
+});
+
+test("PX-207: the one search finds rows by their words and names the section each opens; a rule the Core did not load is never a result", () => {
+  const d = {
+    skills: [skillRow({ name: "kestrel-notes", description: "Tidies notes" }), skillRow({ name: "other", description: "Drafts merged work" })],
+    rules: [layer({ source: "/r/.modbit/rules/kestrel.md" }), layer({ source: "/r/kestrel-broken.md", loaded: false })],
+    hooks: [hookRow({ id: "config:user/kestrel-watch" })],
+    extensions: [],
+    memory: [{ id: "m1", topic: "Kestrel", content: "facts", scope: "user:me" }],
+  };
+  const hits = customizeHits("KESTREL", d);
+  assert.deepEqual(hits.map((h) => `${h.section}:${h.key}`), ["skills:USER/kestrel-notes", "rules:/r/.modbit/rules/kestrel.md", "hooks:config:user/kestrel-watch", "memory:m1"]);
+  assert.deepEqual(customizeHits("merged work", d).map((h) => h.key), ["USER/other"], "every word must match, in any field");
+  assert.deepEqual(customizeHits("   ", d), []);
+  assert.equal(skillKey({ scope: "PROJECT", name: "a" }), "PROJECT/a");
+});
+
+test("PX-207: the pages say the Core's codes in words", () => {
+  assert.equal(skillScopeWords("USER"), "yours");
+  assert.deepEqual(skillTag({ trust: "UNTRUSTED", enabled: false }), { text: "Not trusted", tone: "warn" });
+  assert.deepEqual(skillTag({ trust: "TRUSTED_BY_OWNER", enabled: true }), { text: "Trusted", tone: "ok" });
+  assert.deepEqual(skillTag({ trust: "FORBIDDEN", enabled: false }), { text: "Forbidden", tone: "danger" });
+  assert.equal(hookWhen({ point: "before_tool", mode: "intercept", failPolicy: "open" }), "Before a tool runs · can stop or change the step · if it fails the step goes ahead");
+  assert.equal(hookName("config:user/rec"), "rec");
+  assert.equal(signatureWords("UNSIGNED"), "not signed");
+  assert.equal(signatureWords("VERIFIED:acme"), "signed by acme");
+});

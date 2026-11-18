@@ -234,7 +234,7 @@ export const CUSTOMIZE_SECTIONS = [
   { id: "skills", label: "Skills" },
   { id: "rules", label: "Rules" },
   { id: "hooks", label: "Hooks" },
-  { id: "extensions", label: "Extensions and tool servers" },
+  { id: "extensions", label: "Extensions" },
   { id: "memory", label: "Memory" },
 ] as const;
 export type SectionId = (typeof CUSTOMIZE_SECTIONS)[number]["id"];
