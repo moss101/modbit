@@ -102,3 +102,29 @@ export function saveListPrefs(p: ListPrefs): void {
     // a per-viewer convenience: the list works without it
   }
 }
+
+/**
+ * The one copy of the list's preferences in this window (REQ-PX-208): the task list and Settings' Appearance both read and write
+ * it, so a choice made in either takes effect in the other at once, with no reload. It is the same stored entry
+ * (`LIST_PREFS_KEY`), read once and written on every change; it is not a second store.
+ */
+let live: ListPrefs | null = null;
+const listeners = new Set<(p: ListPrefs) => void>();
+
+export function currentListPrefs(): ListPrefs {
+  live ??= loadListPrefs();
+  return live;
+}
+
+export function updateListPrefs(f: (p: ListPrefs) => ListPrefs): void {
+  const next = f(currentListPrefs());
+  if (next === live) return;
+  live = next;
+  saveListPrefs(next);
+  for (const l of listeners) l(next);
+}
+
+export function subscribeListPrefs(l: (p: ListPrefs) => void): () => void {
+  listeners.add(l);
+  return () => void listeners.delete(l);
+}

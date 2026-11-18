@@ -12,7 +12,7 @@ import type { AgentHeaderView, ConversationSearchView } from "../../shared/conve
 import { AgentListView } from "./agent-list-view.tsx";
 import type { Density } from "@modbit/design-tokens";
 import { deleteView, listItems, nearestSibling, passes, pin as pinTask, saveView, unpin as unpinTask, visibleTaskIds, type FactField, type Filters, type Grouping, type RowDetails, type RowFacts, type SortKey, type StoredView, type SubtitleField } from "./list-model.ts";
-import { loadListPrefs, saveListPrefs, type ListPrefs } from "./prefs.ts";
+import { currentListPrefs, subscribeListPrefs, updateListPrefs, type ListPrefs } from "./prefs.ts";
 import { useAgents } from "./use-agents.ts";
 import { NewProjectDialog, RenameProjectDialog, SaveViewDialog } from "../projects/project-dialogs.tsx";
 import { archiveProject as archiveProjectWithUndo } from "../projects/archive-project.ts";
@@ -67,9 +67,13 @@ export interface AgentListProps {
 }
 
 export function AgentList({ onSplit, splitIds, sessionId, connected, selectedTaskId, onSelect, onHeaders, onHeaderList, facts, projects, selectedProjectId = null, onOpenProject, onProjectArchived, parents, density, onSearch, onNewTaskIn, onTaskActions }: AgentListProps) {
-  const [prefs, setPrefs] = useState<ListPrefs>(loadListPrefs);
-  const update = useCallback((f: (p: ListPrefs) => ListPrefs) => setPrefs((p) => f(p)), []);
-  useEffect(() => saveListPrefs(prefs), [prefs]);
+  // REQ-PX-208: the window's one copy of the list's preferences, shared with Settings' Appearance (agents/prefs.ts).
+  const [prefs, setPrefs] = useState<ListPrefs>(currentListPrefs);
+  useEffect(() => {
+    setPrefs(currentListPrefs());
+    return subscribeListPrefs(setPrefs);
+  }, []);
+  const update = useCallback((f: (p: ListPrefs) => ListPrefs) => updateListPrefs(f), []);
   const agents = useAgents(sessionId, prefs.filters.showArchived, connected);
   const [note, setNote] = useState<string | null>(null);
   const [query, setQuery] = useState("");

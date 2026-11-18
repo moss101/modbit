@@ -12,12 +12,23 @@ import type { PullRequestAckView } from "../../preload/preload.ts";
  * reload). It lets the Review and the pane say the same thing; it is the Core's answer at that moment, not the request's state now.
  */
 const answered = new Map<string, PullRequestAckView>();
+const watchers = new Set<() => void>();
 const remember = (taskId: string, ack: PullRequestAckView) => {
   if (ack.status !== "OPENED" && ack.status !== "UPDATED") return;
   answered.delete(taskId);
   answered.set(taskId, ack);
   if (answered.size > 64) answered.delete(answered.keys().next().value as string);
+  for (const w of watchers) w();
 };
+
+/** REQ-PX-208: the request the Core last answered with for a task in this window (the Review page's "Pull requests from tasks"). */
+export const answeredRequest = (taskId: string): PullRequestAckView | null => answered.get(taskId) ?? null;
+
+/** Calls `w` whenever this window learns of a request; returns the unsubscribe. */
+export function watchAnswered(w: () => void): () => void {
+  watchers.add(w);
+  return () => void watchers.delete(w);
+}
 
 const plain = (e: unknown): string => (e as Error).message.replace(/^Error invoking remote method '[^']*': (Error: )?/, "");
 

@@ -18,7 +18,7 @@ import { streamingModel } from "./support/stream-model.ts";
 import { accessible, box, closeApp, git, launch, liftMinimumSize, makeRepo, setContentSize } from "./support/ui-harness.ts";
 
 /** The navigation rows of MWS-04, top to bottom. The search moved from a row of its own into the Tasks head. */
-const NAV = ["agents-new-task", "open-inbox", "open-automations", "open-customize"];
+const NAV = ["agents-new-task", "open-inbox", "open-automations", "open-review", "open-customize"];
 /** The Tasks head: search, list options, and more. */
 const HEAD = ["agents-search-open", "agents-tools-toggle", "agents-more"];
 /** What the rebuilds removed: none of these may come back. The last two are the Repositories section DR-PX-2026-11-11-021 removed. */
