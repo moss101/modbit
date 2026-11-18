@@ -12,6 +12,7 @@ import { Badge, Button, useTrayStore } from "@modbit/ui";
 import type { ModeProposalInfo } from "../../shared/control-types.ts";
 import { latestSettled, modeWords, pendingOf, PROPOSAL_WINDOW_S, proposalRefusalWords, proposalTitle, secondsLeft, settledWords } from "./proposal-model.ts";
 import { useModeProposals } from "./use-mode-proposals.ts";
+import { decideProposal } from "./decide.ts";
 
 const TRAY_ID = "mode-proposal";
 
@@ -92,7 +93,7 @@ export function ModeProposalDock({ sessionId, taskId, connected }: ModeProposalD
       setBusy(true);
       setNote(null);
       try {
-        await window.modbit.decideModeProposal(sessionId, taskId, p.proposalId, accept);
+        await decideProposal(sessionId, taskId, p.proposalId, accept);
       } catch (e) {
         setNote(proposalRefusalWords((e as Error).message));
       } finally {
