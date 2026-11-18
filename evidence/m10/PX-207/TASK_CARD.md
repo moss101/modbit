@@ -92,3 +92,7 @@ Whole desktop suite, local, macOS arm64, once (`desktop-e2e-full-results.txt`): 
 ## Limitations
 
 - The owner has not seen the screenshots. No graph status was set.
+
+## Closure (2026-11-18)
+
+Owner reviewed the screenshots, asked for a wording pass ("Fix wording first"), reviewed again and said "Yes, seal both". Merged as #229 (squash a47a8928) from head 2d2d3373, CI run 44364563619 green on every job (one rerun of a macOS job cancelled while queued). Sealed COMPLETE through graph.py with run, commit and evidence references.
