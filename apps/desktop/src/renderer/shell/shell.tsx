@@ -648,14 +648,14 @@ export function Shell({ app }: { app: AppState }) {
     else setPanelState(id, (s) => togglePane(s, kind));
   };
   // REQ-PX-049: what the Core recovered at start, as counts of its own task states, shown once its snapshot and attention list are in.
-  const [recoveryNote, setRecoveryNote] = useState<{ boot: string; text: string } | null>(null);
+  const [recoveryNote, setRecoveryNote] = useState<{ boot: string; text: string; recovered: number; resumed: number; attention: number } | null>(null);
   useEffect(() => {
     if (!app.recovery || app.screen !== "populated" || !app.attentionLoaded) return;
     if (recoveryNote?.boot === app.recovery.bootGeneration) return;
     const recovered = Number(app.recovery.tasks);
     if (recovered === 0) return;
     const resumed = tasks.filter((t) => t.state === "Running").length;
-    setRecoveryNote({ boot: app.recovery.bootGeneration, text: recoverySummary({ recovered, resumed, needAttention: cols.needsAttention.length }) });
+    setRecoveryNote({ boot: app.recovery.bootGeneration, text: recoverySummary({ recovered, resumed, needAttention: cols.needsAttention.length }), recovered, resumed, attention: cols.needsAttention.length });
     // The counts are taken once per boot, when the first complete picture exists.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [app.recovery, app.screen, app.attentionLoaded]);
@@ -880,8 +880,8 @@ export function Shell({ app }: { app: AppState }) {
         statusRow={
           <section aria-label="App notices">
             {recoveryNote && (
-              <p className="shell-toast meta" data-testid="recovery-summary">
-                Recovered at start: {recoveryNote.text}
+              <p className="shell-toast meta" data-testid="recovery-summary" data-recovered={recoveryNote.recovered} data-resumed={recoveryNote.resumed} data-attention={recoveryNote.attention}>
+                {recoveryNote.text}
               </p>
             )}
             <p className={notice ? "shell-toast meta" : "mb-sr-only"} role="status" aria-live="polite" data-testid="shell-notice">

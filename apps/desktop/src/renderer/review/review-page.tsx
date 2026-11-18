@@ -14,7 +14,7 @@ import { Button, Icon } from "@modbit/ui";
 import type { AgentHeaderView } from "../../shared/conversation-types.ts";
 import type { ReviewBundleView } from "../../preload/preload.ts";
 import { commentWords } from "../apps/pull-request-model.ts";
-import { changeSet, checksWords, findingsOf, reviewRows, type ReviewRow } from "./review-model.ts";
+import { changeSet, checksWords, findingsOf, refusalWords, reviewRows, type ReviewRow } from "./review-model.ts";
 import { answeredRequest, useForgeReads, watchAnswered } from "./use-pull-request.ts";
 
 export interface ReviewPageProps {
@@ -66,7 +66,7 @@ function Detail({ row, sessionId, bundle, error, reload, onOpenTask }: { row: Re
       </div>
       {error && (
         <p className="meta" role="alert" data-testid="review-page-error">
-          The Core could not read this task's review: {error}
+          The Core could not read this task's review: {refusalWords(error).text}.
         </p>
       )}
       {!bundle && !error && (
@@ -155,7 +155,7 @@ function Detail({ row, sessionId, bundle, error, reload, onOpenTask }: { row: Re
               {forge.note && <span className="meta">{forge.note}</span>}
               {forge.error && (
                 <span className="meta" role="alert">
-                  {forge.error}
+                  {refusalWords(forge.error).text}
                 </span>
               )}
             </div>

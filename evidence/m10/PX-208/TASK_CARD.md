@@ -39,7 +39,7 @@ No preload, main-process, protocol, CSP or Rust change. No locked file changed. 
 - Pull request state, checks, merge and auto-fix, and the board's Open / Merged / All filter and repository picker: PX-211..213 (the Core has no read of a request's state). Only requests this window opened are listed as pull requests, and only until the app restarts.
 - The reviewer's findings one by one with Fix this one, Dismiss, Apply all fixes and Run the review again: PX-214 (the bundle does not carry them).
 - Comment Address actions: comments become steer inputs through the existing forge read; no new action.
-- The task's own review body keeps its words (its meta line shows the task state and revisions as before, which `review.spec.ts` asserts); only its head moved into the page shape.
+- The task's own review keeps its two-column body; its words were made plain in the wording pass below.
 - The help dialog keeps its own list (`SHORTCUTS`, `LIST_KEYS`); the Settings section is the generated one.
 - The board's Settings sections Run modes and rules, Models and budgets, Environments, Computer use per app (PX-215): not this row.
 
@@ -83,6 +83,42 @@ Whole desktop suite, local, macOS arm64, once, on the final renderer (`desktop-e
 - The task's own review keeps its two-column body under the page head.
 - Settings keeps its section list in the left column (AFW-A10). Appearance adds "Second line on task rows" with the list's three values (When needed, Always, Never) for the board's One line / Two lines, and "Group tasks by" as a select of the list's groupings (the board shows four in a segmented control; the list has six).
 - Shortcuts: the app's bindings, not the board's proposals (section 12); grouped by where they act.
+
+## Wording pass (2026-11-18, after the owner's review: "Fix wording first")
+
+The owner read the first screenshots and asked for plain words before anything else. Visible text changed; every raw fact is kept as a data attribute (or a tooltip), and each assertion that read the raw text now reads the plain words and the attribute.
+
+- **The task's own review** (`review/review.tsx`, words in `review/review-model.ts`): the meta line is "Ready for review · 1 file, 2 changes · based on 7f30b63" (`data-task-state`, `data-workspace-revision`, `data-base`, `data-receipts`; task id, revision and receipts in the tooltip); a file's head is "Changed" / "Added" / "Deleted" / "Renamed" / "Binary" (`data-status`, `data-file-revision`, revision in the tooltip); the hunk controls are "Reject this change" and "Use as context" (the existing record's meaning: the change is given to retrieval as context; not "Show more lines", which would be a different action), and a rejected change says "Rejected: undone when you accept"; collapsed says "Collapsed · 2 added, 1 removed lines"; the split toggle says "Side by side" / "One column" (`aria-keyshortcuts="u"`); accept says "Accepted as commit … ; 1 change undone" (`data-reverted`); an edit says "Your edit was applied, and the review was read again." or "The edit was refused: the review is out of date; reload it and try again." (`data-outcome`, `data-code`, `data-workspace-revision`, `data-previous-revision`); the selection note says "2 changes used as context".
+- **The side panel**: Checks lists each run as "Before the change: 1 of 1 check passed", "Checks for this change: …", "Final checks: 4 of 5 checks passed, 1 skipped", with a check that did not pass as "Skipped: boundary pinned" / "✖ Failed: lint" (`data-stage`, `data-status`, `data-check-id`); "Checks on the pull request" with a one-sentence note; "Comments on the pull request" with a note that they come from outside Modbit, each comment as author, place and what became of it ("ignored: disallowed author"; `data-trust`, `data-reason`, `data-kind` keep the codes); "Read checks" / "Read comments" and their notes ("Read 1 check run for commit …"); the forge's refusal in words (`data-code`); Plan as its outcome and "Files it expected to change: notes.txt"; Self-review as its summary and a list with "(resolved)" or "(not resolved)"; Evidence folded as "Evidence (8)" with each link's kind in words and a 12-character hash (`data-link`); attributions, flaky checks and change rules in words (`data-raw`, `data-check-id`). The pull request block: "Open a pull request", "Push <branch> and open the pull request? This asks once, for exactly this push." (`data-intent`, `data-revision`), "Opened #1 at … · 1 receipt" (`data-head`, `data-receipts`), "Denied: the branch stays local and nothing reached the forge."
+- **The review's state line** (`screens.ts`): "1 changed file, ready for your decision"; an inconclusive gate's cause says "the acceptance check could not decide".
+- **The restart notice** (`main/lifecycle.ts` `recoverySummary`, a pure wording function only the renderer imports; no main-process behaviour changes): "2 tasks were restored after the restart." or "4 tasks were restored after the restart: 3 are running again, 1 needs you."; the counts are on `data-recovered`, `data-resumed`, `data-attention`.
+- **Settings**: the platform row is in words from the recorded state (`data-state` kept, the record's sentence in the tooltip; `tools/support_claims.py` passes); "(PX-128)" and "(PX-128, PX-129)" are gone from Locations and Account; a login credential shows its label, not its handle (`data-handle` kept, the handle in the tooltip); the languages row drops "Tier C" and "structural intelligence".
+- **Guard**: `rawWords` in the PX-208 spec fails on an enum or code, a row id, a task state, a "(s)" plural, a check kind, a revision id or JSON in the visible text of the Review page, the task's review and Settings; retained mutation: "ReadyForReview · 2 hunk(s)" put back into the review's meta is reported.
+
+### Assertions changed in the wording pass (none deleted, none weakened)
+
+| Spec | Was | Now |
+|---|---|---|
+| `review.spec.ts` | meta contains "ReadyForReview" | contains "Ready for review" and `data-task-state` = ReadyForReview |
+| `review.spec.ts` | verification contains "BASELINE" | contains "Before the change" and one `li[data-stage=BASELINE]` |
+| `review.spec.ts` | result contains "1 hunk(s) reverted" | contains "1 change undone" and `data-reverted` = 1 |
+| `onboarding.spec.ts` | meta contains "ReadyForReview"; verification contains "COMPLETION" | `data-task-state` = ReadyForReview and "Ready for review"; "Final checks" and one `li[data-stage=COMPLETION]` |
+| `forge-evidence.spec.ts` | forge error contains "NO_PULL_REQUEST" | `data-code` = NO_PULL_REQUEST and "no pull request for this task" |
+| `forge-evidence.spec.ts` | note contains "read 1 check run(s)" | contains "Read 1 check run" |
+| `forge-evidence.spec.ts` | meta contains "ReadyForReview" | `data-task-state` = ReadyForReview and "Ready for review" |
+| `forge-evidence.spec.ts` | the stranger's comment contains "DISALLOWED_AUTHOR" | `data-reason` = DISALLOWED_AUTHOR and "ignored: disallowed author" |
+| `user-patch.spec.ts` | revision parsed from "workspace revision N" in the meta; meta contains "workspace revision N+1", "N+2" | read from `data-workspace-revision`; `data-workspace-revision` = N+1, N+2 |
+| `user-patch.spec.ts` | patch result contains "applied at workspace revision N+1 (was N)" | `data-outcome` = applied, `data-workspace-revision` = N+1, `data-previous-revision` = N, "Your edit was applied" |
+| `user-patch.spec.ts` | patch result contains "refused" and "STALE_REVISION" | `data-outcome` = refused, `data-code` = STALE_REVISION, "The edit was refused: the review is out of date" |
+| `states.spec.ts` | the intent read from `pr-intent`'s text | read from `data-intent` (still 16 hex) |
+| `states.spec.ts` | pr result contains "opened #1 at …" and "1 receipt(s)" | "Opened #1 at …", "1 receipt" and `data-receipts` = 1 |
+| `lifecycle.spec.ts` | summary matches `^Recovered at start: …`; counts from "needs attention" / "tasks resumed" | matches `^N tasks? (was|were) restored after the restart`; counts from "need(s) you" / "is/are running again" and from `data-attention` / `data-resumed` |
+| `session-end.spec.ts` | summary matches `^Recovered at start: `; resumed from "tasks resumed" | matches the new sentence; resumed from "running again" and `data-resumed` |
+| `fleet.spec.ts` | platform contains "CI_COMPATIBLE" | contains "built and tested in CI" (`data-state` = CI_COMPATIBLE and "not a support claim" kept) |
+| `px-208-review-settings.spec.ts` | result contains "1 hunk(s) reverted" | contains "1 change undone" and `data-reverted` = 1 |
+| `main/lifecycle.test.ts` | four `recoverySummary` sentences | the same four counts in the new sentence, plus the one-task case |
+
+`keyboard.spec.ts`'s "2 added, 1 removed" holds unchanged. The screenshots in `after/` were all retaken after this pass.
 
 ## Limitations
 

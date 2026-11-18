@@ -112,6 +112,8 @@ export function usePullRequest(sessionId: string, taskId: string, from: string):
   return { pr, busy, error, open, decide, settled };
 }
 
+const count = (n: number, one: string): string => `${n} ${n === 1 ? one : `${one}s`}`;
+
 export interface ForgeReads {
   busy: boolean;
   /** What the last read recorded, in counts. */
@@ -134,10 +136,10 @@ export function useForgeReads(sessionId: string, taskId: string, reload: () => P
     try {
       if (what === "ci") {
         const r = await window.modbit.ingestCiResults(sessionId, taskId);
-        setNote(`read ${r.checks} check run(s) for ${r.commit.slice(0, 12)}${r.refused > 0 ? `, refused ${r.refused} for another commit` : ""} (offset ${r.offset})`);
+        setNote(`Read ${count(r.checks, "check run")} for commit ${r.commit.slice(0, 7)}${r.refused > 0 ? `; ${r.refused} for another commit not counted` : ""}.`);
       } else {
         const r = await window.modbit.ingestReviewComments(sessionId, taskId);
-        setNote(`${r.steered} comment(s) steer the task, ${r.ignored} ignored, ${r.alreadyTaken} already taken (offset ${r.offset})`);
+        setNote(`${count(r.steered, "comment")} passed to the agent, ${r.ignored} ignored, ${r.alreadyTaken} already read.`);
       }
       await reload();
       return true;

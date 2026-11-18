@@ -17,6 +17,15 @@ import { currentListPrefs, subscribeListPrefs, updateListPrefs } from "../agents
 import { shellRegistry } from "../shell/commands.ts";
 import { SCOPES, SCOPE_WORDS, shortcutSheet } from "./shortcut-sheet.ts";
 
+/** What this platform has earned (docs/76), in words; the recorded state stays on `data-state` and the record's sentence in the tooltip. */
+function platformWords(p: { state: string; statement: string }): string {
+  // The record's sentence starts with the platform and its architecture ("macOS arm64: …").
+  const where = p.statement.includes(":") ? p.statement.slice(0, p.statement.indexOf(":")) : "This platform";
+  if (p.state === "RELEASE_GRADE") return `${where}: the packaged app passed its full end-to-end tests on this platform.`;
+  if (p.state === "CI_COMPATIBLE") return `${where}: built and tested in CI. That is a development guarantee, not a support claim.`;
+  return `${where}: not built or tested on this platform.`;
+}
+
 /** The words for a row's second line (MWS-04's Row details), as Settings says them. */
 const ROW_DETAIL_WORDS: Record<RowDetails, string> = { auto: "When needed", always: "Always", never: "Never" };
 
@@ -153,7 +162,7 @@ export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, density
         <Section id="locations" query={query}>
           <div className="settings-card" data-testid="settings-locations">
             <Row title={localMachine()} detail="Available. A new task runs here unless you choose otherwise, and never takes its location from the task you last viewed. It can work in your checkout or in a worktree of its own." />
-            <Row title="Isolated cloud" detail={<span data-testid="settings-cloud-state">Not available from this app yet: the desktop has no cloud client (PX-128). The command line can hand a task over with <code>modbit cloud handoff</code>.</span>} />
+            <Row title="Isolated cloud" detail={<span data-testid="settings-cloud-state">Not available from this app yet: the desktop cannot hand a task to the cloud. The command line can hand a task over with <code>modbit cloud handoff</code>.</span>} />
           </div>
         </Section>
 
@@ -180,7 +189,7 @@ export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, density
                 {credentials.map((c) => (
                   <li key={c.handle} className="meta settings-list-row" data-testid="credential" data-handle={c.handle} data-origin={c.origin}>
                     <span>
-                      <code>{c.handle}</code> · {c.label} · {c.origin} · {c.username || "(no account name)"} · {c.persisted ? "in the OS keychain" : "held for this session only"}
+                      <span title={`Handle ${c.handle}`}>{c.label}</span> · {c.origin} · {c.username || "no account name"} · {c.persisted ? "in the OS keychain" : "held for this session only"}
                     </span>
                     <Button size="sm" variant="ghost" data-testid="credential-remove" onClick={() => void window.modbit.removeCredential(c.handle).then(refreshCredentials)}>
                       Forget
@@ -250,7 +259,7 @@ export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, density
 
         <Section id="account" query={query}>
           <div className="settings-card" data-testid="settings-account">
-            <Row title="Signed in" detail={<span data-testid="settings-account-state">Nobody: this app has no sign-in yet (PX-128, PX-129), and it works without one on this Mac.</span>} />
+            <Row title="Signed in" detail={<span data-testid="settings-account-state">Nobody: this app has no sign-in yet, and it works without one on this Mac.</span>} />
           </div>
         </Section>
 
@@ -355,13 +364,13 @@ export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, density
 
         <Section id="about" query={query}>
           <div className="settings-card" data-testid="about-build">
-            {platform && <Row title="Platform" detail={<span data-testid="platform-state" data-state={platform.state}>{platform.statement}</span>} />}
+            {platform && <Row title="Platform" detail={<span data-testid="platform-state" data-state={platform.state} title={platform.statement}>{platformWords(platform)}</span>} />}
             {languages.length > 0 && (
               <Row
                 title="Languages"
                 detail={
                   <span data-testid="language-labels" title={languages.map((l) => `${l.language}: ${l.label}`).join("\n")}>
-                    {languages.filter((l) => l.tier === "ALPHA_BASELINE").map((l) => l.language).join(", ")} at the Alpha baseline (Tier C plus compile and test evidence; structural intelligence not yet claimed); everything else unsupported.
+                    {languages.filter((l) => l.tier === "ALPHA_BASELINE").map((l) => l.language).join(", ")} at the Alpha baseline: the agent can edit, build and test them, with no deeper code understanding claimed yet; everything else unsupported.
                   </span>
                 }
               />

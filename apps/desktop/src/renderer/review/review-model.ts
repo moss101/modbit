@@ -92,7 +92,7 @@ export interface Finding {
 const LABEL: Record<FindingKind, string> = { check: "Check", rule: "Change rule", self: "Self-review", forge: "Forge check" };
 
 /** The agent's own self-review items, from the JSON the Core stored with its completion (`findings: [{ text, resolved }]`). */
-function selfReview(json: string): Finding[] {
+export function selfReview(json: string): Finding[] {
   if (!json) return [];
   let v: unknown;
   try {
@@ -112,7 +112,7 @@ function selfReview(json: string): Finding[] {
 }
 
 /** A broken change rule as the Core writes it ("<rule> <class> <path>: <evidence>"), in words: the path and the evidence. */
-function rule(s: string): Finding {
+export function rule(s: string): Finding {
   const m = /^\S+\s+\S+\s+(\S*):\s*(.*)$/.exec(s);
   return { kind: "rule", label: LABEL.rule, text: m ? m[2]! || "This change breaks a rule the Core checks." : s, path: m ? m[1]! : "", open: true };
 }
@@ -148,4 +148,83 @@ export function checksWords(b: ReviewBundleView): string | null {
   if (passed === checks.length) return checks.length === 1 ? "The check passed" : `All ${checks.length} checks passed`;
   if (passed + skipped === checks.length) return `${passed} ${passed === 1 ? "check" : "checks"} passed${skip}`;
   return `${passed} of ${checks.length} checks passed${skip}`;
+}
+
+/** "1 file", "2 files". */
+export const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`;
+
+/** A verification stage in words. */
+export function stageWords(stage: string): string {
+  const known: Record<string, string> = { BASELINE: "Before the change", TARGETED: "Checks for this change", COMPLETION: "Final checks", REPAIR: "After a repair" };
+  return known[stage] ?? stateWords(stage.charAt(0) + stage.slice(1).toLowerCase());
+}
+
+/** A verification run in words: "Before the change: 1 of 1 checks passed". */
+export function runWords(v: ReviewBundleView["verificationRuns"][number]): string {
+  const passed = v.checks.filter((c) => c.status === "PASS").length;
+  const skipped = v.checks.filter((c) => c.status === "SKIP").length;
+  return `${stageWords(v.stage)}: ${passed} of ${plural(v.checks.length, "check")} passed${skipped > 0 ? `, ${skipped} skipped` : ""}`;
+}
+
+/** A check that did not pass, in words: "Failed: lint", "Skipped: boundary pinned". */
+export function checkOutcome(c: { id: string; status: string }): string {
+  const word = c.status === "FAIL" ? "Failed" : c.status === "SKIP" ? "Skipped" : stateWords(c.status.charAt(0) + c.status.slice(1).toLowerCase());
+  return `${word}: ${checkName(c.id)}`;
+}
+
+/** The plan the Core stored, in words; null when it holds neither an outcome nor files. */
+export function planWords(json: string): { outcome: string; files: string[] } | null {
+  try {
+    const v = JSON.parse(json) as Record<string, unknown>;
+    const outcome = typeof v.outcome === "string" ? v.outcome : "";
+    const files = Array.isArray(v.expected_files) ? v.expected_files.filter((f): f is string => typeof f === "string") : [];
+    return outcome || files.length > 0 ? { outcome, files } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The summary the agent gave with its completion, when the stored self-review has one. */
+export function selfReviewSummary(json: string): string {
+  try {
+    const v = JSON.parse(json) as Record<string, unknown>;
+    return typeof v.summary === "string" ? v.summary : "";
+  } catch {
+    return "";
+  }
+}
+
+const EVIDENCE_KIND: Record<string, string> = { plan: "Plan", tool_result: "Tool result", self_review: "Self-review", report: "Report", receipt: "Effect receipt", verification: "Verification", checkpoint: "Checkpoint" };
+
+/** An evidence link ("kind:hash") as a kind in words and a short hash. */
+export function evidenceWords(link: string): { kind: string; short: string } {
+  const i = link.indexOf(":");
+  const kind = i >= 0 ? link.slice(0, i) : "";
+  const ref = i >= 0 ? link.slice(i + 1) : link;
+  const words = EVIDENCE_KIND[kind] ?? (kind ? stateWords(kind.replace(/_/g, " ")) : "Record");
+  return { kind: words, short: ref.slice(0, 12) };
+}
+
+/** A regression attribution ("check=attribution") in words. */
+export function attributionWords(a: string): string {
+  const i = a.indexOf("=");
+  if (i < 0) return a;
+  return `${checkName(a.slice(0, i))}: ${a.slice(i + 1).replace(/_/g, " ").toLowerCase()}`;
+}
+
+/** A file's status letter in words, capitalised for a file's head. */
+export const fileStatusWords = (status: string, binary: boolean): string => (binary ? "Binary" : ({ A: "Added", D: "Deleted", R: "Renamed", M: "Changed" } as Record<string, string>)[status] ?? "Changed");
+
+/** A Core refusal in words, with its code kept for a data attribute: "STALE_REVISION: …" -> the review is out of date. */
+export function refusalWords(message: string): { text: string; code: string } {
+  const plain = message.replace(/^Error invoking remote method '[^']*': (Error: )?/, "");
+  const m = /\b([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)\b:?\s*/.exec(plain);
+  const code = m ? m[1]! : "";
+  const known: Record<string, string> = {
+    STALE_REVISION: "the review is out of date; reload it and try again",
+    NO_PULL_REQUEST: "the Core has no pull request for this task, so there is nothing to read yet",
+    PROTECTED_PATH: "that file is protected",
+  };
+  const rest = m ? plain.replace(m[0], "").trim() : plain;
+  return { text: known[code] ?? (rest || plain), code };
 }

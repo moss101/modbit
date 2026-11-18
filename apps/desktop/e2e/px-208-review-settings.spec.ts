@@ -122,6 +122,13 @@ async function densityDrift(page: Page, density: "comfortable" | "compact"): Pro
   return bad;
 }
 
+/** Raw identifiers and Core codes in a surface's visible text (empty when it reads in plain words): an enum or code, a row id, a task state, "(s)" plurals, a check kind, a revision id, JSON. */
+async function rawWords(page: Page, testId: string): Promise<string[]> {
+  const text = await page.getByTestId(testId).innerText();
+  const found = text.match(/\b[A-Z][A-Z0-9]+(?:_[A-Z0-9]+)+\b|\bPX-\d+\b|\b(?:ReadyForReview|NeedsAttention)\b|\w\(s\)|configured_command|\badv:|ws-rev-\d|[{[]"\w+":/g) ?? [];
+  return [...new Set(found)].map((w) => `${testId} shows “${w}”`);
+}
+
 interface ListedRow {
   id: string;
   scope: string;
@@ -254,8 +261,7 @@ test("QUAL-PX-208: Review and Settings in the page shape: change sets and findin
     // the order of open before resolved is unit-tested in review-model.test.ts).
     expect(await findings.evaluateAll((els) => els.map((e) => e.textContent))).toEqual([`Self-review, resolved${DONE_FINDING}`, `Self-review, resolved${OPEN_FINDING}`]);
     await expect(detail.getByTestId("review-page-no-comments")).toContainText("once the changes are in a pull request");
-    const text = (await page.getByTestId("review-page").innerText()) ?? "";
-    expect(text, "plain words: no raw state or code").not.toMatch(/ReadyForReview|[A-Z]{2,}_[A-Z]{2,}|DI-\d/);
+    expect(await rawWords(page, "review-page"), "plain words on the Review page").toEqual([]);
     await accessible(page, "the Review page");
     await shots(page, "review-page", async () => {
       await toReviewPage(page);
@@ -280,9 +286,29 @@ test("QUAL-PX-208: Review and Settings in the page shape: change sets and findin
     await rejectSecond();
     await shots(page, "hunk-decision", rejectSecond);
     if ((await page.getByTestId("review").count()) === 0) await rejectSecond();
+    // The task's own review reads in plain words too (the owner's review of the first screenshots); its raw facts are attributes.
+    expect(await rawWords(page, "review"), "plain words in the task's review").toEqual([]);
+    await expect(page.getByTestId("review-meta")).toHaveAttribute("data-task-state", "ReadyForReview");
+    await expect(page.getByTestId("review-meta")).toContainText("Ready for review · 1 file, 2 changes · based on");
+    await expect(page.getByTestId("review-file").locator("h3 > [data-status]")).toHaveText("Changed");
+    await expect(page.getByTestId("review-verification").locator('li[data-stage="BASELINE"]')).toContainText("Before the change: 1 of 1 check passed");
+    await expect(page.getByTestId("review-plan")).toContainText("Files it expected to change: notes.txt");
+    await expect(page.getByTestId("review-self-review")).toContainText(`${OPEN_FINDING} (resolved)`);
+    await expect(page.getByTestId("review-evidence-group").locator("summary")).toHaveText(/^Evidence \(\d+\)$/);
+    await expect(page.getByTestId("review-hunk").nth(1)).toContainText("Rejected: undone when you accept");
+    // Retained mutation: a raw code put back in the review's text is caught.
+    await page.evaluate(() => {
+      const m = document.createElement("span");
+      m.id = "px208-raw";
+      m.textContent = " ReadyForReview · 2 hunk(s)";
+      document.querySelector('[data-testid="review-meta"]')?.appendChild(m);
+    });
+    expect(await rawWords(page, "review")).toEqual(["review shows “ReadyForReview”", "review shows “k(s)”"]);
+    await page.evaluate(() => document.getElementById("px208-raw")?.remove());
     await page.getByTestId("review-note").fill("Keep the second region");
     await page.getByTestId("review-accept").click();
-    await expect(page.getByTestId("review-result")).toContainText("1 hunk(s) reverted", { timeout: 30_000 });
+    await expect(page.getByTestId("review-result")).toContainText("1 change undone", { timeout: 30_000 });
+    await expect(page.getByTestId("review-result")).toHaveAttribute("data-reverted", "1");
     const decided = await callsOn(app, "review:decide");
     expect(decided.length).toBe(1);
     expect(decided[0]!.slice(1, 5)).toEqual([a, "ACCEPT", [{ path: "notes.txt", index: 1 }], "Keep the second region"]);
@@ -342,6 +368,7 @@ test("QUAL-PX-208: Review and Settings in the page shape: change sets and findin
     await page.getByTestId("settings-row-details-auto").click();
     await page.getByTestId("settings-grouping").selectOption("repository");
     await accessible(page, "Settings, Appearance", '[data-testid="settings-section-appearance"]');
+    expect(await rawWords(page, "settings"), "plain words in Settings").toEqual([]);
     await shots(page, "settings-appearance", async () => {
       await toSettings(page);
       await page.getByTestId("settings-nav-appearance").click();
