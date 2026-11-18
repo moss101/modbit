@@ -518,6 +518,8 @@ handle("context:inspector", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
     manifestRef: v.manifestRef,
     prefixCacheHits: v.prefixCacheHits,
     prefixCacheMisses: v.prefixCacheMisses,
+    // REQ-PX-107 / REQ-PX-207: the instruction layers of the task's newest RulesSelected, as the Core recorded them.
+    instructions: v.instructions.map((l) => ({ layer: l.layer, id: l.id, source: l.source, contentHash: l.contentHash, reason: l.reason, loaded: l.loaded, notLoadedReason: l.notLoadedReason, bytes: l.bytes.toString(), truncated: l.truncated, scannerFindings: [...l.scannerFindings] })),
     // REQ-PX-059: the Core's breakdown of the last compiled request, by category.
     accounting: v.accounting?.available
       ? {

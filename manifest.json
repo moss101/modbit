@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2338,
+    "root_and_tooling": 2357,
     "docs_bytes": 2395097
   },
   "sections": [
@@ -4952,6 +4952,101 @@
       "path": "evidence/m10/PX-206/evidence.json",
       "bytes": 13209,
       "sha256": "52b02d942960b4b8bbe7bcade9517adec40cb16a2f98fcd9305af066e9a2dbd2"
+    },
+    {
+      "path": "evidence/m10/PX-207/TASK_CARD.md",
+      "bytes": 19408,
+      "sha256": "d7772d20a84b38d2e56c82c7703c7202348498b31880217f8d4ee2847bfc0988"
+    },
+    {
+      "path": "evidence/m10/PX-207/after/automations-rail-dark-comfortable.png",
+      "bytes": 304020,
+      "sha256": "3f52dd047f6e26a13c8bb13c82c79c89ff3135e406c3d378bf8758b1fde82591"
+    },
+    {
+      "path": "evidence/m10/PX-207/after/automations-rail-dark-compact.png",
+      "bytes": 294037,
+      "sha256": "44a1bc99c99f0c41ba255105829e40bdf56df006d651df5e5ac956fb002654bf"
+    },
+    {
+      "path": "evidence/m10/PX-207/after/automations-rail-light-comfortable.png",
+      "bytes": 304506,
+      "sha256": "bc28ef9f207819653aaf707c825646e50056fb9167c69530a1e89ec23491b4d9"
+    },
+    {
+      "path": "evidence/m10/PX-207/after/automations-rail-light-compact.png",
+      "bytes": 295224,
+      "sha256": "2a6ffbebe460e9e0acdda91ad43ccec6a0ebf8f6601c9d9b9d18f32cf0d8c22f"
+    },
+    {
+      "path": "evidence/m10/PX-207/after/customize-review-dark-comfortable.png",
+      "bytes": 328807,
+      "sha256": "e2e5ff86ee9db085cd71fac63fea3c154af5203d3f0680d62107114215986ea2"
+    },
+    {
+      "path": "evidence/m10/PX-207/after/customize-review-dark-compact.png",
+      "bytes": 305518,
+      "sha256": "caadaf241d8e2ed8a8c2c8f27b11ba38f73eb2e210daf8a27840c880fc549e72"
+    },
+    {
+      "path": "evidence/m10/PX-207/after/customize-review-light-comfortable.png",
+      "bytes": 341491,
+      "sha256": "410a88c44e2825e5a33443a3655a47e1928e9b8565f1594e3a585f5414ad15f7"
+    },
+    {
+      "path": "evidence/m10/PX-207/after/customize-review-light-compact.png",
+      "bytes": 316334,
+      "sha256": "450971f5ead8ae61dca1e963c15eb7b9a97a0f1a9e934c469e68cb43afb1216c"
+    },
+    {
+      "path": "evidence/m10/PX-207/after/customize-rules-dark-comfortable.png",
+      "bytes": 322940,
+      "sha256": "1374da7158de23d5da39dc3d3fa10e2309b85c7a3cde380c92ee6c716efcd0a5"
+    },
+    {
+      "path": "evidence/m10/PX-207/after/customize-rules-dark-compact.png",
+      "bytes": 325101,
+      "sha256": "f2f1716e127c05f93d76b3e568d99c6cc7be29f60b1293d695c430cf1649291c"
+    },
+    {
+      "path": "evidence/m10/PX-207/after/customize-rules-light-comfortable.png",
+      "bytes": 322294,
+      "sha256": "d41ad5ffbb294ca1e341bb18c94b360200238d7b28af779a9f78bc97d1f4ba53"
+    },
+    {
+      "path": "evidence/m10/PX-207/after/customize-rules-light-compact.png",
+      "bytes": 325520,
+      "sha256": "fae240613f5157c10a6300ea89ad80dc33dc919b15dcf3b0e81536e17165d39e"
+    },
+    {
+      "path": "evidence/m10/PX-207/after/customize-search-dark-comfortable.png",
+      "bytes": 138620,
+      "sha256": "4c505046b66150fb64980af12212c4623f59eb58f2f31412293fe4429be4dd0c"
+    },
+    {
+      "path": "evidence/m10/PX-207/after/customize-search-dark-compact.png",
+      "bytes": 131302,
+      "sha256": "d1c42394a17f390d7a128ce97343acf48529d81b2b31e3a04a67c1b0a38c2e9c"
+    },
+    {
+      "path": "evidence/m10/PX-207/after/customize-search-light-comfortable.png",
+      "bytes": 138406,
+      "sha256": "c00d638aa0334ff60ac452cc052f93e75437d2cb717fe3684004c3b3b9f1d656"
+    },
+    {
+      "path": "evidence/m10/PX-207/after/customize-search-light-compact.png",
+      "bytes": 131575,
+      "sha256": "2402ae435957a0f19d709565d6498925e94f991cddac23a9f2753add4a9380be"
+    },
+    {
+      "path": "evidence/m10/PX-207/desktop-e2e-full-results.txt",
+      "bytes": 42432,
+      "sha256": "53fb5294ff038ff70792d78bd90233893ed75bf66bdb70146a7649be23bf8b54"
+    },
+    {
+      "path": "evidence/m10/PX-207/evidence.json",
+      "bytes": 7532,
+      "sha256": "f44861e7059c7a55a77aecb914a9699ef80f91ea3369d7484b2b6f7dd9dec13a"
     },
     {
       "path": "evidence/m10/PX-209/TASK_CARD.md",
