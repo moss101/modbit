@@ -37,7 +37,6 @@
   "pull request state, checks, merge, auto-fix and the board's filters (PX-211..213)",
   "reviewer findings one by one with Fix this one (PX-214)",
   "comment Address actions",
-  "the task's own review body words (its meta line still shows the state enum and revisions)",
   "the help dialog keeps its own SHORTCUTS/LIST_KEYS list"
  ],
  "tests": [
@@ -45,22 +44,35 @@
   "apps/desktop/src/renderer/settings/shortcut-sheet.test.ts",
   "apps/desktop/src/renderer/review/review-model.test.ts",
   "apps/desktop/e2e/task-list.spec.ts",
-  "apps/desktop/e2e/awl.spec.ts"
+  "apps/desktop/e2e/awl.spec.ts",
+  "apps/desktop/e2e/review.spec.ts",
+  "apps/desktop/e2e/forge-evidence.spec.ts",
+  "apps/desktop/e2e/user-patch.spec.ts",
+  "apps/desktop/e2e/states.spec.ts",
+  "apps/desktop/e2e/lifecycle.spec.ts",
+  "apps/desktop/e2e/session-end.spec.ts",
+  "apps/desktop/e2e/onboarding.spec.ts",
+  "apps/desktop/e2e/fleet.spec.ts",
+  "apps/desktop/src/main/lifecycle.test.ts"
  ],
  "unit": "@modbit/desktop 457 of 457 (+6 shortcut-sheet.test.ts, +3 review-model.test.ts); pnpm typecheck clean",
  "proof": "e2e/px-208-review-settings.spec.ts 1 of 1 locally against the real app and a real Core (sha256 c5ec630a2c92680c...), see TASK_CARD.md Verification",
  "retained_mutations": [
   "a row for an unbound key m added to Shortcuts: unboundListed fails",
   "a Run mode control added to Settings: perTaskAsGlobal fails",
-  "the density left unapplied after Compact: densityDrift fails"
+  "the density left unapplied after Compact: densityDrift fails",
+  "'ReadyForReview · 2 hunk(s)' put back into the review's meta: rawWords fails"
  ],
  "removed_test_ids": [],
  "changed_checks": [
   "task-list.spec.ts orderDrift: 'no Review navigation row' becomes 'the Review row drawn once'; expected navigation includes Review",
-  "awl.spec.ts and task-list.spec.ts NAV gain open-review"
+  "awl.spec.ts and task-list.spec.ts NAV gain open-review",
+  "review.spec.ts, onboarding.spec.ts, forge-evidence.spec.ts, user-patch.spec.ts, states.spec.ts, lifecycle.spec.ts, session-end.spec.ts, fleet.spec.ts, px-208-review-settings.spec.ts and main/lifecycle.test.ts: raw text replaced by plain words plus the raw value's data attribute (table in TASK_CARD.md)"
  ],
  "removed_checks": [],
  "screenshots": "after/{sidebar-with-review,review-page,hunk-decision,settings-appearance,settings-shortcuts}-{comfortable,compact}-{light,dark}.png, from the running app",
  "ci": [],
- "full_suite": "desktop e2e, local macOS arm64, once: 221 tests, 218 passed, 0 failed, 3 skipped (desktop-e2e-full-results.txt)"
+ "full_suite": "desktop e2e, local macOS arm64, once: 221 tests, 218 passed, 0 failed, 3 skipped (desktop-e2e-full-results.txt)",
+ "wording_pass": "2026-11-18 after the owner's review ('Fix wording first'): plain words in the task's review (meta, file heads, hunk controls, checks, forge checks and comments, plan, self-review, folded evidence, pull request block), the review state line, the restart notice and Settings (platform, locations, account, credentials, languages); raw facts kept as data attributes and tooltips; rawWords guard with a retained mutation; every changed assertion is listed in TASK_CARD.md",
+ "affected_specs_after_wording": "15 spec files (review, forge-evidence, user-patch, states, lifecycle, session-end, keyboard, onboarding, fleet, shell, px-104-live-review, review-escape, browser, awl, px-208-review-settings): 48 passed locally"
 }

@@ -118,7 +118,7 @@ The owner read the first screenshots and asked for plain words before anything e
 | `px-208-review-settings.spec.ts` | result contains "1 hunk(s) reverted" | contains "1 change undone" and `data-reverted` = 1 |
 | `main/lifecycle.test.ts` | four `recoverySummary` sentences | the same four counts in the new sentence, plus the one-task case |
 
-`keyboard.spec.ts`'s "2 added, 1 removed" holds unchanged. The screenshots in `after/` were all retaken after this pass.
+`keyboard.spec.ts`'s "2 added, 1 removed" holds unchanged. The screenshots in `after/` were all retaken after this pass. Run again on the final build: the PX-208 spec, and fifteen spec files in all (review, forge-evidence, user-patch, states, lifecycle, session-end, keyboard, onboarding, fleet, shell, px-104-live-review, review-escape, browser, awl, px-208-review-settings): 48 passed; unit 457 of 457; typecheck clean; `tools/support_claims.py` clean.
 
 ## Limitations
 
