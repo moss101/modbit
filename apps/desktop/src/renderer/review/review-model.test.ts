@@ -20,15 +20,19 @@ test("REQ-PX-208: tasks with changes split into pull requests this window knows 
 
 test("REQ-PX-208: findings are what the bundle carries, in words, open first; no raw code is shown", () => {
   const b = bundle({
-    verificationRuns: [{ id: "v", stage: "BASELINE", status: "FAIL", candidateRevision: "2", checks: [{ id: "unit", status: "PASS" }, { id: "lint", status: "FAIL" }] }],
+    verificationRuns: [
+      { id: "v0", stage: "BASELINE", status: "FAIL", candidateRevision: "1", checks: [{ id: "configured_command:old", status: "FAIL" }] },
+      { id: "v", stage: "COMPLETION", status: "FAIL", candidateRevision: "2", checks: [{ id: "configured_command:pnpm test", status: "PASS" }, { id: "adv:boundary-pinned", status: "SKIP" }, { id: "configured_command:lint", status: "FAIL" }] },
+    ],
     invariantFindings: ["DI-3 EXTERNAL_SIDE_EFFECT src/a.ts: writes outside the task's folder"],
     selfReviewJson: JSON.stringify({ summary: "s", self_review: { findings: [{ text: "Tidied the helper", resolved: true }, { text: "The second leg is hidden", resolved: false }] } }),
     ciEvidence: [{ name: "build", runId: "1", status: "completed", conclusion: "failure", url: "", completedAt: "", logRef: "", logTruncated: false, commit: "abc", provenance: "ci" }],
   });
   const f = findingsOf(b);
   assert.deepEqual(f.map((x) => `${x.label}|${x.text}|${x.path}|${x.open}`), ["Check|lint failed||true", "Change rule|writes outside the task's folder|src/a.ts|true", "Self-review|The second leg is hidden||true", "Forge check|build failed on the forge||true", "Self-review|Tidied the helper||false"]);
-  for (const x of f) assert.doesNotMatch(`${x.label} ${x.text}`, /DI-\d|EXTERNAL_SIDE_EFFECT|[A-Z]{2,}_[A-Z]/);
-  assert.equal(checksWords(b), "1 of 2 checks passed");
+  for (const x of f) assert.doesNotMatch(`${x.label} ${x.text}`, /DI-\d|EXTERNAL_SIDE_EFFECT|[A-Z]{2,}_[A-Z]|configured_command|adv:/);
+  assert.equal(checksWords(b), "1 of 3 checks passed, 1 skipped");
+  assert.equal(checksWords(bundle({ verificationRuns: [{ id: "v", stage: "COMPLETION", status: "PASSED", candidateRevision: "2", checks: [{ id: "a", status: "PASS" }, { id: "adv:x", status: "SKIP" }] }] })), "1 check passed, 1 skipped");
   assert.equal(checksWords(bundle()), null);
   assert.deepEqual(findingsOf(bundle({ selfReviewJson: "not json" })), []);
 });

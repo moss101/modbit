@@ -117,12 +117,20 @@ function rule(s: string): Finding {
   return { kind: "rule", label: LABEL.rule, text: m ? m[2]! || "This change breaks a rule the Core checks." : s, path: m ? m[1]! : "", open: true };
 }
 
-/** Every finding the review bundle carries, open ones first. */
+/** A check's name in words: a configured command is its command line; another check is its name with the separators spaced. */
+export function checkName(id: string): string {
+  if (id.startsWith("configured_command:")) return id.slice("configured_command:".length);
+  const i = id.indexOf(":");
+  return (i >= 0 ? id.slice(i + 1) : id).replace(/[-_]+/g, " ");
+}
+
+/** The checks of the Core's latest verification run (the run the review is about). */
+const latestChecks = (b: ReviewBundleView) => b.verificationRuns[b.verificationRuns.length - 1]?.checks ?? [];
+
+/** Every finding the review bundle carries, open ones first. A skipped check is not a finding; it is counted in `checksWords`. */
 export function findingsOf(b: ReviewBundleView): Finding[] {
   const out: Finding[] = [];
-  for (const v of b.verificationRuns)
-    for (const c of v.checks)
-      if (c.status !== "PASS") out.push({ kind: "check", label: LABEL.check, text: `${c.id} ${c.status === "FAIL" ? "failed" : c.status.toLowerCase().replace(/_/g, " ")}`, path: "", open: true });
+  for (const c of latestChecks(b)) if (c.status !== "PASS" && c.status !== "SKIP") out.push({ kind: "check", label: LABEL.check, text: `${checkName(c.id)} ${c.status === "FAIL" ? "failed" : c.status.toLowerCase().replace(/_/g, " ")}`, path: "", open: true });
   for (const s of b.invariantFindings) out.push(rule(s));
   out.push(...selfReview(b.selfReviewJson));
   for (const c of b.ciEvidence)
@@ -130,10 +138,14 @@ export function findingsOf(b: ReviewBundleView): Finding[] {
   return [...out.filter((f) => f.open), ...out.filter((f) => !f.open)];
 }
 
-/** The checks the Core ran and how many passed, in words; null when none ran. */
+/** The latest run's checks in words; null when the Core ran none. */
 export function checksWords(b: ReviewBundleView): string | null {
-  const checks = b.verificationRuns.flatMap((v) => v.checks);
+  const checks = latestChecks(b);
   if (checks.length === 0) return null;
   const passed = checks.filter((c) => c.status === "PASS").length;
-  return passed === checks.length ? `${checks.length === 1 ? "The check" : `All ${checks.length} checks`} passed` : `${passed} of ${checks.length} checks passed`;
+  const skipped = checks.filter((c) => c.status === "SKIP").length;
+  const skip = skipped > 0 ? `, ${skipped} skipped` : "";
+  if (passed === checks.length) return checks.length === 1 ? "The check passed" : `All ${checks.length} checks passed`;
+  if (passed + skipped === checks.length) return `${passed} ${passed === 1 ? "check" : "checks"} passed${skip}`;
+  return `${passed} of ${checks.length} checks passed${skip}`;
 }
