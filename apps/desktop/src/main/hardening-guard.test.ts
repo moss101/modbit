@@ -45,7 +45,12 @@ const PINS = {
   // (no argument). Two events it hears: `inbox:changed` (no payload) and `notify:open` (a task id the preload re-validates as
   // 32 hex characters, or null), sent by main's click handler on a notification the OS showed. No renderer call can add an
   // entry to the record: main notes entries from the Core's headers only.
-  preloadSha256: "b13e2933ec58dd608581ebbd9723dd49bac8f5ac19185360fcf94d13379a2c34",
+  // PX-207 (2026-11-18, for review with its pull request): no new channel and no new method. Two type changes: the context
+  // inspector's answer gains `instructions`, the instruction layers the Core already returns (ContextInspectorView field 180,
+  // REQ-PX-107), passed through as plain data; and `customizeOpenSource` accepts the kind `rule`, for which main shows a file
+  // only if the Core recorded that source as loaded for the task, a relative source resolved inside the task's folder as the
+  // Core holds it (customize-ipc.ts `rulePath`). The renderer still names no path of its own.
+  preloadSha256: "14bfca736f7f6eadf03c48da754643f816a4d256573b52d594228a1871666a42",
   cspSha256: "e8c3fcc4286ba170b02ea95b02189f132b16228341d2002412facfec6eb929d1",
   webPreferencesSha256: "28515878dc43e119f2360de779e5a3733283d120b31a113837f7f7a6cf2356ee",
   windowOptionKeys: ["width", "height", "minWidth", "minHeight", "show", "webPreferences"],
