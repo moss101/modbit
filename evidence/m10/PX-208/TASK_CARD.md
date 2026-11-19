@@ -124,3 +124,7 @@ The owner read the first screenshots and asked for plain words before anything e
 
 - CI (`evidence.json`, `ci-run-44345701253.json`): run 44263235263 on 48be2e9a, green after one rerun of a Linux `fleet-agents.spec.ts:80` failure outside this change; run 44345701253 on f58233e0 (the wording pass), 19 of 19 checks green on the first attempt.
 - The owner has not seen the screenshots. No graph status was set.
+
+## Closure (2026-11-19)
+
+Owner reviewed the screenshots, asked for a wording pass ("Fix wording first"), and said "Yes, seal both". Branch brought up to date with main after PX-207 (manifest regenerated only; PX-207 and PX-208 specs plus awl, task-list, automations and px-106 passed together locally, 22 of 22). Merged as #230 (squash a5867e87) from head 5b3457a1, CI run 44397630544 green on every job after one rerun of the known task-list.spec.ts:492 flake on Windows. Sealed COMPLETE through graph.py with run, commit and evidence references.
