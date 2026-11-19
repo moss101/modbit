@@ -12,12 +12,23 @@ import type { PullRequestAckView } from "../../preload/preload.ts";
  * reload). It lets the Review and the pane say the same thing; it is the Core's answer at that moment, not the request's state now.
  */
 const answered = new Map<string, PullRequestAckView>();
+const watchers = new Set<() => void>();
 const remember = (taskId: string, ack: PullRequestAckView) => {
   if (ack.status !== "OPENED" && ack.status !== "UPDATED") return;
   answered.delete(taskId);
   answered.set(taskId, ack);
   if (answered.size > 64) answered.delete(answered.keys().next().value as string);
+  for (const w of watchers) w();
 };
+
+/** REQ-PX-208: the request the Core last answered with for a task in this window (the Review page's "Pull requests from tasks"). */
+export const answeredRequest = (taskId: string): PullRequestAckView | null => answered.get(taskId) ?? null;
+
+/** Calls `w` whenever this window learns of a request; returns the unsubscribe. */
+export function watchAnswered(w: () => void): () => void {
+  watchers.add(w);
+  return () => void watchers.delete(w);
+}
 
 const plain = (e: unknown): string => (e as Error).message.replace(/^Error invoking remote method '[^']*': (Error: )?/, "");
 
@@ -101,6 +112,8 @@ export function usePullRequest(sessionId: string, taskId: string, from: string):
   return { pr, busy, error, open, decide, settled };
 }
 
+const count = (n: number, one: string): string => `${n} ${n === 1 ? one : `${one}s`}`;
+
 export interface ForgeReads {
   busy: boolean;
   /** What the last read recorded, in counts. */
@@ -123,10 +136,10 @@ export function useForgeReads(sessionId: string, taskId: string, reload: () => P
     try {
       if (what === "ci") {
         const r = await window.modbit.ingestCiResults(sessionId, taskId);
-        setNote(`read ${r.checks} check run(s) for ${r.commit.slice(0, 12)}${r.refused > 0 ? `, refused ${r.refused} for another commit` : ""} (offset ${r.offset})`);
+        setNote(`Read ${count(r.checks, "check run")} for commit ${r.commit.slice(0, 7)}${r.refused > 0 ? `; ${r.refused} for another commit not counted` : ""}.`);
       } else {
         const r = await window.modbit.ingestReviewComments(sessionId, taskId);
-        setNote(`${r.steered} comment(s) steer the task, ${r.ignored} ignored, ${r.alreadyTaken} already taken (offset ${r.offset})`);
+        setNote(`${count(r.steered, "comment")} passed to the agent, ${r.ignored} ignored, ${r.alreadyTaken} already read.`);
       }
       await reload();
       return true;

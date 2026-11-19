@@ -31,10 +31,11 @@ test("PX-049: the quit question says what is running and what quitting really do
 
 test("PX-049: the recovery counts come from the Core's own states", () => {
   assert.equal(recoverySummary({ recovered: 0, resumed: 0, needAttention: 0 }), "No tasks to recover.");
-  assert.equal(recoverySummary({ recovered: 4, resumed: 3, needAttention: 1 }), "3 tasks resumed, 1 needs attention.");
-  assert.equal(recoverySummary({ recovered: 3, resumed: 1, needAttention: 2 }), "1 task resumed, 2 need attention.");
-  assert.equal(recoverySummary({ recovered: 5, resumed: 1, needAttention: 2 }), "1 task resumed, 2 need attention, 2 recovered idle.");
-  assert.equal(recoverySummary({ recovered: 3, resumed: 0, needAttention: 0 }), "3 recovered idle.");
+  assert.equal(recoverySummary({ recovered: 4, resumed: 3, needAttention: 1 }), "4 tasks were restored after the restart: 3 are running again, 1 needs you.");
+  assert.equal(recoverySummary({ recovered: 3, resumed: 1, needAttention: 2 }), "3 tasks were restored after the restart: 1 is running again, 2 need you.");
+  assert.equal(recoverySummary({ recovered: 5, resumed: 1, needAttention: 2 }), "5 tasks were restored after the restart: 1 is running again, 2 need you, 2 are waiting.");
+  assert.equal(recoverySummary({ recovered: 3, resumed: 0, needAttention: 0 }), "3 tasks were restored after the restart.");
+  assert.equal(recoverySummary({ recovered: 1, resumed: 0, needAttention: 0 }), "1 task was restored after the restart.");
 });
 
 test("PX-049: shutdown reports what failed or hung and never waits past its deadline", async () => {

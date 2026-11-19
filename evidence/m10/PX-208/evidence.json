@@ -1,0 +1,82 @@
+{
+ "task": "PX-208",
+ "requirements": [
+  "REQ-PX-208",
+  "QUAL-PX-208",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-208"
+ ],
+ "scenarios": [
+  "QUAL-PX-208 / PX-E2E-208"
+ ],
+ "decision_record": "DR-PX-2026-11-11-021 (MWS-14; MWS-04 for the Review row; section 12 Shortcuts; sections 5.11 and 9)",
+ "tier": "release-critical",
+ "branch": "wip/desktop-2-review",
+ "base": "origin/main 68f39e5e",
+ "status": "built and proven locally on macOS arm64; not sealed (graph.py was not run: sealing is not this task's)",
+ "audit": {
+  "classification": "IMPLEMENTED-PARTIAL: the task's own review (bundle, per-hunk reject, accept/return via review:decide, PR flow, forge reads) and Settings with theme/zoom/density PRODUCTION-WORKING; no Review page or navigation row, no task-row or grouping option under Appearance (the list's preferences lived in the list's React state), no shortcut list derived from the key maps",
+  "first_missing_link": "no Review entry or page listing tasks with changes; Appearance could not reach the mounted list's preferences; the shortcut list was hand-written beside the maps",
+  "traced": "open-review -> ReviewPage(headers from AgentList onHeaderList) -> window.modbit.reviewBundle (main review:bundle -> Core ReviewBundle); Open review -> setReviewing -> Review -> decideReview (review:decide -> Core DecideReview); Settings Appearance -> updateListPrefs (modbit.agents.v1, the list's entry) -> AgentList subscription; Shortcuts -> shortcutSheet(shellRegistry, commandFor, rowKeyAction)"
+ },
+ "bridge": {
+  "added": [],
+  "protocol_change": "none",
+  "preload_change": "none",
+  "main_change": "none",
+  "csp_change": "none",
+  "rust_change": "none",
+  "locked_files_changed": "none"
+ },
+ "decided_here": {
+  "pull_requests": "a task is under Pull requests only when the Core answered this window that it opened or updated one (PX-211 seam)",
+  "findings": "the bundle's findings: failed checks of the latest verification run, broken change rules, self-review items (open first), failed forge checks; skipped checks counted, not findings",
+  "list_prefs": "one observable copy of the list's existing preferences entry, shared by the list and Settings",
+  "shortcuts": "generated from the registry, commandFor and rowKeyAction; each key resolved back through its own map; COMMAND_WORDS and ROW_KEY_WORDS are records over the command types"
+ },
+ "left_out": [
+  "pull request state, checks, merge, auto-fix and the board's filters (PX-211..213)",
+  "reviewer findings one by one with Fix this one (PX-214)",
+  "comment Address actions",
+  "the help dialog keeps its own SHORTCUTS/LIST_KEYS list"
+ ],
+ "tests": [
+  "apps/desktop/e2e/px-208-review-settings.spec.ts",
+  "apps/desktop/src/renderer/settings/shortcut-sheet.test.ts",
+  "apps/desktop/src/renderer/review/review-model.test.ts",
+  "apps/desktop/e2e/task-list.spec.ts",
+  "apps/desktop/e2e/awl.spec.ts",
+  "apps/desktop/e2e/review.spec.ts",
+  "apps/desktop/e2e/forge-evidence.spec.ts",
+  "apps/desktop/e2e/user-patch.spec.ts",
+  "apps/desktop/e2e/states.spec.ts",
+  "apps/desktop/e2e/lifecycle.spec.ts",
+  "apps/desktop/e2e/session-end.spec.ts",
+  "apps/desktop/e2e/onboarding.spec.ts",
+  "apps/desktop/e2e/fleet.spec.ts",
+  "apps/desktop/src/main/lifecycle.test.ts"
+ ],
+ "unit": "@modbit/desktop 457 of 457 (+6 shortcut-sheet.test.ts, +3 review-model.test.ts); pnpm typecheck clean",
+ "proof": "e2e/px-208-review-settings.spec.ts 1 of 1 locally against the real app and a real Core (sha256 c5ec630a2c92680c...), see TASK_CARD.md Verification",
+ "retained_mutations": [
+  "a row for an unbound key m added to Shortcuts: unboundListed fails",
+  "a Run mode control added to Settings: perTaskAsGlobal fails",
+  "the density left unapplied after Compact: densityDrift fails",
+  "'ReadyForReview · 2 hunk(s)' put back into the review's meta: rawWords fails"
+ ],
+ "removed_test_ids": [],
+ "changed_checks": [
+  "task-list.spec.ts orderDrift: 'no Review navigation row' becomes 'the Review row drawn once'; expected navigation includes Review",
+  "awl.spec.ts and task-list.spec.ts NAV gain open-review",
+  "review.spec.ts, onboarding.spec.ts, forge-evidence.spec.ts, user-patch.spec.ts, states.spec.ts, lifecycle.spec.ts, session-end.spec.ts, fleet.spec.ts, px-208-review-settings.spec.ts and main/lifecycle.test.ts: raw text replaced by plain words plus the raw value's data attribute (table in TASK_CARD.md)"
+ ],
+ "removed_checks": [],
+ "screenshots": "after/{sidebar-with-review,review-page,hunk-decision,settings-appearance,settings-shortcuts}-{comfortable,compact}-{light,dark}.png, from the running app",
+ "ci": {
+  "pull_request": "https://github.com/moss101/modbit/pull/230 (draft)",
+  "run_1": "44263235263 on 48be2e9a (before the wording pass): 18 of 19 checks passed; desktop E2E on ubuntu failed fleet-agents.spec.ts:80 (child-goal not found within 15 s after the child card appeared; outside this change's paths; passed locally). One rerun of the failed jobs: attempt 2 all green.",
+  "run_2": "44345701253 on f58233e0 (the wording pass): all 19 checks passed on the first attempt (ci-run-44345701253.json)"
+ },
+ "full_suite": "desktop e2e, local macOS arm64, once: 221 tests, 218 passed, 0 failed, 3 skipped (desktop-e2e-full-results.txt)",
+ "wording_pass": "2026-11-18 after the owner's review ('Fix wording first'): plain words in the task's review (meta, file heads, hunk controls, checks, forge checks and comments, plan, self-review, folded evidence, pull request block), the review state line, the restart notice and Settings (platform, locations, account, credentials, languages); raw facts kept as data attributes and tooltips; rawWords guard with a retained mutation; every changed assertion is listed in TASK_CARD.md",
+ "affected_specs_after_wording": "15 spec files (review, forge-evidence, user-patch, states, lifecycle, session-end, keyboard, onboarding, fleet, shell, px-104-live-review, review-escape, browser, awl, px-208-review-settings): 48 passed locally"
+}

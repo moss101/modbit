@@ -19,6 +19,7 @@ import { highlightRuns } from "./snippets.ts";
 import { localMachine } from "../location.ts";
 import { IconArchive, IconFilter, IconPin, IconProject, IconRename, IconRestore, IconViews } from "./icons.tsx";
 import { PreviewCard } from "./preview-card.tsx";
+import { rowKeyAction } from "../keyboard.ts";
 
 /** What the list can do with projects (PX-064). Every call is a Core command made by the connected list; the view only reports the person's intent. */
 export interface ProjectActions {
@@ -248,38 +249,34 @@ export function AgentListView(p: AgentListViewProps) {
       e.stopPropagation();
     };
     const page = Math.max(1, Math.floor(viewport / (metrics.row + metrics.rowGap)) - 1);
-    switch (e.key) {
-      case "ArrowDown":
+    // The row's key map is keyboard.ts `rowKeyAction`, which Settings' Shortcuts section lists from (REQ-PX-208).
+    switch (rowKeyAction(e)) {
+      case "down":
         return move(at + 1);
-      case "ArrowUp":
+      case "up":
         return move(at - 1);
-      case "Home":
+      case "first":
         return move(0);
-      case "End":
+      case "last":
         return move(rowIds.length - 1);
-      case "PageDown":
+      case "pageDown":
         return move(at + page);
-      case "PageUp":
+      case "pageUp":
         return move(at - page);
-      case " ":
+      case "preview":
         // Space previews the row; Enter (the button's own key) opens the task.
-        if (e.ctrlKey || e.metaKey || e.altKey) return;
         clearTimer(restTimer);
         clearTimer(leaveTimer);
         setPreview((v) => (v?.taskId === rowId && v.by === "key" ? null : { taskId: rowId, by: "key" }));
         e.preventDefault();
         e.stopPropagation();
         return;
-      case "p":
-      case "P":
-        if (e.ctrlKey || e.metaKey || e.altKey) return;
+      case "pin":
         (pinned.has(rowId) ? p.onUnpin : p.onPin)(rowId);
         e.preventDefault();
         e.stopPropagation();
         return;
-      case "e":
-      case "E":
-        if (e.ctrlKey || e.metaKey || e.altKey) return;
+      case "archive":
         p.onArchive(rowId);
         e.preventDefault();
         e.stopPropagation();

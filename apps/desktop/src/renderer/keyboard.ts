@@ -152,3 +152,76 @@ export const LIST_KEYS: { keys: string; what: string }[] = [
   { keys: "p", what: "On a task in the list: pin or unpin it" },
   { keys: "e", what: "On a task in the list: archive it (Undo restores it)" },
 ];
+
+/**
+ * What each command of `commandFor` does, in plain words (REQ-PX-208). A record over the whole `Command` type, so a command
+ * added to the map without words fails the typecheck. Settings' Shortcuts section pairs these with the keys `commandFor` itself
+ * answers (settings/shortcut-sheet.ts); no key is written here.
+ */
+export const COMMAND_WORDS: Record<Command, string> = {
+  newTask: "New task",
+  search: "Search tasks, conversations, files and commands",
+  jumpAttention: "Open Inbox on the first item",
+  jumpRunning: "Go to a running task in the list",
+  approve: "Allow the open task's waiting action (an action that cannot be undone asks you to confirm)",
+  deny: "Deny the open task's waiting action",
+  cancelTask: "Cancel the open task (asks you to confirm)",
+  steerTask: "Write to the open task",
+  help: "Show the keyboard shortcuts",
+  next: "Next task in the list",
+  previous: "Previous task in the list",
+  open: "Open the review of a finished task",
+  back: "Back, or close what is open",
+  hunkNext: "Next change",
+  hunkPrevious: "Previous change",
+  hunkToggle: "Expand or collapse the focused change",
+  toggleSplit: "Show changes side by side or in one column",
+  jumpFailing: "Go to the failing check",
+  confirm: "Confirm",
+};
+
+/** What a key does on a focused task row in the list (the list's own keys; `commandFor` does not see them). */
+export type RowKeyAction = "down" | "up" | "first" | "last" | "pageDown" | "pageUp" | "preview" | "pin" | "archive";
+
+/** The task row's key map: the list's key handler asks this, and so does the Shortcuts section. */
+export function rowKeyAction(e: KeyLike): RowKeyAction | null {
+  switch (e.key) {
+    case "ArrowDown":
+      return "down";
+    case "ArrowUp":
+      return "up";
+    case "Home":
+      return "first";
+    case "End":
+      return "last";
+    case "PageDown":
+      return "pageDown";
+    case "PageUp":
+      return "pageUp";
+  }
+  if (e.ctrlKey || e.metaKey || e.altKey) return null;
+  switch (e.key) {
+    case " ":
+      return "preview";
+    case "p":
+    case "P":
+      return "pin";
+    case "e":
+    case "E":
+      return "archive";
+    default:
+      return null;
+  }
+}
+
+export const ROW_KEY_WORDS: Record<RowKeyAction, string> = {
+  down: "Next task",
+  up: "Previous task",
+  first: "First task",
+  last: "Last task",
+  pageDown: "A page of tasks down",
+  pageUp: "A page of tasks up",
+  preview: "Preview the task (Enter opens it)",
+  pin: "Pin or unpin the task",
+  archive: "Archive the task (Undo brings it back)",
+};
