@@ -41430,8 +41430,17 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-214",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "AUDITING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-11-19T07:04:04Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit at main 48e0d597: the reviewer's result is recorded (critique.rs, ReviewerResultRecorded) but the review bundle carries none of it; no fix or dismiss command; first missing link recorded in evidence/m10/PX-214/TASK_CARD.md"
+    }
+   ],
+   "status_changed_on": "2026-11-19T07:04:04Z"
   },
   {
    "id": "PX-215",

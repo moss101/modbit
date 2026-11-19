@@ -1010,6 +1010,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-210/mutation-check-2026-11-11.txt` | retained evidence | 2862 | `81b1642f64f6b1a43d40ce7a5b2b5e9f54fce4808460eea1385abb54e20dfa17` |
 | `evidence/m10/PX-210/px210-core.log` | retained evidence | 1599 | `2b45e60af5ed0f25fad154160a99461a1c15efd2016dda5995d6451a5ad7175e` |
 | `evidence/m10/PX-210/px210-e2e.log` | retained evidence | 1450 | `24d78f17647671c105021b37c3db41a58bdd6d238a9425911028c7de260b608b` |
+| `evidence/m10/PX-214/TASK_CARD.md` | retained evidence | 3341 | `1f238e21892bfcbe78fae3fb0023e99a3ddee601e036dde4cc3acf2323612f1f` |
 | `evidence/m10/PX-218/TASK_CARD.md` | retained evidence | 9057 | `6aeaa8e0559a694ef7f54b72adc23a479f2a9cbd609f66e2fe59485935175966` |
 | `evidence/m10/PX-218/after/preview-card-last-line-after-restart-dark.png` | retained evidence | 148352 | `92d41ade0b962ce536bedefb152262bcdb5b987ee5726c2bf9fef701ada90e8b` |
 | `evidence/m10/PX-218/after/preview-card-last-line-after-restart-light.png` | retained evidence | 149315 | `2f823957dffe44f8215f3a95a368e0490f715e8ec9336f14ec5de8a3bece5638` |
@@ -2500,7 +2501,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/zcode-ui/reference/zcode-computed.json` | retained evidence | 718674 | `9ae8821ce72aa0fff3be44aacd0f4c9d995465c54bad7f17d1a81f92841d1c2d` |
 | `evidence/zcode-ui/reference/zcode-tokens-resolved.json` | retained evidence | 30635 | `066725c00059a05d073fbcdac9a8d965eab05f05c1f5df16e654854ff3e22b91` |
 | `graph/PROJECT_GRAPH.md` | human view of the graph | 47980 | `f2142513e91462d0005c818017acd3c6280818e6f79c8757fa9b47c334e6435d` |
-| `graph/project-graph.json` | project driver graph with live status | 2636003 | `42e0778a66640e490cd923cba8a8a0c990c264346599c32b382e2ac805cd186b` |
+| `graph/project-graph.json` | project driver graph with live status | 2636410 | `c342e4fdc79e3059db75e4c4899df345b35ee7830016573b8eba9920c8e46ffc` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 69551 | `75bcc309c03df0b898705f3bf58a8c289431dc60cbaf52e1c38f4c5d41d06dd7` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |
