@@ -251,7 +251,8 @@ export function reviewerWords(r: ReviewerResultView): { headline: string; detail
   if (r.state === "") return null;
   if (r.state === "UNREADABLE") return { headline: "The reviewer's report cannot be shown.", detail: r.note, unreadable: true, stale: false };
   const stale = r.state === "STALE";
-  const detail = [r.summary, r.confidence > 0 ? `The reviewer was ${r.confidence} percent sure.` : ""].filter(Boolean).join(" ");
+  const said = r.summary.trim();
+  const detail = [said && !/[.!?]$/.test(said) ? `${said}.` : said, r.confidence > 0 ? `The reviewer was ${r.confidence} percent sure.` : ""].filter(Boolean).join(" ");
   return { headline: VERDICT[r.verdict] ?? "The reviewer gave an answer this page has no words for.", detail, unreadable: false, stale };
 }
 

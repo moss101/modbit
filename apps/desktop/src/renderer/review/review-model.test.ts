@@ -52,7 +52,7 @@ test("REQ-PX-214: the reviewer's verdict is in plain words, a stale report says 
   assert.equal(reviewerWords(reviewer({ state: "" })), null);
   const w = reviewerWords(reviewer())!;
   assert.equal(w.headline, "The reviewer says this change should not be accepted as it is.");
-  assert.equal(w.detail, "weak check The reviewer was 77 percent sure.");
+  assert.equal(w.detail, "weak check. The reviewer was 77 percent sure.");
   assert.equal(w.stale, false);
   assert.equal(reviewerWords(reviewer({ state: "STALE", verdict: "PASS", confidence: 0, summary: "" }))!.headline, "The reviewer found nothing to change.");
   assert.equal(reviewerWords(reviewer({ state: "STALE" }))!.stale, true);
