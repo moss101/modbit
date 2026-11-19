@@ -14,9 +14,11 @@ import { controlsCss } from "./controls-css.ts";
 import { computerCss } from "./computer/computer-css.ts";
 import { automationsCss } from "./automations/automations-css.ts";
 import { projectsCss } from "./projects/projects-css.ts";
+import { reviewCss } from "./review/review-css.ts";
+import { settingsCss } from "./settings/settings-css.ts";
 
 /** Every stylesheet a component owns: all of app.css but the generated token sheet (and xterm's own). */
-const COMPONENT_SHEETS: Record<string, string> = { uiCss, legacyCss, shellCss, workspaceCss, composerCss, controlsCss, computerCss, automationsCss, projectsCss };
+const COMPONENT_SHEETS: Record<string, string> = { uiCss, legacyCss, shellCss, workspaceCss, composerCss, controlsCss, computerCss, automationsCss, projectsCss, reviewCss, settingsCss };
 
 /** The sheets that select on the shell's density (`data-density="compact"` on the root); the conversation's own density attribute is upper case and is not this. */
 const densitySelectors = (sheets: Record<string, string>): string[] => Object.entries(sheets).flatMap(([name, css]) => (/data-density\s*[~|^$*]?=\s*["']?(compact|comfortable)/.test(css) ? [name] : []));

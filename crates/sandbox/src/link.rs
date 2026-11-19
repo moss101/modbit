@@ -377,7 +377,10 @@ impl<S: AsyncRead + AsyncWrite + Unpin + Send> GuestLink<S> {
                 "",
                 "browser",
                 guest_call::Body::BrowserStart(wire::GuestBrowserStart { width, height }),
-                Duration::from_secs(40),
+                // Above the guest's own DevTools wait (services/modbit-guest/src/browser.rs), so a
+                // slow-to-start browser reports the guest's typed `BROWSER_FAILED`, not this call's
+                // timeout.
+                Duration::from_secs(120),
             )
             .await?;
         Self::expect_refusal_or("browser_start", body, |b| match b {

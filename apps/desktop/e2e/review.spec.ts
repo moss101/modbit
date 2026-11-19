@@ -93,9 +93,11 @@ test("review surface: per-hunk decision commits exactly the user's choice and su
     // The first result opens the Review itself (docs/39 step 5); the task's
     // conversation is behind it until the Review is closed.
     await expect(page.getByTestId("review")).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByTestId("review-meta")).toContainText("ReadyForReview");
+    await expect(page.getByTestId("review-meta")).toContainText("Ready for review");
+    await expect(page.getByTestId("review-meta")).toHaveAttribute("data-task-state", "ReadyForReview");
     await expect(page.getByTestId("review-hunk")).toHaveCount(2);
-    await expect(page.getByTestId("review-verification")).toContainText("BASELINE");
+    await expect(page.getByTestId("review-verification")).toContainText("Before the change");
+    await expect(page.getByTestId("review-verification").locator('li[data-stage="BASELINE"]')).toHaveCount(1);
     await expect(page.getByTestId("review-plan")).toContainText("edit notes");
     // Restart the whole app mid-review: the review is rebuilt from the Core, not from renderer state.
     await app.close();
@@ -112,7 +114,8 @@ test("review surface: per-hunk decision commits exactly the user's choice and su
     await again.page.getByTestId("review-note").fill("Keep the second region");
     await again.page.getByTestId("review-accept").click();
     await expect(again.page.getByTestId("review-result")).toContainText("Accepted", { timeout: 30_000 });
-    await expect(again.page.getByTestId("review-result")).toContainText("1 hunk(s) reverted");
+    await expect(again.page.getByTestId("review-result")).toContainText("1 change undone");
+    await expect(again.page.getByTestId("review-result")).toHaveAttribute("data-reverted", "1");
     await again.page.getByTestId("review-close").click();
     await expectTaskState(again.page, taskId, "Completed", 30_000);
     // The Git diff matches the user's choice exactly (REQ-EV-0036) and the history reflects it (E2E-001).

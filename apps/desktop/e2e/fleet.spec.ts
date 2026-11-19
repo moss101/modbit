@@ -41,7 +41,7 @@ test("new task renders from Core ids, the list reduces Core events, and survives
   await gearMenu(page, "settings.open");
   const platform = page.getByTestId("platform-state");
   await expect(platform).toHaveAttribute("data-state", "CI_COMPATIBLE");
-  await expect(platform).toContainText("CI_COMPATIBLE");
+  await expect(platform).toContainText("built and tested in CI");
   await expect(platform).toContainText("not a support claim");
   // PX-026: the honest language labels are visible in the desktop.
   await expect(page.getByTestId("language-labels")).toContainText("Alpha baseline", { timeout: 15_000 });

@@ -253,7 +253,7 @@ test("screen states: provider down, human continuation, review gate and a denied
     const pr = page.getByTestId("pull-request");
     await page.getByTestId("pr-open").click();
     await expect(pr).toHaveAttribute("data-status", "APPROVAL_PENDING", { timeout: 30_000 });
-    const intent = await page.getByTestId("pr-intent").textContent();
+    const intent = await page.getByTestId("pr-intent").getAttribute("data-intent");
     expect(intent).toMatch(/^[0-9a-f]{16}$/);
     await page.getByTestId("pr-deny").click();
     await expect(pr).toHaveAttribute("data-status", "DENIED", { timeout: 30_000 });
@@ -269,8 +269,9 @@ test("screen states: provider down, human continuation, review gate and a denied
     await expect(pr).toHaveAttribute("data-status", "APPROVAL_PENDING", { timeout: 30_000 });
     await page.getByTestId("pr-approve").click();
     await expect(pr).toHaveAttribute("data-status", "OPENED", { timeout: 60_000 });
-    await expect(page.getByTestId("pr-result")).toContainText("opened #1 at https://github.test/o/r/pull/1");
-    await expect(page.getByTestId("pr-result")).toContainText("1 receipt(s)");
+    await expect(page.getByTestId("pr-result")).toContainText("Opened #1 at https://github.test/o/r/pull/1");
+    await expect(page.getByTestId("pr-result")).toContainText("1 receipt");
+    await expect(page.getByTestId("pr-result").locator("[data-receipts]")).toHaveAttribute("data-receipts", "1");
     expect(gh.requests.filter((r) => r.method === "POST").every((r) => r.authorized)).toBe(true);
     expect(gh.pulls.map((p) => p.head)).toEqual([`modbit/pr-${taskId.slice(0, 12)}`]);
     expect(git(bare, "rev-parse", "--verify", `refs/heads/modbit/pr-${taskId.slice(0, 12)}`)).toMatch(/^[0-9a-f]{40}$/);

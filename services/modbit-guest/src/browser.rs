@@ -19,6 +19,13 @@ use std::time::{Duration, Instant};
 static CHROMIUM: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
 static RUNNING: Mutex<Option<(Running, tokio::process::Child)>> = Mutex::new(None);
 
+/// How long Chromium's DevTools server gets to come up. A cold start of the host's Chrome on a loaded
+/// Windows CI runner has outrun 30 s with nothing wrong (CI run 43073138525: `BROWSER_FAILED` on
+/// `qual_m8_3_the_reference_backend…`), so the budget is what a genuinely stuck browser needs, not what
+/// an idle one takes. The gateway's `browser_start` call allows more still (`crates/sandbox/src/link.rs`),
+/// so it is this refusal, not a caller's timeout, that surfaces.
+const DEVTOOLS_WAIT: Duration = Duration::from_secs(90);
+
 /// Name the Chromium binary (once, at start).
 pub fn set_chromium(path: PathBuf) {
     let _ = CHROMIUM.set(path);
@@ -169,7 +176,7 @@ pub async fn start(
                 format!("chromium exited ({status}) before its DevTools listened: {tail}"),
             ));
         }
-        if started.elapsed() > Duration::from_secs(30) {
+        if started.elapsed() > DEVTOOLS_WAIT {
             let _ = child.start_kill();
             break None;
         }
@@ -187,7 +194,10 @@ pub async fn start(
             .collect();
         return Err((
             "BROWSER_FAILED",
-            format!("chromium's DevTools did not listen within 30 s: {tail}"),
+            format!(
+                "chromium's DevTools did not listen within {} s: {tail}",
+                DEVTOOLS_WAIT.as_secs()
+            ),
         ));
     };
     let running = Running { port, ws_path, pid };

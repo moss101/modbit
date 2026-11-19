@@ -1,7 +1,7 @@
 # Modbit Dossier Manifest — V3.3 EPR v1.1
 
 > **Authority date:** 2026-09-05  
-> **Generated:** 2026-11-18 by `tools/build_manifest.py`  
+> **Generated:** 2026-11-19 by `tools/build_manifest.py`  
 > **Scope:** every specification file in `docs/` plus the root governing files and tooling. The previous `99_MANIFEST.md` covered only 39 Part 2 files; this manifest covers all 97 docs.
 > **Machine-readable twin:** `manifest.json` (same content, same hashes).
 
@@ -950,6 +950,31 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-207/ci-run-44364563619.json` | retained evidence | 65329 | `b68a7c5ec03ec8e97b0b051e38a6d565db4b1c1dd2a6074f398ece7098ce09cd` |
 | `evidence/m10/PX-207/desktop-e2e-full-results.txt` | retained evidence | 42432 | `53fb5294ff038ff70792d78bd90233893ed75bf66bdb70146a7649be23bf8b54` |
 | `evidence/m10/PX-207/evidence.json` | retained evidence | 7532 | `f44861e7059c7a55a77aecb914a9699ef80f91ea3369d7484b2b6f7dd9dec13a` |
+| `evidence/m10/PX-208/TASK_CARD.md` | retained evidence | 23430 | `fdc9bc159eaf2394b9a50acb79c1c01a00df404b73ba14d6cf90e7a86c94a739` |
+| `evidence/m10/PX-208/after/hunk-decision-comfortable-dark.png` | retained evidence | 289706 | `01213e0f2d63d2b7709bf2d61cbcc99cc6ec3cf29cdb601b04a9836411f05116` |
+| `evidence/m10/PX-208/after/hunk-decision-comfortable-light.png` | retained evidence | 289150 | `f6a3c37b22fa930442d177c9604e0fe0f6af72fb31abe3e0363d47aefc3d0f98` |
+| `evidence/m10/PX-208/after/hunk-decision-compact-dark.png` | retained evidence | 280828 | `523b0ebe177f8a18661981de4565f73df130baf294c3a8ca995f4745a0361bb0` |
+| `evidence/m10/PX-208/after/hunk-decision-compact-light.png` | retained evidence | 281001 | `d50dcf016aad53f4e63f4114f71425c4ebe1fbbe9b7fc15aa6ae3210c2e12ca7` |
+| `evidence/m10/PX-208/after/review-page-comfortable-dark.png` | retained evidence | 193277 | `77badeb2e7d13ba12a7d767ad5cd376cb5dc7cf05018b3f21fcf1d3b11b771ce` |
+| `evidence/m10/PX-208/after/review-page-comfortable-light.png` | retained evidence | 193437 | `2adbbb0f573fa0acd5c0f48342c90a3aff8d91490a2c7b585459a87010c23450` |
+| `evidence/m10/PX-208/after/review-page-compact-dark.png` | retained evidence | 177576 | `c454c6c3a6ee0bba3ced42dd44172e8139043ff85faeeef0c67ae87b569283a5` |
+| `evidence/m10/PX-208/after/review-page-compact-light.png` | retained evidence | 177874 | `63d57f67993cd96ecffd793e8f086c5073d01867d5ed5a5467733b80df4448f3` |
+| `evidence/m10/PX-208/after/settings-appearance-comfortable-dark.png` | retained evidence | 258323 | `d0d975a09e42de007fd81abbbee83320e3584c7bcc85f63ef5f21851b0560b2c` |
+| `evidence/m10/PX-208/after/settings-appearance-comfortable-light.png` | retained evidence | 259109 | `7cd2d5d1acde7287685bbb703724f3aa6cf6f6d149b6f9dc0117745b95ada292` |
+| `evidence/m10/PX-208/after/settings-appearance-compact-dark.png` | retained evidence | 247335 | `15c0ed7b3140f70b4a97d5e1ee978ff0b0e87b5acc70ff664342e23ef96538f3` |
+| `evidence/m10/PX-208/after/settings-appearance-compact-light.png` | retained evidence | 248123 | `ba72ac9e02ead2735033576b4163b15d1505aca5a775fa1a27a915e883f907f1` |
+| `evidence/m10/PX-208/after/settings-shortcuts-comfortable-dark.png` | retained evidence | 201207 | `58d9cdd4540002623d93dbd4179ff18f3c29bf1d17565dd50c37b27475a945c0` |
+| `evidence/m10/PX-208/after/settings-shortcuts-comfortable-light.png` | retained evidence | 201064 | `f661d43a76d86d96e9f3baee3bc68d97800f6ec18eaabe2af8e7b6977869eb84` |
+| `evidence/m10/PX-208/after/settings-shortcuts-compact-dark.png` | retained evidence | 189412 | `685bf0301c3e7bab6c43e1adfa0e4108f9bd40c1f02c7eac06f6cffe777aa2e6` |
+| `evidence/m10/PX-208/after/settings-shortcuts-compact-light.png` | retained evidence | 190202 | `10194b9578b4e79d3de80a05bc7bae4b038cf8b8a83883d4cb9f21d99d87d42f` |
+| `evidence/m10/PX-208/after/sidebar-with-review-comfortable-dark.png` | retained evidence | 118076 | `2abfdab8546d61334c941e3801030a221584fef42f52bc54ce9bf197d016134d` |
+| `evidence/m10/PX-208/after/sidebar-with-review-comfortable-light.png` | retained evidence | 117703 | `53ba107a947a2066735e0b2e09c4cdd2f00fa5cad2bbd0ffe900b075b895343f` |
+| `evidence/m10/PX-208/after/sidebar-with-review-compact-dark.png` | retained evidence | 112995 | `067498a82aac23355bb126ec59e8503e762d2b7d023c59b72983bc4f4dec4a12` |
+| `evidence/m10/PX-208/after/sidebar-with-review-compact-light.png` | retained evidence | 112705 | `74c31cc96952fd19f746029f011520f89ccb3d3a4643b4247731af44998e77a1` |
+| `evidence/m10/PX-208/ci-run-44345701253.json` | retained evidence | 65329 | `9624b87b8a2fe404270ad18af8124732ca3c301a43d51390076fb880a8abf352` |
+| `evidence/m10/PX-208/ci-run-44397630544.json` | retained evidence | 65329 | `a60f43ee1c66b904e07bd2d787fd9020f8c82887c8138f29111f01ea06be5834` |
+| `evidence/m10/PX-208/desktop-e2e-full-results.txt` | retained evidence | 42045 | `7ad196640a222ce954ad56d364ce58b282d805d8fa6d7594d9801904f3b6a6b4` |
+| `evidence/m10/PX-208/evidence.json` | retained evidence | 5995 | `c7f2cb86783b3468855420fb385c830e90f5b778489ab0e63a2f9ca7d7e6eb26` |
 | `evidence/m10/PX-209/TASK_CARD.md` | retained evidence | 13996 | `0a8a0afb81f546db485f3509645e1e3ccc34ce7d42e0fda15712c7db5b6dd5e1` |
 | `evidence/m10/PX-209/after/palette-conversation-hit-comfortable-dark.png` | retained evidence | 269025 | `1cd8f5ff2b8a94493b73ffeac0acdab5de3b63e77bbdaa30cb37e677d84d3a89` |
 | `evidence/m10/PX-209/after/palette-conversation-hit-comfortable-light.png` | retained evidence | 277811 | `1ac6e2ae61e8501706e0fa7f4c2d4ce84b6fd2052edcda4c67d9793f99cfe25a` |
@@ -2470,8 +2495,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/zcode-ui/reference/zcode-colors-rgba.json` | retained evidence | 18690 | `76372c3edbcd50fe596d5e4b7fcd7991adab9686588ddc578a728afa24b4f028` |
 | `evidence/zcode-ui/reference/zcode-computed.json` | retained evidence | 718674 | `9ae8821ce72aa0fff3be44aacd0f4c9d995465c54bad7f17d1a81f92841d1c2d` |
 | `evidence/zcode-ui/reference/zcode-tokens-resolved.json` | retained evidence | 30635 | `066725c00059a05d073fbcdac9a8d965eab05f05c1f5df16e654854ff3e22b91` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 47635 | `7c7fbb9e720925fa3a527e5eea737db04651048adef2ca2a8782e63284f456c4` |
-| `graph/project-graph.json` | project driver graph with live status | 2653738 | `84524b1169a631e26659580647a4105496df747d241bf7e030c48da8e5e6e37e` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 47635 | `0668e4d8b4473fe86b6d4ee271ab5aae918b54abb0d9c1676233072b08ace350` |
+| `graph/project-graph.json` | project driver graph with live status | 2653882 | `dd92809ec2c6dd748c565466e2a68459acd28ec2f7bc16b11ffa982e459034bf` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 67211 | `9d101fa8395609092e6a2134a32210fb214a94a0765a13e66b58cbf790267b9d` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |
