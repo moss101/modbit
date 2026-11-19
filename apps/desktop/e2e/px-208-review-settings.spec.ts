@@ -460,11 +460,15 @@ test("QUAL-PX-208: Review and Settings in the page shape: change sets and findin
     // While a confirmation is open: c on B asks to cancel; Escape and Enter are taken (Enter confirms: B is cancelled, last).
     const confirmRows = [...rows.filter((r) => r.scope === "confirming" && r.id.endsWith(":back")), ...rows.filter((r) => r.scope === "confirming" && !r.id.endsWith(":back"))];
     const asking = async () => {
-      if ((await page.getByTestId("confirm").count()) > 0) return;
-      await home();
-      await agentRow(page, b).getByTestId("agent-open").focus();
-      await page.keyboard.press("c");
-      await expect(page.getByTestId("confirm")).toHaveAttribute("data-confirm-kind", "cancel");
+      // A focus() that lands before the row has registered the focus gets its key dropped (the PX-199 race, seen on macOS
+      // hosted runners): ask again until the confirmation is up. The count guard keeps a late first press from being doubled.
+      await expect(async () => {
+        if ((await page.getByTestId("confirm").count()) > 0) return;
+        await home();
+        await agentRow(page, b).getByTestId("agent-open").focus();
+        await page.keyboard.press("c");
+        await expect(page.getByTestId("confirm")).toHaveAttribute("data-confirm-kind", "cancel", { timeout: 3_000 });
+      }).toPass({ timeout: 30_000 });
     };
     expect(await unboundListed(page, confirmRows, "body", asking, async () => {})).toEqual([]);
     await expectTaskState(page, b, "Cancelled", 30_000);
