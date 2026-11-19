@@ -46213,10 +46213,13 @@
    "subsystem": "governance",
    "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
    "acceptance": "Decision Record, its rows, specification, supersession entries and change record added; implementation audit recorded; full integrity gate passes; the record is rejected by the owner and its status and rejection are recorded; its rows are withdrawn and nothing is built; no product proof",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/dossier-px-007/validation.json",
-    "artifact:evidence/dossier-px-007/tests.log"
+    "artifact:evidence/dossier-px-007/tests.log",
+    "artifact:evidence/dossier-gov-009/validation.json",
+    "run:gha-44444969771",
+    "commit:cc64633b94d25c401106479c08ff11d0cc3cac02"
    ],
    "notes": [
     {
@@ -46242,9 +46245,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "check_dossier --manifest and the copied-package suite pass locally on the uncommitted worktree; E2E_PROVEN and COMPLETE need the owner's ratification of the record and the landing pull request"
+    },
+    {
+     "at": "2026-11-19T06:58:34Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "Withdrawn by DR-GOV-2026-11-11-009 (PR 193): rows removed, nothing built; integrity gate passes"
+    },
+    {
+     "at": "2026-11-19T06:58:37Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Withdrawn on main as cc64633b (PR 193)"
     }
    ],
-   "status_changed_on": "2026-10-03T10:47:28Z"
+   "status_changed_on": "2026-11-19T06:58:37Z"
   },
   {
    "id": "DOC-PX-010",
@@ -46574,8 +46589,52 @@
    "subsystem": "governance",
    "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
    "acceptance": "DR-PX-2026-10-03-009 is rejected and DR-GOV-2026-11-11-009 accepted with the owner's instruction recorded; REQ-PX-077..081 are DEFERRED POST_ZERO rows with no task card or scenario and PX-077..081 are absent from the graph and from RELEASE_ZERO; MOD-EDIT-001 is REJECTED and the proposed supersession entries of docs 02, 03, 20, 29 and 32 say they never took effect; doc 67 is marked withdrawn; no sealed REQ-EV or EPR row, gate or product code changes; full integrity gate passes; no product proof",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/dossier-gov-009/validation.json",
+    "artifact:evidence/dossier-gov-009/tests.log",
+    "run:gha-44444969771",
+    "commit:cc64633b94d25c401106479c08ff11d0cc3cac02"
+   ],
+   "notes": [
+    {
+     "at": "2026-11-19T06:58:33Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit of the Workspace Editor surface at main: nothing built; PX-077..081 rows, DR-PX-2026-10-03-009, docs 02/03/20/29/32/67 traced; baseline in evidence/dossier-gov-009/baseline.json"
+    },
+    {
+     "at": "2026-11-19T06:58:34Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "DR-GOV-2026-11-11-009 accepted; DR-PX-2026-10-03-009 rejected; PX-077..081 withdrawn from graph and Release Zero; MOD-SURF-002 restored"
+    },
+    {
+     "at": "2026-11-19T06:58:34Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Graph, manifest and doc 97 regenerated through the real CLIs; the withdrawn rows no longer reach the graph"
+    },
+    {
+     "at": "2026-11-19T06:58:34Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "check_dossier --manifest, test_dossier (91 tests) and example_runner pass on the PR branch"
+    },
+    {
+     "at": "2026-11-19T06:58:37Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "PR 193 CI green on 6a88cb16, all 19 checks"
+    },
+    {
+     "at": "2026-11-19T06:58:37Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Landed on main as cc64633b (PR 193)"
+    }
+   ],
+   "status_changed_on": "2026-11-19T06:58:37Z"
   },
   {
    "id": "ALPHA",

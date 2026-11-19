@@ -377,7 +377,7 @@ flowchart LR
 - `DOC-GOV-007`: COMPLETE; Correct the Release Zero goal's provider-credential Unblocks cell; evidence: run:gha-36139948547, commit:1b71966161d839dc99c152dc437966a34fe02316, artifact:evidence/dossier-gov-007/validation.json, artifact:evidence/dossier-gov-007/tests.log, revision:sha256:8fd687ada06147b2435a9d063e7706a836aad0a89b483d71cdc5f91f2702c983
 - `DOC-PX-007`: COMPLETE; Product extension stage: Agent-first workspace (phases 1-3), PX-041..068; evidence: artifact:evidence/dossier-px-007/validation.json, artifact:evidence/dossier-px-007/tests.log, artifact:evidence/dossier-px-007/ratification.json, artifact:evidence/dossier-px-008/tests.log, commit:9f1349d8e8897c36d31850aa3a2b49d736f9f9f4
 - `DOC-PX-008`: COMPLETE; Product extension stage: Native computer control and browser control hardening, PX-069..076; evidence: artifact:evidence/dossier-px-007/validation.json, artifact:evidence/dossier-px-007/tests.log, artifact:evidence/dossier-px-008/validation.json, artifact:evidence/dossier-px-008/tests.log, commit:9f1349d8e8897c36d31850aa3a2b49d736f9f9f4
-- `DOC-PX-009`: REAL_TESTING; Product extension stage: Workspace Editor, PX-077..081; evidence: artifact:evidence/dossier-px-007/validation.json, artifact:evidence/dossier-px-007/tests.log
+- `DOC-PX-009`: COMPLETE; Product extension stage: Workspace Editor, PX-077..081; evidence: artifact:evidence/dossier-px-007/validation.json, artifact:evidence/dossier-px-007/tests.log, artifact:evidence/dossier-gov-009/validation.json, run:gha-44444969771, commit:cc64633b94d25c401106479c08ff11d0cc3cac02
 - `DOC-PX-010`: COMPLETE; Product extension stage: Automations, PX-082..086; evidence: artifact:evidence/dossier-px-007/validation.json, artifact:evidence/dossier-px-007/tests.log, artifact:evidence/dossier-px-010/validation.json, artifact:evidence/dossier-px-010/tests.log, commit:9f1349d8e8897c36d31850aa3a2b49d736f9f9f4
 - `DOC-PX-011`: REAL_TESTING; Product extension stage: Extension marketplace and Customize, PX-087..093; evidence: artifact:evidence/dossier-px-007/validation.json, artifact:evidence/dossier-px-007/tests.log
 - `DOC-PX-012`: REAL_TESTING; Product extension stage: Desktop shell platform integration, PX-094..098; evidence: artifact:evidence/dossier-px-007/validation.json, artifact:evidence/dossier-px-007/tests.log
@@ -390,7 +390,7 @@ flowchart LR
 - `DOC-PX-019`: COMPLETE; Product extension stage: Agent workspace screens, PX-195..197; evidence: artifact:evidence/dossier-px-019/tests.log, commit:d35b956c6f6fb5b5aa48fc062e620d0667d2033a, artifact:evidence/dossier-px-019/validation.json
 - `DOC-PX-020`: COMPLETE; Product extension stage: The measured workspace, PX-198..219; evidence: artifact:evidence/dossier-px-020/tests.log, artifact:evidence/dossier-px-020/validation.json, commit:5b6ecdfe9f47103417344fa73d75e876550f6a2d
 - `DOC-GOV-008`: COMPLETE; Bind crates/core-runtime/src/trajectory.rs to the PX-189 production wiring; evidence: artifact:evidence/dossier-gov-008/validation.json, artifact:evidence/dossier-gov-008/tests.log, run:gha-41561897083, commit:0d8e2d7c0bc32c1e6df5ac3afc98978ba2973230
-- `DOC-GOV-009`: NOT_STARTED; Withdraw the Workspace Editor (DR-PX-2026-10-03-009 rejected, PX-077..081 withdrawn); evidence: none
+- `DOC-GOV-009`: COMPLETE; Withdraw the Workspace Editor (DR-PX-2026-10-03-009 rejected, PX-077..081 withdrawn); evidence: artifact:evidence/dossier-gov-009/validation.json, artifact:evidence/dossier-gov-009/tests.log, run:gha-44444969771, commit:cc64633b94d25c401106479c08ff11d0cc3cac02
 
 ## Milestone tasks in execution order
 

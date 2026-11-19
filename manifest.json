@@ -12780,13 +12780,13 @@
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 47706,
-      "sha256": "921e61b9a4ffef4566af2bc8a476f224f5fac5ce30e12e89476700b123cb61a6"
+      "bytes": 47980,
+      "sha256": "f2142513e91462d0005c818017acd3c6280818e6f79c8757fa9b47c334e6435d"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2633966,
-      "sha256": "5bd466d973f22d656d2655fc8fb2ac9d828edb9a8a867f55b47d7c55184a14ce"
+      "bytes": 2636003,
+      "sha256": "42e0778a66640e490cd923cba8a8a0c990c264346599c32b382e2ac805cd186b"
     },
     {
       "path": "tools/build_graph.py",
