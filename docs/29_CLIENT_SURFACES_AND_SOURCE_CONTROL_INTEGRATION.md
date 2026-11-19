@@ -87,4 +87,4 @@ Shared task history and assignment (REQ-PX-012) and comments with chat notificat
 
 An embedded editor, Tab completion, or replacing an IDE's own language features remain non-goals. Adapters are entry and review points, not a second product.
 
-**Proposed scoped supersession (DR-PX-2026-10-03-009, not in force until accepted).** The embedded-editor non-goal is lifted for the transactional Workspace Editor only; Tab completion and replacing an IDE's language features remain non-goals.
+**Rejected proposal (DR-PX-2026-10-03-009, rejected 2026-11-11 by DR-GOV-2026-11-11-009).** Lifting the embedded-editor non-goal for a transactional Workspace Editor was proposed and dropped; the non-goal stands as written.
