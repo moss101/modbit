@@ -1,0 +1,63 @@
+{
+  "task": "PX-214",
+  "requirements": [
+    "REQ-PX-214",
+    "QUAL-PX-214",
+    "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-214"
+  ],
+  "scenarios": [
+    "QUAL-PX-214 / PX-E2E-214"
+  ],
+  "decision_record": "DR-PX-2026-11-11-021 (MWS-18)",
+  "tier": "release-critical",
+  "branch": "claude/hopeful-mayer-49cfc8",
+  "status": "built and proven locally on macOS arm64; status E2E_PROVEN; not COMPLETE (the owner seals after CI)",
+  "audit": {
+    "reviewer_result": "PRODUCTION-WORKING (critique.rs handle_report, ReviewerResultRecorded, latest_result)",
+    "review_bundle": "NOT-FOUND (carried none of the reviewer's result)",
+    "fix_and_dismiss": "NOT-FOUND",
+    "first_missing_link": "the bundle did not read the recorded result"
+  },
+  "protocol": {
+    "added": [
+      "ReviewFindingView",
+      "ReviewBundle.reviewer_* = 363..372",
+      "FixReviewFinding / ReviewFindingFixQueued",
+      "DismissReviewFinding / ReviewFindingDismissal",
+      "command types FixReviewFinding (task.author), DismissReviewFinding (review.decide)"
+    ],
+    "canonical_log": [
+      "TaskEvent::ReviewFindingDismissed { result_ref, candidate_revision, finding_id, dismissed_by, reason } on the candidate's task aggregate"
+    ],
+    "fixtures": [
+      "tests/fixtures/protocol/v1/{rust,ts}/review_bundle_reviewer_findings",
+      "fix_review_finding",
+      "review_finding_fix_queued",
+      "dismiss_review_finding",
+      "review_finding_dismissal"
+    ]
+  },
+  "tests": [
+    "services/modbit-core/tests/px_214_reviewer_findings.rs",
+    "services/modbit-core/src/review_findings.rs (unit)",
+    "apps/desktop/e2e/px-214-reviewer-findings.spec.ts",
+    "apps/desktop/src/main/review-findings-ipc.test.ts",
+    "apps/desktop/src/renderer/review/review-model.test.ts"
+  ],
+  "results": {
+    "core_px_214": "1 passed",
+    "playwright_px_214": "3 of 3 (--repeat-each 3); 6 of 6 earlier",
+    "mutations": "12 of 12 caught",
+    "desktop_unit": "472 passed",
+    "neighbours": "11 passed",
+    "core_suite": "690 passed, 0 failed, 8 ignored, 48 binaries (18 first failed for want of the modbit-mcp-testserver helper binary, then passed)"
+  },
+  "files": [
+    "core-suite.log",
+    "px214-core.log",
+    "px214-e2e.log",
+    "mutation-check-2026-11-19.txt",
+    "after/*.png"
+  ],
+  "remaining_gaps": "CI on all platforms; owner review and sealing; Windows has no review sandbox (test is unix-only)"
+}

@@ -1,0 +1,8 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.52s
+     Running tests/px_214_reviewer_findings.rs (target/debug/deps/px_214_reviewer_findings-6cf26917c716bf71)
+
+running 1 test
+test px_214_the_reviewers_findings_one_by_one_with_fix_and_dismiss ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 11.32s
+
