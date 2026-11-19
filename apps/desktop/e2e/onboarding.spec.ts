@@ -123,10 +123,12 @@ async function onboardOnce(url: string, repo: string): Promise<number> {
     await page.getByTestId("starter-task").first().click();
     await expect(page.getByTestId("agent-row").first()).toBeVisible({ timeout: 15_000 });
     // Step 5: the first result opens the Review on the diff with its evidence.
-    await expect(page.getByTestId("review-meta")).toContainText("ReadyForReview", { timeout: 120_000 });
+    await expect(page.getByTestId("review-meta")).toHaveAttribute("data-task-state", "ReadyForReview", { timeout: 120_000 });
+    await expect(page.getByTestId("review-meta")).toContainText("Ready for review");
     const seconds = (Date.now() - started) / 1000;
     await expect(page.getByTestId("review-hunk")).toHaveCount(1);
-    await expect(page.getByTestId("review-verification")).toContainText("COMPLETION");
+    await expect(page.getByTestId("review-verification")).toContainText("Final checks");
+    await expect(page.getByTestId("review-verification").locator('li[data-stage="COMPLETION"]')).toHaveCount(1);
     return seconds;
   } finally {
     await app.close();

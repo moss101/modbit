@@ -92,9 +92,9 @@ test("inline patch: a one-hunk user edit lands through the Core's change transac
     await expectTaskState(page, taskId, "ReadyForReview", 60_000);
     // The first result opens the Review itself (docs/39 step 5).
     await expect(page.getByTestId("review")).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByTestId("review-meta")).toContainText("ReadyForReview");
-    const metaBefore = await page.getByTestId("review-meta").textContent();
-    const revisionBefore = Number(/workspace revision (\d+)/.exec(metaBefore ?? "")?.[1]);
+    await expect(page.getByTestId("review-meta")).toHaveAttribute("data-task-state", "ReadyForReview");
+    await expect(page.getByTestId("review-meta")).toContainText("Ready for review");
+    const revisionBefore = Number(await page.getByTestId("review-meta").getAttribute("data-workspace-revision"));
     expect(Number.isInteger(revisionBefore)).toBe(true);
     // The edit: one hunk, at the revision the review shows.
     const file = page.locator('[data-testid="review-file"][data-path="notes.txt"]');
@@ -102,10 +102,13 @@ test("inline patch: a one-hunk user edit lands through the Core's change transac
     await page.getByTestId("patch-old").fill("line 7\n");
     await page.getByTestId("patch-new").fill("line 7 edited by hand\n");
     await page.getByTestId("patch-apply").click();
-    await expect(page.getByTestId("patch-result")).toContainText(`applied at workspace revision ${revisionBefore + 1} (was ${revisionBefore})`, { timeout: 30_000 });
+    await expect(page.getByTestId("patch-result")).toHaveAttribute("data-outcome", "applied", { timeout: 30_000 });
+    await expect(page.getByTestId("patch-result")).toHaveAttribute("data-workspace-revision", String(revisionBefore + 1));
+    await expect(page.getByTestId("patch-result")).toHaveAttribute("data-previous-revision", String(revisionBefore));
+    await expect(page.getByTestId("patch-result")).toContainText("Your edit was applied");
     // The file on disk is exactly what the Core applied; the review re-read from the Core shows the new revision.
     expect(readFileSync(join(repo, "notes.txt"), "utf8")).toBe(candidate.replace("line 7\n", "line 7 edited by hand\n"));
-    await expect(page.getByTestId("review-meta")).toContainText(`workspace revision ${revisionBefore + 1}`);
+    await expect(page.getByTestId("review-meta")).toHaveAttribute("data-workspace-revision", String(revisionBefore + 1));
     // The panel is closed and empty: nothing of the edit lives in the client.
     await expect(page.getByTestId("patch-panel")).toHaveCount(0);
     await file.getByTestId("file-patch").click();
@@ -148,8 +151,9 @@ test("inline patch: a one-hunk user edit lands through the Core's change transac
     // The review shown here is now behind: its edit is refused by the Core's
     // revision precondition (not by the renderer's memory), nothing written.
     await page.getByTestId("patch-apply").click();
-    await expect(page.getByTestId("patch-result")).toContainText("refused", { timeout: 30_000 });
-    await expect(page.getByTestId("patch-result")).toContainText("STALE_REVISION");
+    await expect(page.getByTestId("patch-result")).toHaveAttribute("data-outcome", "refused", { timeout: 30_000 });
+    await expect(page.getByTestId("patch-result")).toHaveAttribute("data-code", "STALE_REVISION");
+    await expect(page.getByTestId("patch-result")).toContainText("The edit was refused: the review is out of date");
     // PX-023: the Review's state is the stale candidate revision, with the
     // Core's rejection as evidence and the reload as the next action.
     await expect(page.getByTestId("review-state")).toHaveAttribute("data-kind", "error");
@@ -175,7 +179,7 @@ test("inline patch: a one-hunk user edit lands through the Core's change transac
     await page.getByTestId("review-close").click();
     await openTask(page, taskId);
     await page.getByTestId("task-review").click();
-    await expect(page.getByTestId("review-meta")).toContainText(`workspace revision ${revisionBefore + 2}`);
+    await expect(page.getByTestId("review-meta")).toHaveAttribute("data-workspace-revision", String(revisionBefore + 2));
     await expect(page.getByTestId("patch-panel")).toHaveCount(0);
     await closeApp(app);
   } finally {

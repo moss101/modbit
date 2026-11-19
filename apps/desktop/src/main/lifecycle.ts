@@ -85,12 +85,14 @@ export interface RecoveryCounts {
 
 export function recoverySummary(c: RecoveryCounts): string {
   if (c.recovered === 0) return "No tasks to recover.";
+  // Plain words for the person (REQ-PX-208's wording review): how many came back, and what each is doing now.
+  const head = `${plural(c.recovered, "task", "tasks")} ${c.recovered === 1 ? "was" : "were"} restored after the restart`;
   const parts: string[] = [];
-  if (c.resumed > 0) parts.push(`${plural(c.resumed, "task", "tasks")} resumed`);
-  if (c.needAttention > 0) parts.push(`${c.needAttention} ${c.needAttention === 1 ? "needs" : "need"} attention`);
+  if (c.resumed > 0) parts.push(`${c.resumed} ${c.resumed === 1 ? "is" : "are"} running again`);
+  if (c.needAttention > 0) parts.push(`${c.needAttention} ${c.needAttention === 1 ? "needs" : "need"} you`);
   const rest = c.recovered - c.resumed - c.needAttention;
-  if (rest > 0) parts.push(`${rest} recovered idle`);
-  return `${parts.join(", ")}.`;
+  if (rest > 0 && parts.length > 0) parts.push(`${rest} ${rest === 1 ? "is" : "are"} waiting`);
+  return parts.length === 0 ? `${head}.` : `${head}: ${parts.join(", ")}.`;
 }
 
 export interface ShutdownStep {

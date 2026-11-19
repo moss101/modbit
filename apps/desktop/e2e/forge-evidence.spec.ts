@@ -164,7 +164,8 @@ test("review shows the forge's CI runs as external evidence and the pull request
     await expect(page.getByTestId("review-ci-empty")).toBeVisible();
     await expect(page.getByTestId("review-comments-empty")).toBeVisible();
     await page.getByTestId("review-ci-ingest").click();
-    await expect(page.getByTestId("review-forge-error")).toContainText("NO_PULL_REQUEST", { timeout: 15_000 });
+    await expect(page.getByTestId("review-forge-error")).toHaveAttribute("data-code", "NO_PULL_REQUEST", { timeout: 15_000 });
+    await expect(page.getByTestId("review-forge-error")).toContainText("no pull request for this task");
     // The pull request, approved and opened.
     await page.getByTestId("pr-open").click();
     await expect(page.getByTestId("pull-request")).toHaveAttribute("data-status", "APPROVAL_PENDING", { timeout: 30_000 });
@@ -179,9 +180,10 @@ test("review shows the forge's CI runs as external evidence and the pull request
     await expect(run).toHaveAttribute("data-provenance", "ci");
     await expect(run).toContainText("run 501");
     await expect(page.getByTestId("review-ci-refused")).toContainText("ci-previous");
-    await expect(page.getByTestId("review-forge-note")).toContainText("read 1 check run(s)");
+    await expect(page.getByTestId("review-forge-note")).toContainText("Read 1 check run");
     // It is not an acceptance: the task is still waiting for the person.
-    await expect(page.getByTestId("review-meta")).toContainText("ReadyForReview");
+    await expect(page.getByTestId("review-meta")).toHaveAttribute("data-task-state", "ReadyForReview");
+    await expect(page.getByTestId("review-meta")).toContainText("Ready for review");
     await expect(page.getByTestId("review-accept")).toBeEnabled();
     await expect(page.getByTestId("review-result")).toHaveCount(0);
     expect(gh.requests.filter((r) => r.path.includes("/check-runs")).every((r) => r.authorized)).toBe(true);
@@ -203,7 +205,8 @@ test("review shows the forge's CI runs as external evidence and the pull request
     expect(await page.title()).not.toBe("owned");
     const theirs = comments.filter({ hasText: "@stranger" });
     await expect(theirs).toHaveAttribute("data-disposition", "IGNORED");
-    await expect(theirs).toContainText("DISALLOWED_AUTHOR");
+    await expect(theirs).toHaveAttribute("data-reason", "DISALLOWED_AUTHOR");
+    await expect(theirs).toContainText("ignored: disallowed author");
     await expect(theirs.getByTestId("review-comment-body")).toHaveCount(0);
     // Restart the whole app mid-review: both are re-read from the Core.
     await closeApp(app);

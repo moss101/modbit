@@ -22,6 +22,7 @@ import { Browser } from "../browser/browser.tsx";
 import { Dashboard } from "../dashboard/dashboard.tsx";
 import { Home } from "../home/home.tsx";
 import { Review } from "../review/review.tsx";
+import { ReviewPage } from "../review/review-page.tsx";
 import { SettingsNav } from "../settings/settings-nav.tsx";
 import { SettingsPage } from "../settings/settings-page.tsx";
 import { Inbox } from "../approvals/inbox.tsx";
@@ -91,6 +92,8 @@ export function Shell({ app }: { app: AppState }) {
   // REQ-PX-086: the Automations surface fills the centre region while it is open.
   const [automationsOpen, setAutomationsOpen] = useState(false);
   const [customizeOpen, setCustomizeOpen] = useState(false);
+  // REQ-PX-208: the Review page (pull requests and local changes with their findings); a task's own review opens over it.
+  const [reviewPageOpen, setReviewPageOpen] = useState(false);
   // AUT-E03: a task an automation created lives in the run's own session; its session id is the Core's (ListAutomationRuns by task).
   const [runSessions, setRunSessions] = useState<Record<string, string>>({});
   const [inboxOpen, setInboxOpen] = useState(false);
@@ -237,6 +240,7 @@ export function Shell({ app }: { app: AppState }) {
     setAutomationsOpen(false);
     setInboxOpen(false);
     setCustomizeOpen(false);
+    setReviewPageOpen(false);
     setSettingsOpen(false);
     setProjectPage(null);
     setWorktreesOpen(false);
@@ -244,7 +248,7 @@ export function Shell({ app }: { app: AppState }) {
   /** Shows the home composer and acts on it once it is on screen. */
   const toHome = useCallback(
     (then: () => void) => {
-      const elsewhere = reviewing !== null || browsing !== null || dashboardOpen || conversation !== null || automationsOpen || inboxOpen || customizeOpen || settingsOpen || projectPage !== null || worktreesOpen;
+      const elsewhere = reviewing !== null || browsing !== null || dashboardOpen || conversation !== null || automationsOpen || inboxOpen || customizeOpen || reviewPageOpen || settingsOpen || projectPage !== null || worktreesOpen;
       closePages();
       if (conversation) setLeftConversation(conversation.taskId);
       setConversation(null);
@@ -252,7 +256,7 @@ export function Shell({ app }: { app: AppState }) {
       if (elsewhere) setTimeout(then, 0);
       else then();
     },
-    [reviewing, browsing, dashboardOpen, conversation, automationsOpen, inboxOpen, customizeOpen, settingsOpen, projectPage, worktreesOpen, closePages, setPrefs],
+    [reviewing, browsing, dashboardOpen, conversation, automationsOpen, inboxOpen, customizeOpen, reviewPageOpen, settingsOpen, projectPage, worktreesOpen, closePages, setPrefs],
   );
   /** Opens a task's conversation (or, with null, the home composer). */
   const openConversation = useCallback(
@@ -381,6 +385,7 @@ export function Shell({ app }: { app: AppState }) {
       else if (inboxOpen) setInboxOpen(false);
       else if (automationsOpen) setAutomationsOpen(false);
       else if (dashboardOpen) setDashboardOpen(false);
+      else if (reviewPageOpen && !reviewing) setReviewPageOpen(false);
       else if (projectPage && !reviewing && !browsing) setProjectPage(null);
       else if (worktreesOpen && !reviewing && !browsing) setWorktreesOpen(false);
       else if (conversation && !reviewing && !browsing) {
@@ -396,7 +401,7 @@ export function Shell({ app }: { app: AppState }) {
     stopComputer: () => void computerStop.stopAll(presence.info?.controls ?? []),
     computerStopAvailability: () => ((presence.info?.controls ?? []).some(holdsMachine) ? true : "Nothing is controlling this computer"),
     openComputerPermissions: () => setPermissionsOpen(true),
-    canGoBack: () => reviewing !== null || browsing !== null || dashboardOpen || conversation !== null || automationsOpen || inboxOpen || customizeOpen || settingsOpen || projectPage !== null || worktreesOpen,
+    canGoBack: () => reviewing !== null || browsing !== null || dashboardOpen || conversation !== null || automationsOpen || inboxOpen || customizeOpen || reviewPageOpen || settingsOpen || projectPage !== null || worktreesOpen,
   };
   const actionsRef = useRef(actions);
   actionsRef.current = actions;
@@ -493,13 +498,13 @@ export function Shell({ app }: { app: AppState }) {
 
   const overlayTitle = reviewing ? model.tasks.get(reviewing)?.goalText : browsing ? model.tasks.get(browsing.taskId)?.goalText : conversation ? model.tasks.get(conversation.taskId)?.goalText : undefined;
   const openedProject = projectPage ? projects.projects.find((p) => p.projectId === projectPage) : undefined;
-  const title = settingsOpen ? "Settings" : customizeOpen ? "Customize" : inboxOpen ? "Inbox" : automationsOpen ? "Automations" : dashboardOpen ? "Dashboard" : reviewing || browsing ? (overlayTitle ?? "Task") : projectPage ? (openedProject?.name ?? "Project") : worktreesOpen ? "Worktrees" : (overlayTitle ?? "New task");
+  const title = settingsOpen ? "Settings" : customizeOpen ? "Customize" : inboxOpen ? "Inbox" : automationsOpen ? "Automations" : dashboardOpen ? "Dashboard" : reviewing || browsing ? (overlayTitle ?? "Task") : reviewPageOpen ? "Review" : projectPage ? (openedProject?.name ?? "Project") : worktreesOpen ? "Worktrees" : (overlayTitle ?? "New task");
   const openedHeader = conversation ? headers.find((h) => h.taskId === conversation.taskId) : undefined;
   // REQ-PX-106 / PX-207: the task Customize reads hooks, memory and the Core's loaded rules for.
   const customizeTask = conversation?.taskId ?? selectedTaskId ?? [...model.tasks.keys()][0] ?? null;
   const panelRefreshKey = useThrottled(`${panelTask?.state ?? ""}:${panelTask?.lastOffset ?? ""}`, 1200);
   // MWS-05: one toggle per pane the task in the centre can show, each with its state. A page that is not a task, and a task that has not started, have none.
-  const shownTaskId = settingsOpen || customizeOpen || inboxOpen || automationsOpen || dashboardOpen ? null : (reviewing ?? browsing?.taskId ?? (projectPage || worktreesOpen ? null : (conversation?.taskId ?? null)));
+  const shownTaskId = settingsOpen || customizeOpen || inboxOpen || automationsOpen || dashboardOpen ? null : (reviewing ?? browsing?.taskId ?? (projectPage || worktreesOpen || reviewPageOpen ? null : (conversation?.taskId ?? null)));
   const panes = useMemo<PaneToggle[]>(() => (shownTaskId !== null && shownTaskId === panelTaskId ? available.map((kind) => ({ kind, open: paneStateOf(panelState, kind, popped) === "open", state: paneStateOf(panelState, kind, popped) })) : []), [shownTaskId, panelTaskId, available, panelState, popped]);
   const onPane = (kind: AppKind) => {
     if (!panelTaskId) return;
@@ -537,7 +542,7 @@ export function Shell({ app }: { app: AppState }) {
   // ---- REQ-PX-204 (MWS-11): split view. Two tasks side by side in the centre, one with the keyboard. The split is a view choice
   // stored with the layout preferences; `conversation` is always the task whose column has the keyboard.
   const split = prefs.split;
-  const pageOpen = settingsOpen || customizeOpen || inboxOpen || automationsOpen || dashboardOpen || reviewing !== null || browsing !== null || projectPage !== null || worktreesOpen;
+  const pageOpen = settingsOpen || customizeOpen || inboxOpen || automationsOpen || dashboardOpen || reviewPageOpen || reviewing !== null || browsing !== null || projectPage !== null || worktreesOpen;
   const splitShown = split !== null && conversation !== null && !pageOpen && split.tasks.includes(conversation.taskId);
   const layoutRef = useRef<Layout | null>(null);
   // REQ-PX-209: the palette searches the Core's conversation index and the folder of the task open in the centre, once it has one.
@@ -645,14 +650,14 @@ export function Shell({ app }: { app: AppState }) {
     else setPanelState(id, (s) => togglePane(s, kind));
   };
   // REQ-PX-049: what the Core recovered at start, as counts of its own task states, shown once its snapshot and attention list are in.
-  const [recoveryNote, setRecoveryNote] = useState<{ boot: string; text: string } | null>(null);
+  const [recoveryNote, setRecoveryNote] = useState<{ boot: string; text: string; recovered: number; resumed: number; attention: number } | null>(null);
   useEffect(() => {
     if (!app.recovery || app.screen !== "populated" || !app.attentionLoaded) return;
     if (recoveryNote?.boot === app.recovery.bootGeneration) return;
     const recovered = Number(app.recovery.tasks);
     if (recovered === 0) return;
     const resumed = tasks.filter((t) => t.state === "Running").length;
-    setRecoveryNote({ boot: app.recovery.bootGeneration, text: recoverySummary({ recovered, resumed, needAttention: cols.needsAttention.length }) });
+    setRecoveryNote({ boot: app.recovery.bootGeneration, text: recoverySummary({ recovered, resumed, needAttention: cols.needsAttention.length }), recovered, resumed, attention: cols.needsAttention.length });
     // The counts are taken once per boot, when the first complete picture exists.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [app.recovery, app.screen, app.attentionLoaded]);
@@ -786,6 +791,12 @@ export function Shell({ app }: { app: AppState }) {
               closePages();
               setInboxOpen(open);
             }}
+            reviewOpen={reviewPageOpen && !reviewing}
+            onToggleReview={() => {
+              const open = !(reviewPageOpen && !reviewing);
+              closePages();
+              setReviewPageOpen(open);
+            }}
             customizeOpen={customizeOpen}
             customizeDisabled={core.state !== "connected"}
             onToggleCustomize={() => {
@@ -871,8 +882,8 @@ export function Shell({ app }: { app: AppState }) {
         statusRow={
           <section aria-label="App notices">
             {recoveryNote && (
-              <p className="shell-toast meta" data-testid="recovery-summary">
-                Recovered at start: {recoveryNote.text}
+              <p className="shell-toast meta" data-testid="recovery-summary" data-recovered={recoveryNote.recovered} data-resumed={recoveryNote.resumed} data-attention={recoveryNote.attention}>
+                {recoveryNote.text}
               </p>
             )}
             <p className={notice ? "shell-toast meta" : "mb-sr-only"} role="status" aria-live="polite" data-testid="shell-notice">
@@ -929,6 +940,8 @@ export function Shell({ app }: { app: AppState }) {
             <div className="autos-scroll">
               <Review taskId={reviewing} sessionId={model.sessionId} card={model.tasks.get(reviewing) ?? null} onClose={() => void runKeyCommand("back")} />
             </div>
+          ) : reviewPageOpen ? (
+            <ReviewPage headers={headers} sessionId={model.sessionId} connected={core.state === "connected"} onOpenReview={(id) => setReviewing(id)} onOpenTask={(id) => openConversation(id)} />
           ) : browsing ? (
             <div className="autos-scroll">
               <Browser browsing={browsing} card={model.tasks.get(browsing.taskId) ?? null} sessionId={model.sessionId} onReopen={() => void openBrowser(browsing.taskId)} onClose={() => void runKeyCommand("back")} />

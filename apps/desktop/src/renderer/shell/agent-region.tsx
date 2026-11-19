@@ -26,6 +26,9 @@ export interface AgentRegionProps {
   /** Inbox: what needs the person across every task (the count is the Core's attention count). */
   inboxOpen?: boolean | undefined;
   onToggleInbox?: (() => void) | undefined;
+  /** REQ-PX-208: the Review page (pull requests and local changes with their findings). */
+  reviewOpen?: boolean | undefined;
+  onToggleReview?: (() => void) | undefined;
   /** REQ-PX-106: the Customize view over skills, hooks and extensions. */
   customizeOpen?: boolean | undefined;
   customizeDisabled?: boolean | undefined;
@@ -127,7 +130,7 @@ export function PersonRow(p: Pick<AgentRegionProps, "userName" | "coreLabel" | "
 
 /**
  * The task list region (MWS-04), top to bottom: the head (list toggle, back, forward; the window controls on macOS), the
- * navigation rows (New task, Inbox with its count, Automations, Customize), the task list with its own Tasks head, and the
+ * navigation rows (New task, Inbox with its count, Automations, Review, Customize), the task list with its own Tasks head, and the
  * person's row. Below a 448 px centre it is a 40 px rail.
  */
 export function AgentRegion(p: AgentRegionProps) {
@@ -145,6 +148,7 @@ export function AgentRegion(p: AgentRegionProps) {
   const entries: NavEntry[] = [{ testId: "agents-new-task", icon: "plus", label: "New task", onClick: onNewTask, shortcut: mac ? "⌘N" : "Ctrl+N", current: p.homeOpen ?? false }];
   if (p.onToggleInbox) entries.push({ testId: "open-inbox", icon: "shield-check", label: "Inbox", onClick: p.onToggleInbox, pressed: p.inboxOpen ?? false, count: attentionCount });
   if (p.onToggleAutomations) entries.push({ testId: "open-automations", icon: "clock", label: "Automations", onClick: p.onToggleAutomations, pressed: p.automationsOpen ?? false, disabled: p.automationsDisabled });
+  if (p.onToggleReview) entries.push({ testId: "open-review", icon: "git-compare", label: "Review", onClick: p.onToggleReview, pressed: p.reviewOpen ?? false });
   if (p.onToggleCustomize) entries.push({ testId: "open-customize", icon: "blocks", label: "Customize", onClick: p.onToggleCustomize, pressed: p.customizeOpen ?? false, disabled: p.customizeDisabled });
   return (
     <div className="agent-region">

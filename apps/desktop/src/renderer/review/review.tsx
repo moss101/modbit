@@ -6,6 +6,8 @@ import { reviewState } from "../screens.ts";
 import { StateLine } from "../shell/state-line.tsx";
 import type { ReviewBundleView } from "../../preload/preload.ts";
 import { useForgeReads, usePullRequest } from "./use-pull-request.ts";
+import { attributionWords, checkName, checkOutcome, evidenceWords, fileStatusWords, plural, planWords, refusalWords, rule, runWords, selfReview, selfReviewSummary, stateWords } from "./review-model.ts";
+import { commentWords } from "../apps/pull-request-model.ts";
 import "../state/types.ts";
 
 /** Review screen (docs/20 "Trusted Code Surface", REQ-EV-0036): every fact on it
@@ -33,6 +35,7 @@ export function Review({ taskId, sessionId, card, onClose }: { taskId: string; s
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const [reverted, setReverted] = useState<number | null>(null);
   const load = useCallback(async () => {
     setErr(null);
     try {
@@ -85,7 +88,8 @@ export function Review({ taskId, sessionId, card, onClose }: { taskId: string; s
         return { path: k.slice(0, i), index: Number(k.slice(i + 1)) };
       });
       const d = await window.modbit.decideReview(sessionId, taskId, decision, rej, note, bundle.workspaceRevision);
-      setResult(decision === "ACCEPT" ? `Accepted: commit ${d.commit.slice(0, 12)}, ${d.reverted.length} hunk(s) reverted` : "Returned to work");
+      setResult(decision === "ACCEPT" ? `Accepted as commit ${d.commit.slice(0, 12)}; ${plural(d.reverted.length, "change")} undone` : "Returned to work");
+      setReverted(decision === "ACCEPT" ? d.reverted.length : null);
     } catch (e) {
       setErr((e as Error).message);
     } finally {
@@ -152,7 +156,8 @@ export function Review({ taskId, sessionId, card, onClose }: { taskId: string; s
   }, []);
   const [patchOld, setPatchOld] = useState("");
   const [patchNew, setPatchNew] = useState("");
-  const [patchNote, setPatchNote] = useState<string | null>(null);
+  // What the Core answered to the last edit: applied (with the revisions) or refused (with its code), in words.
+  const [patchNote, setPatchNote] = useState<{ ok: boolean; text: string; code: string; revision: string; previous: string } | null>(null);
   const openPatch = (path: string) => {
     setPatching(patching === path ? null : path);
     setPatchOld("");
@@ -165,13 +170,14 @@ export function Review({ taskId, sessionId, card, onClose }: { taskId: string; s
     setPatchNote(null);
     try {
       const r = await window.modbit.applyUserPatch(sessionId, taskId, { path, old: patchOld, new: patchNew, expectedWorkspaceRevision: bundle.workspaceRevision, expectedFileRevision: fileRevision });
-      setPatchNote(`applied at workspace revision ${r.workspaceRevision} (was ${r.previousRevision}) · file revision ${r.fileRevision.slice(0, 12)}`);
+      setPatchNote({ ok: true, text: "Your edit was applied, and the review was read again.", code: "", revision: String(r.workspaceRevision), previous: String(r.previousRevision) });
       setPatching(null);
       setPatchOld("");
       setPatchNew("");
       await load();
     } catch (e) {
-      setPatchNote(`refused: ${(e as Error).message}`);
+      const w = refusalWords((e as Error).message);
+      setPatchNote({ ok: false, text: `The edit was refused: ${w.text}.`, code: w.code, revision: "", previous: "" });
     } finally {
       setBusy(false);
     }
@@ -181,30 +187,38 @@ export function Review({ taskId, sessionId, card, onClose }: { taskId: string; s
     loading: bundle === null && err === null,
     // A refused patch (STALE_REVISION: the review shown is behind the
     // workspace) is this screen's error until the review is reloaded.
-    error: err ?? prError ?? (patchNote?.startsWith("refused") ? patchNote : null),
+    error: err ?? prError ?? (patchNote && !patchNote.ok ? `${patchNote.code ? `${patchNote.code}: ` : ""}${patchNote.text}` : null),
     bundle,
     gate: card?.gate ?? null,
-    pullRequest: pr ? { status: pr.status, detail: pr.detail, evidence: pr.status === "DENIED" && pr.receipts === 0 ? `approval ${pr.approvalId.slice(0, 8)}` : `${pr.receipts} receipt(s)${pr.url ? `; ${pr.url}` : ""}` } : null,
+    pullRequest: pr ? { status: pr.status, detail: pr.detail, evidence: pr.status === "DENIED" && pr.receipts === 0 ? `approval ${pr.approvalId.slice(0, 8)}` : `${plural(pr.receipts, "receipt")}${pr.url ? `; ${pr.url}` : ""}` } : null,
   });
   const selectionNote = selectionError
-    ? `selection not recorded: ${selectionError}`
+    ? `Not kept as context: ${refusalWords(selectionError).text}`
     : context.size > 0
-      ? `${context.size} hunk(s) given to retrieval as context`
+      ? `${plural(context.size, "change")} used as context`
       : null;
   return (
     <section className="review" data-testid="review" aria-label="Review" tabIndex={-1} ref={section}>
       <div className="review-head">
         <h2 style={{ margin: 0 }}>Review</h2>
-        <button type="button" className="small" data-testid="review-split" aria-pressed={split} onClick={() => setSplit((v) => !v)}>
-          {split ? "Unified (u)" : "Split (u)"}
+        <button type="button" className="small" data-testid="review-split" aria-pressed={split} aria-keyshortcuts="u" onClick={() => setSplit((v) => !v)}>
+          {split ? "One column" : "Side by side"}
         </button>
-        <span className="meta" data-testid="review-meta">
+        <span
+          className="meta"
+          data-testid="review-meta"
+          data-task-state={bundle?.taskState}
+          data-workspace-revision={bundle?.workspaceRevision}
+          data-base={bundle?.baseCommit}
+          data-receipts={bundle?.receipts}
+          title={bundle ? `Task ${taskId.slice(0, 8)} · workspace revision ${bundle.workspaceRevision} · base ${bundle.baseCommit.slice(0, 12)} · ${plural(bundle.receipts, "receipt")}` : undefined}
+        >
           {selectionNote && (
             <span className="meta" data-testid="review-selection">
               {selectionNote}
             </span>
           )}
-          {bundle ? `task ${taskId.slice(0, 8)} · ${bundle.taskState} · workspace revision ${bundle.workspaceRevision} · base ${bundle.baseCommit.slice(0, 8)} · ${bundle.files.length} file(s), ${hunkCount} hunk(s), ${bundle.receipts} receipt(s)` : "loading from the Core…"}
+          {bundle ? `${stateWords(bundle.taskState)} · ${plural(bundle.files.length, "file")}, ${plural(hunkCount, "change")}${bundle.baseCommit ? ` · based on ${bundle.baseCommit.slice(0, 7)}` : ""}` : "Reading the review from the Core…"}
         </span>
         <button type="button" data-testid="review-close" onClick={onClose} aria-keyshortcuts="Escape">
           Back to the task
@@ -213,17 +227,17 @@ export function Review({ taskId, sessionId, card, onClose }: { taskId: string; s
       <StateLine state={state} testid="review-state" />
       {err && (
         <div className="banner" data-kind="error" role="alert" data-testid="review-error">
-          <strong>Error</strong> — {err} <button type="button" onClick={() => void load()}>Reload</button>
+          <strong>The review could not be read</strong>: {refusalWords(err).text} <button type="button" onClick={() => void load()}>Reload</button>
         </div>
       )}
       {result && (
-        <div className="banner" data-kind="recovered" role="status" data-testid="review-result">
+        <div className="banner" data-kind="recovered" role="status" data-testid="review-result" data-reverted={reverted ?? undefined}>
           {result}
         </div>
       )}
       {patchNote && (
-        <div className="banner" data-kind={patchNote.startsWith("refused") ? "error" : "recovered"} role="status" data-testid="patch-result">
-          {patchNote}
+        <div className="banner" data-kind={patchNote.ok ? "recovered" : "error"} role="status" data-testid="patch-result" data-outcome={patchNote.ok ? "applied" : "refused"} data-code={patchNote.code || undefined} data-workspace-revision={patchNote.revision || undefined} data-previous-revision={patchNote.previous || undefined}>
+          {patchNote.text}
         </div>
       )}
       {bundle && (
@@ -233,7 +247,10 @@ export function Review({ taskId, sessionId, card, onClose }: { taskId: string; s
             {bundle.files.map((f) => (
               <article className="file" key={f.path} data-testid="review-file" data-path={f.path}>
                 <h3>
-                  {f.path} <span className="meta">{f.status === "A" ? "added" : f.status === "D" ? "deleted" : f.status === "R" ? "renamed" : "modified"} · file revision {f.fileRevision.slice(0, 12)}</span>
+                  {f.path}{" "}
+                  <span className="meta" data-status={f.status} data-file-revision={f.fileRevision} title={`File revision ${f.fileRevision.slice(0, 12)}`}>
+                    {fileStatusWords(f.status, f.binary)}
+                  </span>
                   {!f.binary && f.status !== "D" && (
                     <button type="button" className="small" data-testid="file-patch" onClick={() => openPatch(f.path)} disabled={busy || result !== null || bundle.taskState !== "ReadyForReview"}>
                       {patching === f.path ? "Cancel edit" : "Edit"}
@@ -252,13 +269,13 @@ export function Review({ taskId, sessionId, card, onClose }: { taskId: string; s
                     </label>
                     <div className="actions">
                       <button type="button" data-testid="patch-apply" onClick={() => void applyPatch(f.path, f.fileRevision)} disabled={busy || patchOld.length === 0}>
-                        Apply at revision {bundle.workspaceRevision}
+                        Apply
                       </button>
-                      <span className="meta">through the Core's change transaction; nothing is kept here</span>
+                      <span className="meta">The Core applies it to the version shown here, or refuses it if the file has moved on.</span>
                     </div>
                   </div>
                 )}
-                {f.binary && <p className="meta">binary file</p>}
+                {f.binary && <p className="meta">A binary file: its content is not shown.</p>}
                 {f.hunks.map((h) => {
                   const key = `${f.path}#${h.index}`;
                   const isRejected = rejected.has(key);
@@ -266,20 +283,20 @@ export function Review({ taskId, sessionId, card, onClose }: { taskId: string; s
                     <div className="hunk" key={key} data-testid="review-hunk" data-hunk={key} data-rejected={isRejected} data-collapsed={collapsed.has(key)} tabIndex={0} role="group" aria-label={`${f.path} ${h.header}${isRejected ? ", rejected" : ""}${collapsed.has(key) ? ", collapsed" : ""}`}>
                       <div className="hunk-head">
                         <code>{h.header}</code>
-                        {isRejected && <span className="meta">rejected</span>}
+                        {isRejected && <span className="meta">Rejected: undone when you accept</span>}
                         <button type="button" className="small" data-testid="hunk-toggle" aria-expanded={!collapsed.has(key)} onClick={() => toggleCollapsed(key)}>
                           {collapsed.has(key) ? "Expand" : "Collapse"}
                         </button>
                         <label>
-                          <input type="checkbox" data-testid="hunk-reject" checked={isRejected} onChange={() => toggle(key)} disabled={result !== null} /> reject
+                          <input type="checkbox" data-testid="hunk-reject" checked={isRejected} onChange={() => toggle(key)} disabled={result !== null} /> Reject this change
                         </label>
-                        <label title="Give this hunk to retrieval as context. It cannot change any file.">
-                          <input type="checkbox" data-testid="hunk-context" checked={context.has(key)} onChange={() => void toggleContext(key)} disabled={result !== null} /> context
+                        <label title="Give this change to the agent as context when it looks things up. It cannot change any file.">
+                          <input type="checkbox" data-testid="hunk-context" checked={context.has(key)} onChange={() => void toggleContext(key)} disabled={result !== null} /> Use as context
                         </label>
                       </div>
                       {collapsed.has(key) ? (
                         <p className="meta" data-testid="hunk-collapsed">
-                          {h.lines.filter((l) => l.startsWith("+")).length} added, {h.lines.filter((l) => l.startsWith("-")).length} removed line(s) — collapsed
+                          Collapsed · {h.lines.filter((l) => l.startsWith("+")).length} added, {h.lines.filter((l) => l.startsWith("-")).length} removed lines
                         </p>
                       ) : split ? (
                         <table className="split" data-testid="hunk-split" aria-label="split view">
@@ -309,18 +326,18 @@ export function Review({ taskId, sessionId, card, onClose }: { taskId: string; s
             ))}
           </div>
           <aside role="region" aria-label="Evidence and decision">
-            <h3>Verification</h3>
-            {bundle.verificationRuns.length === 0 && <p className="empty">No verification runs recorded.</p>}
-            <ul data-testid="review-verification" tabIndex={-1} aria-label="verification runs">
+            <h3>Checks</h3>
+            {bundle.verificationRuns.length === 0 && <p className="empty">The Core has not run any checks yet.</p>}
+            <ul data-testid="review-verification" tabIndex={-1} aria-label="checks the Core ran">
               {bundle.verificationRuns.map((v) => (
-                <li key={v.id}>
-                  <strong>{v.stage}</strong> {v.status} · {v.checks.filter((c) => c.status === "PASS").length}/{v.checks.length} pass · {v.candidateRevision}
+                <li key={v.id} data-stage={v.stage} data-status={v.status} title={`Run on revision ${v.candidateRevision}`}>
+                  {runWords(v)}
                   {v.checks.some((c) => c.status !== "PASS") && (
                     <ul>
                       {v.checks.filter((c) => c.status !== "PASS").map((c) => (
-                        <li key={c.id} data-testid="review-check" data-status={c.status} tabIndex={-1}>
-                          {c.status === "FAIL" ? "✖ failed: " : `${c.status.toLowerCase()}: `}
-                          {c.id}
+                        <li key={c.id} data-testid="review-check" data-status={c.status} data-check-id={c.id} tabIndex={-1}>
+                          {c.status === "FAIL" ? "✖ " : ""}
+                          {checkOutcome(c)}
                         </li>
                       ))}
                     </ul>
@@ -328,86 +345,151 @@ export function Review({ taskId, sessionId, card, onClose }: { taskId: string; s
                 </li>
               ))}
             </ul>
-            <h3>Forge CI (external evidence)</h3>
-            <div className="meta">What the forge's checks said about the pushed commit. It informs this review; it is never a verification result and never an acceptance.</div>
-            {bundle.ciEvidence.length === 0 && <p className="empty" data-testid="review-ci-empty">No CI results read yet.</p>}
-            <ul data-testid="review-ci" tabIndex={-1} aria-label="forge CI results">
+            <h3>Checks on the pull request</h3>
+            <div className="meta">What the forge's own checks said about the pushed commit. They inform this review; they never accept it.</div>
+            {bundle.ciEvidence.length === 0 && <p className="empty" data-testid="review-ci-empty">None read yet.</p>}
+            <ul data-testid="review-ci" tabIndex={-1} aria-label="checks on the pull request">
               {bundle.ciEvidence.map((c, i) => (
-                <li key={`${c.runId}-${i}`} data-testid="review-ci-run" data-conclusion={c.conclusion || c.status} data-provenance={c.provenance}>
+                <li key={`${c.runId}-${i}`} data-testid="review-ci-run" data-conclusion={c.conclusion || c.status} data-provenance={c.provenance} title={c.logRef ? `Log ${c.logRef.slice(0, 12)}${c.logTruncated ? " (cut)" : ""}` : undefined}>
                   <strong>{c.name}</strong> {c.conclusion === "failure" ? "✖ " : ""}
-                  {c.conclusion || c.status} · run {c.runId} · {c.commit.slice(0, 12)} · provenance {c.provenance}
+                  {(c.conclusion || c.status).replace(/_/g, " ")} · run {c.runId} · commit {c.commit.slice(0, 7)}
                   {c.url && <> · <code>{c.url}</code></>}
-                  {c.logRef && <> · log <code>{c.logRef.slice(0, 12)}</code>{c.logTruncated ? " (cut)" : ""}</>}
                 </li>
               ))}
               {bundle.ciRejected.map((r, i) => (
-                <li key={`rej-${i}`} data-testid="review-ci-refused">
-                  refused <strong>{r.name}</strong>: {r.reason} (run on {r.headSha.slice(0, 12)})
+                <li key={`rej-${i}`} data-testid="review-ci-refused" data-reason={r.reason}>
+                  Not counted: <strong>{r.name}</strong> ran on another commit ({r.headSha.slice(0, 7)}), {r.reason.replace(/_/g, " ").toLowerCase()}
                 </li>
               ))}
             </ul>
-            <h3>Pull request comments (untrusted)</h3>
-            {bundle.reviewComments.length === 0 && <p className="empty" data-testid="review-comments-empty">No pull request comments read yet.</p>}
-            <ul data-testid="review-comments" tabIndex={-1} aria-label="pull request comments">
-              {bundle.reviewComments.map((t) => (
-                <li key={`${t.commentId}-${t.inputId}-${t.disposition}`} data-testid="review-comment" data-disposition={t.disposition} data-trust={t.trust} data-answered={t.answered ? "true" : "false"}>
-                  <strong>@{t.author}</strong> <span className="meta">[{t.trust}]</span> {t.kind}
-                  {t.path && <> on <code>{t.path}{t.line !== "0" ? `:${t.line}` : ""}</code></>} · {t.disposition === "STEERED" ? (t.answered ? "steered — the agent has answered" : "steered — not yet answered") : `ignored (${t.reason})`}
-                  {t.reportedBack ? " · reported back on the pull request" : ""}
-                  {t.body && <pre className="small" data-testid="review-comment-body">{t.body}</pre>}
-                </li>
-              ))}
+            <h3>Comments on the pull request</h3>
+            <div className="meta">They come from outside Modbit: the agent reads an allowed person's request as a request, never as an instruction it must follow.</div>
+            {bundle.reviewComments.length === 0 && <p className="empty" data-testid="review-comments-empty">None read yet.</p>}
+            <ul data-testid="review-comments" tabIndex={-1} aria-label="comments on the pull request">
+              {bundle.reviewComments.map((t) => {
+                const w = commentWords(t);
+                return (
+                  <li key={`${t.commentId}-${t.inputId}-${t.disposition}`} data-testid="review-comment" data-disposition={t.disposition} data-trust={t.trust} data-reason={t.reason || undefined} data-kind={t.kind} data-answered={t.answered ? "true" : "false"}>
+                    <strong>{w.author}</strong>
+                    {w.where && <> on <code>{w.where}</code></>} · {w.outcome}
+                    {t.body && <pre className="small" data-testid="review-comment-body">{t.body}</pre>}
+                  </li>
+                );
+              })}
             </ul>
             <div className="actions">
               <button type="button" className="small" data-testid="review-ci-ingest" onClick={() => void ingestForge("ci")} disabled={forgeBusy}>
-                Read CI results
+                Read checks
               </button>{" "}
               <button type="button" className="small" data-testid="review-comments-ingest" onClick={() => void ingestForge("comments")} disabled={forgeBusy}>
-                Read pull request comments
+                Read comments
               </button>
             </div>
             {forgeNote && <div className="meta" data-testid="review-forge-note">{forgeNote}</div>}
-            {forgeError && <div role="alert" className="error" data-testid="review-forge-error">{forgeError}</div>}
+            {forgeError && (
+              <div role="alert" className="error" data-testid="review-forge-error" data-code={refusalWords(forgeError).code || undefined}>
+                {refusalWords(forgeError).text}
+              </div>
+            )}
             {bundle.attributions.length > 0 && (
               <>
-                <h3>Attribution</h3>
+                <h3>What broke a check</h3>
                 <ul data-testid="review-attribution">
                   {bundle.attributions.map((a) => (
-                    <li key={a}>{a}</li>
+                    <li key={a} data-raw={a}>
+                      {attributionWords(a)}
+                    </li>
                   ))}
                 </ul>
               </>
             )}
             {bundle.quarantined.length > 0 && (
               <>
-                <h3>Quarantined (flaky)</h3>
+                <h3>Set aside as flaky</h3>
                 <ul>
                   {bundle.quarantined.map((q) => (
-                    <li key={q}>{q}</li>
+                    <li key={q} data-check-id={q}>
+                      {checkName(q)}
+                    </li>
                   ))}
                 </ul>
               </>
             )}
             {bundle.invariantFindings.length > 0 && (
               <>
-                <h3>Diff invariants</h3>
+                <h3>Change rules broken</h3>
                 <ul>
-                  {bundle.invariantFindings.map((q) => (
-                    <li key={q}>{q}</li>
-                  ))}
+                  {bundle.invariantFindings.map((q) => {
+                    const r = rule(q);
+                    return (
+                      <li key={q} data-raw={q}>
+                        {r.path && <code>{r.path}</code>} {r.text}
+                      </li>
+                    );
+                  })}
                 </ul>
               </>
             )}
             <h3>Plan</h3>
-            <pre className="small" data-testid="review-plan" tabIndex={0} aria-label="plan">{bundle.planJson || "(no plan recorded)"}</pre>
+            <div className="small" data-testid="review-plan" tabIndex={0} aria-label="plan">
+              {(() => {
+                const plan = planWords(bundle.planJson);
+                if (!bundle.planJson) return <p className="empty">No plan was recorded.</p>;
+                if (!plan) return <p>{bundle.planJson}</p>;
+                return (
+                  <>
+                    {plan.outcome && <p>{plan.outcome}</p>}
+                    {plan.files.length > 0 && (
+                      <p>
+                        Files it expected to change: {plan.files.map((f, i) => (
+                          <span key={f}>
+                            {i > 0 ? ", " : ""}
+                            <code>{f}</code>
+                          </span>
+                        ))}
+                      </p>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
             <h3>Self-review</h3>
-            <pre className="small" tabIndex={0} aria-label="self-review">{bundle.selfReviewJson || "(none)"}</pre>
-            <h3>Evidence</h3>
-            <ul className="small" data-testid="review-evidence" tabIndex={0} aria-label="evidence links">
-              {bundle.evidenceLinks.map((e) => (
-                <li key={e}>{e}</li>
-              ))}
-            </ul>
+            <div className="small" data-testid="review-self-review" tabIndex={0} aria-label="self-review">
+              {(() => {
+                if (!bundle.selfReviewJson) return <p className="empty">The agent recorded no self-review.</p>;
+                const summary = selfReviewSummary(bundle.selfReviewJson);
+                const items = selfReview(bundle.selfReviewJson);
+                return (
+                  <>
+                    {summary && <p>{summary}</p>}
+                    {items.length === 0 ? (
+                      <p className="meta">It found nothing to fix.</p>
+                    ) : (
+                      <ul>
+                        {items.map((f, i) => (
+                          <li key={i} data-open={f.open ? "true" : "false"}>
+                            {f.text} <span className="meta">({f.open ? "not resolved" : "resolved"})</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+            <details className="small review-evidence" data-testid="review-evidence-group">
+              <summary>Evidence ({bundle.evidenceLinks.length})</summary>
+              <ul data-testid="review-evidence" aria-label="evidence">
+                {bundle.evidenceLinks.map((e) => {
+                  const w = evidenceWords(e);
+                  return (
+                    <li key={e} data-link={e}>
+                      {w.kind} <code title={e}>{w.short}</code>
+                    </li>
+                  );
+                })}
+              </ul>
+            </details>
             <h3>Decision</h3>
             <textarea data-testid="review-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Commit message / feedback" disabled={result !== null} />
             <div className="actions">
@@ -419,17 +501,20 @@ export function Review({ taskId, sessionId, card, onClose }: { taskId: string; s
               </button>
             </div>
             <h3>Pull request</h3>
-            <div className="meta">The push and the forge write are one protected effect: it runs only after you approve the exact intent shown, with the token the Core holds.</div>
+            <div className="meta">Pushing the branch and opening the request is one action that asks you first; the Core uses the token it holds.</div>
             <div className="actions" data-testid="pull-request" data-status={pr?.status ?? "NONE"}>
               {(!pr || pr.status === "DENIED" || pr.status === "FAILED") && (
                 <button type="button" data-testid="pr-open" onClick={() => void openPullRequest(false)} disabled={prBusy || (bundle.taskState !== "ReadyForReview" && !result?.startsWith("Accepted") && bundle.taskState !== "Completed")}>
-                  {prBusy ? "Asking the Core…" : pr ? "Try again" : "Open pull request"}
+                  {prBusy ? "Asking the Core…" : pr ? "Try again" : "Open a pull request"}
                 </button>
               )}
               {pr?.status === "APPROVAL_PENDING" && (
                 <span data-testid="pr-approval">
                   <span className="meta">
-                    approve intent <code data-testid="pr-intent">{pr.intentHash.slice(0, 16)}</code> (branch {pr.branch}, revision {pr.candidateRevision})?
+                    Push <code>{pr.branch}</code> and open the pull request?{" "}
+                    <span data-testid="pr-intent" data-intent={pr.intentHash.slice(0, 16)} data-revision={pr.candidateRevision} title={`Intent ${pr.intentHash.slice(0, 16)} · revision ${pr.candidateRevision}`}>
+                      This asks once, for exactly this push.
+                    </span>
                   </span>{" "}
                   <button type="button" data-testid="pr-approve" onClick={() => void decidePullRequest(true)} disabled={prBusy}>
                     Approve and push
@@ -441,7 +526,10 @@ export function Review({ taskId, sessionId, card, onClose }: { taskId: string; s
               )}
               {(pr?.status === "OPENED" || pr?.status === "UPDATED") && (
                 <span className="meta" data-testid="pr-result">
-                  {pr.status === "OPENED" ? "opened" : "updated"} #{pr.number} at {pr.url} · head {pr.headSha.slice(0, 12)} · {pr.receipts} receipt(s){pr.replayed ? " · replayed" : ""}{" "}
+                  <span title={`Head ${pr.headSha.slice(0, 12)}`} data-head={pr.headSha} data-receipts={pr.receipts}>
+                    {pr.status === "OPENED" ? "Opened" : "Updated"} #{pr.number} at {pr.url} · {plural(pr.receipts, "receipt")}
+                    {pr.replayed ? " · answered from the record" : ""}
+                  </span>{" "}
                   <button type="button" className="small" data-testid="pr-update" onClick={() => void openPullRequest(true)} disabled={prBusy}>
                     Update
                   </button>
@@ -449,12 +537,12 @@ export function Review({ taskId, sessionId, card, onClose }: { taskId: string; s
               )}
               {pr?.status === "DENIED" && (
                 <span className="meta" role="status" data-testid="pr-denied">
-                  denied: {pr.detail}
+                  Denied: the branch stays local and nothing reached the forge.
                 </span>
               )}
               {prError && (
                 <span className="meta" role="alert" data-testid="pr-error">
-                  {prError}
+                  {refusalWords(prError).text}
                 </span>
               )}
             </div>
