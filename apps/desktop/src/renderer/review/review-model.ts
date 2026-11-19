@@ -4,11 +4,13 @@
  * computed that the Core did not say. Two limits are the Core's, not this page's:
  *  - the Core has no read of a pull request's state (PX-211): a task is under "Pull requests" only when the Core answered this
  *    window that it opened or updated one;
- *  - the isolated reviewer's findings are not in the review bundle one by one (PX-214): the findings here are the ones the bundle
- *    carries (failed checks, broken change rules, the agent's own self-review, the forge's failed checks).
+ *  - the findings listed under "Findings" are the ones the bundle carries besides the reviewer's (failed checks, broken change rules,
+ *    the agent's own self-review, the forge's failed checks); the isolated reviewer's findings, one by one, are the reviewer's block
+ *    below them (PX-214, `reviewerWords` and the functions after it).
  */
 import type { AgentHeaderView } from "../../shared/conversation-types.ts";
 import type { PullRequestAckView, ReviewBundleView } from "../../preload/preload.ts";
+import type { ReviewerFindingView, ReviewerResultView } from "../../shared/review-findings-types.ts";
 
 export interface ReviewRow {
   taskId: string;
@@ -227,4 +229,73 @@ export function refusalWords(message: string): { text: string; code: string } {
   };
   const rest = m ? plain.replace(m[0], "").trim() : plain;
   return { text: known[code] ?? (rest || plain), code };
+}
+
+// ---- The isolated reviewer's findings (REQ-PX-214, DR-PX-2026-11-11-021 MWS-18) ----
+
+const VERDICT: Record<string, string> = {
+  PASS: "The reviewer found nothing to change.",
+  REVISE: "The reviewer asks for changes.",
+  BLOCK: "The reviewer says this change should not be accepted as it is.",
+  UNCERTAIN: "The reviewer could not decide.",
+};
+
+/** A severity in a word. */
+export function severityWords(s: string): string {
+  const known: Record<string, string> = { CRITICAL: "Critical", HIGH: "High", MEDIUM: "Medium", LOW: "Low" };
+  return known[s] ?? (s ? s.charAt(0) + s.slice(1).toLowerCase() : "Unrated");
+}
+
+/** What the reviewer's latest result says about the change, in plain words; null when the task has no reviewer result. */
+export function reviewerWords(r: ReviewerResultView): { headline: string; detail: string; unreadable: boolean; stale: boolean } | null {
+  if (r.state === "") return null;
+  if (r.state === "UNREADABLE") return { headline: "The reviewer's report cannot be shown.", detail: r.note, unreadable: true, stale: false };
+  const stale = r.state === "STALE";
+  const detail = [r.summary, r.confidence > 0 ? `The reviewer was ${r.confidence} percent sure.` : ""].filter(Boolean).join(" ");
+  return { headline: VERDICT[r.verdict] ?? "The reviewer gave an answer this page has no words for.", detail, unreadable: false, stale };
+}
+
+/** The findings no one has set aside, in the reviewer's order: the ones Walk through goes over. */
+export const openReviewerFindings = (r: ReviewerResultView): ReviewerFindingView[] => r.findings.filter((f) => !f.dismissed);
+
+/** Where a finding points: "src/a.ts, line 12", "src/a.ts" or nothing when it names no file. */
+export function findingPlace(f: ReviewerFindingView): string {
+  if (!f.path) return "";
+  return f.line > 0 ? `${f.path}, line ${f.line}` : f.path;
+}
+
+/** Whether the Core found the finding in the tree, in words. The reviewer's word never makes a finding verified. */
+export function verifiedWords(f: ReviewerFindingView): string {
+  return f.verified ? "The Core found this file in the code." : `The Core could not confirm this${f.unsupportedReason ? `: ${f.unsupportedReason}` : "."}`;
+}
+
+/** Who set a finding aside, as the log recorded it, in words. */
+export const whoWords = (by: string): string => (by.startsWith("user:") ? "you" : by.replace(/^[a-z]+:/, "") || "someone");
+
+/** The line under a finding that has been dealt with, or "" when it has not. */
+export function handledWords(f: ReviewerFindingView): string {
+  if (f.dismissed) return `Set aside by ${whoWords(f.dismissedBy)}: ${f.dismissedReason}`;
+  if (f.fixRequests > 0) return f.fixRequests === 1 ? "You asked the agent to fix this one." : `You asked the agent to fix this one ${f.fixRequests} times.`;
+  return "";
+}
+
+/** A refusal of a command on a finding, in words (the Core's codes). */
+export function findingRefusal(message: string): string {
+  const r = refusalWords(message);
+  const known: Record<string, string> = {
+    RESULT_CHANGED: "the reviewer has reported again since this page was read; the findings were read again",
+    UNKNOWN_FINDING: "the reviewer's report has no such finding any more",
+    FINDING_DISMISSED: "this finding was already set aside",
+    ALREADY_DISMISSED: "this finding was already set aside",
+    RESULT_UNREADABLE: "the reviewer's report cannot be read back safely, so nothing was done",
+    NO_REVIEWER_RESULT: "the reviewer has not reported on this change",
+    TASK_ENDED: "the task has ended, so there is no one to fix it",
+    BAD_ARGUMENT: "the request was not valid",
+  };
+  return known[r.code] ?? r.text;
+}
+
+/** What to say after a fix was asked for: the agent takes the finding up when the task runs. */
+export function fixedWords(taskState: string): string {
+  return taskState.startsWith("Waiting") ? "Asked the agent to fix this one. It starts on it when you resume the task." : "Asked the agent to fix this one. It takes it up at its next step.";
 }

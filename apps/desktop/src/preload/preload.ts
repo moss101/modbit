@@ -13,6 +13,7 @@ import type { ChangesStateInfo, CommitPushAckInfo, CommitPushInput, DecideHunkAc
 import type { ComputerCardsInfo, ComputerFrameInfo, ComputerPresenceInfo, ComputerStopInfo, OpenSettingsInfo, PermissionName } from "../shared/computer-types.ts";
 import type { AccountingInfo, AddRuleInput, AllowRuleInfo, CheckpointListInfo, CheckpointTargetInput, DockApprovalView, ExpiredApprovalView, ForkOutcome, ModeProposalDecisionInfo, ModeProposalListInfo, RestoreOutcome, RewindPreviewInfo, RunModeInfo, TaskBudgetsInfo } from "../shared/control-types.ts";
 import type { UpdatesView } from "../shared/inbox-types.ts";
+import type { DismissFindingAnswer, FixFindingAnswer, ReviewerResultView } from "../shared/review-findings-types.ts";
 
 export type { TerminalFrameJson, TerminalViewJson };
 
@@ -92,7 +93,8 @@ export interface ReviewBundleView {
   /** The Core's repair attempts for the task (PX-018), in the order recorded; outcome is empty while open, ESCALATED for the entry the loop wrote when it refused another attempt. */
   repairAttempts: { ordinal: number; failureSignature: string; hypothesis: string; intendedFix: string; outcome: string; reverted: boolean; escalation: string }[];
   /** PX-127: the pull request's comments the task has seen — untrusted text, what became of each. */
-  reviewComments: { commentId: string; kind: string; author: string; url: string; path: string; line: string; body: string; trust: string; disposition: string; reason: string; inputId: string; answered: boolean; reportedBack: boolean; createdAt: string }[];
+  reviewComments: { commentId: string; kind: string; author: string; url: string; path: string; line: string; body: string; trust: string; disposition: string; reason: string; inputId: string; answered: boolean; reportedBack: boolean; createdAt: string }[];  /** PX-214: the isolated reviewer's latest recorded result, finding by finding. */
+  reviewer: ReviewerResultView;
 }
 export interface TaskStatusView {
   state: string;
@@ -503,6 +505,10 @@ export interface ModbitBridge {
   composerSideQuestion(taskId: string, text: string): Promise<SideAnswerView>;
   /** REQ-PX-210: one suggested next message for a task whose turn has ended with nothing queued, or the Core's refusal code. The Core charges the task; nothing is sent for the person. */
   composerSuggest(sessionId: string, taskId: string): Promise<SuggestionView>;
+  /** PX-214: ask the agent to fix one finding of the reviewer's latest result; `resultDigest` is the digest of the result on the screen. */
+  fixReviewFinding(sessionId: string, taskId: string, findingId: string, resultDigest: string): Promise<FixFindingAnswer>;
+  /** PX-214: set one finding aside; the Core records who and why. */
+  dismissReviewFinding(sessionId: string, taskId: string, findingId: string, resultDigest: string, reason: string): Promise<DismissFindingAnswer>;
   reviewBundle(taskId: string): Promise<ReviewBundleView>;
   codeView(taskId: string, path: string, expectedFileRevision?: string): Promise<CodeView>;
   decideReview(sessionId: string, taskId: string, decision: "ACCEPT" | "RETURN", rejected: { path: string; index: number }[], note: string, expectedWorkspaceRevision: string): Promise<{ taskState: string; commit: string; reverted: string[]; workspaceRevision: string }>;
@@ -740,6 +746,8 @@ const bridge: ModbitBridge = {
   composerSetSendBehavior: (sessionId, taskId, whileRunning, sendNow) => ipcRenderer.invoke("composer:setSendBehavior", sessionId, taskId, whileRunning, sendNow),
   composerSideQuestion: (taskId, text) => ipcRenderer.invoke("composer:sideQuestion", taskId, text),
   composerSuggest: (sessionId, taskId) => ipcRenderer.invoke("composer:suggest", sessionId, taskId),
+  fixReviewFinding: (sessionId, taskId, findingId, resultDigest) => ipcRenderer.invoke("review:fixFinding", sessionId, taskId, findingId, resultDigest),
+  dismissReviewFinding: (sessionId, taskId, findingId, resultDigest, reason) => ipcRenderer.invoke("review:dismissFinding", sessionId, taskId, findingId, resultDigest, reason),
   reviewBundle: (taskId) => ipcRenderer.invoke("review:bundle", taskId),
   codeView: (taskId, path, expectedFileRevision) => ipcRenderer.invoke("review:codeView", taskId, path, expectedFileRevision ?? ""),
   decideReview: (sessionId, taskId, decision, rejected, note, expectedWorkspaceRevision) => ipcRenderer.invoke("review:decide", sessionId, taskId, decision, rejected, note, expectedWorkspaceRevision),

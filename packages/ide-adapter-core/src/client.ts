@@ -68,6 +68,10 @@ import {
   CreateSessionSchema,
   CreateTaskSchema,
   DecideReviewSchema,
+  FixReviewFindingSchema,
+  ReviewFindingFixQueuedSchema,
+  DismissReviewFindingSchema,
+  ReviewFindingDismissalSchema,
   ListApprovalsSchema,
   ApprovalListSchema,
   type ApprovalList,
@@ -222,6 +226,8 @@ import {
   SuggestNextPromptSchema,
   NextPromptSuggestionSchema,
   type NextPromptSuggestion,
+  type ReviewFindingFixQueued,
+  type ReviewFindingDismissal,
   EditQueuedInputSchema,
   GetSendBehaviorSchema,
   InterruptAcceptedSchema,
@@ -942,6 +948,24 @@ export class CoreClient {
     const payload = toBinary(DecideReviewSchema, create(DecideReviewSchema, { taskId: { value: unhex(taskId) }, decision, rejected: rejected.map((r) => ({ path: r.path, index: r.index })), note, expectedWorkspaceRevision }));
     const ack = await this.command("DecideReview", payload, undefined, this.leases.get(sessionId), sessionId);
     return fromBinary(ReviewDecidedSchema, ack.result);
+  }
+
+  /**
+   * Ask the agent to fix one finding of the isolated reviewer's latest result (REQ-PX-214). `resultDigest` is the digest of the result the
+   * person was looking at; the Core refuses (RESULT_CHANGED) when the latest result is another. The Core queues one input that names this
+   * finding only, and refuses an unknown or dismissed finding (UNKNOWN_FINDING, FINDING_DISMISSED) and an unreadable result (RESULT_UNREADABLE).
+   */
+  async fixReviewFinding(sessionId: string, taskId: string, findingId: string, resultDigest: string): Promise<ReviewFindingFixQueued> {
+    const payload = toBinary(FixReviewFindingSchema, create(FixReviewFindingSchema, { taskId: { value: unhex(taskId) }, findingId, resultDigest }));
+    const ack = await this.command("FixReviewFinding", payload, undefined, this.leases.get(sessionId), sessionId);
+    return fromBinary(ReviewFindingFixQueuedSchema, ack.result);
+  }
+
+  /** Set one finding of the reviewer's latest result aside, recording who and why on the task's log (REQ-PX-214). The reason is required. */
+  async dismissReviewFinding(sessionId: string, taskId: string, findingId: string, resultDigest: string, reason: string): Promise<ReviewFindingDismissal> {
+    const payload = toBinary(DismissReviewFindingSchema, create(DismissReviewFindingSchema, { taskId: { value: unhex(taskId) }, findingId, resultDigest, reason }));
+    const ack = await this.command("DismissReviewFinding", payload, undefined, this.leases.get(sessionId), sessionId);
+    return fromBinary(ReviewFindingDismissalSchema, ack.result);
   }
 
   /** PX-005: a one-hunk direct edit through the Core's ChangeTransaction; the renderer keeps no buffer. */

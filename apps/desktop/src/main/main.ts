@@ -19,6 +19,7 @@ import { headersView, observeStreamEvent, registerConversationHandlers } from ".
 import { notificationTarget, UpdatesRecord, withReadState, type HeaderFacts } from "./inbox-record.js";
 import { registerComposerHandlers, requireSkillNames } from "./composer-ipc.js";
 import { registerChangesHandlers } from "./changes-ipc.js";
+import { registerReviewFindingsHandlers } from "./review-findings-ipc.js";
 import { registerCustomizeHandlers } from "./customize-ipc.js";
 import { registerProjectHandlers } from "./project-ipc.js";
 import { registerControlHandlers } from "./control-ipc.js";
@@ -651,6 +652,18 @@ handle("review:bundle", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
     ciRejected: b.ciRejected.map((c) => ({ name: c.name, headSha: c.headSha, reason: c.reason })),
     repairAttempts: b.repairAttempts.map((a) => ({ ordinal: a.ordinal, failureSignature: a.failureSignature, hypothesis: a.hypothesis, intendedFix: a.intendedFix, outcome: a.outcome, reverted: a.reverted, escalation: a.escalation })),
     reviewComments: b.reviewComments.map((t) => ({ commentId: t.commentId.toString(), kind: t.kind, author: t.author, url: t.url, path: t.path, line: t.line.toString(), body: t.body, trust: t.trust, disposition: t.disposition, reason: t.reason, inputId: t.inputId, answered: t.answered, reportedBack: t.reportedBack, createdAt: t.createdAt })),
+    // PX-214: the isolated reviewer's latest recorded result, one finding at a time; `verified` is the Core's own check against the tree.
+    reviewer: {
+      state: b.reviewerState,
+      verdict: b.reviewerVerdict,
+      confidence: b.reviewerConfidence,
+      summary: b.reviewerSummary,
+      candidateRevision: b.reviewerCandidateRevision.toString(),
+      resultDigest: b.reviewerResultDigest,
+      findings: b.reviewerFindings.map((f) => ({ findingId: f.findingId, severity: f.severity, category: f.category, path: f.path, line: f.line, claim: f.claim, suggestedAction: f.suggestedAction, verified: f.verified, unsupportedReason: f.unsupportedReason, dismissed: f.dismissed, dismissedBy: f.dismissedBy, dismissedReason: f.dismissedReason, fixRequests: f.fixRequests })),
+      questions: b.reviewerQuestions,
+      note: b.reviewerNote,
+    },
   };
 });
 // PX-127: the Core reads the forge (its token, the task's lease) and records
@@ -1005,6 +1018,16 @@ registerCustomizeHandlers(conversationRegistrar, {
     return r.canceled || !r.filePaths[0] ? null : r.filePaths[0];
   },
   reveal: (path) => shell.showItemInFolder(path),
+});
+// REQ-PX-214: fix one of the isolated reviewer's findings, or set it aside with a reason. The findings themselves ride `review:bundle`.
+registerReviewFindingsHandlers({
+  handle: (channel, fn) => handle(channel, (_e, ...args) => fn(...args)),
+  client: requireClient,
+  sessionId: requireSessionId,
+  taskId: requireTaskId,
+  lease: async (c, sid) => {
+    if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
+  },
 });
 // REQ-PX-054..056: the composer's mode, preference, queue, interrupt, slash, model and attachment commands.
 registerComposerHandlers({
