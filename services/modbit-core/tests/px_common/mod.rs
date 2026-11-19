@@ -14,8 +14,9 @@ use std::time::Duration;
 use modbit_protocol::client::Client;
 use modbit_protocol::local::{ReadyLine, decode_hex};
 use modbit_protocol::v1::{
-    AcquireSessionLease, ClientKind, CommandEnvelope, CreateSession, CreateTask, GetTaskStatus, Id,
-    SessionCreated, SessionLeaseAcquired, StartTask, TaskCreated, TaskRunStarted, TaskStatus,
+    AcquireSessionLease, ClientKind, CommandEnvelope, CreateSession, CreateTask,
+    GetSessionSnapshot, GetTaskStatus, Id, SessionCreated, SessionLeaseAcquired, SessionSnapshot,
+    StartTask, TaskCreated, TaskRunStarted, TaskStatus,
 };
 use prost::Message;
 
@@ -234,13 +235,46 @@ pub async fn wait_task(c: &mut Client, task: &Id, secs: u64) -> TaskStatus {
 }
 
 /// Every event of a session as `{event_type, task_id, payload, ...}` JSON.
+///
+/// Everything already on the session's log is returned, however slowly the
+/// stream delivers it: the session's own tip is read first
+/// (`GetSessionSnapshot`), and the read does not end before an event at or
+/// past that offset has arrived. A pause in delivery on a loaded runner used
+/// to end the read early and drop the last events (PX-153). Events that land
+/// after the tip are still picked up until the stream goes quiet for 600 ms,
+/// as before, so the result is never less than the old read returned.
 pub async fn replay(core: &CoreProcess, session: &Id) -> Vec<serde_json::Value> {
     let mut s = core.client().await;
+    let ack = s
+        .command(envelope(
+            rand_id(),
+            "GetSessionSnapshot",
+            GetSessionSnapshot {
+                session_id: Some(session.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let tip = Client::result::<SessionSnapshot>(&ack).unwrap().last_offset;
     s.subscribe(session.clone(), 0).await.unwrap();
     let mut out = Vec::new();
-    while let Ok(Ok(Some(e))) =
-        tokio::time::timeout(Duration::from_millis(600), s.next_event()).await
-    {
+    let mut last = 0;
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    loop {
+        let wait = if last < tip {
+            deadline.saturating_duration_since(std::time::Instant::now())
+        } else {
+            Duration::from_millis(600)
+        };
+        let Ok(Ok(Some(e))) = tokio::time::timeout(wait, s.next_event()).await else {
+            assert!(
+                last >= tip,
+                "replay stopped at offset {last} before the session's tip {tip}"
+            );
+            break;
+        };
+        last = e.offset;
         let ev = e.event.unwrap();
         out.push(serde_json::json!({
             "offset": e.offset,
