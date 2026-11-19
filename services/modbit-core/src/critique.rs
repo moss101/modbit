@@ -595,8 +595,14 @@ async fn materialize_and_brief(
         })
         .unwrap_or_default();
     let open: Vec<String> = state.open_failures.clone();
+    // PX-214: what an earlier review of this candidate found and nobody set
+    // aside, for this reviewer to re-evaluate.
+    let earlier = {
+        let store = core.store.lock().await;
+        crate::review_findings::brief_section(&store, task)
+    };
     let brief = format!(
-        "[REVIEW BRIEF] You are the Isolated Non-Committing Reviewer of task {} at candidate revision {rev}. You work in a disposable copy of the candidate tree ({}); you may read anything in it and run bounded checks (shell.exec, verify.run), and nothing you do here reaches the canonical repository. Report with review.report when done.\n\nOriginal request:\n{}\n\nAcceptance criteria (the solver's plan):\n- outcome: {}\n- expected files: {}\n- verification: {}\n\nCandidate changes (working tree vs base):\n{}\n{}\nStatic evidence:\n- {}\n- {}\n- open failures: {}\n\nChanged paths: {}\n",
+        "[REVIEW BRIEF] You are the Isolated Non-Committing Reviewer of task {} at candidate revision {rev}. You work in a disposable copy of the candidate tree ({}); you may read anything in it and run bounded checks (shell.exec, verify.run), and nothing you do here reaches the canonical repository. Report with review.report when done.\n\nOriginal request:\n{}\n\nAcceptance criteria (the solver's plan):\n- outcome: {}\n- expected files: {}\n- verification: {}\n\nCandidate changes (working tree vs base):\n{}\n{}\nStatic evidence:\n- {}\n- {}\n- open failures: {}\n\nChanged paths: {}\n{earlier}",
         task.task_id,
         env.worktree,
         task.goal_text,
@@ -619,7 +625,6 @@ async fn materialize_and_brief(
         },
         changed.join(", ")
     );
-    let _ = core;
     Ok(brief)
 }
 
