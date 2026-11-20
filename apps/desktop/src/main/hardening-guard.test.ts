@@ -63,8 +63,14 @@ const PINS = {
   // empty) forwards the one typed Core command SetComputerAccess, a Core-wide setting that needs no session or lease; the Core records the
   // change and applies it from the agent's next action. Main validates all three (computer-args.ts) and the Core checks again; no path,
   // command name or free text beyond that name crosses the bridge, and neither channel is on a pane window's allow list (pane-windows.ts).
-  // If PX-216 (browser site decisions) lands first, both rows add bridge methods: re-pin to the sha of the merged preload and keep both notes.
-  preloadSha256: "c0a858398db71e97c6717934793fc3ce015be197d74b4adc1df41b65de304960",
+  // PX-216 landed first (fe049bae); this re-pin is of the merge of both rows' bridge methods, both notes kept.
+  // PX-216 (2026-11-20, for review with its pull request): three channels and no other change. `browser:siteDecide` (a browser session
+  // id, the ask's id, the origin the card showed and one of allow_once, allow_always or deny, all validated by main, which refuses any
+  // origin other than the one asked about) answers the pane's question about a site the agent wants to open; `browser:sites` lists
+  // the decisions (plain data); `browser:siteRemove` (one origin of at most 300 characters) forgets one so it asks again. None
+  // reaches the Core or the page; the store is the desktop's own file. `browser:siteDecide` and `browser:siteRemove` are deciding
+  // channels a pane window is refused (pane-windows.test.ts), so only the app's window answers or removes.
+  preloadSha256: "d4803a186a649c1e9a0bd8a7c070a3f0bb3fc88f63e27e318dceaaa0afbc6e08",
   cspSha256: "e8c3fcc4286ba170b02ea95b02189f132b16228341d2002412facfec6eb929d1",
   webPreferencesSha256: "28515878dc43e119f2360de779e5a3733283d120b31a113837f7f7a6cf2356ee",
   windowOptionKeys: ["width", "height", "minWidth", "minHeight", "show", "webPreferences"],

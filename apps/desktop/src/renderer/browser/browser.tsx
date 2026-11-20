@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { SiteAskCard } from "./site-ask.tsx";
 import type { TaskCard } from "../model.ts";
 import { browserState } from "../screens.ts";
 import { StateLine } from "../shell/state-line.tsx";
@@ -10,7 +11,7 @@ import "../state/types.ts";
  *  state version are what the host reports, the lease what the Core
  *  records. The page's content never reaches this renderer. */
 export function Browser({ browsing, card, sessionId, onReopen, onClose }: { browsing: { taskId: string; browserSessionId: string | null; error: string | null }; card: TaskCard | null; sessionId: string | null; onReopen: () => void; onClose: () => void }) {
-  const [host, setHost] = useState<{ attached: boolean; shown: boolean; url: string; title: string; stateVersion: number; leaseGeneration: number; controller: "AGENT" | "USER"; stopped?: string | null; humanInputAt?: number; reclaimed?: boolean; certPending?: { id: string; hostPort: string; error: string; issuer: string; subject: string; validStart: number; validExpiry: number; fingerprint: string } | null; refusals?: number } | null>(null);
+  const [host, setHost] = useState<{ attached: boolean; shown: boolean; url: string; title: string; stateVersion: number; leaseGeneration: number; controller: "AGENT" | "USER"; stopped?: string | null; humanInputAt?: number; reclaimed?: boolean; certPending?: { id: string; hostPort: string; error: string; issuer: string; subject: string; validStart: number; validExpiry: number; fingerprint: string } | null; siteAsk?: { id: string; origin: string; url: string; atMs: number } | null; refusals?: number } | null>(null);
   const [controlBusy, setControlBusy] = useState(false);
   // PX-073: the certificates the person trusted (per workspace), and the last note about the view (reset, cleared).
   const [trusts, setTrusts] = useState<{ workspace: string; hostPort: string; fingerprint: string; issuer: string }[]>([]);
@@ -147,6 +148,7 @@ export function Browser({ browsing, card, sessionId, onReopen, onClose }: { brow
           </button>
         </div>
       )}
+      {bsid && <SiteAskCard browserSessionId={bsid} ask={host?.siteAsk} />}
       {host?.certPending && (
         <div className="actions" role="alertdialog" aria-label="Certificate not trusted" data-testid="browser-cert" data-host-port={host.certPending.hostPort}>
           <strong>{host.certPending.hostPort} presented a certificate this machine does not trust ({host.certPending.error}).</strong>

@@ -102,7 +102,7 @@ async function readyForReview(page: Page, taskId: string, model: { toolTexts: st
 
 
 async function launch(dataDir: string, extraEnv: Record<string, string>): Promise<{ app: ElectronApplication; page: Page }> {
-  const app = await electron.launch({ args: [join(appDir, "dist", "main", "main.cjs")], env: { ...process.env, MODBIT_DATA_DIR: dataDir, MODBIT_CORE_BIN: coreBin, OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "", MODBIT_SUPPRESS_OS_NOTIFICATIONS: "1", MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1", ...extraEnv } });
+  const app = await electron.launch({ args: [join(appDir, "dist", "main", "main.cjs")], env: { ...process.env, MODBIT_DATA_DIR: dataDir, MODBIT_CORE_BIN: coreBin, OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "", MODBIT_SUPPRESS_OS_NOTIFICATIONS: "1", MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1", MODBIT_BROWSER_ALLOW_SITES: "http://127.0.0.1:*,http://localhost:*,https://127.0.0.1:*,https://localhost:*", ...extraEnv } });
   const page = await app.firstWindow();
   app.process().stderr?.on("data", (d: Buffer) => process.stderr.write(`[electron] ${d}`));
   await expect(page.getByTestId("core-status")).toContainText("Core connected", { timeout: 60_000 });
@@ -135,6 +135,8 @@ const BRIDGE_ALLOW_LIST = [
   "fixReviewFinding", "dismissReviewFinding",
   // PX-215 (standing computer access): the Settings control reads the Core's level per application and sets one. Added on purpose; each is one typed Core command main validates (computer-ipc.ts: application identifier, name, level).
   "computerAccess", "computerSetAccess",
+  // PX-216 (browser site decisions): answer the pane's question about a site, list the decisions, forget one. Added on purpose; each is a typed request main validates (main.ts: session id, origin, decision).
+  "decideBrowserSite", "browserSites", "removeBrowserSite",
   // PX-203 (pane pop-out): the app window pops a pane out, lists and brings forward pane windows and hears them close or ask;
   // a pane window asks which pane it shows, says what it shows, asks the app window to show something, and goes back to the
   // dock. Main answers a pane window only on its pane's channels, for its own task (pane-windows.ts).

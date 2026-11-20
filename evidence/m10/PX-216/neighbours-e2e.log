@@ -1,0 +1,472 @@
+
+Running 28 tests using 1 worker
+
+[electron] Debugger ending on ws://127.0.0.1:62035/880323ef-bbfe-4057-8534-b86e24568099
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓   1 e2e/apps-browser.spec.ts:18:1 › Browser tab: the lease badge follows the Core, Take control moves the lease and blocks the agent's input, Return control lets the agent act (19.2s)
+[electron] Debugger ending on ws://127.0.0.1:62070/57c2be06-2f6b-4636-b87a-93455615f334
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'automations:taskHeaders': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11647:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10563:17
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12238:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11697:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓   2 e2e/browser-feedback.spec.ts:18:1 › console, network, viewport, scroll and wait read a real page; secrets are redacted and a hostile console line is marked; a click that kills the page's process latches UNKNOWN until the page is read again (8.2s)
+  ✓   3 e2e/browser-feedback.spec.ts:135:1 › the occlusion hint now recommends scroll, because the tool exists (1ms)
+[electron] Debugger ending on ws://127.0.0.1:62091/de55670a-0cd5-44ee-870a-300a6a481e39
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓   4 e2e/browser-hardening.spec.ts:55:1 › PX-120: a destination on this machine or its network is refused unless the policy names it - by address, by a name that resolves privately, at a redirect hop, in a sub-frame, in a sub-resource - and nothing reaches the refused server (14.5s)
+[electron] Debugger ending on ws://127.0.0.1:62176/9267d55b-0d1b-4c31-9660-b957bf8378bf
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓   5 e2e/browser-hardening.spec.ts:173:1 › PX-120: a link that points straight at a local or private target is refused when clicked, the page stays where it was, and the server behind it is never reached (20.5s)
+[electron] Debugger ending on ws://127.0.0.1:62219/ea294a84-8c30-4368-bf39-f2ec96c1f288
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓   6 e2e/browser-hardening.spec.ts:247:1 › PX-073: every call looks at the page's origin - a client-side redirect after an allowed navigation, file: and an unknown origin are all refused, and the refusal lists what is allowed (5.5s)
+  ✘   7 e2e/browser-hardening.spec.ts:336:1 › PX-073: a certificate error waits for the person - Reject fails the request, Trust is remembered per workspace, listed, and cleared (1.4s)
+[electron] Debugger ending on ws://127.0.0.1:62248/26f5b469-e3c9-4c77-b851-85716800d64d
+For help, see: https://nodejs.org/learn/getting-started/debugging
+Worker teardown timeout of 120000ms exceeded.
+
+Failed worker ran 7 tests:
+e2e/apps-browser.spec.ts:18:1 › Browser tab: the lease badge follows the Core, Take control moves the lease and blocks the agent's input, Return control lets the agent act
+e2e/browser-feedback.spec.ts:18:1 › console, network, viewport, scroll and wait read a real page; secrets are redacted and a hostile console line is marked; a click that kills the page's process latches UNKNOWN until the page is read again
+e2e/browser-feedback.spec.ts:135:1 › the occlusion hint now recommends scroll, because the tool exists
+e2e/browser-hardening.spec.ts:55:1 › PX-120: a destination on this machine or its network is refused unless the policy names it - by address, by a name that resolves privately, at a redirect hop, in a sub-frame, in a sub-resource - and nothing reaches the refused server
+e2e/browser-hardening.spec.ts:173:1 › PX-120: a link that points straight at a local or private target is refused when clicked, the page stays where it was, and the server behind it is never reached
+e2e/browser-hardening.spec.ts:247:1 › PX-073: every call looks at the page's origin - a client-side redirect after an allowed navigation, file: and an unknown origin are all refused, and the refusal lists what is allowed
+e2e/browser-hardening.spec.ts:336:1 › PX-073: a certificate error waits for the person - Reject fails the request, Trust is remembered per workspace, listed, and cleared
+[electron] Debugger ending on ws://127.0.0.1:62526/1fb35156-70b6-47e5-b752-614c768f5f5e
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓   8 e2e/browser-hardening.spec.ts:429:1 › PX-073: the page's permissions are denied and named, signing out wipes the partition, and the session gives the page no download (7.7s)
+[electron] Debugger ending on ws://127.0.0.1:62570/6ed917f7-b928-47af-9478-335ef360df76
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓   9 e2e/browser-hardening.spec.ts:531:1 › PX-073: a task lists and selects only the views it owns; hidden views are reclaimed least recently used - never one the person holds - and the reset is stated (2.5s)
+[electron] Debugger ending on ws://127.0.0.1:62584/4edc0876-f636-44bf-80bc-137a158134e8
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  10 e2e/browser-observer.spec.ts:41:1 › a page's own update is journaled as a delta with no model call; since_fingerprint answers exactly the changes since, an unknown fingerprint the full page with the reason; frames are read and acted in with their origin (6.5s)
+[electron] Debugger ending on ws://127.0.0.1:62609/a4b489a6-a317-42a2-90cc-9bd0a8ac438e
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  11 e2e/browser-observer.spec.ts:133:1 › a page that mutates thousands of nodes a second, and tries to take the observer away, is reported at a bounded rate (7.4s)
+[electron] Debugger ending on ws://127.0.0.1:62629/f5288500-e8a7-4375-83f6-3e08892b40b9
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  12 e2e/browser-observer.spec.ts:185:1 › an element keeps its reference when the page re-renders it under a new name, so the model's reference still acts on it (4.8s)
+[electron] Debugger ending on ws://127.0.0.1:62648/37a7e37f-aae7-4a5b-9ebe-e08abffe4406
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  13 e2e/browser-semantic.spec.ts:71:1 › pages are classified, forms grouped, a form is filled in the order it needs with a credential handle and verified; links to another origin and destructive dialog buttons ask for the stricter approval; page text is data (10.1s)
+[electron] Debugger ending on ws://127.0.0.1:62676/815c21bb-fc57-4494-af28-ebe32f6e15c9
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  14 e2e/browser-semantic.spec.ts:169:1 › page kinds are classified correctly on a labelled set of real pages, and a derived action whose result cannot be read back is reported unverified, never success (5.4s)
+[electron] Debugger ending on ws://127.0.0.1:62737/d025d925-5e12-4de9-92e0-3eff026c046a
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] modbit-core: supervising client closed its pipe; exiting
+  ✓  15 e2e/browser.spec.ts:147:1 › browser session: a sandboxed WebContentsView in the app, attached to the Core, driven by the agent through the CDP bridge; the page is untrusted, file: is refused, nothing privileged is reachable (8.2s)
+[electron] Debugger ending on ws://127.0.0.1:62758/c57cfe6f-3f9b-4d67-8c9a-ef1564e9d01c
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'terminal:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11647:17)
+    at TerminalHost.client (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11641:9)
+    at TerminalHost.list (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10748:26)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12320:54
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11697:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓  16 e2e/browser.spec.ts:358:1 › browser takeover: the person takes control of the same session and types; the agent's input is blocked at once while it can still observe; returning control moves the lease and the agent acts again (3.8s)
+[electron] Debugger ending on ws://127.0.0.1:62772/e9db3040-30b9-447a-9929-8957ff820e21
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'conversation:transcript': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:3939:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:3944:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:5105:18)
+    at Object.run (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12609:43)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10648:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10646:22)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12612:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'conversation:workGraph': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11647:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:8138:39
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12238:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11697:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'conversation:plan': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11647:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:8142:34
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12238:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11697:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] modbit-core: connection ended: io: Broken pipe (os error 32)
+  ✓  17 e2e/browser.spec.ts:470:1 › prompt injection: hostile page and README are marked data; the key never leaves; the forbidden tool stays unavailable (3.6s)
+[electron] Debugger ending on ws://127.0.0.1:62793/04e07dae-583a-4ae7-811c-3402854843d5
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'automations:taskHeaders': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11647:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10563:17
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12238:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11697:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓  18 e2e/browser.spec.ts:574:1 › credential handle fill: the agent fills a bound credential by handle, never sees the value, and the site receives it in the approved sign-in (6.0s)
+[electron] Debugger ending on ws://127.0.0.1:62807/85c276ff-51d3-4e69-936f-1fa2fb8aa15e
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  19 e2e/browser.spec.ts:693:1 › human activity preemption: a real key from the person takes control; the agent's input is refused until control is returned (3.5s)
+[electron] Debugger ending on ws://127.0.0.1:62818/7edc5fc4-884f-489c-9782-6b7b7e5a0279
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] modbit-core: supervising client closed its pipe; exiting
+  ✓  20 e2e/browser.spec.ts:782:1 › human activity preemption: a mouse press or a scroll from the person takes control; a hover does not (1.6s)
+[electron] modbit-core: emergency stop on session 50cc60b2-24d4-c4a2-5b84-55268173b5a1: 1 lease(s) revoked, 1 live run(s) cancelled, 0 control session(s) stopped (stopped from the Browser panel)
+[electron] Debugger ending on ws://127.0.0.1:62825/3fa6b32f-f854-4bfa-b51f-c8cbd00541d1
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11647:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:9916:28
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12238:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11697:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'worktrees:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11647:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:9587:17
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12238:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11697:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11647:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11847:19
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11697:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓  21 e2e/browser.spec.ts:862:1 › fault taxonomy, clipboard guard and emergency stop on a real page (8.0s)
+[electron] Debugger ending on ws://127.0.0.1:62843/83ea579e-5374-4480-a8e8-6df70e46a078
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11647:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:8126:37
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12238:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11697:12
+    at eval (eval at evaluate (:311:30), <anonymous>:36:30)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11647:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:9533:49
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12238:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11697:12
+    at eval (eval at evaluate (:311:30), <anonymous>:36:30)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'terminal:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11647:17)
+    at TerminalHost.client (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11641:9)
+    at TerminalHost.list (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10748:26)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12320:54
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11697:12
+    at eval (eval at evaluate (:311:30), <anonymous>:36:30)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11647:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:8133:26
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12238:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11697:12
+    at eval (eval at evaluate (:311:30), <anonymous>:36:30)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11647:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:9921:41
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12238:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11697:12
+    at eval (eval at evaluate (:311:30), <anonymous>:36:30)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11647:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:9916:28
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12238:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11697:12
+    at eval (eval at evaluate (:311:30), <anonymous>:36:30)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] (node:39950) UnhandledPromiseRejectionWarning: Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11647:17)
+    at TerminalHost.client (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11641:9)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10881:44
+    at Array.map (<anonymous>)
+    at TerminalHost.detachAll (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10881:28)
+    at BrowserWindow.<anonymous> (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12395:42)
+    at BrowserWindow.emit (node:events:526:24)
+(Use `Electron --trace-warnings ...` to show where the warning was created)
+[electron] (node:39950) UnhandledPromiseRejectionWarning: Unhandled promise rejection. This error originated either by throwing inside of an async function without a catch block, or by rejecting a promise which was not handled with .catch(). To terminate the node process on unhandled promise rejection, use the CLI flag `--unhandled-rejections=strict` (see https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode). (rejection id: 7)
+  ✓  22 e2e/px-202-pane-dock.spec.ts:185:1 › PX-202: panes open together and tile; the set and the sizes are the task's and survive a reload; a minimized terminal keeps its session; Activity lists what was delivered and reads nothing; Background tasks stops a terminal and a child; More stays reachable over a docked approval (32.7s)
+[electron] Error occurred in handler for 'review:ingestCi': RejectedError: NO_PULL_REQUEST: no pull request was opened for this task (OpenPullRequest)
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:3894:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:3870:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'NO_PULL_REQUEST'
+}
+[electron] Debugger ending on ws://127.0.0.1:62879/95a7d7e2-3cb1-4739-abed-167d2859647a
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  23 e2e/px-202-pane-dock.spec.ts:794:1 › PX-202: the Pull request pane opens a request through the docked approval card and shows the checks and comments the Core read; a state that was not read is never shown (6.4s)
+[electron] Debugger ending on ws://127.0.0.1:62892/d716c6a3-1c3b-42e1-87ed-964face0c6f3
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'terminal:list': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:3939:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:3944:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:5105:18)
+    at Object.run (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12609:43)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10648:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10646:22)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12612:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'agents:headers': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:3939:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:3944:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:5105:18)
+    at Object.run (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12609:43)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10648:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10646:22)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12612:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'agents:headers': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:3939:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:3944:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:5105:18)
+    at Object.run (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12609:43)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10648:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10646:22)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12612:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'conversation:transcript': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:3939:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:3944:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:5105:18)
+    at Object.run (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12609:43)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10648:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10646:22)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12612:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'conversation:workGraph': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:3939:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:3944:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:5105:18)
+    at Object.run (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12609:43)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10648:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10646:22)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12612:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'conversation:plan': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:3939:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:3944:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:5105:18)
+    at Object.run (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12609:43)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10648:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10646:22)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12612:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'changes:state': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11647:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:8937:46
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12238:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11697:12
+    at eval (eval at evaluate (:311:30), <anonymous>:14:14)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] modbit-core: connection ended: io: Broken pipe (os error 32)
+[electron] modbit-core: reattached to the terminal broker a previous Core left alive
+[electron] Debugger ending on ws://127.0.0.1:62901/88788a8d-7222-4b96-9fcb-a239da855a15
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  24 e2e/px-208-review-settings.spec.ts:203:1 › QUAL-PX-208: Review and Settings in the page shape: change sets and findings, a hunk decision, Appearance at once and kept, Shortcuts equal to the key maps (12.8s)
+[electron] Debugger ending on ws://127.0.0.1:62910/582a75e2-fb44-45b1-b3c4-d5fdf048b3f3
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Debugger ending on ws://127.0.0.1:62939/5778e0d7-2cab-41ad-bf23-a743246472b1
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'agents:headers': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:3939:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:3944:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:5105:18)
+    at Object.run (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12609:43)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10648:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10646:22)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12612:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'conversation:transcript': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:3939:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:3944:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:5105:18)
+    at Object.run (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12609:43)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10648:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10646:22)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12612:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'attention:list': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:3939:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:3944:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:5105:18)
+    at Object.run (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12609:43)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10648:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10646:22)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12612:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'approvals:dock': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:3939:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:3944:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:5105:18)
+    at Object.run (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12609:43)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10648:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10646:22)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12612:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'terminal:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11647:17)
+    at TerminalHost.client (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11641:9)
+    at TerminalHost.list (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:10748:26)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:12320:54
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11697:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] modbit-core: connection ended: io: Broken pipe (os error 32)
+[electron] modbit-core: recovery complete: boot_generation=3 events_verified=538 aggregates=97 projections_rebuilt=false sessions=1 tasks=2 in 26ms
+[electron] modbit-core: reattached to the terminal broker a previous Core left alive
+[electron] Debugger ending on ws://127.0.0.1:62949/5483b959-77e2-488d-849d-e9fd24f71c2e
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  25 e2e/px-216-site-decisions.spec.ts:73:1 › QUAL-PX-216: the agent asks before opening an undecided site; Allow once is one navigation, Always allow and Deny persist across a restart, Settings removes a decision, and a forbidden target never asks (37.8s)
+[electron] Error occurred in handler for 'approval:resolve': RejectedError: UNKNOWN_APPROVAL: 01234567-89ab-cdef-0123-456789abcdef
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:3894:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:3870:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'UNKNOWN_APPROVAL'
+}
+[electron] Error occurred in handler for 'browser:session': RejectedError: UNKNOWN_TASK: 01234567-89ab-cdef-0123-456789abcdef
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:3894:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:3870:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'UNKNOWN_TASK'
+}
+[electron] Error occurred in handler for 'session:create': Error: SENDER_REFUSED: only the app's own renderer may ask this
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11684:13
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'debug:coreInfo': Error: SENDER_REFUSED: only the app's own renderer may ask this
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11684:13
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'credential:list': Error: SENDER_REFUSED: only the app's own renderer may ask this
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11684:13
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Debugger ending on ws://127.0.0.1:62961/bc8094de-56f4-40b0-9d54-8fba338d8bb4
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  26 e2e/workers.spec.ts:156:1 › renderer compromise (REQ-EV-0075): the app's renderer holds no secret, no Node, no socket; the bridge is typed requests only; the Core refuses what the renderer cannot vouch for; a foreign window with the same bridge is refused by main and audited (607ms)
+[renderer-diag] window renderer pid=94860 webContents=1; processes: 94857:Browser 94858:GPU 94859:Utility(Network Service) 94860:Tab
+[renderer-diag] page1.crash at 12 ms
+[electron] modbit-desktop: renderer gone: reason=killed exitCode=2 via=event replacing=true
+[renderer-diag] page1.close at 37 ms
+[renderer-diag] main-replaced at 116 ms
+[renderer-diag] renderer-pid-gone at 117 ms
+[renderer-diag] playwright-window at 117 ms
+[electron] Debugger ending on ws://127.0.0.1:62969/f6b84ec8-cf8e-4dd6-86d9-85171fba85d5
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11647:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11847:19
+    at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/dist/main/main.cjs:11697:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓  27 e2e/workers.spec.ts:260:1 › renderer killed (REQ-EV-0076): the renderer's process dies mid-session; main keeps the Core, the lease and the stream; the renderer comes back from the Core's snapshot and cursor with the session's truth unchanged and its typed requests answered (2.3s)
+[electron] Debugger ending on ws://127.0.0.1:62977/66eb400f-7e94-42ed-8994-8d84c94a8905
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  28 e2e/workers.spec.ts:379:1 › browser view killed (REQ-EV-0081): the view's process dies under the agent's session; the host restarts the view at its page and attaches it again to the same session; the Core, its log and the task are untouched, and the agent's next observation reads the restarted page (3.2s)
+
+
+  1) e2e/browser-hardening.spec.ts:336:1 › PX-073: a certificate error waits for the person - Reject fails the request, Trust is remembered per workspace, listed, and cleared 
+
+    Error: expect(received).toContain(expected) // indexOf
+
+    Expected substring: "CERTIFICATE_PENDING"
+    Received string:    "status: INFRAFAILURE
+    error_code: SITE_PENDING
+    error: the person has not decided whether the agent may open https://127.0.0.1:62246; the browser pane is asking them (Allow once, Always allow or Deny); try again after they answer; nothing was loaded
+    bytes_total: 49
+    bytes_included: 0..49
+    output:
+    {\"code\":\"SITE_PENDING\",\"escalation\":\"re_observe\"}failure_class: INFRASTRUCTURE
+    retryable: true
+    recovery: the operation did not run; call again once the infrastructure is back
+    user_action: check the terminal broker and the workspace are reachable
+    repair: {\"code\":\"SITE_PENDING\",\"evidence_refs\":[\"390c24348883407e2a2dc065eeb08014abd9923f999944d2bd763c3efa2a89c3\"],\"failure_class\":\"INFRASTRUCTURE\",\"recovery_path\":\"the operation did not run; call again once the infrastructure is back\",\"retryable\":true,\"user_action\":\"check the terminal broker and the workspace are reachable\"}
+    "
+
+      373 |     // The navigation waits for the person; the agent is told at once, in words that say so.
+      374 |     await toolResults(model, 2, 60_000);
+    > 375 |     expect(model.toolTexts[1]).toContain("CERTIFICATE_PENDING");
+          |                                ^
+      376 |     expect(model.toolTexts[1]).toContain('"escalation":"ask_user"');
+      377 |     expect(model.toolTexts[1]).toContain("fingerprint sha256/");
+      378 |     const pending = (await ui.evaluate((id) => window.modbit.describeBrowser(id), bsid))!.certPending;
+        at /Users/mohsin/projects/modbit/.claude/worktrees/hopeful-mayer-49cfc8/apps/desktop/e2e/browser-hardening.spec.ts:375:32
+
+    Error Context: test-results/browser-hardening-PX-073-a-2a363-orkspace-listed-and-cleared/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/browser-hardening-PX-073-a-2a363-orkspace-listed-and-cleared/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/browser-hardening-PX-073-a-2a363-orkspace-listed-and-cleared/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    e2e/browser-hardening.spec.ts:336:1 › PX-073: a certificate error waits for the person - Reject fails the request, Trust is remembered per workspace, listed, and cleared 
+  27 passed (6.1m)
+  1 error was not a part of any test, see above for details
+exit=1

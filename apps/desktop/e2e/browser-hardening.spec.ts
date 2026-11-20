@@ -114,7 +114,7 @@ test("PX-120: a destination on this machine or its network is refused unless the
   try {
     const { app, page: ui } = await launch(dataDir, {
       MODBIT_OPENAI_BASE_URL: model.url,
-      MODBIT_BROWSER_ALLOW_TARGETS: `127.0.0.1:${home.port}`,
+      MODBIT_BROWSER_ALLOW_TARGETS: `127.0.0.1:${home.port}`, MODBIT_BROWSER_ALLOW_SITES: "http://127.0.0.1:*,http://localhost:*,https://127.0.0.1:*,https://localhost:*",
       // A name that resolves to this machine without saying so (the operator's static answer).
       MODBIT_BROWSER_HOSTS: "rebind.test=127.0.0.1",
     });
@@ -192,7 +192,7 @@ test("PX-120: a link that points straight at a local or private target is refuse
   ]);
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-linkclick-"));
   try {
-    const { app, page: ui } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_BROWSER_ALLOW_TARGETS: `127.0.0.1:${home.port}` });
+    const { app, page: ui } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_BROWSER_ALLOW_TARGETS: `127.0.0.1:${home.port}`, MODBIT_BROWSER_ALLOW_SITES: "http://127.0.0.1:*,http://localhost:*,https://127.0.0.1:*,https://localhost:*" });
     await collectEvents(ui);
     const { bsid } = await startBrowserTask(ui, repo, "click the links");
     beforeClick.open();
@@ -290,7 +290,7 @@ test("PX-073: every call looks at the page's origin - a client-side redirect aft
   try {
     const { app, page: ui } = await launch(dataDir, {
       MODBIT_OPENAI_BASE_URL: model.url,
-      MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1",
+      MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1", MODBIT_BROWSER_ALLOW_SITES: "http://127.0.0.1:*,http://localhost:*,https://127.0.0.1:*,https://localhost:*",
       MODBIT_BROWSER_ALLOW_ORIGINS: `http://127.0.0.1:${home.port}`,
     });
     const { bsid } = await startBrowserTask(ui, repo, "try the origin gate");
@@ -368,7 +368,7 @@ test("PX-073: a certificate error waits for the person - Reject fails the reques
   ]);
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-cert-"));
   try {
-    const { app, page: ui } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1" });
+    const { app, page: ui } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1", MODBIT_BROWSER_ALLOW_SITES: "http://127.0.0.1:*,http://localhost:*,https://127.0.0.1:*,https://localhost:*" });
     const { bsid } = await startBrowserTask(ui, repo, "decide the certificate");
     // The navigation waits for the person; the agent is told at once, in words that say so.
     await toolResults(model, 2, 60_000);
@@ -456,7 +456,7 @@ test("PX-073: the page's permissions are denied and named, signing out wipes the
   ]);
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-perm-"));
   try {
-    const { app, page: ui } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1" });
+    const { app, page: ui } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1", MODBIT_BROWSER_ALLOW_SITES: "http://127.0.0.1:*,http://localhost:*,https://127.0.0.1:*,https://localhost:*" });
     const { bsid } = await startBrowserTask(ui, repo, "try the permissions");
     await toolResults(model, 6, 60_000);
     // A page asking for notifications or for the location is denied, and the agent is told which.
@@ -542,7 +542,7 @@ test("PX-073: a task lists and selects only the views it owns; hidden views are 
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-views-"));
   try {
     // Two hidden views are kept; the third reclaims the least recently used.
-    const { app, page: ui } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1", MODBIT_BROWSER_HIDDEN_VIEW_CAP: "2" });
+    const { app, page: ui } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1", MODBIT_BROWSER_ALLOW_SITES: "http://127.0.0.1:*,http://localhost:*,https://127.0.0.1:*,https://localhost:*", MODBIT_BROWSER_HIDDEN_VIEW_CAP: "2" });
     const sessionId = await ui.evaluate(() => window.modbit.createSession());
     const mk = async (n: number) => {
       const t = await ui.evaluate(([s, goal, root]) => window.modbit.createTask(s!, goal!, "", root!), [sessionId, `view ${n}`, repo]);

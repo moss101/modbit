@@ -73,7 +73,7 @@ test("console, network, viewport, scroll and wait read a real page; secrets are 
   ]);
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-feedback-"));
   try {
-    const { app, page } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1" });
+    const { app, page } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1", MODBIT_BROWSER_ALLOW_SITES: "http://127.0.0.1:*,http://localhost:*,https://127.0.0.1:*,https://localhost:*" });
     await collectEvents(page);
     const { bsid } = await startBrowserTask(page, repo, "read the page's feedback");
     crash = () => void app.evaluate(({ webContents }) => webContents.getAllWebContents().find((c) => c.getURL().includes("/app"))?.forcefullyCrashRenderer());

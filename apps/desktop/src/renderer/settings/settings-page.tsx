@@ -3,7 +3,7 @@
  * (`settings-nav.tsx`). Every control here does what it says through the existing typed preload calls or the shell's own
  * preferences. A setting that belongs to one task (its run mode, its send behaviour) stays with the task, and this page says so.
  */
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Button, Icon, Kbd, isMacPlatform, type IconName } from "@modbit/ui";
 import { DENSITIES, DENSITY_LABEL, THEME_LABEL, THEME_PREFERENCES, type Density, type ThemePreference } from "@modbit/design-tokens";
 import type { NotificationKind } from "../notifications.ts";
@@ -135,6 +135,17 @@ export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, density
       live = false;
     };
   }, [connected]);
+  // PX-216: the sites the person decided for the agent's navigation, each removable (the origin then asks again).
+  const [sites, setSites] = useState<{ origin: string; decision: "allow" | "deny"; decidedAtMs: number; source: "person" | "startup" }[] | null>(null);
+  const loadSites = useCallback(() => {
+    if (!connected) return;
+    void window.modbit.browserSites().then(setSites).catch(() => setSites(null));
+  }, [connected]);
+  useEffect(() => loadSites(), [loadSites]);
+  const removeSite = async (origin: string) => {
+    await window.modbit.removeBrowserSite(origin);
+    loadSites();
+  };
   const noMatch = !SETTINGS_ENTRIES.some((e) => settingsMatches(e, query));
   const providerWords = provider === null ? "Reading the provider's state…" : provider.configured ? `${provider.endpoints.join(", ") || provider.provider} is set up. ${provider.stored ? "The key is in the OS keychain." : "The key is held for this session only."}` : "No provider is set up, so tasks can be created but will not start.";
   return (
@@ -319,6 +330,26 @@ export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, density
           <div className="settings-card" data-testid="settings-browser">
             <Row title="Sites the browser may open" detail={browser === null ? "Unavailable until the Core is connected." : browser.origins.length + browser.targets.length === 0 ? "None added beyond the defaults." : [...browser.origins, ...browser.targets].join(", ")} />
             <Row title="Trusted certificates" detail={browser === null ? "Unavailable until the Core is connected." : `${browser.trusts} kept; each was decided in the browser panel.`} />
+            <Row title="Sites you decided for the agent" detail={sites === null ? "Unavailable until the Core is connected." : sites.length === 0 ? "None yet. The agent asks in the browser panel the first time it wants to open a site." : "The agent opens an allowed site without asking and never opens a denied one. Remove a site to be asked about it again."} />
+            {sites !== null && sites.length > 0 && (
+              <ul className="settings-sites" data-testid="settings-sites" aria-label="Sites you decided for the agent">
+                {sites.map((e) => (
+                  <li key={e.origin} className="settings-row" data-testid="settings-site" data-origin={e.origin} data-decision={e.decision}>
+                    <div className="settings-row-text">
+                      <div>{e.origin}</div>
+                      <div className="meta">{e.decision === "allow" ? "Always allowed" : "Denied"}{e.source === "startup" ? ", set when the app started" : ""}</div>
+                    </div>
+                    {e.source === "person" && (
+                      <div className="settings-row-control">
+                        <Button size="sm" variant="outline" onClick={() => void removeSite(e.origin)} aria-label={`Remove ${e.origin}`} data-testid="settings-site-remove">
+                          Remove
+                        </Button>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </Section>
 

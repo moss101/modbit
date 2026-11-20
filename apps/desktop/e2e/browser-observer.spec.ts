@@ -72,7 +72,7 @@ test("a page's own update is journaled as a delta with no model call; since_fing
   ]);
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-observer-"));
   try {
-    const { app, page } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1,localhost" });
+    const { app, page } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1,localhost", MODBIT_BROWSER_ALLOW_SITES: "http://127.0.0.1:*,http://localhost:*,https://127.0.0.1:*,https://localhost:*" });
     await collectEvents(page);
     await startBrowserTask(page, repo, "read the dynamic page");
     await expect.poll(() => model.toolTexts.length, { timeout: 60_000 }).toBe(3);
@@ -155,7 +155,7 @@ test("a page that mutates thousands of nodes a second, and tries to take the obs
   ]);
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-flood-"));
   try {
-    const { app, page } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1" });
+    const { app, page } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1", MODBIT_BROWSER_ALLOW_SITES: "http://127.0.0.1:*,http://localhost:*,https://127.0.0.1:*,https://localhost:*" });
     await collectEvents(page);
     const { bsid } = await startBrowserTask(page, repo, "read the flood page");
     await expect.poll(() => model.toolTexts.length, { timeout: 60_000 }).toBe(2);
@@ -213,7 +213,7 @@ test("an element keeps its reference when the page re-renders it under a new nam
   ]);
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-rerender-"));
   try {
-    const { app, page } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1" });
+    const { app, page } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1", MODBIT_BROWSER_ALLOW_SITES: "http://127.0.0.1:*,http://localhost:*,https://127.0.0.1:*,https://localhost:*" });
     await collectEvents(page);
     const { bsid } = await startBrowserTask(page, repo, "act on the re-rendered element");
     await expect.poll(() => model.toolTexts.length, { timeout: 60_000 }).toBe(3);

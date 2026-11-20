@@ -295,6 +295,8 @@ export interface BrowserViewDescription {
   osProcessId: number;
   reclaimed: boolean;
   certPending: { id: string; hostPort: string; url: string; error: string; issuer: string; subject: string; validStart: number; validExpiry: number; fingerprint: string } | null;
+  /** PX-216: the agent asked to open an origin nobody has decided; the pane shows the question. */
+  siteAsk: { id: string; origin: string; url: string; atMs: number } | null;
   changeSeq: number;
   refusals: number;
   useSeq: number;
@@ -549,6 +551,11 @@ export interface ModbitBridge {
   decideBrowserCertificate(browserSessionId: string, id: string, decision: "trust" | "reject"): Promise<boolean>;
   browserCertificateTrusts(): Promise<{ workspace: string; hostPort: string; fingerprint: string; issuer: string; subject: string; validExpiry: number; trustedAtMs: number }[]>;
   clearBrowserCertificateTrusts(): Promise<number>;
+  /** PX-216: answer the pane's question about a site: Allow once (one navigation), Always allow or Deny (remembered). Refused unless it is for the origin the question showed. */
+  decideBrowserSite(browserSessionId: string, id: string, origin: string, decision: "allow_once" | "allow_always" | "deny"): Promise<boolean>;
+  /** PX-216: the sites the person decided for (and the startup allows), and forgetting one so it asks again. */
+  browserSites(): Promise<{ origin: string; decision: "allow" | "deny"; decidedAtMs: number; source: "person" | "startup" }[]>;
+  removeBrowserSite(origin: string): Promise<boolean>;
   /** PX-073: sign out of the sites a session visited (cookies, storage, service workers, caches). */
   clearBrowserData(browserSessionId?: string): Promise<{ cleared: string[] }>;
   /** M7.6: take (USER) or return (AGENT) control of the session; the lease generation moves on every hand-over. */
@@ -778,6 +785,9 @@ const bridge: ModbitBridge = {
   decideBrowserCertificate: (browserSessionId, id, decision) => ipcRenderer.invoke("browser:certDecide", browserSessionId, id, decision),
   browserCertificateTrusts: () => ipcRenderer.invoke("browser:certTrusts"),
   clearBrowserCertificateTrusts: () => ipcRenderer.invoke("browser:certClear"),
+  decideBrowserSite: (browserSessionId, id, origin, decision) => ipcRenderer.invoke("browser:siteDecide", browserSessionId, id, origin, decision),
+  browserSites: () => ipcRenderer.invoke("browser:sites"),
+  removeBrowserSite: (origin) => ipcRenderer.invoke("browser:siteRemove", origin),
   clearBrowserData: (browserSessionId) => ipcRenderer.invoke("browser:clearData", browserSessionId),
   browserSession: (browserSessionId, taskId) => ipcRenderer.invoke("browser:session", browserSessionId, taskId),
   browserLog: () => ipcRenderer.invoke("browser:log"),
