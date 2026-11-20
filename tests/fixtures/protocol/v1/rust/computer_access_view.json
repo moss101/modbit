@@ -1,0 +1,46 @@
+{
+  "expected": {
+    "attached": true,
+    "changes": [
+      {
+        "application": "Notepad",
+        "atMs": "1791626000500",
+        "bundleId": "exe:notepad.exe",
+        "by": "user:0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a",
+        "level": "never",
+        "offset": "9007199254740993",
+        "previous": "click"
+      }
+    ],
+    "entries": [
+      {
+        "application": "Form App",
+        "bundleId": "org.example.fixture.form",
+        "level": "view_only",
+        "setAtMs": "1791626000000"
+      },
+      {
+        "application": "Notepad",
+        "bundleId": "exe:notepad.exe",
+        "level": "never",
+        "setAtMs": "1791626000500"
+      }
+    ],
+    "lastChangeOffset": "9007199254740993",
+    "levels": [
+      "never",
+      "view_only",
+      "click",
+      "full"
+    ],
+    "nonDrivableVersion": "2026-10-10.1",
+    "running": [
+      {
+        "bundleId": "org.example.fixture.form",
+        "level": "view_only",
+        "name": "Form App"
+      }
+    ]
+  },
+  "type": "modbit.v1.ComputerAccessView"
+}

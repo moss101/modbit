@@ -57,13 +57,20 @@ const PINS = {
   // why. Both take the session's lease and return plain data. The findings themselves ride the existing `review:bundle` channel
   // (a type-only addition of the reviewer's fields). No path, command name or free text beyond that reason crosses the bridge;
   // neither channel is on a pane window's allow list (pane-windows.ts), so only the app's window may fix or dismiss a finding.
+  // PX-215 (2026-11-20, for review with its pull request): two channels and no other change. `computer:access` takes no argument and reads
+  // the Core's standing level per application (GetComputerAccess); `computer:setAccess` (an application identifier of 1..200 characters with
+  // no space and no pattern, an optional name of at most 200 plain characters, and a level that is one of never, view_only, click, full or
+  // empty) forwards the one typed Core command SetComputerAccess, a Core-wide setting that needs no session or lease; the Core records the
+  // change and applies it from the agent's next action. Main validates all three (computer-args.ts) and the Core checks again; no path,
+  // command name or free text beyond that name crosses the bridge, and neither channel is on a pane window's allow list (pane-windows.ts).
+  // PX-216 landed first (fe049bae); this re-pin is of the merge of both rows' bridge methods, both notes kept.
   // PX-216 (2026-11-20, for review with its pull request): three channels and no other change. `browser:siteDecide` (a browser session
   // id, the ask's id, the origin the card showed and one of allow_once, allow_always or deny, all validated by main, which refuses any
   // origin other than the one asked about) answers the pane's question about a site the agent wants to open; `browser:sites` lists
   // the decisions (plain data); `browser:siteRemove` (one origin of at most 300 characters) forgets one so it asks again. None
   // reaches the Core or the page; the store is the desktop's own file. `browser:siteDecide` and `browser:siteRemove` are deciding
   // channels a pane window is refused (pane-windows.test.ts), so only the app's window answers or removes.
-  preloadSha256: "c70844ff31bbc9ff645dd3ad1390d79147076f9812559f87463e11701cdeb6d5",
+  preloadSha256: "d4803a186a649c1e9a0bd8a7c070a3f0bb3fc88f63e27e318dceaaa0afbc6e08",
   cspSha256: "e8c3fcc4286ba170b02ea95b02189f132b16228341d2002412facfec6eb929d1",
   webPreferencesSha256: "28515878dc43e119f2360de779e5a3733283d120b31a113837f7f7a6cf2356ee",
   windowOptionKeys: ["width", "height", "minWidth", "minHeight", "show", "webPreferences"],

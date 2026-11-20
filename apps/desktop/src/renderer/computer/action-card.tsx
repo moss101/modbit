@@ -108,6 +108,7 @@ export function ComputerActionCard({ toolCallId, tool, state, failureCode, atMs,
     observation: null,
     latched: false,
     userAborted: failureCode === "USER_ABORTED",
+    standingAccess: null,
   };
   const n = ctx.ordinals.get(key) ?? 0;
   const st = cardStatus({ ...card, state: card.state || state, failureCode: card.failureCode || failureCode });
@@ -123,7 +124,7 @@ export function ComputerActionCard({ toolCallId, tool, state, failureCode, atMs,
       .finally(() => setBusy(false));
   };
   return (
-    <div className="conv-row conv-tool cc-card" data-testid="computer-card" data-row-id={rowId} data-kind="TOOL_CARD" data-tool-call-id={key} data-tool={tool} data-n={n} data-status={st.tone} data-state={card.state || state} data-code={card.failureCode || failureCode} data-outcome={card.outcome} data-latched={card.latched} data-highlight={highlight} data-bundle={card.bundleId}>
+    <div className="conv-row conv-tool cc-card" data-testid="computer-card" data-row-id={rowId} data-kind="TOOL_CARD" data-tool-call-id={key} data-tool={tool} data-n={n} data-status={st.tone} data-state={card.state || state} data-code={card.failureCode || failureCode} data-outcome={card.outcome} data-latched={card.latched} data-access={card.standingAccess?.level ?? ""} data-highlight={highlight} data-bundle={card.bundleId}>
       <div className="cc-card-head">
         <span className="cc-num" data-testid="computer-card-number" aria-label={`Computer action ${n}`}>
           {n || "·"}

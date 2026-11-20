@@ -790,3 +790,263 @@ async fn a_sheet_is_answered_and_the_window_it_blocks_is_refused() {
     assert!(ok.is_ok(), "{ok:?}");
     assert_eq!(ok.unwrap().output["modality"], "ax:n4");
 }
+
+// ---- PX-215: the person's standing level per application ----
+
+use crate::access::{AccessEvent, Level};
+
+fn set_level(rt: &ComputerRuntime, bundle: &str, level: Level) {
+    rt.standing().apply(
+        &AccessEvent::ComputerAccessSet {
+            key: bundle.to_owned(),
+            application: bundle.to_owned(),
+            level,
+            previous: None,
+        },
+        1,
+    );
+}
+
+fn key_op() -> Op {
+    Op::Act(Act::Key {
+        keys: vec!["tab".into()],
+        allow_destructive: false,
+    })
+}
+
+fn performs(log: &Arc<Mutex<Vec<String>>>) -> usize {
+    log.lock()
+        .unwrap()
+        .iter()
+        .filter(|l| *l == "perform:start")
+        .count()
+}
+
+fn refused(r: Result<Answer, Failure>) -> Refusal {
+    match r {
+        Err(Failure::Refused(r)) => r,
+        other => panic!("expected a refusal, got {other:?}"),
+    }
+}
+
+fn access_refusals(rt: &ComputerRuntime) -> Vec<TaskEvent> {
+    rt.drain_events()
+        .into_iter()
+        .map(|p| p.event)
+        .filter(|e| matches!(e, TaskEvent::ComputerAccessRefused { .. }))
+        .collect()
+}
+
+#[tokio::test]
+async fn at_view_only_inputs_are_refused_with_their_reason_and_looking_still_works() {
+    let (a, log) = fake(0, performed);
+    let rt = runtime();
+    rt.install(a);
+    set_level(&rt, "org.example.a", Level::ViewOnly);
+    let c = ctx(TaskId::new());
+    let snap = session_with_snapshot(&rt, &c, "org.example.a").await;
+    let _ = rt.drain_events();
+    // A click-class input and a keyboard input are both refused: typed, with the level and what they needed.
+    let r = refused(rt.invoke(&c, "computer.press", press(&snap)).await);
+    assert_eq!(r.code, Code::ActionUnsafe);
+    assert!(r.message.contains("view only"), "{}", r.message);
+    assert_eq!(r.to_json()["standing_access"]["needed"], "click");
+    let r = refused(rt.invoke(&c, "computer.key", key_op()).await);
+    assert_eq!(r.to_json()["standing_access"]["needed"], "keyboard");
+    assert_eq!(performs(&log), 0, "nothing reached the actuator");
+    // Looking is not an input.
+    assert!(
+        rt.invoke(
+            &c,
+            "computer.state",
+            Op::State {
+                window: None,
+                max_nodes: None
+            }
+        )
+        .await
+        .is_ok()
+    );
+    // Each refusal is on the task's log, with the level and the need.
+    let ev = access_refusals(&rt);
+    assert_eq!(ev.len(), 2, "{ev:?}");
+    match &ev[0] {
+        TaskEvent::ComputerAccessRefused {
+            level,
+            needed,
+            bundle_id,
+            reason,
+            ..
+        } => {
+            assert_eq!((level.as_str(), needed.as_str()), ("view_only", "click"));
+            assert_eq!(bundle_id, "org.example.a");
+            assert!(reason.contains("view only"));
+        }
+        other => panic!("{other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn at_click_a_click_goes_through_and_typing_is_refused() {
+    let (a, log) = fake(0, performed);
+    let rt = runtime();
+    rt.install(a);
+    set_level(&rt, "org.example.a", Level::Click);
+    let c = ctx(TaskId::new());
+    let snap = session_with_snapshot(&rt, &c, "org.example.a").await;
+    assert!(rt.invoke(&c, "computer.press", press(&snap)).await.is_ok());
+    assert_eq!(performs(&log), 1);
+    let r = refused(rt.invoke(&c, "computer.key", key_op()).await);
+    assert_eq!(r.to_json()["standing_access"]["level"], "click");
+    assert_eq!(
+        performs(&log),
+        1,
+        "the refused input never reached the actuator"
+    );
+}
+
+#[tokio::test]
+async fn at_never_the_session_is_refused_before_anything_is_acquired_or_asked() {
+    let (a, log) = fake(0, performed);
+    let rt = runtime();
+    rt.install(a);
+    set_level(&rt, "org.example.a", Level::Never);
+    let c = ctx(TaskId::new());
+    let start = parse("computer.start", &json!({"application": "org.example.a"})).unwrap();
+    // The refusal comes out of `prepare`, so no approval is ever asked for it.
+    let prepared = rt.prepare(&c, "computer.start", &start).await;
+    match prepared {
+        Err(r) => {
+            assert_eq!(r.code, Code::ActionUnsafe);
+            assert_eq!(r.to_json()["standing_access"]["level"], "never");
+        }
+        other => panic!("{other:?}"),
+    }
+    let r = refused(rt.invoke(&c, "computer.start", start).await);
+    assert!(r.message.contains("never"), "{}", r.message);
+    assert!(
+        !log.lock().unwrap().iter().any(|x| x == "acquire:start"),
+        "nothing was acquired"
+    );
+    // Another application is untouched.
+    assert!(
+        rt.invoke(
+            &c,
+            "computer.start",
+            parse("computer.start", &json!({"application": "org.example.b"})).unwrap()
+        )
+        .await
+        .is_ok()
+    );
+}
+
+#[tokio::test]
+async fn with_no_level_set_behaviour_is_what_it_was() {
+    let (a, log) = fake(0, performed);
+    let rt = runtime();
+    rt.install(a);
+    assert!(rt.standing().list().is_empty());
+    let c = ctx(TaskId::new());
+    let snap = session_with_snapshot(&rt, &c, "org.example.a").await;
+    assert!(rt.invoke(&c, "computer.press", press(&snap)).await.is_ok());
+    assert!(rt.invoke(&c, "computer.key", key_op()).await.is_ok());
+    assert_eq!(performs(&log), 2);
+    assert!(access_refusals(&rt).is_empty());
+}
+
+#[tokio::test]
+async fn a_change_mid_session_applies_from_the_next_action_both_ways() {
+    let (a, log) = fake(0, performed);
+    let rt = runtime();
+    rt.install(a);
+    let c = ctx(TaskId::new());
+    let snap = session_with_snapshot(&rt, &c, "org.example.a").await;
+    assert!(rt.invoke(&c, "computer.press", press(&snap)).await.is_ok());
+    // The person narrows it; the session and its grant stay, the next input is refused.
+    set_level(&rt, "org.example.a", Level::ViewOnly);
+    let r = refused(rt.invoke(&c, "computer.press", press(&snap)).await);
+    assert_eq!(r.to_json()["standing_access"]["level"], "view_only");
+    assert_eq!(performs(&log), 1);
+    // The person widens it again (still no grant of their own: the same session and approval).
+    set_level(&rt, "org.example.a", Level::Full);
+    assert!(rt.invoke(&c, "computer.press", press(&snap)).await.is_ok());
+    assert_eq!(performs(&log), 2);
+    // Clearing it returns the decision to the grant alone.
+    set_level(&rt, "org.example.a", Level::ViewOnly);
+    rt.standing().apply(
+        &AccessEvent::ComputerAccessCleared {
+            key: "org.example.a".into(),
+            application: "a".into(),
+            previous: Level::ViewOnly,
+        },
+        2,
+    );
+    assert!(rt.invoke(&c, "computer.press", press(&snap)).await.is_ok());
+}
+
+#[tokio::test]
+async fn never_set_mid_session_refuses_the_next_look_and_release_still_works() {
+    let (a, _log) = fake(0, performed);
+    let rt = runtime();
+    rt.install(a);
+    let c = ctx(TaskId::new());
+    let _snap = session_with_snapshot(&rt, &c, "org.example.a").await;
+    set_level(&rt, "org.example.a", Level::Never);
+    let state = Op::State {
+        window: None,
+        max_nodes: None,
+    };
+    let r = refused(rt.invoke(&c, "computer.state", state).await);
+    assert_eq!(r.to_json()["standing_access"]["level"], "never");
+    // Giving the machine back is never refused.
+    assert!(rt.invoke(&c, "computer.release", Op::Release).await.is_ok());
+}
+
+#[tokio::test]
+async fn a_level_only_narrows_what_the_grant_and_policy_allow() {
+    let (a, log) = fake(0, performed);
+    let rt = runtime();
+    rt.install(a);
+    // Full is "no standing restriction", not "an approval": with no session an input is still refused.
+    set_level(&rt, "org.example.a", Level::Full);
+    let c = ctx(TaskId::new());
+    let r = refused(rt.invoke(&c, "computer.press", press("s1")).await);
+    assert_eq!(r.code, Code::SessionRequired);
+    // Administrative policy still wins over a full level.
+    let mut denied = ctx(TaskId::new());
+    denied.policy.apps_allow = Some(["org.example.b".to_owned()].into_iter().collect());
+    let start = parse("computer.start", &json!({"application": "org.example.a"})).unwrap();
+    assert_eq!(
+        refused(rt.invoke(&denied, "computer.start", start).await).code,
+        Code::WindowUnverifiable
+    );
+    let mut act_denied = ctx(TaskId::new());
+    act_denied.policy.act_denied = true;
+    let start = parse("computer.start", &json!({"application": "org.example.a"})).unwrap();
+    assert_eq!(
+        refused(rt.invoke(&act_denied, "computer.start", start).await).code,
+        Code::ActionUnsafe
+    );
+    // An application no approval lifts stays out whatever level a client claims for it.
+    set_level(&rt, "com.apple.terminal", Level::Full);
+    let term = parse(
+        "computer.start",
+        &json!({"application": "com.apple.terminal"}),
+    )
+    .unwrap();
+    // (The fake desktop does not list it, so it cannot be matched at all.)
+    assert!(rt.invoke(&c, "computer.start", term).await.is_err());
+    // A scope the grant does not give is not given by a level: APP scope never moves the real pointer.
+    let snap = session_with_snapshot(&rt, &c, "org.example.a").await;
+    let _ = snap;
+    let mv = Op::Act(Act::Move {
+        frame: "f".into(),
+        x: 1.0,
+        y: 1.0,
+    });
+    assert_eq!(
+        refused(rt.invoke(&c, "computer.move", mv).await).code,
+        Code::UnsupportedRequest
+    );
+    assert_eq!(performs(&log), 0);
+}

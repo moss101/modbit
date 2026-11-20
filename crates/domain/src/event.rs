@@ -56,6 +56,10 @@ pub enum AggregateType {
     /// that joined or left it. The `projects` and `project_members` tables
     /// are projections of these events and rebuild from them.
     Project,
+    /// The person's standing computer access per application (PX-215): a
+    /// level set or cleared for one application. One aggregate for the
+    /// whole Core; the runtime's store is the fold of these events.
+    ComputerAccess,
 }
 
 impl AggregateType {
@@ -79,6 +83,7 @@ impl AggregateType {
             Self::Memory => "memory",
             Self::Automation => "automation",
             Self::Project => "project",
+            Self::ComputerAccess => "computer_access",
         }
     }
 
@@ -102,6 +107,7 @@ impl AggregateType {
             "memory" => Self::Memory,
             "automation" => Self::Automation,
             "project" => Self::Project,
+            "computer_access" => Self::ComputerAccess,
             _ => return None,
         })
     }

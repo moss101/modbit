@@ -1134,6 +1134,28 @@ pub enum TaskEvent {
         #[serde(default)]
         verified: Option<bool>,
     },
+    /// `ComputerAccessRefused` (PX-215, DR-PX-2026-11-11-021 MWS-19): a call
+    /// was refused because the person's standing access for the application
+    /// does not allow it. Nothing was actuated. The level, what the call
+    /// needed and the call it belongs to, so the action card can say why
+    /// without reading anything but the log. No state change.
+    ComputerAccessRefused {
+        /// The control session the call was made in; empty for a start.
+        #[serde(default)]
+        control_id: String,
+        /// The refused call.
+        tool_call_id: String,
+        /// The application's key (bundle identifier, else `exe:<file>`).
+        bundle_id: String,
+        /// The application's name (an untrusted label).
+        application: String,
+        /// The standing level that refused it: `never` | `view_only` | `click`.
+        level: String,
+        /// What the call needed: `observe` | `click` | `keyboard`.
+        needed: String,
+        /// The refusal's words.
+        reason: String,
+    },
     /// `ComputerLatched` (PX-069, CUC-D03): an input may have happened and
     /// nothing says whether it did; further input is refused until it is
     /// reconciled. No state change.
@@ -3241,6 +3263,7 @@ impl TaskEvent {
             Self::ComputerSessionStarted { .. } => "ComputerSessionStarted",
             Self::ComputerObserved { .. } => "ComputerObserved",
             Self::ComputerActionPerformed { .. } => "ComputerActionPerformed",
+            Self::ComputerAccessRefused { .. } => "ComputerAccessRefused",
             Self::ComputerLatched { .. } => "ComputerLatched",
             Self::ComputerLatchResolved { .. } => "ComputerLatchResolved",
             Self::ComputerSessionClosed { .. } => "ComputerSessionClosed",
@@ -3571,6 +3594,7 @@ impl Task {
             TaskEvent::ComputerSessionStarted { .. }
             | TaskEvent::ComputerObserved { .. }
             | TaskEvent::ComputerActionPerformed { .. }
+            | TaskEvent::ComputerAccessRefused { .. }
             | TaskEvent::ComputerLatched { .. }
             | TaskEvent::ComputerLatchResolved { .. }
             | TaskEvent::ComputerSessionClosed { .. }

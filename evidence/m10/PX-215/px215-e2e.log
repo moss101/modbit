@@ -1,0 +1,602 @@
+
+Running 16 tests using 1 worker
+
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+[electron] sandbox_extension_issue_file failed for /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/node_modules/.pnpm/electron@44.3.0_supports-color@8.1.1/node_modules/electron/dis[electron] t/Electron.app/Contents/Frameworks/Electron Helper.app/Contents/Resources: 1 (Operation not permitted)
+[electron] Debugger ending on ws://127.0.0.1:56113/60b8492d-6b62-4803-b19d-885fd4c591bf
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓   1 e2e/computer-surface.spec.ts:44:1 › PX-074: the permission window shows checking, allow and ready from the Core's actuator; the deep link only opens a pane; a grant is noticed; it is keyboard-operable and accessible (8.9s)
+[electron] sandbox_extension_issue_file failed for /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/node_modules/.pnpm/electron@44.3.0_supports-color@8.1.1/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper.app/Contents/Resources: 1 (Operation not permitted)
+[electron] Debugger ending on ws://127.0.0.1:56122/701645ed-ba2e-4f3c-ab85-6f394d36ac58
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:7988:37
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:9395:49
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:7995:26
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:9783:41
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:9778:28
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓   2 e2e/computer-surface.spec.ts:96:1 › PX-074: Stop halts an in-flight input, is sticky for the turn, and presence and the cards say so (13.4s)
+[electron] Debugger ending on ws://127.0.0.1:56143/1f94ece3-ca20-42e7-9444-e0c02a61ee10
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'conversation:markRead': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:8028:17
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'accounting:get': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:9858:56
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'task:economics': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11685:19
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓   3 e2e/computer-surface.spec.ts:177:1 › PX-074: action cards for success, a typed refusal and an unknown outcome; the latch is resolved by the person and the surface returns to the Core's truth (4.6s)
+[electron] Error occurred in handler for 'computer:frame': Error: BAD_ARGUMENT: UNKNOWN_ARTIFACT: that frame is not one of this task's observations
+    at bad3 (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:8516:9)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10216:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async Session.<anonymous> (node:electron/js2c/browser_init:2:123817)
+[electron] Error occurred in handler for 'computer:frame': Error: BAD_ARGUMENT: artifact must be a stored frame reference
+    at bad3 (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:8516:9)
+    at validArtifactRef (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:9975:66)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10212:17
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Debugger ending on ws://127.0.0.1:56155/c5c4e352-641d-4a60-80ff-535c4b74d279
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓   4 e2e/computer-surface.spec.ts:242:1 › PX-074: a screenshot card shows the masked frame through the artifact path; secure fields are blacked out and counted; a frame the task did not take cannot be read (9.1s)
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 6ms
+[electron] sandbox_extension_issue_file failed for /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/node_modules/.pnpm/electron@44.3.0_supports-color@8.1.1/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper.app/Contents/Resources: 1 (Operation not permitted)
+[electron] Error occurred in handler for 'approval:allowAlways': Error: BAD_ARGUMENT: ALWAYS_REFUSED: native computer control is approved one call at a time and no rule can cover it
+    at bad3 (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:8516:9)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:9807:93
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async Session.<anonymous> (node:electron/js2c/browser_init:2:123817)
+[electron] Error occurred in handler for 'approval:resolve': RejectedError: INTENT_MISMATCH: the approval binds intent 4a821e83d510c82898db28217339907a48f16d7c9d0aedeaa804983c18a9d57b and the decision names 0000000000000000000000000000000000000000000000000000000000000000; reload the approval before deciding
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3898:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3874:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'INTENT_MISMATCH'
+}
+[electron] Debugger ending on ws://127.0.0.1:56312/9fdd978a-e355-4608-96fe-b879f22429a4
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:9783:41
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:9778:28
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:9778:28
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11763:19
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓   5 e2e/computer-surface.spec.ts:289:1 › PX-074: every call is approved on its own exact card; no mode, rule or Always covers native control; a stale intent is refused; Skip is typed; the keyboard operates the card (6.4s)
+[electron] modbit-desktop: core restart scheduled: connection lost: connection closed
+[electron] Error occurred in handler for 'changes:state': ProtocolError: DISCONNECTED: connection closed
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3943:54)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3856:42)
+    at Socket.emit (node:events:514:28)
+    at Pipe.<anonymous> (node:net:362:12) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:7988:37
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:9395:49
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:9778:28
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:7995:26
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'checkpoints:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:9874:51
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:9783:41
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:9778:28
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11763:19
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'computer:cards': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10209:62
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'composer:queue': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:8375:23
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12170:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'conversation:markRead': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:8028:17
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'accounting:get': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:9858:56
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'task:economics': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11685:19
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'terminal:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at TerminalHost.client (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11557:9)
+    at TerminalHost.list (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10664:26)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12224:54
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] modbit-core: recovery complete: boot_generation=2 events_verified=134 aggregates=25 projections_rebuilt=false sessions=1 tasks=1 in 7ms
+[electron] modbit-core: suspended 1 running task(s) after restart
+[electron] modbit-core: reattached to the terminal broker a previous Core left alive
+[electron] modbit-core: closed 1 computer-control session(s) the last Core left open
+[electron] sandbox_extension_issue_file failed for /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/node_modules/.pnpm/electron@44.3.0_supports-color@8.1.1/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper.app/Contents/Resources: 1 (Operation not permitted)
+[electron] Debugger ending on ws://127.0.0.1:56364/45c7e049-de4a-454e-8266-c69f023bdd3c
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓   6 e2e/computer-surface.spec.ts:353:1 › PX-074: a Core killed with control active leaves the surface showing only what the restarted Core says (4.1s)
+[electron] Debugger ending on ws://127.0.0.1:56387/f773a0f9-1d14-4239-945c-8385c10763ca
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'computer:presence': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3943:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3948:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:5118:18)
+    at Object.run (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12513:43)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10564:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10562:22)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12516:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'automations:taskHeaders': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3943:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3948:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:5118:18)
+    at Object.run (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12513:43)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10564:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10562:22)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12516:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'conversation:approvals': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:8008:27
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:7988:37
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:9395:49
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:9783:41
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:9778:28
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'accounting:get': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:9858:56
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'task:economics': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11685:19
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'terminal:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at TerminalHost.client (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11557:9)
+    at TerminalHost.list (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10664:26)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12224:54
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:7995:26
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓   7 e2e/computer-surface.spec.ts:392:1 › PX-074: Stop is one chord away and keyboard-only, even behind a modal dialog (3.1s)
+[electron] Debugger ending on ws://127.0.0.1:56396/575f63ac-2bd8-4fc2-a4cf-0ca5c0cd1738
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'computer:cards': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10209:62
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'conversation:markRead': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:8028:17
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓   8 e2e/computer-surface.spec.ts:421:1 › PX-074: a call blocked by a missing permission routes the permission window once; closing it keeps it closed; a grant is noticed (3.0s)
+[electron] modbit-desktop: renderer gone: reason=killed exitCode=2 via=event replacing=true
+[electron] Debugger ending on ws://127.0.0.1:56420/1dc6b832-f213-4d7c-8414-6f173dae1b72
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'agents:headers': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3943:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3948:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:5118:18)
+    at Object.run (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12513:43)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10564:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10562:22)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12516:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'projects:list': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3943:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3948:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:5118:18)
+    at Object.run (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12513:43)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10564:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10562:22)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12516:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'computer:presence': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3943:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3948:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:5118:18)
+    at Object.run (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12513:43)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10564:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10562:22)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12516:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:7988:37
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:9395:49
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11563:17)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:9778:28
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] modbit-core: connection ended: io: Broken pipe (os error 32)
+  ✓   9 e2e/computer-surface.spec.ts:451:1 › PX-074: the renderer is killed while the agent holds the machine; the replacement window shows the Core's presence, the typed Stop still reaches the actuator and the stopped state stands (3.0s)
+[electron] Error occurred in handler for 'accounting:get': Error: BAD_ARGUMENT: task id must be 32 hex chars
+    at Object.requireTaskId [as taskId] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/gallery-build/main/main.cjs:11575:55)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/gallery-build/main/main.cjs:9857:19
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/gallery-build/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/gallery-build/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'accounting:get': Error: BAD_ARGUMENT: task id must be 32 hex chars
+    at Object.requireTaskId [as taskId] (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/gallery-build/main/main.cjs:11575:55)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/gallery-build/main/main.cjs:9857:19
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/gallery-build/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/gallery-build/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] modbit-desktop: core restart scheduled: spawn /var/folders/_1/1xvpd9n50m97rq8_c4ylpw940000gn/T/modbit-e2e-gallery-computer-hFCwQp/no-such-core ENOENT
+[electron] modbit-desktop: core restart scheduled: spawn /var/folders/_1/1xvpd9n50m97rq8_c4ylpw940000gn/T/modbit-e2e-gallery-computer-hFCwQp/no-such-core ENOENT
+[electron] Debugger ending on ws://127.0.0.1:56439/606eeab5-07a4-4eb2-ae83-ebba7b761c19
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  10 e2e/gallery-computer.spec.ts:23:1 › PX-074: every state of the native-control surface is accessible in every theme, says its state in words, and offers no Always on a computer card (2.5s)
+[electron] Debugger ending on ws://127.0.0.1:56451/c106df26-eb64-41ee-8def-2fe8e6b5612d
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] sandbox_extension_issue_file failed for /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/node_modules/.pnpm/electron@44.3.0_supports-color@8.1.1/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper.app/Contents/Resources: 1 (Operation not permitted)
+[electron] Error occurred in handler for 'agents:headers': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3943:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3948:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:5118:18)
+    at Object.run (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12513:43)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10564:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10562:22)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12516:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'agents:headers': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3943:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3948:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:5118:18)
+    at Object.run (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12513:43)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10564:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10562:22)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12516:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'conversation:transcript': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3943:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3948:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:5118:18)
+    at Object.run (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12513:43)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10564:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10562:22)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12516:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'changes:state': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3943:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3948:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:5118:18)
+    at Object.run (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12513:43)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10564:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10562:22)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12516:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'conversation:workGraph': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3943:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3948:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:5118:18)
+    at Object.run (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12513:43)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10564:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10562:22)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12516:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'conversation:plan': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3943:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3948:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:5118:18)
+    at Object.run (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12513:43)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10564:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10562:22)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12516:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] modbit-core: connection ended: io: Broken pipe (os error 32)
+[electron] modbit-core: reattached to the terminal broker a previous Core left alive
+[electron] sandbox_extension_issue_file failed for /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/node_modules/.pnpm/electron@44.3.0_supports-color@8.1.1/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper.app/Contents/Resources: 1 (Operation not permitted)
+[electron] Debugger ending on ws://127.0.0.1:56667/2de371c9-d9aa-4753-9009-370932f7822d
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  11 e2e/px-208-review-settings.spec.ts:203:1 › QUAL-PX-208: Review and Settings in the page shape: change sets and findings, a hunk decision, Appearance at once and kept, Shortcuts equal to the key maps (25.8s)
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 3ms
+[electron] Error occurred in handler for 'computer:setAccess': RejectedError: NOT_DRIVABLE: `com.apple.terminal` is never driven (a terminal and shell host); no level lifts that
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3898:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3874:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'NOT_DRIVABLE'
+}
+[electron] Error occurred in handler for 'computer:setAccess': Error: BAD_ARGUMENT: application must be one bundle identifier: no spaces and no pattern
+    at bad3 (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:8516:9)
+    at validApplicationKey (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:9996:70)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10204:17
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'computer:setAccess': Error: BAD_ARGUMENT: application must be one bundle identifier: no spaces and no pattern
+    at bad3 (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:8516:9)
+    at validApplicationKey (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:9996:70)
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:10204:17
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:12142:61
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11613:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Debugger ending on ws://127.0.0.1:56714/ed00ab57-2c1c-4987-bea5-26e26d80fe1b
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  12 e2e/px-215-standing-access.spec.ts:79:1 › PX-215: Settings shows nothing set by default, sets, changes and clears a level through the Core, shows the Core's refusals and is accessible (2.3s)
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 11ms
+[electron] Debugger ending on ws://127.0.0.1:56730/ed4a180d-aefa-4dff-a1db-3940c23f4516
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  13 e2e/px-215-standing-access.spec.ts:163:1 › PX-215: at view only the agent's click and typing are refused on the cards with the level, what they needed and where to change it; at never the start is; the person is asked for neither (8.1s)
+[electron] Error occurred in handler for 'approval:resolve': RejectedError: UNKNOWN_APPROVAL: 01234567-89ab-cdef-0123-456789abcdef
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3898:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3874:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'UNKNOWN_APPROVAL'
+}
+[electron] Error occurred in handler for 'browser:session': RejectedError: UNKNOWN_TASK: 01234567-89ab-cdef-0123-456789abcdef
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3898:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:3874:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'UNKNOWN_TASK'
+}
+[electron] Error occurred in handler for 'session:create': Error: SENDER_REFUSED: only the app's own renderer may ask this
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11600:13
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'debug:coreInfo': Error: SENDER_REFUSED: only the app's own renderer may ask this
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11600:13
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'credential:list': Error: SENDER_REFUSED: only the app's own renderer may ask this
+    at /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/apps/desktop/dist/main/main.cjs:11600:13
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Debugger ending on ws://127.0.0.1:56745/e98b830f-e0f8-429b-a903-59e7fc23546f
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  14 e2e/workers.spec.ts:156:1 › renderer compromise (REQ-EV-0075): the app's renderer holds no secret, no Node, no socket; the bridge is typed requests only; the Core refuses what the renderer cannot vouch for; a foreign window with the same bridge is refused by main and audited (699ms)
+[renderer-diag] window renderer pid=70085 webContents=1; processes: 69846:Browser 69927:GPU 69944:Utility(Network Service) 70085:Tab
+[renderer-diag] page1.crash at 70 ms
+[electron] modbit-desktop: renderer gone: reason=killed exitCode=2 via=event replacing=true
+[renderer-diag] page1.close at 93 ms
+[renderer-diag] main-replaced at 174 ms
+[renderer-diag] renderer-pid-gone at 174 ms
+[renderer-diag] playwright-window at 275 ms
+[electron] Debugger ending on ws://127.0.0.1:56750/cc92dcbc-9a4f-4f81-98ca-ecb1309531d3
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  15 e2e/workers.spec.ts:260:1 › renderer killed (REQ-EV-0076): the renderer's process dies mid-session; main keeps the Core, the lease and the stream; the renderer comes back from the Core's snapshot and cursor with the session's truth unchanged and its typed requests answered (6.5s)
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 23ms
+[electron] sandbox_extension_issue_file failed for /Users/mohsin/projects/modbit/.claude/worktrees/pensive-bardeen-38b766/node_modules/.pnpm/electron@44.3.0_supports-color@8.1.1/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper.app/Contents/Resources: 1 (Operation not permitted)
+[renderer-diag] 5 s after the kill: pid 70085 alive=false; main windows=Error: electronApplication.evaluate: Target page, context or browser has been closed; processes: 
+[electron] Debugger ending on ws://127.0.0.1:56903/23b68e24-0d2b-4cfa-b7e1-775c43630bb9
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  16 e2e/workers.spec.ts:379:1 › browser view killed (REQ-EV-0081): the view's process dies under the agent's session; the host restarts the view at its page and attaches it again to the same session; the Core, its log and the task are untouched, and the agent's next observation reads the restarted page (4.8s)
+
+  16 passed (1.8m)

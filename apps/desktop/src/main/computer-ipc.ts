@@ -13,13 +13,13 @@
  * changes a setting.
  */
 import type { CoreClient } from "@modbit/ide-adapter-core";
-import { computerStop, getComputerRuntime, listComputerActivity, readObjectRange, resolveComputerLatch, getComputerPresence } from "@modbit/ide-adapter-core";
-import { TranscriptDensity, type ComputerActivityEntry, type ComputerPresenceView, type TranscriptRow } from "@modbit/surface-protocol";
-import type { ComputerCardView, ComputerCardsInfo, ComputerFrameInfo, ComputerPresenceInfo, ComputerStopInfo, OpenSettingsInfo, PermissionName, PermissionState, PresenceState } from "../shared/computer-types.ts";
-import { PRESENCE_STATES } from "../shared/computer-types.ts";
+import { computerStop, getComputerAccess, getComputerRuntime, listComputerActivity, readObjectRange, resolveComputerLatch, getComputerPresence, setComputerAccess } from "@modbit/ide-adapter-core";
+import { TranscriptDensity, type ComputerAccessChanged, type ComputerAccessView, type ComputerActivityEntry, type ComputerPresenceView, type TranscriptRow } from "@modbit/surface-protocol";
+import type { AccessLevel, AccessNeed, ComputerAccessChangedInfo, ComputerAccessInfo, ComputerCardView, ComputerCardsInfo, ComputerFrameInfo, ComputerPresenceInfo, ComputerStopInfo, OpenSettingsInfo, PermissionName, PermissionState, PresenceState } from "../shared/computer-types.ts";
+import { ACCESS_LEVELS, ACCESS_NEEDS, PRESENCE_STATES } from "../shared/computer-types.ts";
 import { intentOf } from "./approval-intent.ts";
 import { computerIntentOf } from "./computer-intent.ts";
-import { SETTINGS_LINKS, validArtifactRef, validNote, validPane } from "./computer-args.ts";
+import { SETTINGS_LINKS, validAccessLevel, validApplicationKey, validApplicationLabel, validArtifactRef, validNote, validPane } from "./computer-args.ts";
 import { argumentsOf } from "./control-ipc.ts";
 import { bad, validBool } from "./control-args.ts";
 import type { Registrar } from "./conversation-ipc.ts";
@@ -54,6 +54,28 @@ export function presenceInfo(v: ComputerPresenceView): ComputerPresenceInfo {
       observations: p.observations,
     })),
   };
+}
+
+// ---------------------------------------------- standing access (PX-215)
+
+const levelOf = (v: string): AccessLevel | "" => ((ACCESS_LEVELS as readonly string[]).includes(v) ? (v as AccessLevel) : "");
+
+/** The Core's levels as plain data. A level name the Core sent that this build does not know is dropped, never shown as something else. */
+export function accessInfo(v: ComputerAccessView): ComputerAccessInfo {
+  return {
+    entries: v.entries.flatMap((e) => {
+      const level = levelOf(e.level);
+      return level === "" ? [] : [{ bundleId: e.bundleId, application: clip(e.application, 200), level, setAtMs: Number(e.setAtMs) }];
+    }),
+    running: v.running.map((a) => ({ bundleId: a.bundleId, name: clip(a.name, 200), level: levelOf(a.level) })),
+    attached: v.attached,
+    lastChangeOffset: v.lastChangeOffset.toString(),
+    changes: v.changes.map((c) => ({ offset: c.offset.toString(), atMs: Number(c.atMs), bundleId: c.bundleId, application: clip(c.application, 200), level: levelOf(c.level), previous: levelOf(c.previous), by: c.by })),
+  };
+}
+
+export function accessChangedInfo(c: ComputerAccessChanged): ComputerAccessChangedInfo {
+  return { bundleId: c.bundleId, application: clip(c.application, 200), level: levelOf(c.level), previous: levelOf(c.previous), changed: c.changed, offset: c.offset.toString() };
 }
 
 // ----------------------------------------------------------- the action cards
@@ -133,11 +155,13 @@ export async function computerCards(c: CoreClient, sessionId: string, taskId: st
   for (const call of calls) {
     const entries = byCall.get(call.toolCallId) ?? [];
     const started = entries.find((e) => e.kind === "SESSION_STARTED");
+    const refused = entries.find((e) => e.kind === "ACCESS_REFUSED");
     const action = entries.find((e) => e.kind === "ACTION");
     const observed = entries.find((e) => e.kind === "OBSERVED");
     const approval = approvalByCall.get(call.toolCallId) ?? null;
     const intent = approval ? computerIntentOf(approval.scopeJson) : null;
     if (started) app = { name: started.application, bundle: started.bundleId, scope: started.scope };
+    else if (refused && !intent) app = { name: refused.application, bundle: refused.bundleId, scope: app.scope };
     else if (intent && intent.kind === "observation_grant") app = { name: intent.applicationName, bundle: intent.application.bundleId, scope: intent.scope };
     const args = call.argumentsRef ? await argumentsOf(c, taskId, call.toolCallId) : null;
     const role = ROLE[call.toolName] ?? "other";
@@ -164,6 +188,7 @@ export async function computerCards(c: CoreClient, sessionId: string, taskId: st
       observation: observed ? { kind: observed.detail, elements: observed.elements, secureWithheld: observed.secureWithheld, maskedRegions: observed.maskedRegions, artifactRef: observed.artifactRef, artifactExpired: observed.artifactExpired } : null,
       latched: runtime.latch !== "" && latchCall === call.toolCallId,
       userAborted: code === "USER_ABORTED",
+      standingAccess: refused && levelOf(refused.accessLevel) !== "" && (ACCESS_NEEDS as readonly string[]).includes(refused.accessNeeded) ? { level: refused.accessLevel as AccessLevel, needed: refused.accessNeeded as AccessNeed, reason: clip(refused.reason, 400) } : null,
     });
   }
   return { taskId, cards };
@@ -235,6 +260,26 @@ export function registerComputerHandlers(r: Registrar, deps: ComputerDeps): void
     await r.lease(c, sid);
     const res = await resolveComputerLatch(c, sid, tid, note);
     return { wasLatched: res.wasLatched };
+  });
+
+  // PX-215: the person's standing level per application, as the Core holds it. A Core that is restarting answers "no answer".
+  r.handle("computer:access", async (): Promise<ComputerAccessInfo | null> => {
+    let c: CoreClient;
+    try {
+      c = r.client();
+    } catch (e) {
+      if ((e as Error).message.startsWith("CORE_UNAVAILABLE")) return null;
+      throw e;
+    }
+    return accessInfo(await getComputerAccess(c));
+  });
+
+  // PX-215: set one application's level, or clear it with "". One typed Core command (a Core-wide setting: no session, no lease); the Core checks the identifier and the level again and records the change.
+  r.handle("computer:setAccess", async (...a): Promise<ComputerAccessChangedInfo> => {
+    const key = validApplicationKey(a[0]);
+    const label = validApplicationLabel(a[1]);
+    const level = validAccessLevel(a[2]);
+    return accessChangedInfo(await setComputerAccess(r.client(), key, label, level));
   });
 
   r.handle("computer:cards", async (...a): Promise<ComputerCardsInfo> => computerCards(r.client(), r.sessionId(a[0]), r.taskId(a[1])));

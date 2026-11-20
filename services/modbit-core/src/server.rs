@@ -821,6 +821,8 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "DecideReview",
                     "FixReviewFinding",
                     "DismissReviewFinding",
+                    "GetComputerAccess",
+                    "SetComputerAccess",
                     "ApplyUserPatch",
                     "GetChangesState",
                     "RevertChanges",
@@ -1587,6 +1589,11 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         // and the on-screen Stop are the person's control of the machine.
         "GetComputerRuntime" | "GetComputerPresence" | "ListComputerActivity" => "events.subscribe",
         "ResolveComputerLatch" | "ComputerStop" => "session.control",
+        // PX-215: reading the levels is a read; setting one is the person's
+        // decision about what the agent may do on their machine - the class
+        // that decides an approval.
+        "GetComputerAccess" => "events.subscribe",
+        "SetComputerAccess" => "approval.resolve",
         "SetSendBehavior" => "task.author",
         // PX-050: the queue is the author's; reading it is reading the log.
         "EditQueuedInput" | "RemoveQueuedInput" | "ReorderQueuedInput" | "SendQueuedInputNow"
@@ -2934,6 +2941,10 @@ pub(crate) async fn handle_command_as(
         | "ListComputerActivity"
         | "ResolveComputerLatch"
         | "ComputerStop" => crate::computer::handle(core, &env).await,
+        // PX-215: the person's standing level per application.
+        "GetComputerAccess" | "SetComputerAccess" => {
+            crate::computer::handle_access(core, &env, record(&env.command_type), actor).await
+        }
         "GetContextAccounting" => {
             let Ok(p) = wire::GetContextAccounting::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "GetContextAccounting");

@@ -1,0 +1,8 @@
+test qual_px_215_a_level_is_the_fold_of_the_log_and_survives_a_restart ... ok
+test qual_px_215_a_level_never_widens_what_the_grant_allows ... ok
+test qual_px_215_at_never_the_session_is_refused_and_no_approval_is_asked ... ok
+test qual_px_215_at_view_only_a_click_and_a_type_are_refused_with_their_reason ... ok
+test qual_px_215_with_no_level_set_the_grant_alone_decides ... ok
+test qual_px_215_a_change_mid_session_applies_from_the_next_action_and_is_audited ... ok
+test qual_px_215_at_click_a_click_goes_through_and_a_type_is_refused ... ok
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 50 filtered out; finished in 6.39s

@@ -1,0 +1,8 @@
+{
+  "expected": {
+    "application": "Form App",
+    "bundleId": "org.example.fixture.form",
+    "level": "click"
+  },
+  "type": "modbit.v1.SetComputerAccess"
+}

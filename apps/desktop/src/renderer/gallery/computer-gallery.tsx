@@ -84,6 +84,7 @@ const card = (id: string, over: Partial<ComputerCardView>): ComputerCardView => 
   observation: null,
   latched: false,
   userAborted: false,
+  standingAccess: null,
   ...over,
 });
 

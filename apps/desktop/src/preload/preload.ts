@@ -10,7 +10,7 @@ import type { AutoDetail, AutoEnableInput, AutoKillReport, AutoList, AutoRepoLoa
 import type { ApplyAckInfo, ApplyInputArgs, CleanupReportInfo, ProjectChangedInfo, ProjectInput, ProjectListInfo, ProjectPatch, WorktreeListInfo, WorktreeRemovalInfo } from "../shared/project-types.ts";
 import type { CustomizeHooksView, HookEnabledInfo, MemoryForgetInfo, MemoryPromoteInfo, MemoryRememberInfo, MemoryShareInfo, MemoryView, ImportReportInfo, SkillsView, SkillTrustInfo } from "../shared/customize-types.ts";
 import type { ChangesStateInfo, CommitPushAckInfo, CommitPushInput, DecideHunkAckInfo, DecideHunkInput, RevertAckInfo, RevertInput, StageAckInfo } from "../shared/changes-types.ts";
-import type { ComputerCardsInfo, ComputerFrameInfo, ComputerPresenceInfo, ComputerStopInfo, OpenSettingsInfo, PermissionName } from "../shared/computer-types.ts";
+import type { ComputerAccessChangedInfo, ComputerAccessInfo, ComputerCardsInfo, ComputerFrameInfo, ComputerPresenceInfo, ComputerStopInfo, OpenSettingsInfo, PermissionName } from "../shared/computer-types.ts";
 import type { AccountingInfo, AddRuleInput, AllowRuleInfo, CheckpointListInfo, CheckpointTargetInput, DockApprovalView, ExpiredApprovalView, ForkOutcome, ModeProposalDecisionInfo, ModeProposalListInfo, RestoreOutcome, RewindPreviewInfo, RunModeInfo, TaskBudgetsInfo } from "../shared/control-types.ts";
 import type { UpdatesView } from "../shared/inbox-types.ts";
 import type { DismissFindingAnswer, FixFindingAnswer, ReviewerResultView } from "../shared/review-findings-types.ts";
@@ -428,6 +428,10 @@ export interface ModbitBridge {
   computerFrame(taskId: string, artifactRef: string, full?: boolean): Promise<ComputerFrameInfo | null>;
   /** Opens a pane of System Settings. It never changes a setting. */
   computerOpenSettings(pane: PermissionName): Promise<OpenSettingsInfo>;
+  /** PX-215: the person's standing level per application, as the Core holds it; null while the Core is not answering. */
+  computerAccess(): Promise<ComputerAccessInfo | null>;
+  /** PX-215: set one application's standing level (`never` | `view_only` | `click` | `full`), or clear it with an empty level. The Core records the change and applies it from the agent's next action. */
+  computerSetAccess(application: string, name: string, level: string): Promise<ComputerAccessChangedInfo>;
   debugOpenedSettings(): Promise<{ pane: PermissionName; url: string; atMs: number }[]>;
   dockApprovals(sessionId: string, taskId?: string): Promise<DockApprovalView[]>;
   /** REQ-PX-058: the task's approvals the Core closed as expired (nobody answered before the recorded expiry). They can no longer be approved. */
@@ -686,6 +690,8 @@ const bridge: ModbitBridge = {
   computerCards: (sessionId, taskId) => ipcRenderer.invoke("computer:cards", sessionId, taskId),
   computerFrame: (taskId, artifactRef, full) => ipcRenderer.invoke("computer:frame", taskId, artifactRef, full ?? false),
   computerOpenSettings: (pane) => ipcRenderer.invoke("computer:openSettings", pane),
+  computerAccess: () => ipcRenderer.invoke("computer:access"),
+  computerSetAccess: (application, name, level) => ipcRenderer.invoke("computer:setAccess", application, name, level),
   debugOpenedSettings: () => ipcRenderer.invoke("debug:openedSettings"),
   dockApprovals: (sessionId, taskId) => ipcRenderer.invoke("approvals:dock", sessionId, taskId ?? ""),
   expiredApprovals: (sessionId, taskId) => ipcRenderer.invoke("approvals:expired", sessionId, taskId),

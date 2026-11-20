@@ -2115,11 +2115,149 @@ pub fn samples() -> Vec<Sample> {
                     "modality": "ax", "outcome": "SUCCEEDED", "code": "", "reason": "",
                     "artifactRef": "", "artifactDigest": "", "artifactExpired": false,
                     "elements": 0, "secureWithheld": 0, "maskedRegions": 0, "durationMs": "12",
-                    "verifiedKnown": true, "verified": true
+                    "verifiedKnown": true, "verified": true,
+                    "accessLevel": "", "accessNeeded": ""
                 }],
                 "truncated": false
             }),
             decode: reencode::<ComputerActivityView>,
+        },
+        // PX-215: a call the person's standing access for the application did not allow.
+        Sample {
+            name: "computer_activity_access_refused",
+            type_name: "modbit.v1.ComputerActivityView",
+            bytes: ComputerActivityView {
+                entries: vec![ComputerActivityEntry {
+                    offset: 43,
+                    at_ms: 1_791_626_001_000,
+                    kind: "ACCESS_REFUSED".into(),
+                    control_id: "c0123456789ab".into(),
+                    tool_call_id: "01a08f33-0d97-7d40-b299-f8a7bc5cda62".into(),
+                    bundle_id: "org.example.fixture.form".into(),
+                    application: "Form App".into(),
+                    reason: "your standing access for `org.example.fixture.form` is view only: clicking needs click or full".into(),
+                    code: "ACTION_UNSAFE".into(),
+                    access_level: "view_only".into(),
+                    access_needed: "click".into(),
+                    ..Default::default()
+                }],
+                truncated: false,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "entries": [{
+                    "offset": "43", "atMs": "1791626001000", "kind": "ACCESS_REFUSED",
+                    "controlId": "c0123456789ab",
+                    "toolCallId": "01a08f33-0d97-7d40-b299-f8a7bc5cda62",
+                    "approvalId": "", "intentHash": "", "bundleId": "org.example.fixture.form",
+                    "application": "Form App", "scope": "", "detail": "",
+                    "modality": "", "outcome": "", "code": "ACTION_UNSAFE",
+                    "reason": "your standing access for `org.example.fixture.form` is view only: clicking needs click or full",
+                    "artifactRef": "", "artifactDigest": "", "artifactExpired": false,
+                    "elements": 0, "secureWithheld": 0, "maskedRegions": 0, "durationMs": "0",
+                    "verifiedKnown": false, "verified": false,
+                    "accessLevel": "view_only", "accessNeeded": "click"
+                }],
+                "truncated": false
+            }),
+            decode: reencode::<ComputerActivityView>,
+        },
+        // PX-215: the standing levels, setting one, and what the Core answers.
+        Sample {
+            name: "computer_access_view",
+            type_name: "modbit.v1.ComputerAccessView",
+            bytes: ComputerAccessView {
+                entries: vec![
+                    ComputerAccessEntry {
+                        bundle_id: "org.example.fixture.form".into(),
+                        application: "Form App".into(),
+                        level: "view_only".into(),
+                        set_at_ms: 1_791_626_000_000,
+                    },
+                    ComputerAccessEntry {
+                        bundle_id: "exe:notepad.exe".into(),
+                        application: "Notepad".into(),
+                        level: "never".into(),
+                        set_at_ms: 1_791_626_000_500,
+                    },
+                ],
+                levels: vec!["never".into(), "view_only".into(), "click".into(), "full".into()],
+                running: vec![ComputerAccessApplication {
+                    bundle_id: "org.example.fixture.form".into(),
+                    name: "Form App".into(),
+                    level: "view_only".into(),
+                }],
+                attached: true,
+                non_drivable_version: "2026-10-10.1".into(),
+                last_change_offset: 9_007_199_254_740_993,
+                changes: vec![ComputerAccessChange {
+                    offset: 9_007_199_254_740_993,
+                    at_ms: 1_791_626_000_500,
+                    bundle_id: "exe:notepad.exe".into(),
+                    application: "Notepad".into(),
+                    level: "never".into(),
+                    previous: "click".into(),
+                    by: "user:0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a".into(),
+                }],
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "entries": [
+                    {"bundleId": "org.example.fixture.form", "application": "Form App", "level": "view_only", "setAtMs": "1791626000000"},
+                    {"bundleId": "exe:notepad.exe", "application": "Notepad", "level": "never", "setAtMs": "1791626000500"}
+                ],
+                "levels": ["never", "view_only", "click", "full"],
+                "running": [{"bundleId": "org.example.fixture.form", "name": "Form App", "level": "view_only"}],
+                "attached": true, "nonDrivableVersion": "2026-10-10.1",
+                "lastChangeOffset": "9007199254740993",
+                "changes": [{
+                    "offset": "9007199254740993", "atMs": "1791626000500", "bundleId": "exe:notepad.exe",
+                    "application": "Notepad", "level": "never", "previous": "click",
+                    "by": "user:0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a"
+                }]
+            }),
+            decode: reencode::<ComputerAccessView>,
+        },
+        Sample {
+            name: "get_computer_access",
+            type_name: "modbit.v1.GetComputerAccess",
+            bytes: GetComputerAccess {}.encode_to_vec(),
+            expected: json!({}),
+            decode: reencode::<GetComputerAccess>,
+        },
+        Sample {
+            name: "set_computer_access",
+            type_name: "modbit.v1.SetComputerAccess",
+            bytes: SetComputerAccess {
+                bundle_id: "org.example.fixture.form".into(),
+                application: "Form App".into(),
+                level: "click".into(),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "bundleId": "org.example.fixture.form",
+                "application": "Form App", "level": "click"
+            }),
+            decode: reencode::<SetComputerAccess>,
+        },
+        Sample {
+            name: "computer_access_changed",
+            type_name: "modbit.v1.ComputerAccessChanged",
+            bytes: ComputerAccessChanged {
+                bundle_id: "org.example.fixture.form".into(),
+                application: "Form App".into(),
+                level: "click".into(),
+                previous: "view_only".into(),
+                changed: true,
+                offset: 9_007_199_254_740_995,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "bundleId": "org.example.fixture.form", "application": "Form App",
+                "level": "click", "previous": "view_only", "changed": true,
+                "offset": "9007199254740995"
+            }),
+            decode: reencode::<ComputerAccessChanged>,
         },
         Sample {
             name: "resolve_computer_latch",

@@ -721,7 +721,12 @@ impl ToolRuntime {
         // intent and the old approval authorises nothing.
         let mut bound_intent: Option<Value> = None;
         if verdict.denied.is_none() {
-            match tool.prepare(ctx, &args).await {
+            // The call's own id is known here: a refusal made before any
+            // approval (PX-215: a standing level that does not allow the call)
+            // is recorded against it, so the action card can say why.
+            let mut prepare_ctx = ctx.clone();
+            prepare_ctx.tool_call_id = Some(tool_call_id);
+            match tool.prepare(&prepare_ctx, &args).await {
                 Ok(None) => {}
                 Ok(Some(bound)) => {
                     args_hash = hex::encode(Sha256::digest(
