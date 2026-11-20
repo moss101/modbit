@@ -131,6 +131,8 @@ const BRIDGE_ALLOW_LIST = [
   "composerSuggest",
   // REQ-PX-200 (the plan card). Added on purpose: two reads over projections of the task's log, GetWorkGraph and GetPlan; main validates the task id (conversation-ipc.ts) and nothing is leased or changed.
   "workGraph", "plan",
+  // PX-214 (the reviewer's findings): Fix this one and Dismiss on the Review page. Added on purpose; each is one typed Core command main validates (review-findings-ipc.ts: finding id, result digest, reason).
+  "fixReviewFinding", "dismissReviewFinding",
   // PX-203 (pane pop-out): the app window pops a pane out, lists and brings forward pane windows and hears them close or ask;
   // a pane window asks which pane it shows, says what it shows, asks the app window to show something, and goes back to the
   // dock. Main answers a pane window only on its pane's channels, for its own task (pane-windows.ts).

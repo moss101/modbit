@@ -339,6 +339,8 @@ pub async fn bundle(
             });
         }
     }
+    // PX-214: the isolated reviewer's latest result, read back and re-hashed.
+    let reviewer = crate::review_findings::bundle_fields(&store, &task);
     drop(store);
     let workspace_revision = match core.tools.workspace(&cand.root).await {
         Ok((ws, _)) => ws.lock().await.revision().number,
@@ -363,6 +365,7 @@ pub async fn bundle(
         review_comments,
         ci_rejected,
         repair_attempts,
+        ..reviewer
     })
 }
 

@@ -2452,5 +2452,157 @@ pub fn samples() -> Vec<Sample> {
             }),
             decode: reencode::<NextPromptSuggestion>,
         },
+        // REQ-PX-214: the isolated reviewer's findings in the review bundle,
+        // and the commands that fix or set one aside.
+        Sample {
+            name: "review_bundle_reviewer_findings",
+            type_name: "modbit.v1.ReviewBundle",
+            bytes: ReviewBundle {
+                task_id: id(0x21),
+                task_state: "ReadyForReview".into(),
+                workspace_revision: 9_007_199_254_740_993,
+                base_commit: "b".repeat(40),
+                workspace_root: "/repo".into(),
+                reviewer_state: "CURRENT".into(),
+                reviewer_verdict: "REVISE".into(),
+                reviewer_confidence: 82,
+                reviewer_summary: "two real problems and one claim about a file that is not there"
+                    .into(),
+                reviewer_candidate_revision: 7,
+                reviewer_result_digest: "c".repeat(64),
+                reviewer_task_id: id(0x44),
+                reviewer_findings: vec![
+                    ReviewFindingView {
+                        finding_id: "F1".into(),
+                        severity: "HIGH".into(),
+                        category: "correctness".into(),
+                        path: "src/lib.rs".into(),
+                        line: 12,
+                        claim: "the empty slice panics".into(),
+                        suggested_action: "return None for an empty slice".into(),
+                        verified: true,
+                        fix_requests: 1,
+                        ..Default::default()
+                    },
+                    ReviewFindingView {
+                        finding_id: "F2".into(),
+                        severity: "LOW".into(),
+                        category: "style".into(),
+                        path: "src/ghost.rs".into(),
+                        claim: "the helper is duplicated".into(),
+                        unsupported_reason:
+                            "`src/ghost.rs` is not in the tree at the candidate revision".into(),
+                        dismissed: true,
+                        dismissed_by: "user:0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a".into(),
+                        dismissed_reason: "that file is not part of this change".into(),
+                        dismissed_offset: 9_007_199_254_740_995,
+                        ..Default::default()
+                    },
+                ],
+                reviewer_questions: vec!["is the empty slice reachable from the CLI?".into()],
+                reviewer_note: String::new(),
+                ..Default::default()
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x21), "taskState": "ReadyForReview",
+                "workspaceRevision": "9007199254740993", "baseCommit": "b".repeat(40),
+                "workspaceRoot": "/repo", "files": [], "planJson": "", "selfReviewJson": "",
+                "verificationRuns": [], "attributions": [], "quarantined": [],
+                "invariantFindings": [], "receipts": 0, "evidenceLinks": [], "ciEvidence": [],
+                "reviewComments": [], "ciRejected": [], "repairAttempts": [],
+                "reviewerState": "CURRENT", "reviewerVerdict": "REVISE", "reviewerConfidence": 82,
+                "reviewerSummary": "two real problems and one claim about a file that is not there",
+                "reviewerCandidateRevision": "7", "reviewerResultDigest": "c".repeat(64),
+                "reviewerTaskId": idhex(0x44),
+                "reviewerFindings": [
+                    {
+                        "findingId": "F1", "severity": "HIGH", "category": "correctness",
+                        "path": "src/lib.rs", "line": 12, "claim": "the empty slice panics",
+                        "suggestedAction": "return None for an empty slice", "verified": true,
+                        "unsupportedReason": "", "dismissed": false, "dismissedBy": "",
+                        "dismissedReason": "", "dismissedOffset": "0", "fixRequests": 1
+                    },
+                    {
+                        "findingId": "F2", "severity": "LOW", "category": "style",
+                        "path": "src/ghost.rs", "line": 0, "claim": "the helper is duplicated",
+                        "suggestedAction": "", "verified": false,
+                        "unsupportedReason": "`src/ghost.rs` is not in the tree at the candidate revision",
+                        "dismissed": true, "dismissedBy": "user:0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a",
+                        "dismissedReason": "that file is not part of this change",
+                        "dismissedOffset": "9007199254740995", "fixRequests": 0
+                    }
+                ],
+                "reviewerQuestions": ["is the empty slice reachable from the CLI?"],
+                "reviewerNote": ""
+            }),
+            decode: reencode::<ReviewBundle>,
+        },
+        Sample {
+            name: "fix_review_finding",
+            type_name: "modbit.v1.FixReviewFinding",
+            bytes: FixReviewFinding {
+                task_id: id(0x21),
+                finding_id: "F1".into(),
+                result_digest: "c".repeat(64),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x21), "findingId": "F1", "resultDigest": "c".repeat(64)
+            }),
+            decode: reencode::<FixReviewFinding>,
+        },
+        Sample {
+            name: "review_finding_fix_queued",
+            type_name: "modbit.v1.ReviewFindingFixQueued",
+            bytes: ReviewFindingFixQueued {
+                task_id: id(0x21),
+                finding_id: "F1".into(),
+                input_id: "review-finding-fix-cccccccccccc-F1-0102".into(),
+                offset: 9_007_199_254_740_993,
+                task_state: "Waiting".into(),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x21), "findingId": "F1",
+                "inputId": "review-finding-fix-cccccccccccc-F1-0102",
+                "offset": "9007199254740993", "taskState": "Waiting"
+            }),
+            decode: reencode::<ReviewFindingFixQueued>,
+        },
+        Sample {
+            name: "dismiss_review_finding",
+            type_name: "modbit.v1.DismissReviewFinding",
+            bytes: DismissReviewFinding {
+                task_id: id(0x21),
+                finding_id: "F2".into(),
+                result_digest: "c".repeat(64),
+                reason: "that file is not part of this change".into(),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x21), "findingId": "F2", "resultDigest": "c".repeat(64),
+                "reason": "that file is not part of this change"
+            }),
+            decode: reencode::<DismissReviewFinding>,
+        },
+        Sample {
+            name: "review_finding_dismissal",
+            type_name: "modbit.v1.ReviewFindingDismissal",
+            bytes: ReviewFindingDismissal {
+                task_id: id(0x21),
+                finding_id: "F2".into(),
+                dismissed_by: "user:0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a".into(),
+                reason: "that file is not part of this change".into(),
+                offset: 9_007_199_254_740_995,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x21), "findingId": "F2",
+                "dismissedBy": "user:0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a",
+                "reason": "that file is not part of this change", "offset": "9007199254740995"
+            }),
+            decode: reencode::<ReviewFindingDismissal>,
+        },
     ]
 }

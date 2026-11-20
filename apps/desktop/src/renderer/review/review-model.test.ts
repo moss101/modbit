@@ -2,11 +2,12 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { AgentHeaderView } from "../../shared/conversation-types.ts";
 import type { PullRequestAckView, ReviewBundleView } from "../../preload/preload.ts";
-import { changeSet, checksWords, findingsOf, reviewRows, stateWords } from "./review-model.ts";
+import type { ReviewerFindingView, ReviewerResultView } from "../../shared/review-findings-types.ts";
+import { changeSet, checksWords, findingPlace, findingRefusal, findingsOf, fixedWords, handledWords, openReviewerFindings, reviewerWords, reviewRows, severityWords, stateWords, verifiedWords, whoWords } from "./review-model.ts";
 
 const header = (taskId: string, over: Partial<AgentHeaderView> = {}): AgentHeaderView => ({ taskId, sessionId: "s", workspaceRoot: "/repos/modbit", title: `Task ${taskId}`, subtitle: "", createdAtMs: 0, updatedAtMs: 0, statusClass: "READY" as AgentHeaderView["statusClass"], statusLabel: "", unread: false, pendingApproval: false, pendingPlan: false, contextPercent: 0, filesChanged: 0, linesAdded: 0, linesRemoved: 0, lastCheckpointAtMs: 0, subagent: false, archived: false, executionLocation: "", origin: "", taskState: "Running", lastOffset: "0", readOffset: "0", attentionItems: 0, ...over });
 const ack = (n: string): PullRequestAckView => ({ status: "OPENED", approvalId: "", intentHash: "", number: n, url: "", branch: "task/x", headSha: "", candidateRevision: "1", receipts: 1, replayed: false, detail: "" });
-const bundle = (over: Partial<ReviewBundleView> = {}): ReviewBundleView => ({ taskId: "t", taskState: "ReadyForReview", workspaceRevision: "2", baseCommit: "", workspaceRoot: "", files: [], planJson: "", selfReviewJson: "", verificationRuns: [], attributions: [], quarantined: [], invariantFindings: [], receipts: 0, evidenceLinks: [], ciEvidence: [], ciRejected: [], repairAttempts: [], reviewComments: [], ...over });
+const bundle = (over: Partial<ReviewBundleView> = {}): ReviewBundleView => ({ taskId: "t", taskState: "ReadyForReview", workspaceRevision: "2", baseCommit: "", workspaceRoot: "", files: [], planJson: "", selfReviewJson: "", verificationRuns: [], attributions: [], quarantined: [], invariantFindings: [], receipts: 0, evidenceLinks: [], ciEvidence: [], ciRejected: [], repairAttempts: [], reviewComments: [], reviewer: { state: "", verdict: "", confidence: 0, summary: "", candidateRevision: "0", resultDigest: "", findings: [], questions: [], note: "" }, ...over });
 
 test("REQ-PX-208: tasks with changes split into pull requests this window knows of and local changes, newest first", () => {
   const hs = [header("a", { filesChanged: 2, linesAdded: 5, linesRemoved: 1, updatedAtMs: 1 }), header("b", { taskState: "ReadyForReview", updatedAtMs: 3, checkoutRoot: "/repos/modbit" }), header("c"), header("d", { filesChanged: 1, archived: true }), header("e", { filesChanged: 1, updatedAtMs: 2 })];
@@ -42,4 +43,53 @@ test("REQ-PX-208: the change set counts each file's added and removed lines from
   const b = bundle({ files: [{ path: "notes.txt", status: "M", binary: false, fileRevision: "", oldContentRef: "", newContentRef: "", hunks: [h([" a", "-b", "+c", "+d"])] }, { path: "x.png", status: "A", binary: true, fileRevision: "", oldContentRef: "", newContentRef: "", hunks: [] }] });
   assert.deepEqual(changeSet(b), [{ path: "notes.txt", status: "changed", added: 2, removed: 1 }, { path: "x.png", status: "binary", added: 0, removed: 0 }]);
   assert.equal(stateWords("SomethingNew"), "Something new");
+});
+
+const finding = (over: Partial<ReviewerFindingView> = {}): ReviewerFindingView => ({ findingId: "f1", severity: "HIGH", category: "security", path: "src/a.ts", line: 3, claim: "the check is too weak", suggestedAction: "compare a hash", verified: true, unsupportedReason: "", dismissed: false, dismissedBy: "", dismissedReason: "", fixRequests: 0, ...over });
+const reviewer = (over: Partial<ReviewerResultView> = {}): ReviewerResultView => ({ state: "CURRENT", verdict: "BLOCK", confidence: 77, summary: "weak check", candidateRevision: "7", resultDigest: "c".repeat(64), findings: [], questions: [], note: "", ...over });
+
+test("REQ-PX-214: the reviewer's verdict is in plain words, a stale report says so, an unreadable one shows nothing of itself", () => {
+  assert.equal(reviewerWords(reviewer({ state: "" })), null);
+  const w = reviewerWords(reviewer())!;
+  assert.equal(w.headline, "The reviewer says this change should not be accepted as it is.");
+  assert.equal(w.detail, "weak check. The reviewer was 77 percent sure.");
+  assert.equal(w.stale, false);
+  assert.equal(reviewerWords(reviewer({ state: "STALE", verdict: "PASS", confidence: 0, summary: "" }))!.headline, "The reviewer found nothing to change.");
+  assert.equal(reviewerWords(reviewer({ state: "STALE" }))!.stale, true);
+  const u = reviewerWords(reviewer({ state: "UNREADABLE", verdict: "", summary: "", confidence: 0, note: "the stored result does not hash" }))!;
+  assert.deepEqual([u.unreadable, u.detail], [true, "the stored result does not hash"]);
+  assert.equal(reviewerWords(reviewer({ verdict: "MAYBE" }))!.headline, "The reviewer gave an answer this page has no words for.");
+  for (const x of ["PASS", "REVISE", "BLOCK", "UNCERTAIN"]) assert.doesNotMatch(reviewerWords(reviewer({ verdict: x }))!.headline, /[A-Z]{3,}/);
+});
+
+test("REQ-PX-214: a finding names its place, says whether the Core found it, and what became of it, in words", () => {
+  assert.equal(findingPlace(finding()), "src/a.ts, line 3");
+  assert.equal(findingPlace(finding({ line: 0 })), "src/a.ts");
+  assert.equal(findingPlace(finding({ path: "" })), "");
+  assert.equal(severityWords("CRITICAL"), "Critical");
+  assert.equal(severityWords(""), "Unrated");
+  assert.equal(verifiedWords(finding()), "The Core found this file in the code.");
+  const unverified = finding({ verified: false, unsupportedReason: "`src/ghost.ts` is not in the tree at the candidate revision" });
+  assert.match(verifiedWords(unverified), /^The Core could not confirm this: `src\/ghost\.ts` is not in the tree/);
+  assert.doesNotMatch(verifiedWords(unverified), /found this file/, "an unconfirmed finding is never worded as confirmed");
+  assert.equal(handledWords(finding()), "");
+  assert.equal(handledWords(finding({ fixRequests: 1 })), "You asked the agent to fix this one.");
+  assert.equal(handledWords(finding({ fixRequests: 2 })), "You asked the agent to fix this one 2 times.");
+  assert.equal(handledWords(finding({ dismissed: true, dismissedBy: "user:abc", dismissedReason: "not part of this change" })), "Set aside by you: not part of this change");
+  assert.equal(whoWords("agent:solver"), "solver");
+  assert.equal(whoWords(""), "someone");
+});
+
+test("REQ-PX-214: Walk through goes over the findings no one has set aside, in the reviewer's order", () => {
+  const r = reviewer({ findings: [finding({ findingId: "a" }), finding({ findingId: "b", dismissed: true }), finding({ findingId: "c" })] });
+  assert.deepEqual(openReviewerFindings(r).map((f) => f.findingId), ["a", "c"]);
+});
+
+test("REQ-PX-214: the Core's refusals of a command on a finding are in words; a fix says when the agent takes it up", () => {
+  assert.match(findingRefusal("Error invoking remote method 'review:fixFinding': Error: RESULT_CHANGED: the reviewer's latest result is not the one"), /reported again/);
+  assert.match(findingRefusal("FINDING_DISMISSED: finding `f1` was dismissed"), /already set aside/);
+  assert.match(findingRefusal("RESULT_UNREADABLE: the stored reviewer result is missing"), /cannot be read back safely/);
+  assert.doesNotMatch(findingRefusal("UNKNOWN_FINDING: x"), /UNKNOWN_FINDING/);
+  assert.match(fixedWords("Waiting(UserInput)"), /when you resume the task/);
+  assert.match(fixedWords("Running"), /next step/);
 });

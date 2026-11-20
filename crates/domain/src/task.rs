@@ -1881,6 +1881,25 @@ pub enum TaskEvent {
         /// One line.
         summary: String,
     },
+    /// `ReviewFindingDismissed` (REQ-PX-214, DR-PX-2026-11-11-021 MWS-18): a
+    /// person set one finding of the isolated reviewer's recorded result
+    /// aside. It names the result by its digest and the finding by its id, so
+    /// it never applies to a later result, and it records who and why. The
+    /// reviewer's result is content-addressed and is not edited. On the
+    /// candidate task; no state change.
+    ReviewFindingDismissed {
+        /// Object hash of the `ReviewerResult` the finding belongs to.
+        result_ref: String,
+        /// The revision that result reviewed.
+        candidate_revision: u64,
+        /// The finding's id (the reviewer's, else `F<n>` by position).
+        finding_id: String,
+        /// Who, as `user:<id>`, `core:<name>`, `agent:<name>` or
+        /// `external:<name>` (the actor the Core recorded).
+        dismissed_by: String,
+        /// Why, in the person's words (bounded by the Core).
+        reason: String,
+    },
     /// `RevisionActivated` (REQ-EPR-007): a bounded revision of the
     /// candidate after a `REVISE` verdict — the task returned to work with
     /// the validated findings as its typed input, a new attempt on the
@@ -3268,6 +3287,7 @@ impl TaskEvent {
             Self::ReviewEnvironmentAdmitted { .. } => "ReviewEnvironmentAdmitted",
             Self::ReviewEnvironmentBound { .. } => "ReviewEnvironmentBound",
             Self::ReviewerResultRecorded { .. } => "ReviewerResultRecorded",
+            Self::ReviewFindingDismissed { .. } => "ReviewFindingDismissed",
             Self::RevisionActivated { .. } => "RevisionActivated",
             Self::ReviewEnvironmentDisposed { .. } => "ReviewEnvironmentDisposed",
             Self::WorkNodesChanged { .. } => "WorkNodesChanged",
@@ -3485,6 +3505,7 @@ impl Task {
             | TaskEvent::ReviewEnvironmentAdmitted { .. }
             | TaskEvent::ReviewEnvironmentBound { .. }
             | TaskEvent::ReviewerResultRecorded { .. }
+            | TaskEvent::ReviewFindingDismissed { .. }
             | TaskEvent::RevisionActivated { .. }
             | TaskEvent::ReviewEnvironmentDisposed { .. }
             | TaskEvent::ContextEpochOpened { .. }

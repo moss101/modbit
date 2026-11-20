@@ -819,6 +819,8 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "ListWorkspaceDir",
                     "ReadWorkspaceFile",
                     "DecideReview",
+                    "FixReviewFinding",
+                    "DismissReviewFinding",
                     "ApplyUserPatch",
                     "GetChangesState",
                     "RevertChanges",
@@ -1557,6 +1559,10 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         | "RemoveProjectMember" => "session.control",
         "ListProjects" | "GetProject" => "events.subscribe",
         "DecideReview" => "review.decide",
+        // REQ-PX-214: setting a reviewer's finding aside is a review decision;
+        // asking the agent to fix one is steering it, like an inline patch.
+        "DismissReviewFinding" => "review.decide",
+        "FixReviewFinding" => "task.author",
         // Steering a task from its pull request's comments is steering it.
         "ApplyUserPatch" | "SubmitExternalDiagnostics" | "IngestReviewComments" => "task.author",
         // PX-048: the Changes app reverts and stages the person's own working
@@ -7985,6 +7991,14 @@ pub(crate) async fn handle_command_as(
                 Ok(v) => accept(cid, false, v.encode_to_vec()),
                 Err((code, msg)) => reject(cid, &code, msg),
             }
+        }
+        // REQ-PX-214: one finding of the isolated reviewer, fixed or set aside.
+        "FixReviewFinding" => {
+            crate::review_findings::fix(core, cid, &env, record("FixReviewFinding"), actor).await
+        }
+        "DismissReviewFinding" => {
+            crate::review_findings::dismiss(core, cid, &env, record("DismissReviewFinding"), actor)
+                .await
         }
         "ApplyUserPatch" => {
             let Ok(p) = wire::ApplyUserPatch::decode(env.payload.as_slice()) else {

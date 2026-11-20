@@ -50,7 +50,14 @@ const PINS = {
   // REQ-PX-107), passed through as plain data; and `customizeOpenSource` accepts the kind `rule`, for which main shows a file
   // only if the Core recorded that source as loaded for the task, a relative source resolved inside the task's folder as the
   // Core holds it (customize-ipc.ts `rulePath`). The renderer still names no path of its own.
-  preloadSha256: "14bfca736f7f6eadf03c48da754643f816a4d256573b52d594228a1871666a42",
+  // PX-214 (2026-11-19, for review with its pull request): one channel pair and no other change. `review:fixFinding` (a session id, a
+  // task id, a finding id of at most 48 plain characters and the 64-hex digest of the reviewer's result the person was looking at,
+  // all validated by main) forwards the one typed Core command FixReviewFinding, which queues one input naming that finding; and
+  // `review:dismissFinding` (the same four and a reason of 1..500 characters) forwards DismissReviewFinding, which records who and
+  // why. Both take the session's lease and return plain data. The findings themselves ride the existing `review:bundle` channel
+  // (a type-only addition of the reviewer's fields). No path, command name or free text beyond that reason crosses the bridge;
+  // neither channel is on a pane window's allow list (pane-windows.ts), so only the app's window may fix or dismiss a finding.
+  preloadSha256: "3148ef2c63d05e0799edecfc55892843b978d4ea0ea390faf30c21ffa94d2d2a",
   cspSha256: "e8c3fcc4286ba170b02ea95b02189f132b16228341d2002412facfec6eb929d1",
   webPreferencesSha256: "28515878dc43e119f2360de779e5a3733283d120b31a113837f7f7a6cf2356ee",
   windowOptionKeys: ["width", "height", "minWidth", "minHeight", "show", "webPreferences"],

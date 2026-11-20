@@ -35,6 +35,13 @@ export const reviewCss = `
 .rp-finding[data-open="true"] .rp-tag[data-kind="check"], .rp-finding[data-open="true"] .rp-tag[data-kind="forge"], .rp-finding[data-open="true"] .rp-tag[data-kind="rule"] { color: var(--mb-color-danger); }
 .rp-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--mb-space-2); margin-top: var(--mb-space-2); }
 .rp-foot { margin-top: var(--mb-space-3); }
+.rv-headline { margin: 0; font-weight: 600; }
+.rv-finding .rp-actions { margin-top: var(--mb-space-1); }
+.rv-severity[data-severity="CRITICAL"], .rv-severity[data-severity="HIGH"] { color: var(--mb-color-danger); }
+.rv-finding[data-dismissed="true"] .rp-finding-text > [data-testid="reviewer-claim"] { text-decoration: line-through; color: var(--mb-color-text-muted); }
+.rv-check[data-verified="false"] { color: var(--mb-color-danger); }
+.rv-reason { flex: 1 1 200px; min-width: 0; box-sizing: border-box; height: 28px; padding: 0 var(--mb-space-2); border: 1px solid var(--color-tab-border); border-radius: var(--mb-radius-sm, 4px); background: transparent; color: var(--mb-color-text); font: inherit; }
+.rv-reason:focus-visible { outline: 2px solid var(--mb-color-focus); outline-offset: -2px; }
 /* A task's own review in the page shape: its head is the bar's height with a 1 px edge under it. */
 .review.review { padding: 0 var(--mb-space-5) var(--mb-space-5); }
 .review > .review-head { box-sizing: border-box; height: var(--mb-top-bar); margin: 0 calc(-1 * var(--mb-space-5)) var(--mb-space-3); padding: 0 var(--mb-space-2) 0 var(--mb-space-5); gap: var(--mb-space-2); border-bottom: 1px solid var(--color-tab-border); font-size: var(--mb-type-chrome-size); }

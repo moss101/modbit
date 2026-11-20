@@ -1,0 +1,10 @@
+{
+  "expected": {
+    "dismissedBy": "user:0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a",
+    "findingId": "F2",
+    "offset": "9007199254740995",
+    "reason": "that file is not part of this change",
+    "taskId": "21212121212121212121212121212121"
+  },
+  "type": "modbit.v1.ReviewFindingDismissal"
+}

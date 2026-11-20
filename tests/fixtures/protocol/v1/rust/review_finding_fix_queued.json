@@ -1,0 +1,10 @@
+{
+  "expected": {
+    "findingId": "F1",
+    "inputId": "review-finding-fix-cccccccccccc-F1-0102",
+    "offset": "9007199254740993",
+    "taskId": "21212121212121212121212121212121",
+    "taskState": "Waiting"
+  },
+  "type": "modbit.v1.ReviewFindingFixQueued"
+}

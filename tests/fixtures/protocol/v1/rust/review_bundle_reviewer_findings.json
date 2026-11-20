@@ -1,0 +1,68 @@
+{
+  "expected": {
+    "attributions": [],
+    "baseCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "ciEvidence": [],
+    "ciRejected": [],
+    "evidenceLinks": [],
+    "files": [],
+    "invariantFindings": [],
+    "planJson": "",
+    "quarantined": [],
+    "receipts": 0,
+    "repairAttempts": [],
+    "reviewComments": [],
+    "reviewerCandidateRevision": "7",
+    "reviewerConfidence": 82,
+    "reviewerFindings": [
+      {
+        "category": "correctness",
+        "claim": "the empty slice panics",
+        "dismissed": false,
+        "dismissedBy": "",
+        "dismissedOffset": "0",
+        "dismissedReason": "",
+        "findingId": "F1",
+        "fixRequests": 1,
+        "line": 12,
+        "path": "src/lib.rs",
+        "severity": "HIGH",
+        "suggestedAction": "return None for an empty slice",
+        "unsupportedReason": "",
+        "verified": true
+      },
+      {
+        "category": "style",
+        "claim": "the helper is duplicated",
+        "dismissed": true,
+        "dismissedBy": "user:0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a",
+        "dismissedOffset": "9007199254740995",
+        "dismissedReason": "that file is not part of this change",
+        "findingId": "F2",
+        "fixRequests": 0,
+        "line": 0,
+        "path": "src/ghost.rs",
+        "severity": "LOW",
+        "suggestedAction": "",
+        "unsupportedReason": "`src/ghost.rs` is not in the tree at the candidate revision",
+        "verified": false
+      }
+    ],
+    "reviewerNote": "",
+    "reviewerQuestions": [
+      "is the empty slice reachable from the CLI?"
+    ],
+    "reviewerResultDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "reviewerState": "CURRENT",
+    "reviewerSummary": "two real problems and one claim about a file that is not there",
+    "reviewerTaskId": "44444444444444444444444444444444",
+    "reviewerVerdict": "REVISE",
+    "selfReviewJson": "",
+    "taskId": "21212121212121212121212121212121",
+    "taskState": "ReadyForReview",
+    "verificationRuns": [],
+    "workspaceRevision": "9007199254740993",
+    "workspaceRoot": "/repo"
+  },
+  "type": "modbit.v1.ReviewBundle"
+}

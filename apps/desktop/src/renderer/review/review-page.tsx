@@ -16,6 +16,7 @@ import type { ReviewBundleView } from "../../preload/preload.ts";
 import { commentWords } from "../apps/pull-request-model.ts";
 import { changeSet, checksWords, findingsOf, refusalWords, reviewRows, type ReviewRow } from "./review-model.ts";
 import { answeredRequest, useForgeReads, watchAnswered } from "./use-pull-request.ts";
+import { ReviewerFindings } from "./reviewer-findings.tsx";
 
 export interface ReviewPageProps {
   headers: readonly AgentHeaderView[];
@@ -94,6 +95,7 @@ function Detail({ row, sessionId, bundle, error, reload, onOpenTask }: { row: Re
               ))}
             </ul>
           )}
+          <ReviewerFindings sessionId={sessionId} taskId={row.taskId} reviewer={bundle.reviewer} reload={reload} />
           <h4 className="rp-label">Findings</h4>
           {checks && (
             <p className="meta" data-testid="review-page-checks">

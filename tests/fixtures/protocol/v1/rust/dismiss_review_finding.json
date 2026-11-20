@@ -1,0 +1,9 @@
+{
+  "expected": {
+    "findingId": "F2",
+    "reason": "that file is not part of this change",
+    "resultDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "taskId": "21212121212121212121212121212121"
+  },
+  "type": "modbit.v1.DismissReviewFinding"
+}
