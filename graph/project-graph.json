@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-11-20",
+ "generated_on": "2026-11-21",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -38886,12 +38886,17 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-125",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "WIRED",
+   "status": "E2E_PROVEN",
    "evidence": [
     "commit:d10d46d7",
     "run:38990216920",
     "test:services/modbit-core/tests/px_125_forge.rs::qual_px_125_the_forge_adapter_reads_a_pull_request_and_its_diff_and_posts_approved_redacted_comments",
-    "test:tests/support/github_fake.rs"
+    "test:tests/support/github_fake.rs",
+    "test:services/modbit-core/tests/px_125_live.rs",
+    "artifact:evidence/m10/PX-125/px125-live.log",
+    "commit:7ead72f38588862cffc81ed80680a4fa9062da0c",
+    "artifact:evidence/m10/PX-125/TASK_CARD.md",
+    "artifact:evidence/m10/PX-125/mutation-redaction-skipped.log"
    ],
    "notes": [
     {
@@ -38899,10 +38904,22 @@
      "from": "IMPLEMENTING",
      "to": "WIRED",
      "note": "graph integration 2026-10-17 on main dbe83fc9: forge.pr.read/diff/comment are wired through the Kernel against a wire-faithful GitHub fake; QUAL-PX-125 requires real GitHub and says the fake does not close the row. Open: run against the owner's real GitHub test repository (token + repository)"
+    },
+    {
+     "at": "2026-11-20T22:06:57Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Real GitHub run on the owner's scratch repository moss101/modbit-forge-test with a scoped fine-grained token: read, diff paged by range, approved comment on the real pull request, planted credential redacted, missing token typed, profile without capability refused; redaction mutation fails it"
+    },
+    {
+     "at": "2026-11-20T22:06:57Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "Production-equivalent proof on macOS against real GitHub; 403 and rate limits stay on the fake as the acceptance says; fine-grained tokens cannot read check runs (typed FORGE_FORBIDDEN); CI has no secrets so no workflow runs it; sealing is the owner's"
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:57Z"
+   "status_changed_on": "2026-11-20T22:06:57Z"
   },
   {
    "id": "PX-126",
