@@ -1,0 +1,7 @@
+CAUGHT  M1 Allow once is written down as Always allow  | Error: expect(received).toEqual(expected) // deep equality
+CAUGHT  M2 a denied origin is not refused  | Error: expect(received).toBe(expected) // Object.is equality
+CAUGHT  M3 a decision for another origin is accepted  | Error: expect(received).toBe(expected) // Object.is equality
+CAUGHT  M4 an Allow once is not used up  | Error: expect(received).toBe(expected) // Object.is equality
+CAUGHT  M5 the ask is raised before the destination policy  | Error: expect(received).toBe(expected) // Object.is equality
+CAUGHT  M6 Settings removal forgets nothing  | Error: expect(locator).toHaveCount(expected) failed
+CAUGHT  M7 decisions are not kept across a restart  | Error: expect(received).toEqual(expected) // deep equality

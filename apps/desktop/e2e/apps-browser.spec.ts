@@ -41,7 +41,7 @@ test("Browser tab: the lease badge follows the Core, Take control moves the leas
     { calls: [{ name: "task.complete", args: { summary: "filled", self_review: { findings: [] } } }] },
   ]);
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-apps-browser-"));
-  const { app, page } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1" });
+  const { app, page } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1", MODBIT_BROWSER_ALLOW_SITES: "http://127.0.0.1:*,http://localhost:*,https://127.0.0.1:*,https://localhost:*" });
   try {
     await setContentSize(app, page, 1280, 800);
     const { taskId, bsid } = await startBrowserTask(page, fixtureRepo(), "fill the email");

@@ -113,7 +113,7 @@ test("pages are classified, forms grouped, a form is filled in the order it need
   ]);
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-semantic-"));
   try {
-    const { app, page } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1,localhost" });
+    const { app, page } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1,localhost", MODBIT_BROWSER_ALLOW_SITES: "http://127.0.0.1:*,http://localhost:*,https://127.0.0.1:*,https://localhost:*" });
     await gearMenu(page, "settings.open");
     await page.getByTestId("credential-label").fill("Fixture sign-in");
     await page.getByTestId("credential-origin").fill(U);
@@ -203,7 +203,7 @@ test("page kinds are classified correctly on a labelled set of real pages, and a
   ]);
   const dataDir = mkdtempSync(join(tmpdir(), "modbit-e2e-kinds-"));
   try {
-    const { app, page } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1" });
+    const { app, page } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url, MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1", MODBIT_BROWSER_ALLOW_SITES: "http://127.0.0.1:*,http://localhost:*,https://127.0.0.1:*,https://localhost:*" });
     await gearMenu(page, "settings.open");
     await page.getByTestId("credential-label").fill("Fixture sign-in");
     await page.getByTestId("credential-origin").fill(U);

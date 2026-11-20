@@ -828,6 +828,20 @@ handle("browser:certDecide", (_e: IpcMainInvokeEvent, browserSessionId: unknown,
   return browserHost.certDecide(browserSessionId, id, decision);
 });
 handle("browser:certTrusts", () => browserHost.certTrusts());
+// PX-216: the agent's navigation to an origin nobody has decided asks in the pane: Allow once, Always allow or Deny. The decision
+// belongs to the origin the card showed (main refuses any other); Always allow and Deny are listed in Settings and removable there.
+handle("browser:siteDecide", (_e: IpcMainInvokeEvent, browserSessionId: unknown, id: unknown, origin: unknown, decision: unknown) => {
+  if (typeof browserSessionId !== "string" || !HEX32.test(browserSessionId)) throw new Error("BAD_ARGUMENT: browserSessionId");
+  if (typeof id !== "string" || id.length > 64) throw new Error("BAD_ARGUMENT: id");
+  if (typeof origin !== "string" || origin.length > 300) throw new Error("BAD_ARGUMENT: origin");
+  if (decision !== "allow_once" && decision !== "allow_always" && decision !== "deny") throw new Error("BAD_ARGUMENT: decision must be allow_once, allow_always or deny");
+  return browserHost.siteDecide(browserSessionId, id, origin, decision);
+});
+handle("browser:sites", () => browserHost.siteList());
+handle("browser:siteRemove", (_e: IpcMainInvokeEvent, origin: unknown) => {
+  if (typeof origin !== "string" || origin.length === 0 || origin.length > 300) throw new Error("BAD_ARGUMENT: origin");
+  return browserHost.siteRemove(origin);
+});
 handle("browser:certClear", () => browserHost.certClear());
 // PX-073: sign out of the sites a session visited (or every session): cookies, storage, service workers and caches.
 handle("browser:clearData", async (_e: IpcMainInvokeEvent, browserSessionId: unknown) => {

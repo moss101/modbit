@@ -81,6 +81,10 @@ export const shellCss = `
 .settings-note { margin: 0; }
 .settings-row { box-sizing: border-box; min-height: 44px; display: flex; align-items: center; gap: var(--mb-space-3); padding: 7px 12px; border-top: 1px solid var(--color-tab-border); }
 .settings-card > .settings-row:first-child { border-top: 0; }
+.site-ask { box-sizing: border-box; display: flex; flex-direction: column; gap: var(--mb-space-2); margin: var(--mb-space-3) 0; padding: var(--mb-space-3); border: 1px solid var(--color-tab-border); border-radius: var(--mb-radius-md, 8px); background: var(--color-hover); }
+.site-ask-title { overflow-wrap: anywhere; }
+.site-ask-actions { display: flex; flex-wrap: wrap; gap: var(--mb-space-2); }
+.settings-sites { list-style: none; margin: 0; padding: 0; }
 .settings-row-text { flex: 1 1 0; min-width: 0; overflow-wrap: anywhere; }
 .settings-row-control { flex: none; display: inline-flex; align-items: center; gap: var(--mb-space-1); }
 .settings-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--mb-space-1); }

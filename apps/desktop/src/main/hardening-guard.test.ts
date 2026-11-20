@@ -57,7 +57,13 @@ const PINS = {
   // why. Both take the session's lease and return plain data. The findings themselves ride the existing `review:bundle` channel
   // (a type-only addition of the reviewer's fields). No path, command name or free text beyond that reason crosses the bridge;
   // neither channel is on a pane window's allow list (pane-windows.ts), so only the app's window may fix or dismiss a finding.
-  preloadSha256: "3148ef2c63d05e0799edecfc55892843b978d4ea0ea390faf30c21ffa94d2d2a",
+  // PX-216 (2026-11-20, for review with its pull request): three channels and no other change. `browser:siteDecide` (a browser session
+  // id, the ask's id, the origin the card showed and one of allow_once, allow_always or deny, all validated by main, which refuses any
+  // origin other than the one asked about) answers the pane's question about a site the agent wants to open; `browser:sites` lists
+  // the decisions (plain data); `browser:siteRemove` (one origin of at most 300 characters) forgets one so it asks again. None
+  // reaches the Core or the page; the store is the desktop's own file. `browser:siteDecide` and `browser:siteRemove` are deciding
+  // channels a pane window is refused (pane-windows.test.ts), so only the app's window answers or removes.
+  preloadSha256: "c70844ff31bbc9ff645dd3ad1390d79147076f9812559f87463e11701cdeb6d5",
   cspSha256: "e8c3fcc4286ba170b02ea95b02189f132b16228341d2002412facfec6eb929d1",
   webPreferencesSha256: "28515878dc43e119f2360de779e5a3733283d120b31a113837f7f7a6cf2356ee",
   windowOptionKeys: ["width", "height", "minWidth", "minHeight", "show", "webPreferences"],
