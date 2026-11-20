@@ -2,12 +2,12 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-11-19",
+  "generated_on": "2026-11-20",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2401,
+    "root_and_tooling": 2411,
     "docs_bytes": 2395097
   },
   "sections": [
@@ -5422,6 +5422,56 @@
       "path": "evidence/m10/PX-214/px214-e2e.log",
       "bytes": 705,
       "sha256": "66ca8c7e68fb4b546f400114593c922feae9dfe4a659964ab5dec0845a94298a"
+    },
+    {
+      "path": "evidence/m10/PX-216/TASK_CARD.md",
+      "bytes": 10895,
+      "sha256": "14680dd75c861fbaee2ccbd84c500f6eafa75e2a83124c5ae3d4a37a66f0dead"
+    },
+    {
+      "path": "evidence/m10/PX-216/after/browser-site-ask-dark.png",
+      "bytes": 171100,
+      "sha256": "71560cfb4464a30796f42d2d55fb08783b2eac121086289b942b98e9032d2c8e"
+    },
+    {
+      "path": "evidence/m10/PX-216/after/browser-site-ask-light.png",
+      "bytes": 172417,
+      "sha256": "a1af50a8a130a6881044d65a5d0987b0c687ac58120af12f62b55a737264b02d"
+    },
+    {
+      "path": "evidence/m10/PX-216/after/settings-sites-dark.png",
+      "bytes": 288901,
+      "sha256": "166a5faf703092b87434849002b438d6c3750f52406d4bd264dfda8f29879567"
+    },
+    {
+      "path": "evidence/m10/PX-216/after/settings-sites-light.png",
+      "bytes": 289191,
+      "sha256": "bf148ee38a90158342f3e1810d8b1b73f2b6c8ec91a755497a6613e7e1fa6c49"
+    },
+    {
+      "path": "evidence/m10/PX-216/after/settings-sites-removed-dark.png",
+      "bytes": 300845,
+      "sha256": "4408c093a993e5ba87a66236dcb4d0b0ef0060660ee5c3faca13601257c9f0b8"
+    },
+    {
+      "path": "evidence/m10/PX-216/after/settings-sites-removed-light.png",
+      "bytes": 300540,
+      "sha256": "603e9f892e7060a5834bb3eb1fbb45ec5ca9f5b4e3b591363598944a82bbb086"
+    },
+    {
+      "path": "evidence/m10/PX-216/evidence.json",
+      "bytes": 2743,
+      "sha256": "008f1dbdf48be58b7d9b423a95f7ddee1c04bd5a9af804b44516a36aec7d2ad4"
+    },
+    {
+      "path": "evidence/m10/PX-216/mutation-check-2026-11-20.txt",
+      "bytes": 778,
+      "sha256": "3deb79359adf2e6aed0ee849694fdfb8b634b81ca57df560304ba302babeaa5b"
+    },
+    {
+      "path": "evidence/m10/PX-216/neighbours-e2e.log",
+      "bytes": 47632,
+      "sha256": "2362b887422ba472b7cbcc928cea5452c4cf50af46a89e407ad6019d998cf2d5"
     },
     {
       "path": "evidence/m10/PX-218/TASK_CARD.md",
@@ -12871,12 +12921,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 47980,
-      "sha256": "f2142513e91462d0005c818017acd3c6280818e6f79c8757fa9b47c334e6435d"
+      "sha256": "8970b3e3d85c7475f26f22d6d89736d0dd0b465566b9f2d8809e33f2a5d9d73a"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2637448,
-      "sha256": "d699e748e1fcfc90b8aeabbda88728ba8413c874846a0d70318812cc10ec0493"
+      "bytes": 2637856,
+      "sha256": "7ca7f792d3c9d99cf9c9f4665d822d328f7fad38b27ab969b4fd97fcf949cd55"
     },
     {
       "path": "tools/build_graph.py",
