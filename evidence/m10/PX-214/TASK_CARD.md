@@ -65,8 +65,8 @@ macOS 27.0.1 arm64, rustc 1.97.1, node 26.11.1, Electron 44.3.0, Playwright 1.63
 - The spec needs `modbit-cli` (built with the workspace in CI's desktop job) to activate a registry before the app starts, and ends the CLI's own Core before launching.
 - The page re-reads the review when the task's log moves; a pure state change with no new event on the task's log would not refresh it.
 - macOS only so far. Linux and Windows are CI's.
-- Sealing is the owner's: the row is set to E2E_PROVEN, not COMPLETE.
+- CI run 44629354029 on the PR's final head 979a85dc: all 19 checks green on Linux, macOS and Windows (`ci-run-44629354029.json`); merged as c73af335 (#236). The owner reviewed the screenshots and asked for the seal on 2026-11-20.
 
 ## Status
 
-E2E_PROVEN on macOS; COMPLETE is for the owner after CI and review.
+COMPLETE (sealed 2026-11-20).
