@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-11-19",
+ "generated_on": "2026-11-20",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -41430,14 +41430,17 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-214",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "E2E_PROVEN",
+   "status": "COMPLETE",
    "evidence": [
     "test:services/modbit-core/tests/px_214_reviewer_findings.rs",
     "test:apps/desktop/e2e/px-214-reviewer-findings.spec.ts",
     "commit:99b93b34",
     "artifact:evidence/m10/PX-214/evidence.json",
     "artifact:evidence/m10/PX-214/core-suite.log",
-    "artifact:evidence/m10/PX-214/mutation-check-2026-11-19.txt"
+    "artifact:evidence/m10/PX-214/mutation-check-2026-11-19.txt",
+    "run:gha-44629354029",
+    "commit:c73af3359fd55b7e4256a00a3966679bb95a2717",
+    "artifact:evidence/m10/PX-214/ci-run-44629354029.json"
    ],
    "notes": [
     {
@@ -41469,9 +41472,15 @@
      "from": "REAL_TESTING",
      "to": "E2E_PROVEN",
      "note": "Core suite 690 passed 0 failed; Playwright 3 of 3; 12 of 12 mutations caught; local macOS run, CI and owner sealing pending"
+    },
+    {
+     "at": "2026-11-20T07:06:55Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "PR 236 CI green on 979a85dc (19 checks, Linux/macOS/Windows), merged as c73af335; owner reviewed the screenshots and asked for the seal"
     }
    ],
-   "status_changed_on": "2026-11-19T17:38:51Z"
+   "status_changed_on": "2026-11-20T07:06:55Z"
   },
   {
    "id": "PX-215",
