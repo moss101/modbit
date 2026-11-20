@@ -220,6 +220,7 @@ export function Conversation(props: ConversationProps) {
 
   // A search hit: open the folds around the row, scroll to it and mark it for a moment.
   const focused = useRef<string | null>(null);
+  const focusTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   useEffect(() => {
     if (!focusRowId || !conv.loaded || focused.current === focusRowId) return;
     const path = findRow(conv.rows, focusRowId);
@@ -227,17 +228,24 @@ export function Conversation(props: ConversationProps) {
     focused.current = focusRowId;
     if (path.length > 0) setOpenGroups((g) => new Set([...g, ...path]));
     setFollow((f) => ({ ...f, pinned: false }));
-    const t = setTimeout(() => {
-      const el = scroller.current?.querySelector<HTMLElement>(`[data-row-id="${CSS.escape(focusRowId)}"]`);
-      el?.scrollIntoView({ block: "center" });
-      setHighlight(focusRowId);
-    }, 0);
-    const off = setTimeout(() => setHighlight(null), 3500);
-    return () => {
-      clearTimeout(t);
-      clearTimeout(off);
-    };
+    // The timers belong to this focus, not to this run of the effect: a row that arrives while the task runs re-runs the
+    // effect, and a cleanup that cleared them there dropped the scroll and the mark before they happened (PX-104).
+    for (const t of focusTimers.current) clearTimeout(t);
+    focusTimers.current = [
+      setTimeout(() => {
+        const el = scroller.current?.querySelector<HTMLElement>(`[data-row-id="${CSS.escape(focusRowId)}"]`);
+        el?.scrollIntoView({ block: "center" });
+        setHighlight(focusRowId);
+      }, 0),
+      setTimeout(() => setHighlight(null), 3500),
+    ];
   }, [focusRowId, conv.loaded, conv.rows]);
+  useEffect(
+    () => () => {
+      for (const t of focusTimers.current) clearTimeout(t);
+    },
+    [],
+  );
 
   const toggleGroup = useCallback((rowId: string, open: boolean) => {
     setOpenGroups((g) => {
