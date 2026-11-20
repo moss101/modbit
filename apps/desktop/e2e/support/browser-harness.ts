@@ -71,7 +71,7 @@ export { closeApp } from "./close-app.ts";
 export async function launch(dataDir: string, extraEnv: Record<string, string>): Promise<{ app: ElectronApplication; page: Page }> {
   const app = await electron.launch({
     args: [join(appDir, "dist", "main", "main.cjs")],
-    env: { ...process.env, MODBIT_DATA_DIR: dataDir, MODBIT_CORE_BIN: coreBin, OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "", MODBIT_SUPPRESS_OS_NOTIFICATIONS: "1", MODBIT_BROWSER_ALLOW_TARGETS: "", MODBIT_BROWSER_ALLOW_ORIGINS: "", MODBIT_BROWSER_HOSTS: "", ...extraEnv },
+    env: { ...process.env, MODBIT_DATA_DIR: dataDir, MODBIT_CORE_BIN: coreBin, OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "", MODBIT_SUPPRESS_OS_NOTIFICATIONS: "1", MODBIT_BROWSER_ALLOW_TARGETS: "", MODBIT_BROWSER_ALLOW_SITES: "http://127.0.0.1:*,http://localhost:*,https://127.0.0.1:*,https://localhost:*", MODBIT_BROWSER_ALLOW_ORIGINS: "", MODBIT_BROWSER_HOSTS: "", ...extraEnv },
   });
   const page = await app.firstWindow();
   app.process().stderr?.on("data", (d: Buffer) => process.stderr.write(`[electron] ${d}`));
