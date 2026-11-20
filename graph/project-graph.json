@@ -41503,7 +41503,7 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-215",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "E2E_PROVEN",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m10/PX-215/TASK_CARD.md",
     "test:services/modbit-core/tests/px_computer.rs",
@@ -41511,7 +41511,10 @@
     "test:apps/desktop/e2e/px-215-standing-access.spec.ts",
     "artifact:evidence/m10/PX-215/evidence.json",
     "artifact:evidence/m10/PX-215/core-suite.log",
-    "artifact:evidence/m10/PX-215/mutation-checks-2026-11-20.txt"
+    "artifact:evidence/m10/PX-215/mutation-checks-2026-11-20.txt",
+    "run:gha-44755846351",
+    "commit:54908396",
+    "artifact:evidence/m10/PX-215/ci-run-44755846351.json"
    ],
    "notes": [
     {
@@ -41531,9 +41534,15 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "QUAL-PX-215 against the real Core and the fixture actuator process: 7 passed"
+    },
+    {
+     "at": "2026-11-20T17:35:45Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "PR 238 CI green on 0fa6cda0 (19 checks), merged as 54908396; owner reviewed the screenshots and asked for the seal"
     }
    ],
-   "status_changed_on": "2026-11-20T08:02:59Z"
+   "status_changed_on": "2026-11-20T17:35:45Z"
   },
   {
    "id": "PX-216",
@@ -41555,7 +41564,7 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-216",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "E2E_PROVEN",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m10/PX-216/TASK_CARD.md",
     "commit:755baf72",
@@ -41563,9 +41572,20 @@
     "test:apps/desktop/e2e/px-216-site-decisions.spec.ts",
     "artifact:evidence/m10/PX-216/evidence.json",
     "artifact:evidence/m10/PX-216/mutation-check-2026-11-20.txt",
-    "artifact:evidence/m10/PX-216/neighbours-e2e.log"
+    "artifact:evidence/m10/PX-216/neighbours-e2e.log",
+    "run:gha-44703829557",
+    "commit:fe049bae",
+    "artifact:evidence/m10/PX-216/ci-run-44703829557.json"
    ],
-   "status_changed_on": "2026-11-20T01:28:21Z"
+   "notes": [
+    {
+     "at": "2026-11-20T17:35:45Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "PR 237 CI green on 02358388 (19 checks), merged as fe049bae; owner reviewed the screenshots and asked for the seal"
+    }
+   ],
+   "status_changed_on": "2026-11-20T17:35:45Z"
   },
   {
    "id": "PX-217",

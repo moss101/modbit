@@ -51,8 +51,8 @@ macOS 27.0.1 arm64, rustc 1.97.1, node 26.11.1, Electron 44.3.0. The model is th
 - The list of running applications comes from the attached actuator; with none attached a level is set by identifier.
 - Another window's change is read when the window regains focus; the ledger session is not on a session's event stream.
 - If PX-216 lands first both rows add preload methods: the hardening pin conflicts and is re-pinned to the merged preload.
-- macOS only so far; Linux and Windows are CI's. Sealing is the owner's: the row is set to E2E_PROVEN, not COMPLETE.
+- macOS only so far; Linux and Windows are CI's. CI run 44755846351 on the PR's final head 0fa6cda0: all 19 checks green on Linux, macOS and Windows (`ci-run-44755846351.json`); merged as 54908396 (#238). The owner reviewed the screenshots and asked for the seal on 2026-11-20.
 
 ## Status
 
-E2E_PROVEN on macOS; COMPLETE is for the owner after CI and review.
+COMPLETE (sealed 2026-11-20).

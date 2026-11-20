@@ -59,8 +59,8 @@ macOS arm64, rustc 1.97.1, node 26, Electron 44, Playwright 1.63. The model is t
 - An Allow once is lost when the app restarts (it is only in memory), and a grant the agent does not come back for expires after 10 minutes.
 - No protocol or Core change, so the Core suite was not re-run for this row; the Rust and protocol gates are unchanged and CI runs them.
 - macOS only so far; Linux and Windows are CI's.
-- Sealing is the owner's: the row is set to E2E_PROVEN, not COMPLETE.
+- CI run 44703829557 on the PR's final head 02358388: all 19 checks green on Linux, macOS and Windows (`ci-run-44703829557.json`); merged as fe049bae (#237). The owner reviewed the screenshots and asked for the seal on 2026-11-20.
 
 ## Status
 
-E2E_PROVEN on macOS; COMPLETE is for the owner after CI and review.
+COMPLETE (sealed 2026-11-20).
