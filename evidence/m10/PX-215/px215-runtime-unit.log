@@ -1,0 +1,15 @@
+test access::tests::levels_are_ordered_and_each_allows_what_the_one_before_it_does ... ok
+test access::tests::an_application_is_held_by_bundle_identity_else_executable_never_by_a_pattern ... ok
+test access::tests::an_event_round_trips_through_the_log_payload ... ok
+test access::tests::a_refusal_says_the_level_what_was_needed_and_where_to_change_it ... ok
+test access::tests::the_store_folds_changes_and_an_unset_application_has_no_level ... ok
+test runtime::tests::at_never_the_session_is_refused_before_anything_is_acquired_or_asked ... ok
+test runtime::tests::never_set_mid_session_refuses_the_next_look_and_release_still_works ... ok
+test runtime::tests::a_level_only_narrows_what_the_grant_and_policy_allow ... ok
+test runtime::tests::at_view_only_inputs_are_refused_with_their_reason_and_looking_still_works ... ok
+test runtime::tests::at_click_a_click_goes_through_and_typing_is_refused ... ok
+test runtime::tests::with_no_level_set_behaviour_is_what_it_was ... ok
+test runtime::tests::a_change_mid_session_applies_from_the_next_action_both_ways ... ok
+test result: ok. 54 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.79s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

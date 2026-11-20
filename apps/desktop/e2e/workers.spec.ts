@@ -133,6 +133,8 @@ const BRIDGE_ALLOW_LIST = [
   "workGraph", "plan",
   // PX-214 (the reviewer's findings): Fix this one and Dismiss on the Review page. Added on purpose; each is one typed Core command main validates (review-findings-ipc.ts: finding id, result digest, reason).
   "fixReviewFinding", "dismissReviewFinding",
+  // PX-215 (standing computer access): the Settings control reads the Core's level per application and sets one. Added on purpose; each is one typed Core command main validates (computer-ipc.ts: application identifier, name, level).
+  "computerAccess", "computerSetAccess",
   // PX-203 (pane pop-out): the app window pops a pane out, lists and brings forward pane windows and hears them close or ask;
   // a pane window asks which pane it shows, says what it shows, asks the app window to show something, and goes back to the
   // dock. Main answers a pane window only on its pane's channels, for its own task (pane-windows.ts).

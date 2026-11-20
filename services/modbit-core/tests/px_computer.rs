@@ -5302,3 +5302,582 @@ async fn qual_px_177_a_restart_while_a_handover_is_parked_keeps_it_parked() {
     assert!(of(&evs, "ComputerActionPerformed").is_empty());
     assert!(of(&evs, "ApprovalExpired").is_empty());
 }
+
+// ---------------------------------------------------------------------------
+// PX-215 (QUAL-PX-215, REQ-PX-215, DR-PX-2026-11-11-021 MWS-19): the person's
+// standing access per application, on the real Core with the real fixture
+// actuator process. The level is set through the Core's own command (the one
+// the desktop's Settings sends), read back from the Core, enforced by the
+// computer runtime beside the grant, and audited on the log.
+// ---------------------------------------------------------------------------
+
+const DOCS: &str = "org.example.fixture.docs";
+
+impl Rig {
+    /// The command Settings sends: set (or, with "", clear) one application's level. Core-wide: no session, no lease.
+    async fn set_access(
+        &self,
+        bundle: &str,
+        level: &str,
+    ) -> Result<modbit_protocol::v1::ComputerAccessChanged, modbit_protocol::client::ClientError>
+    {
+        use modbit_protocol::v1::{ComputerAccessChanged, SetComputerAccess};
+        let ack = self
+            .side_command(
+                "SetComputerAccess",
+                SetComputerAccess {
+                    bundle_id: bundle.into(),
+                    application: String::new(),
+                    level: level.into(),
+                }
+                .encode_to_vec(),
+            )
+            .await?;
+        Ok(Client::result::<ComputerAccessChanged>(&ack).unwrap())
+    }
+
+    async fn access_view(&self) -> modbit_protocol::v1::ComputerAccessView {
+        use modbit_protocol::v1::{ComputerAccessView, GetComputerAccess};
+        let ack = self
+            .side_command("GetComputerAccess", GetComputerAccess {}.encode_to_vec())
+            .await
+            .unwrap();
+        Client::result::<ComputerAccessView>(&ack).unwrap()
+    }
+
+    async fn activity(&self) -> modbit_protocol::v1::ComputerActivityView {
+        use modbit_protocol::v1::{ComputerActivityView, ListComputerActivity};
+        let ack = self
+            .side_command(
+                "ListComputerActivity",
+                ListComputerActivity {
+                    task_id: Some(self.task.clone()),
+                }
+                .encode_to_vec(),
+            )
+            .await
+            .unwrap();
+        Client::result::<ComputerActivityView>(&ack).unwrap()
+    }
+}
+
+/// The refusals of standing access on the task's log.
+fn access_refusals(evs: &[Value]) -> Vec<&Value> {
+    of(evs, "ComputerAccessRefused")
+}
+
+/// Nothing but the session's start reached the application: no input was performed, and no result
+/// receipt exists for one (the one SUCCESS receipt is the start's).
+fn no_inputs_reached_the_application(evs: &[Value]) {
+    assert!(
+        of(evs, "ComputerActionPerformed").is_empty(),
+        "a refused input never reached the actuator"
+    );
+    let successes = receipts(evs)
+        .iter()
+        .filter(|r| r["status"] == "SUCCESS")
+        .count();
+    assert_eq!(successes, 1, "only the start has a result receipt");
+}
+
+/// QUAL-PX-215: with an application at view only, a click and a type are both refused - typed, with
+/// the level and what they needed - no approval is asked for either, nothing reaches the
+/// application, looking still works, and the refusal is on the log and in the activity the action
+/// card reads.
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_215_at_view_only_a_click_and_a_type_are_refused_with_their_reason() {
+    let steps = vec![
+        start(DOCS),
+        fx(call("computer.state", json!({}))),
+        // 2 a click-class input: pressing a button.
+        st(|s| call("computer.press", json!({"element": s.el("Bold")}))),
+        // 3 a keyboard input: typing into the focused document.
+        fx(call("computer.type", json!({"text": "Ada"}))),
+        // 4 setting a value is the keyboard's too.
+        st(|s| {
+            call(
+                "computer.set_value",
+                json!({"element": s.el("Document"), "value": "x"}),
+            )
+        }),
+        // 5 looking is not an input.
+        fx(call("computer.state", json!({}))),
+        fx(call("computer.release", json!({}))),
+    ];
+    let mut rig = setup(Opts::default(), steps, approve_all()).await;
+    let changed = rig.set_access(DOCS, "view_only").await.unwrap();
+    assert!(changed.changed);
+    assert_eq!(
+        (changed.level.as_str(), changed.previous.as_str()),
+        ("view_only", "")
+    );
+    rig.begin().await;
+    rig.finish().await;
+    let o = rig.outs();
+    expect_refusal(&o, 2, "ACTION_UNSAFE", "abandon");
+    expect_refusal(&o, 3, "ACTION_UNSAFE", "abandon");
+    expect_refusal(&o, 4, "ACTION_UNSAFE", "abandon");
+    for (i, needed) in [(2, "click"), (3, "keyboard"), (4, "keyboard")] {
+        assert!(
+            o[i].0.contains("view only"),
+            "the reason is on the result: {}",
+            o[i].0
+        );
+        assert_eq!(o[i].1["standing_access"]["level"], "view_only", "{i}");
+        assert_eq!(o[i].1["standing_access"]["needed"], needed, "{i}");
+        assert_eq!(o[i].1["actuated"], false, "{i}");
+    }
+    assert!(
+        o[5].0.starts_with("status: SUCCESS"),
+        "looking still works: {}",
+        o[5].0
+    );
+    assert_eq!(
+        o[5].1["tree"].as_str().map(|t| t.contains("value=\"\"")),
+        Some(true)
+    );
+    // No approval was asked for a refused input: only the start was.
+    assert_eq!(
+        rig.approvals.lock().unwrap().len(),
+        1,
+        "{:?}",
+        rig.approvals.lock().unwrap()
+    );
+    let evs = rig.events().await;
+    no_inputs_reached_the_application(&evs);
+    // Each refusal is on the task's log with the level, the need and the call.
+    let refusals = access_refusals(&evs);
+    assert_eq!(refusals.len(), 3, "{refusals:?}");
+    for r in &refusals {
+        let p = &r["payload"]["payload"];
+        assert_eq!(p["level"], "view_only");
+        assert_eq!(p["bundle_id"], DOCS);
+        assert!(
+            !p["tool_call_id"].as_str().unwrap_or_default().is_empty(),
+            "{p}"
+        );
+        assert!(p["reason"].as_str().unwrap().contains("view only"));
+    }
+    assert_eq!(refusals[0]["payload"]["payload"]["needed"], "click");
+    assert_eq!(refusals[1]["payload"]["payload"]["needed"], "keyboard");
+    // The activity the action cards read says the same, and joins each refusal to its call.
+    let act = rig.activity().await;
+    let refused: Vec<_> = act
+        .entries
+        .iter()
+        .filter(|e| e.kind == "ACCESS_REFUSED")
+        .collect();
+    assert_eq!(refused.len(), 3);
+    assert!(refused.iter().all(|e| e.access_level == "view_only"
+        && !e.reason.is_empty()
+        && !e.tool_call_id.is_empty()
+        && e.bundle_id == DOCS));
+    assert_eq!(refused[0].access_needed, "click");
+}
+
+/// QUAL-PX-215: at click a click goes through (approved, delivered, verified by the form's own
+/// state) and a type, a set-value and a key are refused.
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_215_at_click_a_click_goes_through_and_a_type_is_refused() {
+    let steps = vec![
+        start(FORM),
+        fx(call("computer.state", json!({}))),
+        // 2 keyboard input is above the level.
+        st(|s| {
+            call(
+                "computer.set_value",
+                json!({"element": s.el("Name"), "value": "Ada Lovelace"}),
+            )
+        }),
+        fx(call("computer.key", json!({"keys": ["tab"]}))),
+        // 4 a press is within it: the form submits and opens its confirmation.
+        st(|s| call("computer.press", json!({"element": s.el("Submit")}))),
+        fx(call("computer.state", json!({"window": "w-confirm"}))),
+        st(|s| call("computer.press", json!({"element": s.el("OK")}))),
+        fx(call("computer.state", json!({}))),
+        fx(call("computer.release", json!({}))),
+    ];
+    let mut rig = setup(Opts::default(), steps, approve_all()).await;
+    rig.set_access(FORM, "click").await.unwrap();
+    rig.begin().await;
+    rig.finish().await;
+    let o = rig.outs();
+    expect_refusal(&o, 2, "ACTION_UNSAFE", "abandon");
+    expect_refusal(&o, 3, "ACTION_UNSAFE", "abandon");
+    assert_eq!(o[2].1["standing_access"]["level"], "click");
+    assert_eq!(o[2].1["standing_access"]["needed"], "keyboard");
+    for i in [4, 6] {
+        assert!(
+            o[i].0.starts_with("status: SUCCESS"),
+            "{i}: {}\n{}",
+            o[i].0,
+            o[i].1
+        );
+    }
+    let tree = o[7].1["tree"].as_str().unwrap();
+    assert!(
+        tree.contains("\"Status\" | value=\"submitted\""),
+        "the click went through: {tree}"
+    );
+    assert!(
+        !tree.contains("Ada Lovelace"),
+        "the refused value was never set: {tree}"
+    );
+    // The approvals asked were the start and the two presses; the refused inputs asked nothing.
+    assert_eq!(rig.approvals_of("computer.set_value").len(), 0);
+    assert_eq!(rig.approvals_of("computer.key").len(), 0);
+    assert_eq!(rig.approvals_of("computer.press").len(), 2);
+    let evs = rig.events().await;
+    assert_eq!(of(&evs, "ComputerActionPerformed").len(), 2);
+    assert_eq!(access_refusals(&evs).len(), 2);
+}
+
+/// QUAL-PX-215: at never the session is refused before anything is acquired or any approval is
+/// asked, the refusal is on the card's activity, `computer.apps` says so, and another application
+/// is not touched by it.
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_215_at_never_the_session_is_refused_and_no_approval_is_asked() {
+    let steps = vec![
+        fx(call("computer.apps", json!({}))),
+        start(FORM),
+        // 2 another application is unaffected.
+        start(DOCS),
+        fx(call("computer.state", json!({}))),
+        fx(call("computer.release", json!({}))),
+    ];
+    let mut rig = setup(Opts::default(), steps, approve_all()).await;
+    rig.set_access(FORM, "never").await.unwrap();
+    rig.begin().await;
+    rig.finish().await;
+    let o = rig.outs();
+    let apps = o[0].1["applications"].as_array().unwrap();
+    let form = apps.iter().find(|a| a["bundle_id"] == FORM).unwrap();
+    assert_eq!(form["drivable"], false);
+    assert_eq!(form["standing_access"], "never");
+    assert!(
+        form["not_drivable_because"]
+            .as_str()
+            .unwrap()
+            .contains("never")
+    );
+    let docs = apps.iter().find(|a| a["bundle_id"] == DOCS).unwrap();
+    assert_eq!(docs["drivable"], true);
+    assert!(docs["standing_access"].is_null());
+    expect_refusal(&o, 1, "ACTION_UNSAFE", "abandon");
+    assert_eq!(o[1].1["standing_access"]["level"], "never");
+    assert!(o[1].0.contains("is never"), "{}", o[1].0);
+    for i in [2, 3, 4] {
+        assert!(o[i].0.starts_with("status: SUCCESS"), "{i}: {}", o[i].0);
+    }
+    // One approval: the other application's start. The refused start asked nobody.
+    let approvals = rig.approvals.lock().unwrap().clone();
+    assert_eq!(approvals.len(), 1, "{approvals:?}");
+    assert_eq!(
+        approvals[0].1["intent"]["computer"]["application"]["bundle_id"],
+        DOCS
+    );
+    let evs = rig.events().await;
+    assert_eq!(of(&evs, "ComputerSessionStarted").len(), 1);
+    let refusals = access_refusals(&evs);
+    assert_eq!(refusals.len(), 1, "{refusals:?}");
+    assert_eq!(refusals[0]["payload"]["payload"]["level"], "never");
+    assert_eq!(refusals[0]["payload"]["payload"]["needed"], "observe");
+    assert_eq!(refusals[0]["payload"]["payload"]["control_id"], "");
+    // The refusal is joined to the very call the card is for.
+    assert!(
+        !refusals[0]["payload"]["payload"]["tool_call_id"]
+            .as_str()
+            .unwrap_or_default()
+            .is_empty()
+    );
+}
+
+/// QUAL-PX-215: with no level set the grant alone decides, exactly as before; nothing is set by
+/// default and the Core says so; no refusal is recorded.
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_215_with_no_level_set_the_grant_alone_decides() {
+    let steps = vec![
+        start(FORM),
+        fx(call("computer.state", json!({}))),
+        st(|s| {
+            call(
+                "computer.set_value",
+                json!({"element": s.el("Name"), "value": "Ada"}),
+            )
+        }),
+        st(|s| call("computer.press", json!({"element": s.el("Submit")}))),
+        fx(call("computer.state", json!({"window": "w-confirm"}))),
+        st(|s| call("computer.press", json!({"element": s.el("OK")}))),
+        fx(call("computer.release", json!({}))),
+    ];
+    let mut rig = setup(Opts::default(), steps, approve_all()).await;
+    let view = rig.access_view().await;
+    assert!(
+        view.entries.is_empty(),
+        "nothing is set by default: {view:?}"
+    );
+    assert_eq!(view.levels, ["never", "view_only", "click", "full"]);
+    rig.begin().await;
+    rig.finish().await;
+    for (i, (t, _)) in rig.outs().iter().enumerate() {
+        assert!(t.starts_with("status: SUCCESS"), "call {i}: {t}");
+    }
+    let evs = rig.events().await;
+    assert!(access_refusals(&evs).is_empty());
+    assert!(rig.access_view().await.changes.is_empty());
+    assert_eq!(of(&evs, "ComputerActionPerformed").len(), 3);
+}
+
+/// QUAL-PX-215: a change mid-session applies from the next action - narrowing refuses it,
+/// widening again lets the next one through - inside the one open session and grant. Every change
+/// is an event on the log (who, what, the level before) ordered with the refusal it caused.
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_215_a_change_mid_session_applies_from_the_next_action_and_is_audited() {
+    let gates = tempfile::tempdir().unwrap();
+    let narrowed = gates.path().join("narrowed");
+    let widened = gates.path().join("widened");
+    let set_value = |v: &'static str| {
+        st(move |s| {
+            call(
+                "computer.set_value",
+                json!({"element": s.el("Name"), "value": v}),
+            )
+        })
+    };
+    // The model's reply is held (by the scripted server, asynchronously) until the person has acted
+    // and the test says so with a file: the order is by event, not by sleep.
+    let gated = |file: PathBuf, v: &'static str| -> Step {
+        let inner = set_value(v);
+        Arc::new(move |s| {
+            let mut reply = inner(s);
+            reply["wait_file"] = json!(file.to_string_lossy());
+            reply
+        })
+    };
+    let steps = vec![
+        start(FORM),
+        fx(call("computer.state", json!({}))),
+        // 2 no level yet: the grant alone decides.
+        set_value("first"),
+        // 3 the person narrows to view only while the model waits: refused.
+        gated(narrowed.clone(), "second"),
+        // 4 the person widens to full: the same session lets it through.
+        gated(widened.clone(), "third"),
+        fx(call("computer.state", json!({}))),
+        fx(call("computer.release", json!({}))),
+    ];
+    let mut rig = setup(Opts::default(), steps, approve_all()).await;
+    rig.begin().await;
+    // plan + start + state + the first set_value = 4 results: the model is now waiting at step 4 (index 4 incl. the plan).
+    rig.wait_model_shown(4).await;
+    let a = rig.set_access(FORM, "view_only").await.unwrap();
+    assert_eq!((a.level.as_str(), a.previous.as_str()), ("view_only", ""));
+    std::fs::write(&narrowed, b"go").unwrap();
+    rig.wait_model_shown(5).await;
+    let b = rig.set_access(FORM, "full").await.unwrap();
+    assert_eq!(
+        (b.level.as_str(), b.previous.as_str()),
+        ("full", "view_only")
+    );
+    std::fs::write(&widened, b"go").unwrap();
+    rig.finish().await;
+    let o = rig.outs();
+    assert!(
+        o[2].0.starts_with("status: SUCCESS"),
+        "before any level: {}",
+        o[2].0
+    );
+    expect_refusal(&o, 3, "ACTION_UNSAFE", "abandon");
+    assert_eq!(o[3].1["standing_access"]["level"], "view_only");
+    assert!(
+        o[4].0.starts_with("status: SUCCESS"),
+        "after widening: {}",
+        o[4].0
+    );
+    let tree = o[5].1["tree"].as_str().unwrap();
+    assert!(tree.contains("value=\"third\""), "{tree}");
+    assert!(!tree.contains("second"), "the refused value was never set");
+    let evs = rig.events().await;
+    // One session throughout: the change did not end it and did not ask for a new grant.
+    assert_eq!(of(&evs, "ComputerSessionStarted").len(), 1);
+    // The audit trail, read back from the log: both changes, who made them and what each replaced, in order, between the
+    // calls they apply to (offsets are the one log's).
+    let changes = rig.access_view().await.changes;
+    assert_eq!(changes.len(), 2, "{changes:?}");
+    let seen: Vec<(&str, &str, &str)> = changes
+        .iter()
+        .map(|c| (c.bundle_id.as_str(), c.level.as_str(), c.previous.as_str()))
+        .collect();
+    assert_eq!(seen, [(FORM, "view_only", ""), (FORM, "full", "view_only")]);
+    assert!(
+        changes
+            .iter()
+            .all(|c| c.by.starts_with("user:") && c.at_ms > 0),
+        "{changes:?}"
+    );
+    let at = |e: &Value| e["offset"].as_u64().unwrap();
+    let refusal = at(access_refusals(&evs)[0]);
+    assert!(
+        changes[0].offset < refusal && refusal < changes[1].offset,
+        "narrow, refuse, widen"
+    );
+    let performed: Vec<u64> = of(&evs, "ComputerActionPerformed")
+        .iter()
+        .map(|e| at(e))
+        .collect();
+    assert_eq!(performed.len(), 2);
+    assert!(performed[0] < changes[0].offset && changes[1].offset < performed[1]);
+}
+
+/// QUAL-PX-215 (negative): a level never widens what the grant allows. A full level asks for no
+/// approval less, opens no session the grant did not, gives no scope the grant did not, lifts no
+/// application no approval lifts, and cannot be set by a client without the lease or with a
+/// pattern or a name that is not a level.
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_215_a_level_never_widens_what_the_grant_allows() {
+    let deny_start: Decider = Arc::new(|a, _| {
+        if a.tool_name == "computer.start" {
+            Decision::Deny
+        } else {
+            Decision::Approve
+        }
+    });
+    let steps = vec![
+        // 0 full, no session: an input still needs one.
+        fx(call("computer.press", json!({"element": "s1/n1"}))),
+        // 1 full, a start the person declines: still declined, no session opens.
+        start(FORM),
+        // 2 full does not make a window drivable that no approval lifts.
+        fx(call(
+            "computer.start",
+            json!({"application": "com.apple.Terminal"}),
+        )),
+        fx(call("computer.state", json!({}))),
+    ];
+    let mut rig = setup(Opts::default(), steps, deny_start).await;
+    rig.set_access(FORM, "full").await.unwrap();
+    rig.begin().await;
+    rig.finish().await;
+    let o = rig.outs();
+    expect_refusal(&o, 0, "SESSION_REQUIRED", "re_observe");
+    assert_eq!(error_code(&o[1].0), "APPROVAL_DENIED", "{}", o[1].0);
+    expect_refusal(&o, 2, "WINDOW_UNVERIFIABLE", "ask_user");
+    expect_refusal(&o, 3, "SESSION_REQUIRED", "re_observe");
+    let evs = rig.events().await;
+    assert!(of(&evs, "ComputerSessionStarted").is_empty());
+    assert_eq!(
+        rig.approvals_of("computer.start").len(),
+        1,
+        "full still asked the person"
+    );
+    assert!(
+        access_refusals(&evs).is_empty(),
+        "full refuses nothing itself"
+    );
+    // A level cannot be set above never for an application no approval lifts; never is allowed.
+    assert_eq!(
+        rejected_code(rig.set_access("com.apple.terminal", "full").await),
+        "NOT_DRIVABLE"
+    );
+    assert_eq!(
+        rejected_code(rig.set_access("com.1password.1password", "click").await),
+        "NOT_DRIVABLE"
+    );
+    assert!(
+        rig.set_access("com.apple.terminal", "never")
+            .await
+            .unwrap()
+            .changed
+    );
+    // Not a level, not a pattern, not an application at all.
+    assert_eq!(
+        rejected_code(rig.set_access(FORM, "admin").await),
+        "BAD_LEVEL"
+    );
+    assert_eq!(
+        rejected_code(rig.set_access("org.example.*", "full").await),
+        "BAD_APPLICATION"
+    );
+    assert_eq!(
+        rejected_code(rig.set_access("", "full").await),
+        "BAD_APPLICATION"
+    );
+    assert_eq!(
+        rejected_code(rig.set_access("two words", "full").await),
+        "BAD_APPLICATION"
+    );
+    // Rejected commands changed nothing: the log holds the two changes that were accepted.
+    let changes = rig.access_view().await.changes;
+    let seen: Vec<(&str, &str)> = changes
+        .iter()
+        .map(|c| (c.bundle_id.as_str(), c.level.as_str()))
+        .collect();
+    assert_eq!(seen, [(FORM, "full"), ("com.apple.terminal", "never")]);
+}
+
+/// QUAL-PX-215: setting a level it already has records nothing; clearing it returns the decision
+/// to the grant alone and is its own event; a level survives a restart of the Core (it is the fold
+/// of the log), and one that was cleared does not come back.
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_215_a_level_is_the_fold_of_the_log_and_survives_a_restart() {
+    let mut rig = setup(Opts::default(), vec![start(FORM)], approve_all()).await;
+    assert!(rig.set_access(FORM, "click").await.unwrap().changed);
+    let again = rig.set_access(FORM, "click").await.unwrap();
+    assert!(!again.changed, "the same level again changes nothing");
+    assert_eq!(again.offset, 0);
+    assert!(rig.set_access(DOCS, "never").await.unwrap().changed);
+    assert!(rig.set_access(FORM, "view_only").await.unwrap().changed);
+    let cleared = rig.set_access(DOCS, "").await.unwrap();
+    assert!(cleared.changed);
+    assert_eq!(
+        (cleared.level.as_str(), cleared.previous.as_str()),
+        ("", "never")
+    );
+    assert!(
+        !rig.set_access(DOCS, "").await.unwrap().changed,
+        "clearing what is not set changes nothing"
+    );
+    let view = rig.access_view().await;
+    let held: Vec<(&str, &str)> = view
+        .entries
+        .iter()
+        .map(|e| (e.bundle_id.as_str(), e.level.as_str()))
+        .collect();
+    assert_eq!(held, [(FORM, "view_only")]);
+    assert!(view.last_change_offset > 0);
+    // The log holds exactly the four changes, with the level before each, newest last.
+    let seen: Vec<(String, String, String)> = view
+        .changes
+        .iter()
+        .map(|c| (c.bundle_id.clone(), c.level.clone(), c.previous.clone()))
+        .collect();
+    assert_eq!(
+        seen,
+        [
+            (FORM.to_owned(), "click".to_owned(), String::new()),
+            (DOCS.to_owned(), "never".to_owned(), String::new()),
+            (FORM.to_owned(), "view_only".to_owned(), "click".to_owned()),
+            (DOCS.to_owned(), String::new(), "never".to_owned()),
+        ]
+    );
+    assert!(view.changes.windows(2).all(|w| w[0].offset < w[1].offset));
+    // Restart: the new Core folds the log and holds the same levels.
+    rig.core.kill();
+    let env_refs: Vec<(&str, &str)> = rig
+        .env
+        .iter()
+        .map(|(k, v)| (k.as_str(), v.as_str()))
+        .collect();
+    rig.core = CoreProcess::spawn_with_env(rig.dir.path(), &env_refs);
+    let view = rig.access_view().await;
+    let held: Vec<(&str, &str)> = view
+        .entries
+        .iter()
+        .map(|e| (e.bundle_id.as_str(), e.level.as_str()))
+        .collect();
+    assert_eq!(
+        held,
+        [(FORM, "view_only")],
+        "the cleared level did not come back"
+    );
+}

@@ -16,6 +16,9 @@ import { GROUPINGS, ROW_DETAILS, type Grouping, type RowDetails } from "../agent
 import { currentListPrefs, subscribeListPrefs, updateListPrefs } from "../agents/prefs.ts";
 import { shellRegistry } from "../shell/commands.ts";
 import { SCOPES, SCOPE_WORDS, shortcutSheet } from "./shortcut-sheet.ts";
+import { ACCESS_LEVELS, type AccessLevel } from "../../shared/computer-types.ts";
+import { ACCESS_WORDS } from "../computer/model.ts";
+import { useStandingAccess } from "../computer/use-standing-access.ts";
 
 /** What this platform has earned (docs/76), in words; the recorded state stays on `data-state` and the record's sentence in the tooltip. */
 function platformWords(p: { state: string; statement: string }): string {
@@ -118,6 +121,9 @@ export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, density
   const [list, setList] = useState(currentListPrefs);
   useEffect(() => subscribeListPrefs(setList), []);
   const [changingProvider, setChangingProvider] = useState(false);
+  // PX-215: the person's standing level per application, held and enforced by the Core.
+  const access = useStandingAccess(connected);
+  const [accessForm, setAccessForm] = useState<{ application: string; level: AccessLevel }>({ application: "", level: "view_only" });
   const [browser, setBrowser] = useState<{ origins: string[]; targets: string[]; trusts: number } | null>(null);
   useEffect(() => {
     if (!connected) return;
@@ -174,6 +180,75 @@ export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, density
                 Review
               </Button>
             </Row>
+          </div>
+          <div className="settings-card" data-testid="settings-computer-access" data-state={access.info === null ? "unknown" : "ready"}>
+            <Row title="Standing access for applications" detail="How far the agent may go in one application, until you change it. Nothing is set by default: an application with no level follows each task's own grant. A level only ever narrows what a task may do, and you still approve every action." />
+            {access.info !== null && access.info.entries.length === 0 && (
+              <Row title="No application has a standing level" detail={<span data-testid="settings-access-none">Every application follows each task's own grant.</span>} />
+            )}
+            {access.info?.entries.map((e) => (
+              <Row key={e.bundleId} title={<span data-testid="settings-access-app">{e.application || e.bundleId}</span>} detail={<span data-testid="settings-access-does"><code>{e.bundleId}</code> · {ACCESS_WORDS[e.level].does}</span>}>
+                <select className="settings-select" aria-label={`Standing access for ${e.application || e.bundleId}`} data-testid="settings-access-level" data-bundle={e.bundleId} value={e.level} disabled={access.busy} onChange={(ev) => void access.set(e.bundleId, e.application, ev.target.value as AccessLevel | "")}>
+                  <option value="">Not set</option>
+                  {ACCESS_LEVELS.map((l) => (
+                    <option key={l} value={l}>
+                      {ACCESS_WORDS[l].label}
+                    </option>
+                  ))}
+                </select>
+              </Row>
+            ))}
+            <div className="settings-card-body">
+              <form
+                className="settings-form"
+                data-testid="settings-access-form"
+                onSubmit={(ev) => {
+                  ev.preventDefault();
+                  const running = access.info?.running.find((a) => a.bundleId === accessForm.application.trim());
+                  void access.set(accessForm.application.trim(), running?.name ?? "", accessForm.level).then((ok) => ok && setAccessForm({ application: "", level: accessForm.level }));
+                }}
+              >
+                <label className="meta">
+                  Application
+                  <input data-testid="settings-access-application" list="settings-access-running" placeholder="com.example.app" value={accessForm.application} onChange={(ev) => setAccessForm({ ...accessForm, application: ev.target.value })} />
+                  <datalist id="settings-access-running">
+                    {access.info?.running.map((a) => (
+                      <option key={a.bundleId} value={a.bundleId}>
+                        {a.name}
+                      </option>
+                    ))}
+                  </datalist>
+                </label>
+                <label className="meta">
+                  Level
+                  <select className="settings-select" data-testid="settings-access-new-level" value={accessForm.level} onChange={(ev) => setAccessForm({ ...accessForm, level: ev.target.value as AccessLevel })}>
+                    {ACCESS_LEVELS.map((l) => (
+                      <option key={l} value={l}>
+                        {ACCESS_WORDS[l].label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div>
+                  <Button size="sm" type="submit" data-testid="settings-access-set" disabled={!connected || access.busy || accessForm.application.trim() === ""}>
+                    Set level
+                  </Button>
+                </div>
+              </form>
+              <p className="meta settings-note" data-testid="settings-access-words">
+                {ACCESS_WORDS[accessForm.level].does}
+              </p>
+              {access.note && (
+                <p className="meta settings-note" role="status" data-testid="settings-access-note">
+                  {access.note}
+                </p>
+              )}
+              {access.error && (
+                <p className="meta settings-note" role="alert" data-testid="settings-access-error">
+                  {access.error}
+                </p>
+              )}
+            </div>
           </div>
         </Section>
 

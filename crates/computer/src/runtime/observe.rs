@@ -14,6 +14,7 @@ use super::{
     Answer, CallCtx, ComputerRuntime, Controller, Counts, FrameArtifact, FrameHandle, Session,
     Snapshot, call_refusal, new_id, now_ms, rect_json, remote_refusal, window_json,
 };
+use crate::access::{Level, Need};
 use crate::actuator::{Call, CallError, Reply};
 use crate::canvas::{CANVAS_HEIGHT, CANVAS_WIDTH, Letterbox};
 use crate::frame;
@@ -154,6 +155,19 @@ impl ComputerRuntime {
                 )
             } else if s.controller == Controller::Stopped {
                 Decision::Refuse(Refusal::new(Code::UserAborted, "the person pressed Stop"))
+            } else if use_ == Use::Observe
+                && self.shared.standing.level_of(&s.app) == Some(Level::Never)
+            {
+                // PX-215: the person set this application to never while the
+                // session was open; looking is refused from the next call.
+                let app = s.app.clone();
+                Decision::Refuse(self.note_access_refused(
+                    ctx,
+                    &cid,
+                    &app,
+                    Level::Never,
+                    Need::Observe,
+                ))
             } else {
                 match (use_, s.controller) {
                     (Use::Observe, _) if s.calls_left == 0 => Decision::Close(
@@ -223,6 +237,39 @@ impl ComputerRuntime {
         Ok(())
     }
 
+    /// The applications the attached actuator reports as running that could
+    /// be driven at all - not one no approval lifts, not this process - as
+    /// `(key, name)`, for the person to choose a standing level for (PX-215).
+    /// Empty when no actuator is attached or it does not answer.
+    pub async fn drivable_applications(&self) -> Vec<(String, String)> {
+        let Ok(a) = self.ready_actuator().await else {
+            return Vec::new();
+        };
+        let Ok(Reply::ListApplications(list)) = a
+            .call(
+                Call::ListApplications(wire::ListApplicationsRequest {}),
+                self.shared.cfg.observe_deadline,
+            )
+            .await
+        else {
+            return Vec::new();
+        };
+        let own = self.shared.cfg.own_pid;
+        let mut out: Vec<(String, String)> = list
+            .applications
+            .iter()
+            .map(app_from_wire)
+            .filter(|i| policy::non_drivable(&i.identity, own).is_none() && !i.elevated)
+            .filter_map(|i| {
+                let key = crate::access::key_of(&i.identity);
+                (!key.is_empty()).then_some((key, i.identity.name))
+            })
+            .collect();
+        out.sort();
+        out.dedup_by(|a, b| a.0 == b.0);
+        out
+    }
+
     /// Running applications, with whether each can be driven.
     pub(super) async fn apps(&self, ctx: &CallCtx) -> Result<Answer, Refusal> {
         self.policy_observe(ctx)?;
@@ -253,6 +300,11 @@ impl ComputerRuntime {
                             .then(|| "runs with more privilege than the actuator".to_owned())
                     })
                     .or_else(|| ctx.policy.admits_app(&i.identity).err());
+                let standing = self.shared.standing.level_of(&i.identity);
+                let why = why.or_else(|| {
+                    (standing == Some(Level::Never))
+                        .then(|| "your standing access for it is never".to_owned())
+                });
                 json!({
                     "name": (ctx.redact)(&i.identity.name),
                     "bundle_id": i.identity.bundle_id,
@@ -260,6 +312,7 @@ impl ComputerRuntime {
                     "windows": i.windows.len(),
                     "drivable": why.is_none(),
                     "not_drivable_because": why,
+                    "standing_access": standing.map(Level::as_str),
                 })
             })
             .collect();
@@ -357,8 +410,14 @@ impl ComputerRuntime {
                     .then(|| "runs with more privilege than the actuator".to_owned())
             })
             .or_else(|| ctx.policy.admits_app(&app.identity).err());
+        let standing = self.shared.standing.level_of(&app.identity);
+        let why = why.or_else(|| {
+            (standing == Some(Level::Never))
+                .then(|| "your standing access for it is never".to_owned())
+        });
         Ok(Answer {
             output: json!({
+                "standing_access": standing.map(Level::as_str),
                 "application": {
                     "name": (ctx.redact)(&app.identity.name),
                     "bundle_id": app.identity.bundle_id,
@@ -450,6 +509,11 @@ impl ComputerRuntime {
                 ),
             ));
         }
+        // PX-215: the person's standing level for this application. Only a
+        // refusal comes out of it, after every check above: `never` ends the
+        // session before an approval is asked, and any other level lets the
+        // start go on to the grant.
+        self.check_access(ctx, "", &app.identity, Need::Observe)?;
         // The list above carries the window server's windows: no focus or
         // main state, front-most first. An application can own a window in
         // front of its real one (macOS 27 gives an application with a text

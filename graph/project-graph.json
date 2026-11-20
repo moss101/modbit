@@ -41494,8 +41494,26 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-215",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "WIRED",
+   "evidence": [
+    "artifact:evidence/m10/PX-215/TASK_CARD.md",
+    "test:services/modbit-core/tests/px_computer.rs"
+   ],
+   "status_changed_on": "2026-11-20T08:02:48Z",
+   "notes": [
+    {
+     "at": "2026-11-20T08:02:48Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Plan in the task card: runtime standing level (crates/computer/access.rs), Core ledger and commands, additive protocol, Settings control and card wording"
+    },
+    {
+     "at": "2026-11-20T08:02:48Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "A production route reaches it: SetComputerAccess -> Core store -> runtime plan/start_checks/session_for -> ComputerAccessRefused -> activity -> action card"
+    }
+   ]
   },
   {
    "id": "PX-216",
@@ -86877,5 +86895,6 @@
    "to": "EPR-GATE-G",
    "type": "requires_gate"
   }
- ]
+ ],
+ "updated_on": "2026-11-20T08:02:48Z"
 }

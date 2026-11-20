@@ -57,7 +57,14 @@ const PINS = {
   // why. Both take the session's lease and return plain data. The findings themselves ride the existing `review:bundle` channel
   // (a type-only addition of the reviewer's fields). No path, command name or free text beyond that reason crosses the bridge;
   // neither channel is on a pane window's allow list (pane-windows.ts), so only the app's window may fix or dismiss a finding.
-  preloadSha256: "3148ef2c63d05e0799edecfc55892843b978d4ea0ea390faf30c21ffa94d2d2a",
+  // PX-215 (2026-11-20, for review with its pull request): two channels and no other change. `computer:access` takes no argument and reads
+  // the Core's standing level per application (GetComputerAccess); `computer:setAccess` (an application identifier of 1..200 characters with
+  // no space and no pattern, an optional name of at most 200 plain characters, and a level that is one of never, view_only, click, full or
+  // empty) forwards the one typed Core command SetComputerAccess, a Core-wide setting that needs no session or lease; the Core records the
+  // change and applies it from the agent's next action. Main validates all three (computer-args.ts) and the Core checks again; no path,
+  // command name or free text beyond that name crosses the bridge, and neither channel is on a pane window's allow list (pane-windows.ts).
+  // If PX-216 (browser site decisions) lands first, both rows add bridge methods: re-pin to the sha of the merged preload and keep both notes.
+  preloadSha256: "c0a858398db71e97c6717934793fc3ce015be197d74b4adc1df41b65de304960",
   cspSha256: "e8c3fcc4286ba170b02ea95b02189f132b16228341d2002412facfec6eb929d1",
   webPreferencesSha256: "28515878dc43e119f2360de779e5a3733283d120b31a113837f7f7a6cf2356ee",
   windowOptionKeys: ["width", "height", "minWidth", "minHeight", "show", "webPreferences"],

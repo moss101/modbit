@@ -6,7 +6,7 @@
  * file chooses how to say it. Every state carries words as well as a glyph and
  * a colour; nothing is conveyed by colour alone.
  */
-import type { ComputerCardView, ComputerPresenceEntry, ComputerPresenceInfo, PermissionName, PermissionState, PresenceState } from "../../shared/computer-types.ts";
+import type { AccessLevel, AccessNeed, ComputerCardView, ComputerPresenceEntry, ComputerPresenceInfo, PermissionName, PermissionState, PresenceState } from "../../shared/computer-types.ts";
 
 // ------------------------------------------------------- the permission window
 
@@ -177,8 +177,34 @@ export interface CardStatus {
   detail: string;
 }
 
+// ------------------------------------------------------- standing access (PX-215)
+
+/** The levels as a person says them, with what each lets the agent do. */
+export const ACCESS_WORDS: Record<AccessLevel, { label: string; does: string }> = {
+  never: { label: "Never", does: "The agent cannot open a session in this application at all." },
+  view_only: { label: "View only", does: "The agent can look at the application and cannot click, press or type." },
+  click: { label: "Click", does: "The agent can press, click and scroll, and cannot type or press keys." },
+  full: { label: "Full", does: "No standing limit. Each task's own grant and your approval of every action still apply." },
+};
+
+const NEED_WORDS: Record<AccessNeed, string> = { observe: "opening a session", click: "clicking", keyboard: "typing" };
+
+/** What a call that the standing level refused says, on the card: the level, what the call needed, that nothing was done and where to change it. */
+export function standingAccessWords(a: { level: AccessLevel; needed: AccessNeed }, application: string): { label: string; detail: string } {
+  const who = application ? `“${application}”` : "this application";
+  const level = ACCESS_WORDS[a.level].label.toLowerCase();
+  return {
+    label: `Refused: your standing access is ${level}`,
+    detail:
+      a.level === "never"
+        ? `Your standing access for ${who} is never, so the agent may not open a session in it. Nothing was done. You can change this in Settings, under Computer control.`
+        : `Your standing access for ${who} is ${level}, and ${NEED_WORDS[a.needed]} needs ${a.needed === "keyboard" ? "full" : "click or full"}. Nothing was done. You can change this in Settings, under Computer control.`,
+  };
+}
+
 /** The status of a computer tool call, in the Core's typed words: done, refused, unknown outcome, stopped. */
 export function cardStatus(card: ComputerCardView): CardStatus {
+  if (card.standingAccess) return { tone: "danger", ...standingAccessWords(card.standingAccess, card.application) };
   if (card.latched) return { tone: "warn", label: "Outcome unknown", detail: REFUSAL_WORDS.OUTCOME_UNKNOWN!.next };
   if (card.state === "UNKNOWN_OUTCOME" || card.outcome === "UNKNOWN") return { tone: "warn", label: "Outcome unknown", detail: "The input may have happened and nothing says whether it did." };
   if (card.userAborted) return { tone: "danger", label: "Stopped by you (USER_ABORTED)", detail: refusalWords("USER_ABORTED").next };

@@ -433,6 +433,92 @@ message ComputerStop { Id task_id = 1; string reason = 2; }
 message ComputerStopped { uint32 sessions_closed = 1; bool actuator_stopped = 2; }
 
 // ---------------------------------------------------------------------------
+// 2b. Standing access per application (PX-215, DR-PX-2026-11-11-021 MWS-19)
+// ---------------------------------------------------------------------------
+//
+// A level the person sets once for one application: view_only (the agent may
+// look and no more), click (pressing, clicking, scrolling, dragging - no text
+// and no keys), full (everything the task's grant allows) or never (no
+// control session at all). The Core holds the levels; the computer runtime
+// refuses a call above the level with a typed refusal and puts the refusal on
+// the task's log (ComputerAccessRefused). Nothing is set by default, and an
+// application with no level is decided by the grant alone. A level only ever
+// narrows what a grant allows: "full" is no standing restriction, not an
+// approval. A change is one event on the log (ComputerAccessSet or
+// ComputerAccessCleared) and applies from the next action.
+
+// Read the levels in force, the applications the actuator reports as running
+// that could be driven (to pick from), and the levels a person may choose.
+message GetComputerAccess {}
+
+message ComputerAccessView {
+  // Every level that is set, by application key.
+  repeated ComputerAccessEntry entries = 1;
+  // The names a level may take, narrowest first: never, view_only, click, full.
+  repeated string levels = 2;
+  // Applications the attached actuator reports as running and drivable. Empty
+  // when no actuator is attached; a level can still be set by identifier.
+  repeated ComputerAccessApplication running = 3;
+  bool attached = 4;
+  // The version of the list of applications no approval can lift: a level
+  // cannot be set above never for one of them.
+  string non_drivable_version = 5;
+  // The log's offset at the last change (0 when none was ever made).
+  uint64 last_change_offset = 6;
+  // The changes themselves, oldest first, newest 100 at most: the audit trail
+  // read back from the log, one per event.
+  repeated ComputerAccessChange changes = 7;
+}
+
+// One recorded change of a standing level.
+message ComputerAccessChange {
+  uint64 offset = 1;
+  int64 at_ms = 2;
+  string bundle_id = 3;
+  string application = 4;
+  string level = 5;              // after the change, "" when cleared
+  string previous = 6;           // before it, "" when none was set
+  string by = 7;                 // the actor on the log, as "user:<id>"
+}
+
+message ComputerAccessEntry {
+  string bundle_id = 1;          // the key: a bundle identifier, else exe:<file name>
+  string application = 2;        // the name when it was set (an untrusted label)
+  string level = 3;              // never | view_only | click | full
+  int64 set_at_ms = 4;
+}
+
+message ComputerAccessApplication {
+  string bundle_id = 1;          // the key
+  string name = 2;               // an untrusted label
+  string level = 3;              // its level, "" when none is set
+}
+
+// Set or clear one application's level. `level` is never | view_only | click
+// | full, or "" to clear it (the grant alone decides again). A Core-wide
+// setting, like configuring the provider: it names no session and needs no
+// lease, only the capability that decides approvals; the event lands on the
+// Core's own ledger with the person as the actor. Refused: BAD_PAYLOAD,
+// BAD_LEVEL, BAD_APPLICATION (an empty, over-long or pattern identifier) and
+// NOT_DRIVABLE (a level above never for an application no approval can
+// lift). Setting the level an application already has changes nothing and
+// records nothing (`changed` is false).
+message SetComputerAccess {
+  string bundle_id = 1;
+  string application = 2;        // a display label for the record, optional
+  string level = 3;
+}
+
+message ComputerAccessChanged {
+  string bundle_id = 1;
+  string application = 2;
+  string level = 3;              // now in force, "" when cleared
+  string previous = 4;           // before the command, "" when none was set
+  bool changed = 5;
+  uint64 offset = 6;             // the log offset of the event, 0 when unchanged
+}
+
+// ---------------------------------------------------------------------------
 // 3. The desktop surface (PX-074): presence, permissions and the activity
 //    behind the action cards. Reads of the Core's own state; the desktop
 //    keeps none of it (docs/66 CUC-E05, CUC-H01).
@@ -493,7 +579,7 @@ message ComputerActivityEntry {
   uint64 offset = 1;
   int64 at_ms = 2;
   // SESSION_STARTED | OBSERVED | ACTION | LATCHED | LATCH_RESOLVED |
-  // SESSION_CLOSED | USER_ABORTED
+  // SESSION_CLOSED | USER_ABORTED | ACCESS_REFUSED
   string kind = 3;
   string control_id = 4;
   string tool_call_id = 5;
@@ -518,4 +604,11 @@ message ComputerActivityEntry {
   uint64 duration_ms = 22;
   bool verified_known = 23;      // ACTION: whether the effect was checked afterwards
   bool verified = 24;
+  // PX-215. ACCESS_REFUSED: a call the person's standing access for the
+  // application did not allow (nothing was actuated). `detail` is "", `reason`
+  // the refusal's words, `access_level` the level that refused it (never |
+  // view_only | click) and `access_needed` what the call needed (observe |
+  // click | keyboard).
+  string access_level = 25;
+  string access_needed = 26;
 }

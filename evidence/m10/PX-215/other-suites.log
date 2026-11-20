@@ -1,0 +1,65 @@
+# cargo test -p modbit-computer -p modbit-domain -p modbit-tools -p modbit-event-store -p protocol-fixtures --locked --no-fail-fast
+     Running unittests src/lib.rs (target/debug/deps/modbit_computer-e7ac0a747e7fba4c)
+test result: ok. 54 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.79s
+     Running unittests src/bin/modbit-actuator-manifest.rs (target/debug/deps/modbit_actuator_manifest-92b24861e774fd2d)
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running unittests src/lib.rs (target/debug/deps/modbit_domain-6e61e34c8455459a)
+test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+     Running tests/routing.rs (target/debug/deps/routing-4c6476f5414d9f52)
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/state_separation.rs (target/debug/deps/state_separation-a91115455a78b7db)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running unittests src/lib.rs (target/debug/deps/modbit_event_store-fd8a692fff462c68)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/approval_consumption.rs (target/debug/deps/approval_consumption-312184b92de90306)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+     Running tests/assistant_stream.rs (target/debug/deps/assistant_stream-67a8c29a9cc816f6)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+     Running tests/last_message_digest.rs (target/debug/deps/last_message_digest-daa1e4593112b1f6)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+     Running tests/memory_projection.rs (target/debug/deps/memory_projection-285b158df23e90cc)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+     Running tests/migrations_projections_commands.rs (target/debug/deps/migrations_projections_commands-923790df7c56b61f)
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.27s
+     Running tests/project_projection.rs (target/debug/deps/project_projection-7ad856dee1b76067)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+     Running tests/property_fencing.rs (target/debug/deps/property_fencing-7209ebf9afac3ef1)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.56s
+     Running tests/real_sqlite.rs (target/debug/deps/real_sqlite-bfbd6540c7cbc8ad)
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.68s
+     Running tests/receipt_chain.rs (target/debug/deps/receipt_chain-efad11f6dcbb55c2)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+     Running tests/relaxed_durability.rs (target/debug/deps/relaxed_durability-bb18bb0f43802f61)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+     Running tests/routing_state.rs (target/debug/deps/routing_state-e8494e7a3db829e3)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
+     Running tests/update_schema.rs (target/debug/deps/update_schema-1717a2b464f52d5f)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+     Running unittests src/lib.rs (target/debug/deps/modbit_tools-6dbfe522293d08b2)
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+     Running tests/computer_tools.rs (target/debug/deps/computer_tools-e5f33466e0449555)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.49s
+     Running tests/forge.rs (target/debug/deps/forge-75f71670d4bebdd5)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+     Running tests/git_hardening.rs (target/debug/deps/git_hardening-178bc2aab9836865)
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.41s
+     Running tests/media.rs (target/debug/deps/media-d3e194eda045d8f1)
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+     Running tests/pipeline_and_direct.rs (target/debug/deps/pipeline_and_direct-24bdb3e122c59df4)
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.47s
+     Running tests/property_arguments.rs (target/debug/deps/property_arguments-3865826d59e33177)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.47s
+     Running tests/shell_effects.rs (target/debug/deps/shell_effects-c2485a04e0492b26)
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.91s
+     Running unittests src/lib.rs (target/debug/deps/protocol_fixtures-bfaa33985609e855)
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running unittests src/main.rs (target/debug/deps/protocol_fixtures-e0d9d7cdf6f14872)
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/roundtrip.rs (target/debug/deps/roundtrip-13994486611c3b0d)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+exit 0
