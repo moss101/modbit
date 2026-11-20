@@ -20,6 +20,7 @@ import { mkdirSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gearMenu, showPane } from "./support/new-task.ts";
+import { setContentSize } from "./support/ui-harness.ts";
 import { closeApp, fixtureRepo, gate, launch, scriptedModel, startBrowserTask, toolResults } from "./support/browser-harness.ts";
 
 const SHOTS = process.env.MODBIT_SHOTS_DIR ?? "";
@@ -101,6 +102,8 @@ test("QUAL-PX-216: the agent asks before opening an undecided site; Allow once i
   ]);
   {
     const { app, page } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model1.url, ...env });
+    // The panes tile in the dock only in a window wide enough for them (a narrower one folds them under Apps); CI's default window is narrower than a desktop.
+    await setContentSize(app, page, 1280, 800);
     try {
       const { bsid } = await startBrowserTask(page, fixtureRepo(), "visit the two sites");
       await showPane(page, "browser");
@@ -196,6 +199,8 @@ test("QUAL-PX-216: the agent asks before opening an undecided site; Allow once i
   ]);
   {
     const { app, page } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model2.url, ...env });
+    // The panes tile in the dock only in a window wide enough for them (a narrower one folds them under Apps); CI's default window is narrower than a desktop.
+    await setContentSize(app, page, 1280, 800);
     try {
       await startBrowserTask(page, fixtureRepo(), "visit the sites again");
       await toolResults(model2, 3);
@@ -242,6 +247,8 @@ test("QUAL-PX-216: the agent asks before opening an undecided site; Allow once i
   ]);
   {
     const { app, page } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model3.url, ...env });
+    // The panes tile in the dock only in a window wide enough for them (a narrower one folds them under Apps); CI's default window is narrower than a desktop.
+    await setContentSize(app, page, 1280, 800);
     try {
       await startBrowserTask(page, fixtureRepo(), "one more look");
       await toolResults(model3, 3);
