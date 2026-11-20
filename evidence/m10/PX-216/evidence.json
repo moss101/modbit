@@ -1,0 +1,69 @@
+{
+  "task": "PX-216",
+  "requirements": [
+    "REQ-PX-216",
+    "QUAL-PX-216",
+    "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-216"
+  ],
+  "scenarios": [
+    "QUAL-PX-216 / PX-E2E-216"
+  ],
+  "decision_record": "DR-PX-2026-11-11-021 (MWS-19)",
+  "tier": "release-critical",
+  "branch": "work/px-216-site-decisions",
+  "status": "built and proven locally on macOS arm64; status E2E_PROVEN; not COMPLETE (the owner seals after CI)",
+  "audit": {
+    "destination_policy": "PRODUCTION-WORKING (browser-policy.ts, PolicyStore, checkUrlLiteral, proxy pin)",
+    "origin_decisions": "NOT-FOUND (allowOrigins is a limit, never an ask)",
+    "certificate_trust": "PRODUCTION-WORKING (a precedent, a different question)",
+    "first_missing_link": "no per-origin decision between the destination policy and the load"
+  },
+  "protocol": {
+    "changed": false,
+    "core_changed": false
+  },
+  "files": {
+    "new": [
+      "apps/desktop/src/main/browser-sites.ts",
+      "apps/desktop/src/main/browser-sites.test.ts",
+      "apps/desktop/src/renderer/browser/site-ask.tsx",
+      "apps/desktop/e2e/px-216-site-decisions.spec.ts"
+    ],
+    "changed": [
+      "apps/desktop/src/main/browser.ts",
+      "apps/desktop/src/main/main.ts",
+      "apps/desktop/src/preload/preload.ts",
+      "apps/desktop/src/main/hardening-guard.test.ts",
+      "apps/desktop/src/main/pane-windows.test.ts",
+      "apps/desktop/src/renderer/apps/browser-app.tsx",
+      "apps/desktop/src/renderer/browser/browser.tsx",
+      "apps/desktop/src/renderer/settings/settings-page.tsx",
+      "apps/desktop/src/renderer/styles.ts",
+      "apps/desktop/e2e/workers.spec.ts",
+      "apps/desktop/e2e/support/browser-harness.ts",
+      "apps/desktop/e2e/browser*.spec.ts",
+      "apps/desktop/e2e/apps-browser.spec.ts"
+    ]
+  },
+  "tests": {
+    "desktop_unit": "478 passed, 0 failed",
+    "px216_spec": "passed (27 s, three launches of one data directory)",
+    "mutation_checks": "7 of 7 caught (mutation-check-2026-11-20.txt)",
+    "neighbours": "27 passed, 1 failed (https startup allow), fixed and re-run 7 of 7 (neighbours-e2e.log)"
+  },
+  "screenshots": [
+    "after/browser-site-ask-{light,dark}.png",
+    "after/settings-sites-{light,dark}.png",
+    "after/settings-sites-removed-{light,dark}.png"
+  ],
+  "limitations": [
+    "the ask covers browser.navigate only; a clicked cross-origin link and a redirect are under the destination policy only",
+    "Allow once is in memory and lost on restart",
+    "decisions are global to the person, not per workspace",
+    "macOS only locally; Linux and Windows are CI's"
+  ],
+  "not_done": [
+    "COMPLETE (the owner seals after CI)",
+    "the Core suite was not re-run: no Rust or protocol change"
+  ]
+}
