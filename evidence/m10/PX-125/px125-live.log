@@ -1,0 +1,10 @@
+   Compiling modbit-tools v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/drop-editor/crates/tools)
+   Compiling modbit-core v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/drop-editor/services/modbit-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.21s
+     Running tests/px_125_live.rs (target/debug/deps/px_125_live-a7f9b1ee35617499)
+
+running 1 test
+test qual_px_125_live_the_forge_adapter_reads_a_real_pull_request_and_its_diff_and_posts_approved_redacted_comments ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 24.20s
+
