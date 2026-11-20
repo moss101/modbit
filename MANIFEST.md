@@ -1,7 +1,7 @@
 # Modbit Dossier Manifest — V3.3 EPR v1.1
 
 > **Authority date:** 2026-09-05  
-> **Generated:** 2026-11-19 by `tools/build_manifest.py`  
+> **Generated:** 2026-11-20 by `tools/build_manifest.py`  
 > **Scope:** every specification file in `docs/` plus the root governing files and tooling. The previous `99_MANIFEST.md` covered only 39 Part 2 files; this manifest covers all 97 docs.
 > **Machine-readable twin:** `manifest.json` (same content, same hashes).
 
@@ -1028,6 +1028,27 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-214/mutation-check-2026-11-19.txt` | retained evidence | 4989 | `d74444e10af5b69ba02f3ad429d104338fc7fe55d6bf4df8d02ac75f376a9973` |
 | `evidence/m10/PX-214/px214-core.log` | retained evidence | 369 | `005bd82513953d0da4e8668c3040bb82fdb43f9ad16bf6c11e80e2d65b0b5035` |
 | `evidence/m10/PX-214/px214-e2e.log` | retained evidence | 705 | `66ca8c7e68fb4b546f400114593c922feae9dfe4a659964ab5dec0845a94298a` |
+| `evidence/m10/PX-215/TASK_CARD.md` | retained evidence | 9722 | `33e03d6c4effd0b6340fcb6b0f9915810729c92bbfb1ce9d53ff207f23342187` |
+| `evidence/m10/PX-215/after/action-card-refused-click-dark.png` | retained evidence | 320936 | `8442e0e2a9cd97797894cf0a66a9083437d96caf1fc52efa9f332c520836ba45` |
+| `evidence/m10/PX-215/after/action-card-refused-click-light.png` | retained evidence | 321313 | `7c65011f14982d85e9620d37bac970ddebf5d50bc461e3a0a9275f7df033288a` |
+| `evidence/m10/PX-215/after/action-card-refused-never-dark.png` | retained evidence | 276705 | `af3fcfc6a68428f875ac10a2d22c8b54dfb693f9d3aab3d65055ec53480bf8b1` |
+| `evidence/m10/PX-215/after/action-card-refused-never-light.png` | retained evidence | 277194 | `e95256d86078c27ad748d42bf630843468ff9e03682343263b9bde9800145b58` |
+| `evidence/m10/PX-215/after/action-card-refused-type-dark.png` | retained evidence | 333415 | `4615f232cd0dc38181cef045fcb2ec8222b57e9c56e7eb5eb0b640824081c818` |
+| `evidence/m10/PX-215/after/action-card-refused-type-light.png` | retained evidence | 333985 | `13dcd7148b0ef362d3e46a837beced257a421e6ace0ede0158622bc44260c97f` |
+| `evidence/m10/PX-215/after/settings-access-default-dark.png` | retained evidence | 261112 | `57f2d22cde4071ed666534b03135a65000046bf46aa2f04b33887c6ce245ed80` |
+| `evidence/m10/PX-215/after/settings-access-default-light.png` | retained evidence | 260766 | `a7521b9b635ffd30b89b7d2c13f66a429e3b64bed7cb8557e50bb28d30c0b8ce` |
+| `evidence/m10/PX-215/after/settings-access-levels-dark.png` | retained evidence | 278545 | `126d6e0e58047b5df49693db85e6132fcb0f91ddbc3f7a6533d550c75da13ad0` |
+| `evidence/m10/PX-215/after/settings-access-levels-light.png` | retained evidence | 278241 | `ec11302e66d79f21d5795ea09a678d93dc97a07af9d3233a72974837ac15b588` |
+| `evidence/m10/PX-215/after/settings-access-refused-dark.png` | retained evidence | 280897 | `5866591af79719b6e6f19e76a3e2bfeeea2c8ecca2b9dba70a850b8be916f9f6` |
+| `evidence/m10/PX-215/after/settings-access-refused-light.png` | retained evidence | 280523 | `32db2a87301118d1131767310646fdd0c69744a8be04e4f318aff7f38aadf845` |
+| `evidence/m10/PX-215/core-suite.log` | retained evidence | 9285 | `7e9ec8035cf29b19c02055b6130d41267b302f1a8748023d429b17ef78aeedb2` |
+| `evidence/m10/PX-215/evidence.json` | retained evidence | 3684 | `0a84c073efa80cdca955947dbdabdae655a6817f0b85a21f639c64bb182c79d6` |
+| `evidence/m10/PX-215/mutation-checks-2026-11-20.txt` | retained evidence | 4640 | `feadac83409b7811ce8ace1fe0a1150c693f7523902a6ec652dccb1552136a5e` |
+| `evidence/m10/PX-215/other-suites.log` | retained evidence | 5975 | `9eb052ef824b105f05439c80a36f8576d6ae7b4ef3a71206e59fad3d93466f82` |
+| `evidence/m10/PX-215/px215-core.log` | retained evidence | 638 | `29d47ee431cd66f1860243134e797147757392adcc163f7dd8fded94915533a7` |
+| `evidence/m10/PX-215/px215-e2e-repeat3.log` | retained evidence | 486 | `431064f2f787a1982b8505d3c49151462706fe2a9a646e41357d7871332e5750` |
+| `evidence/m10/PX-215/px215-e2e.log` | retained evidence | 64070 | `272d9bfe39ff46234aac1864a00521dfca58f3305b55b5223be516d9623a0fe3` |
+| `evidence/m10/PX-215/px215-runtime-unit.log` | retained evidence | 1344 | `0a8922a70a8538764eae6fcb9a9272da9069ca60a610256ff1c8f017a3f8d644` |
 | `evidence/m10/PX-218/TASK_CARD.md` | retained evidence | 9057 | `6aeaa8e0559a694ef7f54b72adc23a479f2a9cbd609f66e2fe59485935175966` |
 | `evidence/m10/PX-218/after/preview-card-last-line-after-restart-dark.png` | retained evidence | 148352 | `92d41ade0b962ce536bedefb152262bcdb5b987ee5726c2bf9fef701ada90e8b` |
 | `evidence/m10/PX-218/after/preview-card-last-line-after-restart-light.png` | retained evidence | 149315 | `2f823957dffe44f8215f3a95a368e0490f715e8ec9336f14ec5de8a3bece5638` |
@@ -2517,8 +2538,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/zcode-ui/reference/zcode-colors-rgba.json` | retained evidence | 18690 | `76372c3edbcd50fe596d5e4b7fcd7991adab9686588ddc578a728afa24b4f028` |
 | `evidence/zcode-ui/reference/zcode-computed.json` | retained evidence | 718674 | `9ae8821ce72aa0fff3be44aacd0f4c9d995465c54bad7f17d1a81f92841d1c2d` |
 | `evidence/zcode-ui/reference/zcode-tokens-resolved.json` | retained evidence | 30635 | `066725c00059a05d073fbcdac9a8d965eab05f05c1f5df16e654854ff3e22b91` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 47980 | `f2142513e91462d0005c818017acd3c6280818e6f79c8757fa9b47c334e6435d` |
-| `graph/project-graph.json` | project driver graph with live status | 2637448 | `d699e748e1fcfc90b8aeabbda88728ba8413c874846a0d70318812cc10ec0493` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 47980 | `8970b3e3d85c7475f26f22d6d89736d0dd0b465566b9f2d8809e33f2a5d9d73a` |
+| `graph/project-graph.json` | project driver graph with live status | 2638597 | `733fe540cb2930a107d9932b9ba626ee261a317bcbb46e9c10a7a24e7ae3247f` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 69551 | `75bcc309c03df0b898705f3bf58a8c289431dc60cbaf52e1c38f4c5d41d06dd7` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |
