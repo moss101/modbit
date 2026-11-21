@@ -424,17 +424,34 @@ impl LexicalIndex {
                     );
                     std::thread::sleep(transient_delay(attempt));
                     attempt += 1;
-                    // Discard what the failed attempt queued and restore the
-                    // writer to the last durable commit; the merge policy is
-                    // a property of the writer, so it is set again.
-                    self.writer.rollback()?;
-                    self.writer.set_merge_policy(Self::merge_policy());
+                    self.discard_failed_attempt()?;
                 }
                 Err(e) => return Err(e),
             }
         }
         retry_transient(|| self.reader.reload(), is_transient_tantivy)?;
         self.revision = revision;
+        Ok(())
+    }
+
+    /// Discard what a failed commit queued and wrote, and restore the writer
+    /// to the last durable commit; the merge policy is a property of the
+    /// writer, so it is set again.
+    ///
+    /// A commit writes its segments' delete files before it saves the index's
+    /// meta file, and names them by the commit's opstamp. A rollback returns
+    /// the writer to the previous opstamp and leaves those files on disk, so
+    /// the same change set applied again asks for the same file names and
+    /// fails `FileAlreadyExists` — a permanent error, which made the retry
+    /// pointless and rebuilt the index (CI run 44579837395, Windows: "Access
+    /// is denied" on attempt 1, then `FileAlreadyExists("….37.del")`). The
+    /// files the durable commit does not name are therefore removed here. A
+    /// collection that cannot remove them changes nothing: the next attempt
+    /// fails as before and the caller rebuilds with the reason recorded.
+    fn discard_failed_attempt(&mut self) -> tantivy::Result<()> {
+        self.writer.rollback()?;
+        self.writer.set_merge_policy(Self::merge_policy());
+        let _ = self.writer.garbage_collect_files().wait();
         Ok(())
     }
 
@@ -763,5 +780,73 @@ mod transient_tests {
         drop(lx);
         let reopened = LexicalIndex::open_in_dir(dir.path(), 2).unwrap();
         assert_eq!(reopened.doc_hashes().len(), 2, "both files are durable");
+    }
+
+    fn copy_dir(from: &std::path::Path, to: &std::path::Path) {
+        std::fs::create_dir_all(to).unwrap();
+        for e in std::fs::read_dir(from).unwrap().flatten() {
+            if e.file_type().unwrap().is_file() && e.file_name() != ".tantivy-writer.lock" {
+                std::fs::copy(e.path(), to.join(e.file_name())).unwrap();
+            }
+        }
+    }
+
+    /// A commit that failed after it wrote its delete file (CI run
+    /// 44579837395) is retried on the same writer: the files of the failed
+    /// attempt are discarded with it, so the same change set commits.
+    ///
+    /// The failed commit is reproduced from a commit that succeeded on a copy
+    /// of the index: its delete file and Tantivy's record of the files it
+    /// manages, beside the meta file from before the commit — what is on disk
+    /// when the meta file's save is the step that fails.
+    #[test]
+    fn a_failed_commits_delete_file_does_not_fail_the_retry() {
+        let keep = tempfile::tempdir().unwrap();
+        let (before, after) = (keep.path().join("before"), keep.path().join("after"));
+        let files = [
+            ("a.rs", "fn alpha_unique() {}\n", Some("rust")),
+            ("b.rs", "fn beta_unique() {}\n", Some("rust")),
+        ];
+        drop(LexicalIndex::build_in_dir(&before, files.into_iter(), 1).unwrap());
+        copy_dir(&before, &after);
+        let changed: Vec<ChangedDoc> = vec![("a.rs".into(), None)];
+        let mut committed = LexicalIndex::open_in_dir(&after, 1).unwrap();
+        committed.refresh(&changed, 2).unwrap();
+        drop(committed);
+        let mut deletes = 0;
+        for e in std::fs::read_dir(&after).unwrap().flatten() {
+            let name = e.file_name();
+            if name.to_string_lossy().ends_with(".del") {
+                std::fs::copy(e.path(), before.join(&name)).unwrap();
+                deletes += 1;
+            }
+        }
+        assert_eq!(deletes, 1, "the commit wrote one delete file");
+        std::fs::copy(after.join(".managed.json"), before.join(".managed.json")).unwrap();
+
+        let mut lx = LexicalIndex::open_in_dir(&before, 1).unwrap();
+        assert_eq!(
+            lx.len(),
+            2,
+            "the commit before the failed one is what loads"
+        );
+        // The hazard itself: without the discard the same change set cannot commit.
+        let again = lx.apply_and_commit(&changed, 2).unwrap_err();
+        assert!(
+            again.to_string().contains("FileAlreadyExists"),
+            "the failed attempt's delete file is in the way: {again}"
+        );
+        lx.discard_failed_attempt().unwrap();
+        lx.refresh(&changed, 2).unwrap();
+        assert_eq!(lx.len(), 1);
+        assert!(lx.search("alpha_unique", 5).unwrap().is_empty());
+        assert_eq!(lx.search("beta_unique", 5).unwrap().len(), 1);
+        drop(lx);
+        let reopened = LexicalIndex::open_in_dir(&before, 2).unwrap();
+        assert_eq!(
+            reopened.doc_hashes().len(),
+            1,
+            "the retried commit is durable"
+        );
     }
 }
