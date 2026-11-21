@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2459,
+    "root_and_tooling": 2476,
     "docs_bytes": 2395097
   },
   "sections": [
@@ -5452,6 +5452,91 @@
       "path": "evidence/m10/PX-211/px211-e2e-related.log",
       "bytes": 34853,
       "sha256": "2ad565a4ebdb590d91da4eadbf15f437c2f6db7891541e05e501cf6dd958d1eb"
+    },
+    {
+      "path": "evidence/m10/PX-212/TASK_CARD.md",
+      "bytes": 9963,
+      "sha256": "24730794742ccb2a487264eebb6305f119efa2728cfdfbc3926c4ec9967d1054"
+    },
+    {
+      "path": "evidence/m10/PX-212/after/auto-fix-on-dark.png",
+      "bytes": 301583,
+      "sha256": "4093a86e5a089b921716f27c6c10bb48e58201a8cf65ba3ed6d8d80e7f33b131"
+    },
+    {
+      "path": "evidence/m10/PX-212/after/auto-fix-on-light.png",
+      "bytes": 303554,
+      "sha256": "d2b3123c91e89981182d7b9051bb28a00cc969b53211edba71a0bb82ed087568"
+    },
+    {
+      "path": "evidence/m10/PX-212/after/auto-fix-one-turn-dark.png",
+      "bytes": 457125,
+      "sha256": "52ada4c272b81b999d233d89ec1186b8c9dca978a13885547eedd8123347d19d"
+    },
+    {
+      "path": "evidence/m10/PX-212/after/auto-fix-one-turn-light.png",
+      "bytes": 456365,
+      "sha256": "bd6cdcea17d3266d1d2ea9b4a840f7a4c5a7a44e8f74ece750b8e202b3a6b627"
+    },
+    {
+      "path": "evidence/m10/PX-212/after/auto-fix-push-asks-dark.png",
+      "bytes": 410957,
+      "sha256": "82329192fbe544e03ff9dea1fd128b56eb25d85ce4fe8902fd693d630c12eddd"
+    },
+    {
+      "path": "evidence/m10/PX-212/after/auto-fix-push-asks-light.png",
+      "bytes": 413253,
+      "sha256": "7b35ae7ae0115f0167b1b5bf80c065ab59930156bbc5560e8064d77017e9c247"
+    },
+    {
+      "path": "evidence/m10/PX-212/after/auto-fix-stopped-dark.png",
+      "bytes": 487857,
+      "sha256": "8d2f67c539a3605a1730ee2f907778a5c0c20f562cf956c624af56e9755e7535"
+    },
+    {
+      "path": "evidence/m10/PX-212/after/auto-fix-stopped-light.png",
+      "bytes": 488291,
+      "sha256": "a9adda418138d23cea7527d88f3de39b2048d866b19efbc15d480e8fe92d59cd"
+    },
+    {
+      "path": "evidence/m10/PX-212/core-suite.log",
+      "bytes": 260642,
+      "sha256": "ee3cb0aac5d5d720a328d07e5f36191da9bf9d431410ca6d29260e2978c11fbb"
+    },
+    {
+      "path": "evidence/m10/PX-212/evidence.json",
+      "bytes": 1983,
+      "sha256": "a9e6403bb6447982389451fc675dff90e7b0481444b829dd4ce13fcdeedad236"
+    },
+    {
+      "path": "evidence/m10/PX-212/mutation-checks-2026-11-21.txt",
+      "bytes": 1345,
+      "sha256": "5978cabc3a1e5977620b5d8448a55f58a5e55512e56c9b0b39316aa7677d39df"
+    },
+    {
+      "path": "evidence/m10/PX-212/other-suites.log",
+      "bytes": 60759,
+      "sha256": "90b6ba4bbb6d33ecb72e78f71bc471bf5239e9905344a35bf8caa3ddd6a03563"
+    },
+    {
+      "path": "evidence/m10/PX-212/px212-core.log",
+      "bytes": 797,
+      "sha256": "675e5129170593abbdf6eb9175648c1429851914c997fb0110f37aef398c4dd6"
+    },
+    {
+      "path": "evidence/m10/PX-212/px212-e2e-related.log",
+      "bytes": 12269,
+      "sha256": "ca7c39c42e858d70d751760e2c62a6d077b1dd9dccab39fc39c79a6d32822ddf"
+    },
+    {
+      "path": "evidence/m10/PX-212/px212-e2e.log",
+      "bytes": 969,
+      "sha256": "fd9721bde5ece464a3789f8e545c423082054467aa1571e18d4d5e3a710891d0"
+    },
+    {
+      "path": "evidence/m10/PX-212/related-core.log",
+      "bytes": 2147,
+      "sha256": "d12558fef35a38d657e8de5d61cc9145235c4ed0c07351efa0db53cfeb6dc1d4"
     },
     {
       "path": "evidence/m10/PX-214/TASK_CARD.md",

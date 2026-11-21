@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { PullRequestAckView, ReviewBundleView } from "../../preload/preload.ts";
 import type { PullRequestStateView } from "../../shared/conversation-types.ts";
-import { canOpenRequest, checkWords, commentWords, forgeErrorWords, refusedWords, mergeArchiveWatcher, requestStateLine, requestStateWords, requestWords } from "./pull-request-model.ts";
+import { canOpenRequest, checkWords, commentWords, forgeErrorWords, refusedWords, mergeArchiveWatcher, requestStateLine, requestStateWords, requestWords, autoFixWords } from "./pull-request-model.ts";
 
 const ack = (over: Partial<PullRequestAckView>): PullRequestAckView => ({ status: "OPENED", approvalId: "a".repeat(32), intentHash: "b".repeat(64), number: "7", url: "https://github.test/o/r/pull/7", branch: "modbit/task-1", headSha: "c".repeat(40), candidateRevision: "3", receipts: 2, replayed: false, detail: "", ...over });
 type Check = ReviewBundleView["ciEvidence"][number];
@@ -45,7 +45,7 @@ test("REQ-PX-202: the Core's refusal to read the forge is said in words with its
   assert.equal(forgeErrorWords("Error invoking remote method 'review:ingestCi': Error: FORGE_UNAVAILABLE"), "FORGE_UNAVAILABLE");
 });
 
-const state = (over: Partial<PullRequestStateView>): PullRequestStateView => ({ owner: "o", repo: "r", number: 7, url: "https://github.test/o/r/pull/7", state: "OPEN", draft: false, checks: "PASSING", checksTotal: 2, checksPassing: 2, checksFailing: 0, checksPending: 0, failingChecks: [], headSha: "f".repeat(40), pushedSha: "f".repeat(40), readAtMs: 1_700_000_000_000, trigger: "REQUEST", readOffset: "9", openedOffset: "5", ...over });
+const state = (over: Partial<PullRequestStateView>): PullRequestStateView => ({ owner: "o", repo: "r", number: 7, url: "https://github.test/o/r/pull/7", state: "OPEN", draft: false, checks: "PASSING", checksTotal: 2, checksPassing: 2, checksFailing: 0, checksPending: 0, failingChecks: [], headSha: "f".repeat(40), pushedSha: "f".repeat(40), readAtMs: 1_700_000_000_000, trigger: "REQUEST", readOffset: "9", openedOffset: "5", autoFix: false, autoFixAttempts: 0, autoFixCap: 3, autoFixStopped: false, autoFixLastCause: "", autoFixLastOffset: "0", ...over });
 
 test("REQ-PX-211: a request the Core has not read has a number and no state", () => {
   assert.equal(requestStateWords(undefined), null);
@@ -85,4 +85,17 @@ test("REQ-PX-211: the Core's archive after merge is the archive right after the 
   assert.equal(w(ev("d", "ConversationArchived")), null);
   assert.equal(w({ eventType: "ConversationArchived" }), null);
   assert.equal(w(null), null);
+});
+
+test("REQ-PX-212: auto-fix words come from the Core's record: off says nothing, on counts against the cap, a stop says so", () => {
+  assert.deepEqual(autoFixWords(state({})), { on: false, status: "", tone: "none" });
+  assert.deepEqual(autoFixWords(null), { on: false, status: "", tone: "none" });
+  assert.equal(autoFixWords(state({ autoFix: true })).status, "On. No repair turn yet; at most 3.");
+  assert.equal(autoFixWords(state({ autoFix: true, autoFixAttempts: 1, autoFixLastCause: "CHECKS_FAILING" })).status, "1 of 3 repair turns used; the latest for failing checks.");
+  assert.equal(autoFixWords(state({ autoFix: true, autoFixAttempts: 2, autoFixLastCause: "REVIEW_COMMENT" })).status, "2 of 3 repair turns used; the latest for a review comment.");
+  const stopped = autoFixWords(state({ autoFix: true, autoFixAttempts: 3, autoFixStopped: true, autoFixLastCause: "CHECKS_FAILING" }));
+  assert.equal(stopped.tone, "stopped");
+  assert.equal(stopped.status, "Stopped after 3 of 3 repair turns. Turn it off and on again to allow more.");
+  // A stop recorded while it was on says nothing once it is off.
+  assert.deepEqual(autoFixWords(state({ autoFix: false, autoFixStopped: true })), { on: false, status: "", tone: "none" });
 });

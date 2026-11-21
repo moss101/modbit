@@ -1725,7 +1725,11 @@ pub(crate) fn headers(
                 .and_then(checkout_of)
                 .unwrap_or_default(),
             last_line: last_line_of(store, d),
-            pull_request: d.pull_request.as_ref().map(crate::pull_request_state::view),
+            pull_request: d.pull_request.as_ref().map(|p| {
+                let mut v = crate::pull_request_state::view(p);
+                crate::auto_fix::decorate(&mut v, store, d.task_id);
+                v
+            }),
         });
     }
     out.sort_by(|a, b| {

@@ -84,6 +84,16 @@ export interface PullRequestStateView {
   trigger: string;
   readOffset: string;
   openedOffset: string;
+  /** PX-212: auto-fix for the task, as the Core holds it. Off until a person turns it on. */
+  autoFix: boolean;
+  /** Repair turns auto-fix asked for since it was last turned on, and the most it will. */
+  autoFixAttempts: number;
+  autoFixCap: number;
+  /** The cap was reached and a further cause was not acted on; nothing is queued until it is turned on again. */
+  autoFixStopped: boolean;
+  /** CHECKS_FAILING or REVIEW_COMMENT; "" before any. */
+  autoFixLastCause: string;
+  autoFixLastOffset: string;
 }
 
 export interface AgentHeadersView {

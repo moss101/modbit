@@ -248,7 +248,7 @@ impl Trigger {
 /// said; archive the task when the read first finds it merged and the
 /// session's preference is on.
 pub(crate) async fn refresh(
-    core: &Core,
+    core: &Arc<Core>,
     task_id: TaskId,
     actor: Actor,
     lease_generation: Option<u64>,
@@ -363,6 +363,7 @@ pub(crate) async fn refresh(
         ));
     };
     let checks = checks_of(&read["checks"]);
+    let failing_checks = checks.failing_names.clone();
     let event = TaskEvent::ForgePullRequestStateRead {
         owner: pr.owner.clone(),
         repo: pr.repo.clone(),
@@ -431,11 +432,35 @@ pub(crate) async fn refresh(
     } else {
         offset
     });
+    // PX-212: an open request with failing checks is auto-fix's cause (it
+    // does nothing unless the task's switch is on).
+    let fix = if state == "OPEN" && checks.word == "FAILING" {
+        crate::auto_fix::on_cause(
+            core,
+            task_id,
+            crate::auto_fix::Cause::ChecksFailing {
+                number: pr.number,
+                head_sha: read["head"]["sha"].as_str().unwrap_or_default().to_owned(),
+                failing_checks: failing_checks.clone(),
+                offset,
+            },
+        )
+        .await
+    } else {
+        crate::auto_fix::Outcome::default()
+    };
+    let mut pull_request = after.as_ref().map(view);
+    if let Some(v) = pull_request.as_mut() {
+        crate::auto_fix::decorate(v, &*core.store.lock().await, task_id);
+    }
     Ok(wire::PullRequestRefreshed {
-        pull_request: after.as_ref().map(view),
+        pull_request,
         offset,
         archived: archive_offset > 0,
         archive_offset,
+        auto_fix_queued: fix.queued,
+        auto_fix_input_id: fix.input_id,
+        auto_fix_stopped: fix.stopped,
     })
 }
 
@@ -486,17 +511,38 @@ pub(crate) fn spawn_watcher(core: Arc<Core>) {
                 continue;
             }
             for task_id in due(&core).await {
-                if let Err((code, detail)) = refresh(
+                let read = refresh(
                     &core,
                     task_id,
                     Actor::Core(SCHEDULE_ACTOR.into()),
                     None,
                     Trigger::Schedule,
                 )
-                .await
-                {
+                .await;
+                if let Err((code, detail)) = &read {
                     eprintln!(
                         "modbit-core: scheduled pull request read for task {task_id} refused: {code}: {detail}"
+                    );
+                }
+                // PX-212: with auto-fix on, the schedule also takes the
+                // request's comments through the existing ingestion (the same
+                // allow-list and mention rules) while it is open.
+                let open = read.as_ref().is_ok_and(|r| {
+                    r.pull_request
+                        .as_ref()
+                        .is_some_and(|p| p.state == "OPEN" && p.auto_fix)
+                });
+                if open
+                    && let Err((code, detail)) = crate::review_comments::ingest(
+                        &core,
+                        task_id,
+                        Actor::Core(SCHEDULE_ACTOR.into()),
+                        None,
+                    )
+                    .await
+                {
+                    eprintln!(
+                        "modbit-core: scheduled comment read for task {task_id} refused: {code}: {detail}"
                     );
                 }
             }

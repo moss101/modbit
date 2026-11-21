@@ -1,0 +1,7 @@
+{
+  "expected": {
+    "enabled": true,
+    "taskId": "21212121212121212121212121212121"
+  },
+  "type": "modbit.v1.SetAutoFix"
+}

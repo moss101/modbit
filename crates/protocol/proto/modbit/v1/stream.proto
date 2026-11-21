@@ -350,6 +350,17 @@ message TaskPullRequest {
   google.protobuf.Timestamp read_at = 16; // unset = never read
   uint64 read_offset = 17;           // the ForgePullRequestStateRead record; 0 = never read
   string trigger = 18;               // REQUEST | SCHEDULE; "" = never read
+  // PX-212 (DR-PX-2026-11-11-021 MWS-17): auto-fix for this task. Off until a
+  // person turns it on (SetAutoFix); attempts count from the latest time it
+  // was turned on.
+  bool auto_fix = 19;
+  uint32 auto_fix_attempts = 20;
+  uint32 auto_fix_cap = 21;
+  // The cap was reached and a further cause was not acted on (AutoFixStopped
+  // after the latest AutoFixSet); nothing is queued until it is turned on again.
+  bool auto_fix_stopped = 22;
+  string auto_fix_last_cause = 23;   // CHECKS_FAILING | REVIEW_COMMENT | "" (none yet)
+  uint64 auto_fix_last_offset = 24;  // the latest AutoFixQueued or AutoFixStopped; 0 = none
 }
 
 // Read the task's pull request through the forge adapter now (`forge.pr.read`
@@ -368,6 +379,33 @@ message PullRequestRefreshed {
   // `archive_offset` (ArchiveTask with archived = false is the undo).
   bool archived = 3;
   uint64 archive_offset = 4;
+  // PX-212: this read found failing checks, auto-fix is on and a repair turn
+  // was queued (`auto_fix_input_id`) and asked for; or the cap stopped it.
+  bool auto_fix_queued = 5;
+  string auto_fix_input_id = 6;
+  bool auto_fix_stopped = 7;
+}
+
+// PX-212 (REQ-PX-212, DR-PX-2026-11-11-021 MWS-17): turn auto-fix on or off
+// for one task. With it on, a failing check the Core reads (RefreshPullRequest
+// or the schedule) or a review comment the existing ingestion accepts queues
+// one repair input naming its cause, and the task's turn is asked for through
+// the ordinary StartTask: the task's run mode, lease, policy and budgets
+// decide as for any start, and its pushes ask as a person's would. At most
+// `cap` attempts from the time it is turned on; then AutoFixStopped. Off is
+// the default. The same value again records nothing.
+message SetAutoFix {
+  Id task_id = 1;
+  bool enabled = 2;
+}
+
+message AutoFixState {
+  Id task_id = 1;
+  bool enabled = 2;
+  uint32 attempts = 3;
+  uint32 cap = 4;
+  bool stopped = 5;
+  uint64 offset = 6;                 // the AutoFixSet record; 0 = never set
 }
 
 // The session's pull-request preferences. Archive after merge is off until a

@@ -173,6 +173,9 @@ import {
   SetPullRequestPreferencesSchema,
   PullRequestPreferencesSchema,
   type PullRequestPreferences,
+  SetAutoFixSchema,
+  AutoFixStateSchema,
+  type AutoFixState,
   IngestReviewCommentsSchema,
   ReviewCommentsIngestedViewSchema,
   type ReviewCommentsIngestedView,
@@ -1034,6 +1037,18 @@ export class CoreClient {
     const payload = toBinary(RefreshPullRequestSchema, create(RefreshPullRequestSchema, { taskId: { value: unhex(taskId) } }));
     const ack = await this.command("RefreshPullRequest", payload, undefined, this.leases.get(sessionId), sessionId);
     return fromBinary(PullRequestRefreshedSchema, ack.result);
+  }
+
+  /**
+   * PX-212: turn auto-fix on or off for one task. With it on, a failing check
+   * the Core reads or a review comment its ingestion accepts queues one repair
+   * input and asks for the task's turn through the ordinary start; the task's
+   * run mode decides as for any turn. The same value again records nothing.
+   */
+  async setAutoFix(sessionId: string, taskId: string, enabled: boolean): Promise<AutoFixState> {
+    const payload = toBinary(SetAutoFixSchema, create(SetAutoFixSchema, { taskId: { value: unhex(taskId) }, enabled }));
+    const ack = await this.command("SetAutoFix", payload, undefined, this.leases.get(sessionId), sessionId);
+    return fromBinary(AutoFixStateSchema, ack.result);
   }
 
   /** PX-211: the session's archive-after-merge preference (off until set). */
