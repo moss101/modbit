@@ -312,16 +312,24 @@ fn fix_17_a_detached_run_survives_the_clients_disconnect_past_the_idle_window() 
 #[test]
 fn fix_17_a_background_command_keeps_the_core_up_after_its_run_ended() {
     let tmp = tempfile::tempdir().unwrap();
-    // The run starts a 9 s background command and completes at once. The
+    // The run starts a background command and completes at once. The
     // broker stops its processes when no Core returns, so a Core that left
     // after the run would kill it: the Core stays until the command ends.
+    //
+    // The command writes its marker after 9 s and then runs 4 s more. Once it
+    // has ended nothing holds the Core, whose next idle look (up to one idle
+    // window later, possibly at once) makes it leave and remove its ready
+    // file. With the marker as the command's last act, the read of the ready
+    // line below raced that exit and found none (CI runs 44476041746 on macOS
+    // and 44496617894 on Windows). The marker now appears while the command
+    // is still running, which is when the Core must be serving.
     let marker = tmp.path().join("bg-done.txt");
     let marker_str = marker.to_string_lossy().replace('\\', "/");
     let (cli, sid, tid, _repo) = fixture(
         tmp.path(),
         vec![
             serde_json::json!({"calls": [{"name": "plan.update", "args": {"outcome": "o", "expected_files": [], "protected_effects": []}}]}),
-            serde_json::json!({"calls": [{"name": "shell.start", "args": {"argv": ["sh", "-c", format!("sleep 9; echo done > {marker_str}")]}}]}),
+            serde_json::json!({"calls": [{"name": "shell.start", "args": {"argv": ["sh", "-c", format!("sleep 9; echo done > {marker_str}; sleep 4")]}}]}),
             serde_json::json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
         ],
         Duration::from_millis(300),

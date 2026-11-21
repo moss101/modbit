@@ -10,6 +10,8 @@
  */
 import { execFileSync } from "node:child_process";
 import type { ChildProcess } from "node:child_process";
+import { writeFileSync } from "node:fs";
+import { test } from "@playwright/test";
 import type { ElectronApplication } from "@playwright/test";
 
 const GRACE_MS = 15_000;
@@ -59,7 +61,52 @@ function exited(proc: ChildProcess): Promise<void> {
   return new Promise<void>((resolve) => proc.once("exit", () => resolve()));
 }
 
+const CAPTURE_MS = 3_000;
+const CAPTURE_HTML_MAX = 2_000_000;
+/** The name the at-close attachments carry; `at-close-reporter.ts` deletes them for a test that passed. */
+export const AT_CLOSE = "app-at-close";
+let captures = 0;
+
+const bounded = <T>(p: Promise<T>): Promise<T | undefined> => Promise.race([p.catch(() => undefined), new Promise<undefined>((r) => setTimeout(() => r(undefined), CAPTURE_MS))]);
+
+/**
+ * What each window showed when the test let go of the app: a screenshot and the document. Playwright's trace of an Electron
+ * test holds the steps and no picture of the page, so a failure that is "the page never showed X" said nothing about what the
+ * page showed instead (a note, a refusal, another view). A test cannot know in its own `finally` that it failed, so this is
+ * taken every time and the reporter keeps it only for a test that did not pass. Every step is bounded and none can fail the
+ * test: an app that is already gone simply leaves nothing.
+ */
+async function captureAtClose(app: ElectronApplication): Promise<void> {
+  let info: ReturnType<typeof test.info>;
+  try {
+    info = test.info();
+  } catch {
+    return; // not inside a test (a worker-level teardown)
+  }
+  let pages: ReturnType<ElectronApplication["windows"]>;
+  try {
+    pages = app.windows();
+  } catch {
+    return;
+  }
+  for (const page of pages) {
+    const base = info.outputPath(`at-close-${++captures}`);
+    const shot = await bounded(page.screenshot({ path: `${base}.jpg`, type: "jpeg", quality: 60, timeout: CAPTURE_MS }));
+    if (shot) info.attachments.push({ name: AT_CLOSE, path: `${base}.jpg`, contentType: "image/jpeg" });
+    const html = await bounded(page.evaluate(() => document.documentElement.outerHTML));
+    if (typeof html === "string") {
+      try {
+        writeFileSync(`${base}.html`, html.slice(0, CAPTURE_HTML_MAX));
+        info.attachments.push({ name: AT_CLOSE, path: `${base}.html`, contentType: "text/html" });
+      } catch {
+        // the evidence is best effort
+      }
+    }
+  }
+}
+
 export async function closeApp(app: ElectronApplication): Promise<void> {
+  await captureAtClose(app);
   const proc = app.process();
   const pid = proc.pid;
   await Promise.race([app.close().catch(() => {}), new Promise<void>((r) => setTimeout(r, GRACE_MS))]);

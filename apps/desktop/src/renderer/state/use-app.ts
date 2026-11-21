@@ -99,49 +99,61 @@ export function useApp() {
   const wasRestarting = useRef(false);
 
   /** docs/32 "Event consumption": snapshot, subscribe from its cursor, reduce events. */
+  // Bumped when Run creates a session or a task. What `load` read before that is older than what Run put on screen.
+  const stateEpoch = useRef(0);
   const load = useCallback(async () => {
     setScreen("loading");
     setError(null);
     try {
-      const local = await window.modbit.localState();
-      if (local.platform) setPlatform({ state: local.platform.state, statement: local.platform.statement });
-      if (!local.sessionId) {
-        setModel(emptyModel());
-        setScreen("empty");
-        return;
-      }
-      const snap = (await window.modbit.sessionSnapshot(local.sessionId)) as Snapshot;
-      const prev = modelRef.current;
-      if (prev.sessionId === snap.sessionId && prev.cursor !== "0") {
-        // Reconnect by cursor (docs/32, PX-023): the cards stay as they are
-        // and the stream resumes from the last offset this renderer applied,
-        // so what the Core appended while away — its recovery's waits and
-        // diagnostics included — is replayed, not lost behind a snapshot.
-        setScreen(prev.tasks.size === 0 ? "empty" : "populated");
-        await window.modbit.subscribe(snap.sessionId, prev.cursor);
+      // The app loads when the Core connects, and Run can be pressed while that load is still waiting on the Core. A load that
+      // then applied what it had read (no session yet, or a snapshot from before the task) took the new session and task off
+      // the screen: no conversation, or one that never loaded (CI runs 43803618466 and 43663529086, Run under 100 ms after the
+      // Core connected). A load that Run overtook reads again instead.
+      for (;;) {
+        const epoch = stateEpoch.current;
+        const local = await window.modbit.localState();
+        if (stateEpoch.current !== epoch) continue;
+        if (local.platform) setPlatform({ state: local.platform.state, statement: local.platform.statement });
+        if (!local.sessionId) {
+          setModel(emptyModel());
+          setScreen("empty");
+          return;
+        }
+        const snap = (await window.modbit.sessionSnapshot(local.sessionId)) as Snapshot;
+        if (stateEpoch.current !== epoch) continue;
+        const prev = modelRef.current;
+        if (prev.sessionId === snap.sessionId && prev.cursor !== "0") {
+          // Reconnect by cursor (docs/32, PX-023): the cards stay as they are
+          // and the stream resumes from the last offset this renderer applied,
+          // so what the Core appended while away — its recovery's waits and
+          // diagnostics included — is replayed, not lost behind a snapshot.
+          setScreen(prev.tasks.size === 0 ? "empty" : "populated");
+          await window.modbit.subscribe(snap.sessionId, prev.cursor);
+          refreshAttention(snap.sessionId);
+          return;
+        }
+        const m = fromSnapshot(snap);
+        setModel(m);
+        setScreen(m.tasks.size === 0 ? "empty" : "populated");
+        // A snapshot carries states, not the typed diagnostics behind a wait
+        // or a failure (REQ-EV-0073): read those from the Core's task status
+        // so a degraded state after an app restart still names its cause.
+        const statuses = await Promise.all([...m.tasks.values()].filter((t) => t.state === "Waiting" || t.state === "Failed").map(async (t) => [t.taskId, await window.modbit.taskStatus(t.taskId).catch(() => null)] as const));
+        if (statuses.length > 0) {
+          setModel((cur) => {
+            const tasks = new Map(cur.tasks);
+            for (const [id, st] of statuses) {
+              const c = tasks.get(id);
+              if (!st || !st.failureClass || !c || c.diagnostic) continue;
+              tasks.set(id, { ...c, diagnostic: { class: st.failureClass, code: st.failureCode, detail: st.attentionReason, userAction: st.userAction, recoveryPath: st.recoveryPath, retryable: st.retryable, evidenceRefs: st.evidenceRefs }, nextAction: c.nextAction ?? st.attentionReason, lastOffset: st.lastOffset });
+            }
+            return { ...cur, tasks };
+          });
+        }
+        await window.modbit.subscribe(snap.sessionId, snap.lastOffset);
         refreshAttention(snap.sessionId);
         return;
       }
-      const m = fromSnapshot(snap);
-      setModel(m);
-      setScreen(m.tasks.size === 0 ? "empty" : "populated");
-      // A snapshot carries states, not the typed diagnostics behind a wait
-      // or a failure (REQ-EV-0073): read those from the Core's task status
-      // so a degraded state after an app restart still names its cause.
-      const statuses = await Promise.all([...m.tasks.values()].filter((t) => t.state === "Waiting" || t.state === "Failed").map(async (t) => [t.taskId, await window.modbit.taskStatus(t.taskId).catch(() => null)] as const));
-      if (statuses.length > 0) {
-        setModel((cur) => {
-          const tasks = new Map(cur.tasks);
-          for (const [id, st] of statuses) {
-            const c = tasks.get(id);
-            if (!st || !st.failureClass || !c || c.diagnostic) continue;
-            tasks.set(id, { ...c, diagnostic: { class: st.failureClass, code: st.failureCode, detail: st.attentionReason, userAction: st.userAction, recoveryPath: st.recoveryPath, retryable: st.retryable, evidenceRefs: st.evidenceRefs }, nextAction: c.nextAction ?? st.attentionReason, lastOffset: st.lastOffset });
-          }
-          return { ...cur, tasks };
-        });
-      }
-      await window.modbit.subscribe(snap.sessionId, snap.lastOffset);
-      refreshAttention(snap.sessionId);
     } catch (e) {
       setError((e as Error).message);
       setScreen("error");
@@ -212,6 +224,7 @@ export function useApp() {
         let sessionId = modelRef.current.sessionId;
         if (!sessionId) {
           sessionId = await window.modbit.createSession();
+          stateEpoch.current += 1;
           setModel((m) => ({ ...m, sessionId }));
           await window.modbit.subscribe(sessionId, "0");
         }
@@ -223,6 +236,7 @@ export function useApp() {
           setTrusted(t.workspaceRoot);
         }
         const r = await window.modbit.createTask(sessionId, text, commandId, root, issue || undefined, isolate && root ? { isolation: "WORKTREE" } : {});
+        stateEpoch.current += 1;
         // Render from the durable id the Core returned; the events will follow.
         setModel((m) => {
           if (m.tasks.has(r.taskId)) return m;
@@ -247,7 +261,18 @@ export function useApp() {
           setError(`The task was created and not started, because the Core refused what was chosen for it: ${(e as Error).message}`);
           return;
         }
-        if (start && provider?.configured) await window.modbit.startTask(sessionId, r.taskId);
+        if (start) {
+          // The provider's state is read when the Core connects, and Run can be pressed before that read has answered (or after it
+          // failed). Not knowing is not "not set up": the Core is asked now, so the task is not left created and silently unstarted
+          // (CI run 44248897985: Run 54 ms after the Core connected, and the task stayed Queued).
+          let configured = provider?.configured;
+          if (configured === undefined) {
+            const p = await window.modbit.providerStatus();
+            setProvider(p);
+            configured = p.configured;
+          }
+          if (configured) await window.modbit.startTask(sessionId, r.taskId);
+        }
       } catch (e) {
         setError((e as Error).message);
         setCreateError((e as Error).message);

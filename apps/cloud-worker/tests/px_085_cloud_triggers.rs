@@ -671,9 +671,17 @@ async fn qual_px_085_the_workers_claim_loop_is_the_time_evaluator_two_workers_on
         .automation_set_clock_offset(due - real + 2_000)
         .await
         .unwrap();
-    let run = until("the schedule's run to appear", 60, async || {
+    // A firing is recorded (PENDING, no task yet) in one transaction and its
+    // task and session are created in a second (`record_firing`, then
+    // `dispatch_firing`), so the run row is listed before it has a session.
+    // Wait for the dispatched row: CI run 43983250099 read the row between the
+    // two and unwrapped a null `session_id`.
+    let run = until("the schedule's run to be dispatched", 60, async || {
         let (_, r) = api.get(&a, &format!("/v1/automations/{id}/runs")).await;
-        r["runs"].as_array().and_then(|x| x.first().cloned())
+        r["runs"]
+            .as_array()
+            .and_then(|x| x.first().cloned())
+            .filter(|run| run["session_id"].is_string())
     })
     .await;
     assert_eq!(run["trigger_kind"], "schedule");
