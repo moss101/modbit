@@ -522,7 +522,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-119/mutation-check.txt` | retained evidence | 3062 | `c676960f744ef7db30ab7f01409d0b935f68b0743af013c26163423367bcce1d` |
 | `evidence/m10/PX-122/mutation-check.txt` | retained evidence | 2670 | `d2ff7b7bd86b5e8b3d53186d6236e2f1082234c5b6ab1e5717aa742626598314` |
 | `evidence/m10/PX-123/mutation-check.txt` | retained evidence | 3103 | `632b9e3b5aeefeee1c2308225abe1bca8f0eb5071624a401345ab3466fff7b94` |
-| `evidence/m10/PX-125/TASK_CARD.md` | retained evidence | 6975 | `2dd380c87c58545828a427d562fe4ad5f0158236c0267c2baeff466ef77e187b` |
+| `evidence/m10/PX-125/TASK_CARD.md` | retained evidence | 7341 | `843edac59b6185cf193d910f83b028147b9cdfce5f2422e2fcb3353bd404aebe` |
+| `evidence/m10/PX-125/ci-run-44826858961.json` | retained evidence | 65329 | `0a1d20d4514740f97115485d2ae93caefb922c833ae36021e90d099110549788` |
 | `evidence/m10/PX-125/mutation-redaction-skipped.log` | retained evidence | 352 | `ccfe78b495445674cf3a16979f74ebff87168908cca1942c75d215e47a09df04` |
 | `evidence/m10/PX-125/px125-live.log` | retained evidence | 615 | `4dda893b40a36453b637d1c18671f81bf36a09f53475f672fd5f4b3930b4b27b` |
 | `evidence/m10/PX-130/TASK_CARD.md` | retained evidence | 3333 | `32f0be70ed544519250529ff9e869ba690a999c7140a415296c4dfc142748429` |
@@ -2554,8 +2555,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/zcode-ui/reference/zcode-colors-rgba.json` | retained evidence | 18690 | `76372c3edbcd50fe596d5e4b7fcd7991adab9686588ddc578a728afa24b4f028` |
 | `evidence/zcode-ui/reference/zcode-computed.json` | retained evidence | 718674 | `9ae8821ce72aa0fff3be44aacd0f4c9d995465c54bad7f17d1a81f92841d1c2d` |
 | `evidence/zcode-ui/reference/zcode-tokens-resolved.json` | retained evidence | 30635 | `066725c00059a05d073fbcdac9a8d965eab05f05c1f5df16e654854ff3e22b91` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 47980 | `e4f73cce7ae8536557495bbda9bb956d52e03aab4b25f55b9ff33c54f8c9979d` |
-| `graph/project-graph.json` | project driver graph with live status | 2641141 | `bc3efece4f756aa53f5c019f4e58fd24aef4ddf37b30f71b14451a4f5a884c34` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 47980 | `101cb3cf6dcf25d2ffcafc4a1f900062c73f86a1ea26409156ad7cb81c799dc9` |
+| `graph/project-graph.json` | project driver graph with live status | 2641609 | `032f0489ef408a7eb2b55d6a3301541db54e00a2a0a548e5cff1b8336912713a` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 69551 | `75bcc309c03df0b898705f3bf58a8c289431dc60cbaf52e1c38f4c5d41d06dd7` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |

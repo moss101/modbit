@@ -46,8 +46,8 @@ macOS 27.0.1 arm64, rustc 1.97.1, the real `modbit-core` binary, real GitHub (ap
 - The live test runs on this macOS machine only. CI has no repository secrets, so no workflow runs it; `tools/integrations.json` still lists `forge.github` as deferred under DR-M6-002 and `integration_gate.py --release` still fails on it. Closing that needs the repository secrets `MODBIT_GITHUB_TOKEN` and `MODBIT_GITHUB_TEST_REPO` and a `live_`-named test that the live workflow selects (tools/integration_gate.py). That is the owner's call and a separate change; it was not made here.
 - The token expires on 2026-12-20; a rerun after that needs a new one.
 - Every run creates and removes a branch and a pull request on the scratch repository (it shows as closed pull requests there).
-- Not sealed: sealing is the owner's.
+- CI run 44826858961 on the PR's final head a490f58f: all 19 checks green after one retry of the Ubuntu Rust job, which had failed on the PX-153 restart test (a known flake of the harness, fixed separately in #240; this change touches no product code). CI does not run the live test (no secrets); the real-GitHub evidence is `px125-live.log`. Merged as cf2a5ebe (#239). The owner asked for the seal on 2026-11-21 (`ci-run-44826858961.json`).
 
 ## Status
 
-E2E_PROVEN on macOS against real GitHub; COMPLETE is for the owner.
+COMPLETE (sealed 2026-11-21).

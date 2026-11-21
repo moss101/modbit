@@ -38886,7 +38886,7 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-125",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "E2E_PROVEN",
+   "status": "COMPLETE",
    "evidence": [
     "commit:d10d46d7",
     "run:38990216920",
@@ -38896,7 +38896,10 @@
     "artifact:evidence/m10/PX-125/px125-live.log",
     "commit:7ead72f38588862cffc81ed80680a4fa9062da0c",
     "artifact:evidence/m10/PX-125/TASK_CARD.md",
-    "artifact:evidence/m10/PX-125/mutation-redaction-skipped.log"
+    "artifact:evidence/m10/PX-125/mutation-redaction-skipped.log",
+    "run:gha-44826858961",
+    "commit:cf2a5ebe846b3c0f2eb326066b48e49f7e1cd21a",
+    "artifact:evidence/m10/PX-125/ci-run-44826858961.json"
    ],
    "notes": [
     {
@@ -38916,10 +38919,16 @@
      "from": "REAL_TESTING",
      "to": "E2E_PROVEN",
      "note": "Production-equivalent proof on macOS against real GitHub; 403 and rate limits stay on the fake as the acceptance says; fine-grained tokens cannot read check runs (typed FORGE_FORBIDDEN); CI has no secrets so no workflow runs it; sealing is the owner's"
+    },
+    {
+     "at": "2026-11-21T06:41:30Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Real-GitHub live leg merged as cf2a5ebe (PR 239; CI green after one retry of an unrelated flake); owner asked for the seal. Real-GitHub proof is local (CI has no secrets); fine-grained tokens cannot read check runs"
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-11-20T22:06:57Z"
+   "status_changed_on": "2026-11-21T06:41:30Z"
   },
   {
    "id": "PX-126",
