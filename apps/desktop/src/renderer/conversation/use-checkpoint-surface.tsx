@@ -174,21 +174,33 @@ export function useCheckpointSurface(p: CheckpointSurfaceInput): { context: Chec
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setUndo(null);
       }}
     >
-      {undo ? (
-        <>
-          <span className="meta" data-testid="undo-all-armed" role="status">
-            {restoreSentence(changeCounts(undo.preview.entries))}
-          </span>
-          <Button size="sm" variant="danger" onClick={() => void confirmUndo()} disabled={undoBusy} data-testid="undo-all" data-armed="true">
-            Click again to undo all
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => setUndo(null)} data-testid="undo-all-cancel">
-            Cancel
-          </Button>
-        </>
-      ) : (
-        <Button size="sm" variant="ghost" onClick={() => void armUndo()} disabled={disabled !== "" || undoTarget === null || undoBusy} title={disabled || (undoTarget === null ? "No recorded state from before the agent started changing files." : undefined)} data-testid="undo-all" data-armed="false">
-          Undo all
+      {/* One button in both states, never natively disabled while the Core answers: a focused button that is disabled or
+          replaced is blurred by the browser, and that blur, landing between the arm request and its render, read as the
+          person leaving and disarmed it. Keeping the element keeps the keyboard's place on it too. */}
+      {undo && (
+        <span className="meta" data-testid="undo-all-armed" role="status">
+          {restoreSentence(changeCounts(undo.preview.entries))}
+        </span>
+      )}
+      <Button
+        size="sm"
+        variant={undo ? "danger" : "ghost"}
+        onClick={() => {
+          if (undoBusy) return;
+          void (undo ? confirmUndo() : armUndo());
+        }}
+        disabled={!undo && (disabled !== "" || undoTarget === null)}
+        aria-disabled={undoBusy || undefined}
+        aria-busy={undoBusy || undefined}
+        title={undo ? undefined : disabled || (undoTarget === null ? "No recorded state from before the agent started changing files." : undefined)}
+        data-testid="undo-all"
+        data-armed={undo ? "true" : "false"}
+      >
+        {undo ? "Click again to undo all" : "Undo all"}
+      </Button>
+      {undo && (
+        <Button size="sm" variant="ghost" onClick={() => setUndo(null)} data-testid="undo-all-cancel">
+          Cancel
         </Button>
       )}
     </span>
