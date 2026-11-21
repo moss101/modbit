@@ -41387,11 +41387,19 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-211",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "IMPLEMENTING",
+   "status": "E2E_PROVEN",
    "evidence": [
-    "artifact:evidence/m10/PX-211/TASK_CARD.md"
+    "artifact:evidence/m10/PX-211/TASK_CARD.md",
+    "commit:46e6f7f2",
+    "test:services/modbit-core/tests/px_211_pull_request_state.rs",
+    "artifact:evidence/m10/PX-211/px211-core.log",
+    "artifact:evidence/m10/PX-211/mutation-checks-2026-11-21.txt",
+    "artifact:evidence/m10/PX-211/core-suite.log",
+    "test:apps/desktop/e2e/px-211-pull-request-state.spec.ts",
+    "artifact:evidence/m10/PX-211/px211-e2e-related.log",
+    "artifact:evidence/m10/PX-211/evidence.json"
    ],
-   "status_changed_on": "2026-11-21T09:31:04Z"
+   "status_changed_on": "2026-11-21T10:22:11Z"
   },
   {
    "id": "PX-212",
