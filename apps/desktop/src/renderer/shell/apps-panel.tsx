@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { PaneWindowKind, TerminalViewJson } from "../../preload/preload.ts";
 import type { TaskCard } from "../model.ts";
+import type { PullRequestStateView } from "../../shared/conversation-types.ts";
 import { ActivityApp } from "../apps/activity-app.tsx";
 import { BackgroundApp } from "../apps/background-app.tsx";
 import { BrowserApp } from "../apps/browser-app.tsx";
@@ -55,6 +56,8 @@ export interface AppsPanelProps {
   onPopOut?: ((kind: PaneWindowKind, size: { width: number; height: number } | undefined) => void) | undefined;
   /** REQ-PX-209: a file the palette asked to show; the Files pane opens its folders and shows it (`n` changes per request). */
   fileRequest?: { path: string; n: number } | null | undefined;
+  /** REQ-PX-211: the task's pull request as its header carries it (the Core's record and latest read); absent when none. */
+  pullRequest?: PullRequestStateView | undefined;
 }
 
 /** The panes that can stand in a window of their own (main decides the same list: pane-windows.ts). */
@@ -106,7 +109,7 @@ export function AppsPanel(p: AppsPanelProps) {
       case "background":
         return <BackgroundApp taskId={p.taskId} sessionId={p.sessionId || null} subtasks={p.subtasks} terminals={p.terminals} onOpenTask={p.onOpenTask} onOpenTerminal={p.onOpenTerminal} onStopChild={p.onStopChild} onTerminalsChanged={p.onTerminalsChanged} />;
       case "pull-request":
-        return <PullRequestApp sessionId={p.sessionId} taskId={p.taskId} refreshKey={p.refreshKey} />;
+        return <PullRequestApp sessionId={p.sessionId} taskId={p.taskId} refreshKey={p.refreshKey} pullRequest={p.pullRequest} />;
     }
   };
 

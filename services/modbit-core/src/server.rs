@@ -398,6 +398,8 @@ pub async fn run_as(
     // PX-043: background processes that end are recorded on their task's log
     // by the Core noticing, so the agent can be told once.
     crate::background_process::spawn_watcher(Arc::clone(&core));
+    // PX-211: open pull requests are read again on a schedule.
+    crate::pull_request_state::spawn_watcher(Arc::clone(&core));
     let shutdown = shutdown_signal();
     tokio::pin!(shutdown);
     // Idle exit (headless clients): a Core spawned by a CLI stays up for later
@@ -834,6 +836,9 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "OpenPullRequest",
                     "UpdatePullRequest",
                     "IngestCiResults",
+                    "RefreshPullRequest",
+                    "GetPullRequestPreferences",
+                    "SetPullRequestPreferences",
                     "IngestReviewComments",
                     "CompensateEffect",
                     "UndoToolCall",
@@ -1555,6 +1560,13 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         // an archive are the person's own curation of a session.
         "GetTranscript" | "GetAgentHeaders" | "SearchConversations" => "events.subscribe",
         "MarkRead" | "ArchiveTask" => "session.control",
+        // PX-211: reading a task's pull request again is the same class as
+        // reading its CI runs; the archive-after-merge preference is the
+        // person's curation of the session, like an archive; reading it is a
+        // read.
+        "RefreshPullRequest" => "review.decide",
+        "SetPullRequestPreferences" => "session.control",
+        "GetPullRequestPreferences" => "events.subscribe",
         // PX-063: a project is the person's own grouping of their tasks; the
         // reads are reads of the log.
         "CreateProject" | "RenameProject" | "ArchiveProject" | "AddProjectMember"
@@ -8308,6 +8320,123 @@ pub(crate) async fn handle_command_as(
             match crate::ci_evidence::ingest(core, task_id, actor, env.expected_generation).await {
                 Ok(v) => accept(cid, false, v.encode_to_vec()),
                 Err((code, msg)) => reject(cid, &code, msg),
+            }
+        }
+        // PX-211: read the task's pull request again through the forge
+        // adapter and record what it said.
+        "RefreshPullRequest" => {
+            let Ok(p) = wire::RefreshPullRequest::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "RefreshPullRequest");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let session_id = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t.session_id,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            match crate::pull_request_state::refresh(
+                core,
+                task_id,
+                actor,
+                env.expected_generation,
+                crate::pull_request_state::Trigger::Request,
+            )
+            .await
+            {
+                Ok(v) => accept(cid, false, v.encode_to_vec()),
+                Err((code, msg)) => reject(cid, &code, msg),
+            }
+        }
+        // PX-211: the session's archive-after-merge preference.
+        "GetPullRequestPreferences" | "SetPullRequestPreferences" => {
+            let (session_id, want) = if env.command_type == "GetPullRequestPreferences" {
+                let Ok(p) = wire::GetPullRequestPreferences::decode(env.payload.as_slice()) else {
+                    return reject(cid, "BAD_PAYLOAD", "GetPullRequestPreferences");
+                };
+                (p.session_id, None)
+            } else {
+                let Ok(p) = wire::SetPullRequestPreferences::decode(env.payload.as_slice()) else {
+                    return reject(cid, "BAD_PAYLOAD", "SetPullRequestPreferences");
+                };
+                (p.session_id, Some(p.archive_after_merge))
+            };
+            let Some(session_id) = session_id
+                .as_ref()
+                .and_then(id16)
+                .map(SessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "session_id required");
+            };
+            match core.store.lock().await.session(&session_id) {
+                Ok(Some(_)) => {}
+                Ok(None) => return reject(cid, "UNKNOWN_SESSION", session_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            }
+            let Some(want) = want else {
+                let store = core.store.lock().await;
+                return accept(
+                    cid,
+                    false,
+                    crate::pull_request_state::preferences_view(&store, session_id).encode_to_vec(),
+                );
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            let mut store = core.store.lock().await;
+            match store.prior_command(&record(&env.command_type)) {
+                Ok(Some(_)) => {
+                    return accept(
+                        cid,
+                        true,
+                        crate::pull_request_state::preferences_view(&store, session_id)
+                            .encode_to_vec(),
+                    );
+                }
+                Ok(None) => {}
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            }
+            // The same value again records nothing.
+            if crate::pull_request_state::preference(&store, session_id).0 == want {
+                return accept(
+                    cid,
+                    false,
+                    crate::pull_request_state::preferences_view(&store, session_id).encode_to_vec(),
+                );
+            }
+            let event = crate::pull_request_state::preference_event(want);
+            let req = AppendRequest {
+                tenant_id: core.tenant_id,
+                session_id,
+                task_id: None,
+                run_id: None,
+                turn_id: None,
+                step_id: None,
+                aggregate_type: AggregateType::Session,
+                aggregate_id: *session_id.as_bytes(),
+                expected_sequence: None,
+                events: vec![typed(event.event_type(), &event, actor)],
+            };
+            match store.execute_command(record(&env.command_type), req) {
+                Ok(outcome) => {
+                    let (events, replayed) = split(outcome);
+                    let offset = events.last().map(|e| e.offset).unwrap_or(0);
+                    if !replayed && offset > 0 {
+                        core.last_offset.send_replace(offset);
+                    }
+                    accept(
+                        cid,
+                        replayed,
+                        crate::pull_request_state::preferences_view(&store, session_id)
+                            .encode_to_vec(),
+                    )
+                }
+                Err(e) => reject(cid, error_code(&e), e.to_string()),
             }
         }
         "GetRecoveryReport" => {

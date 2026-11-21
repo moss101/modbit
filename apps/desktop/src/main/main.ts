@@ -15,7 +15,7 @@ import { serializeEvent, type WireEvent } from "./events.js";
 import { BrowserHost } from "./browser.js";
 import { CredentialStore } from "./credentials.js";
 import { platformState } from "./platform.js";
-import { headersView, observeStreamEvent, registerConversationHandlers } from "./conversation-ipc.js";
+import { headersView, observeStreamEvent, pullRequestView, registerConversationHandlers } from "./conversation-ipc.js";
 import { notificationTarget, UpdatesRecord, withReadState, type HeaderFacts } from "./inbox-record.js";
 import { registerComposerHandlers, requireSkillNames } from "./composer-ipc.js";
 import { registerChangesHandlers } from "./changes-ipc.js";
@@ -675,6 +675,29 @@ handle("review:ingestCi", async (_e: IpcMainInvokeEvent, sessionId: unknown, tas
   if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
   const r = await c.ingestCiResults(sid, tid);
   return { commit: r.commit, checks: r.checks.length, refused: r.rejected.length, evidenceClass: r.evidenceClass, offset: r.offset.toString() };
+});
+// PX-211: the Core reads the task's pull request again (state and checks) through the forge adapter and records what it said;
+// this process makes no forge call.
+handle("review:refreshPullRequest", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown) => {
+  const sid = requireSessionId(sessionId);
+  const tid = requireTaskId(taskId);
+  const c = requireClient();
+  if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
+  const r = await c.refreshPullRequest(sid, tid);
+  return { pullRequest: r.pullRequest ? pullRequestView(r.pullRequest) : null, offset: r.offset.toString(), archived: r.archived, archiveOffset: r.archiveOffset.toString() };
+});
+// PX-211: the session's archive-after-merge preference, held by the Core (its schedule archives with nobody connected).
+handle("prefs:pullRequests", async (_e: IpcMainInvokeEvent, sessionId: unknown) => {
+  const r = await requireClient().pullRequestPreferences(requireSessionId(sessionId));
+  return { archiveAfterMerge: r.archiveAfterMerge, offset: r.offset.toString() };
+});
+handle("prefs:setPullRequests", async (_e: IpcMainInvokeEvent, sessionId: unknown, archiveAfterMerge: unknown) => {
+  const sid = requireSessionId(sessionId);
+  if (typeof archiveAfterMerge !== "boolean") throw new Error("BAD_ARGUMENT: archiveAfterMerge must be a boolean");
+  const c = requireClient();
+  if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
+  const r = await c.setPullRequestPreferences(sid, archiveAfterMerge);
+  return { archiveAfterMerge: r.archiveAfterMerge, offset: r.offset.toString() };
 });
 handle("review:ingestComments", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown) => {
   const sid = requireSessionId(sessionId);

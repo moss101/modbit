@@ -166,6 +166,13 @@ import {
   IngestCiResultsSchema,
   CiResultsIngestedSchema,
   type CiResultsIngested,
+  RefreshPullRequestSchema,
+  PullRequestRefreshedSchema,
+  type PullRequestRefreshed,
+  GetPullRequestPreferencesSchema,
+  SetPullRequestPreferencesSchema,
+  PullRequestPreferencesSchema,
+  type PullRequestPreferences,
   IngestReviewCommentsSchema,
   ReviewCommentsIngestedViewSchema,
   type ReviewCommentsIngestedView,
@@ -1015,6 +1022,32 @@ export class CoreClient {
     const payload = toBinary(IngestCiResultsSchema, create(IngestCiResultsSchema, { taskId: { value: unhex(taskId) } }));
     const ack = await this.command("IngestCiResults", payload, undefined, this.leases.get(sessionId), sessionId);
     return fromBinary(CiResultsIngestedSchema, ack.result);
+  }
+
+  /**
+   * PX-211: ask the Core to read the task's pull request again (state and
+   * checks) through the forge adapter and record what it said. The client
+   * makes no forge call. With the session's archive-after-merge preference
+   * on, the read that first finds the request merged archives the task.
+   */
+  async refreshPullRequest(sessionId: string, taskId: string): Promise<PullRequestRefreshed> {
+    const payload = toBinary(RefreshPullRequestSchema, create(RefreshPullRequestSchema, { taskId: { value: unhex(taskId) } }));
+    const ack = await this.command("RefreshPullRequest", payload, undefined, this.leases.get(sessionId), sessionId);
+    return fromBinary(PullRequestRefreshedSchema, ack.result);
+  }
+
+  /** PX-211: the session's archive-after-merge preference (off until set). */
+  async pullRequestPreferences(sessionId: string): Promise<PullRequestPreferences> {
+    const payload = toBinary(GetPullRequestPreferencesSchema, create(GetPullRequestPreferencesSchema, { sessionId: { value: unhex(sessionId) } }));
+    const ack = await this.command("GetPullRequestPreferences", payload);
+    return fromBinary(PullRequestPreferencesSchema, ack.result);
+  }
+
+  /** PX-211: set the session's archive-after-merge preference; the same value again records nothing. */
+  async setPullRequestPreferences(sessionId: string, archiveAfterMerge: boolean): Promise<PullRequestPreferences> {
+    const payload = toBinary(SetPullRequestPreferencesSchema, create(SetPullRequestPreferencesSchema, { sessionId: { value: unhex(sessionId) }, archiveAfterMerge }));
+    const ack = await this.command("SetPullRequestPreferences", payload, undefined, this.leases.get(sessionId), sessionId);
+    return fromBinary(PullRequestPreferencesSchema, ack.result);
   }
 
   /** PX-127: ask the Core to read the pull request's comments; allowed authors' comments addressed to Modbit become untrusted steering. */

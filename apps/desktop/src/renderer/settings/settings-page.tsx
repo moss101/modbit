@@ -52,7 +52,7 @@ export const SETTINGS_ENTRIES: readonly SettingsEntry[] = [
   { id: "appearance", group: "App", label: "Appearance", icon: "eye", keywords: "theme dark light high contrast system zoom size density comfortable compact rows task list second line group grouping project status environment date" },
   { id: "notifications", group: "App", label: "Notifications", icon: "clock", keywords: "alerts attention completion failure quiet hours" },
   { id: "shortcuts", group: "App", label: "Shortcuts", icon: "circle-question-mark", keywords: "keyboard keys shortcuts chords bindings" },
-  { id: "tools", group: "App", label: "Automations and worktrees", icon: "git-branch", keywords: "automations worktrees dashboard cost" },
+  { id: "tools", group: "App", label: "Automations and worktrees", icon: "git-branch", keywords: "automations worktrees dashboard cost pull request merge merged archive after merge" },
   { id: "about", group: "About", label: "This build", icon: "file-text", keywords: "version platform languages support update updates" },
 ];
 
@@ -86,8 +86,8 @@ function Row({ title, detail, children }: { title: ReactNode; detail?: ReactNode
   );
 }
 
-function Toggle({ testId, label, checked, onChange }: { testId: string; label: string; checked: boolean; onChange: (on: boolean) => void }) {
-  return <input type="checkbox" className="settings-toggle" role="switch" aria-label={label} data-testid={testId} checked={checked} onChange={(e) => onChange(e.target.checked)} />;
+function Toggle({ testId, label, checked, onChange, disabled = false }: { testId: string; label: string; checked: boolean; onChange: (on: boolean) => void; disabled?: boolean }) {
+  return <input type="checkbox" className="settings-toggle" role="switch" aria-label={label} data-testid={testId} checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />;
 }
 
 const NOTIFY_WORDS: Record<NotificationKind, [string, string]> = {
@@ -112,9 +112,11 @@ export interface SettingsPageProps {
   onDashboard: (() => void) | null;
   onShortcuts: () => void;
   onComputerPermissions: () => void;
+  /** The session the archive-after-merge preference belongs to (REQ-PX-211); null before one exists. */
+  sessionId?: string | null;
 }
 
-export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, density, onDensity, onCustomize, onAutomations, onWorktrees, onDashboard, onShortcuts, onComputerPermissions }: SettingsPageProps) {
+export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, density, onDensity, onCustomize, onAutomations, onWorktrees, onDashboard, onShortcuts, onComputerPermissions, sessionId = null }: SettingsPageProps) {
   const { core, provider, credentials, credentialForm, setCredentialForm, credentialError, setCredentialError, refreshCredentials, prefs, settings, savePrefs, platform, languages } = app;
   const connected = core.state === "connected";
   // The task list's own preferences (one copy in this window, agents/prefs.ts): a choice here is the list's at once.
@@ -145,6 +147,29 @@ export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, density
   const removeSite = async (origin: string) => {
     await window.modbit.removeBrowserSite(origin);
     loadSites();
+  };
+  // REQ-PX-211: archive after merge, held by the Core for the session (its schedule archives with nobody connected). Off until set.
+  const [archiveAfterMerge, setArchiveAfterMerge] = useState<boolean | null>(null);
+  const [archivePrefError, setArchivePrefError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!connected || !sessionId) return;
+    let live = true;
+    void window.modbit
+      .pullRequestPreferences(sessionId)
+      .then((r) => live && setArchiveAfterMerge(r.archiveAfterMerge))
+      .catch((e: Error) => live && setArchivePrefError(e.message));
+    return () => {
+      live = false;
+    };
+  }, [connected, sessionId]);
+  const changeArchiveAfterMerge = async (on: boolean) => {
+    if (!sessionId) return;
+    setArchivePrefError(null);
+    try {
+      setArchiveAfterMerge((await window.modbit.setPullRequestPreferences(sessionId, on)).archiveAfterMerge);
+    } catch (e) {
+      setArchivePrefError((e as Error).message.replace(/^Error invoking remote method '[^']*': (Error: )?/, ""));
+    }
   };
   const noMatch = !SETTINGS_ENTRIES.some((e) => settingsMatches(e, query));
   const providerWords = provider === null ? "Reading the provider's state…" : provider.configured ? `${provider.endpoints.join(", ") || provider.provider} is set up. ${provider.stored ? "The key is in the OS keychain." : "The key is held for this session only."}` : "No provider is set up, so tasks can be created but will not start.";
@@ -451,6 +476,22 @@ export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, density
         </Section>
 
         <Section id="tools" query={query}>
+          <div className="settings-card" data-testid="settings-pull-requests">
+            <Row
+              title="Archive after merge"
+              detail={
+                <span data-testid="settings-archive-after-merge-detail">
+                  {archivePrefError
+                    ? `The preference could not be read or changed: ${archivePrefError}`
+                    : archiveAfterMerge === null
+                      ? "Reading the preference…"
+                      : "When the Core reads a task's pull request as merged, it archives the task. Undo brings it back. Off until you turn it on."}
+                </span>
+              }
+            >
+              <Toggle testId="settings-archive-after-merge" label="Archive after merge" checked={archiveAfterMerge === true} disabled={archiveAfterMerge === null} onChange={(on) => void changeArchiveAfterMerge(on)} />
+            </Row>
+          </div>
           <div className="settings-card">
             {(
               [

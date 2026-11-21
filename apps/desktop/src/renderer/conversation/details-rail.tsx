@@ -21,6 +21,8 @@ import type { RunModeState } from "../approvals/run-mode.tsx";
 import { effectWords } from "../approvals/model.ts";
 import type { CheckpointContext } from "./checkpoint-controls.tsx";
 import { BackgroundList } from "./background-list.tsx";
+import { requestStateWords } from "../apps/pull-request-model.ts";
+import { relativeAge } from "../agents/list-model.ts";
 import { budgetLines, economicsFacts, evidenceWords, changeWords, checkpointHeading, checkpointLabel, countWords, folderWords, locationWords, modelCallWords, restorable, spendWords, toolServers, verificationWords, type RailSource } from "./rail-model.ts";
 
 export interface DetailsRailProps {
@@ -207,6 +209,9 @@ export function DetailsRail(p: DetailsRailProps) {
   const location = locationWords(header?.executionLocation, localMachine());
   const folder = header ? folderWords(header.checkoutRoot || header.workspaceRoot) : null;
   const worktree = Boolean(header?.checkoutRoot);
+  // REQ-PX-211: the task's pull request as its header carries it: the number, the state and checks the Core last read, and when.
+  const pr = requestStateWords(header?.pullRequest);
+  const prAge = header?.pullRequest ? relativeAge(header.pullRequest.readAtMs, Date.now()) : "";
   const mode = runMode.info;
   const percent = percentUsed(accounting);
   const servers = toolServers(reads.extensions);
@@ -312,6 +317,14 @@ export function DetailsRail(p: DetailsRailProps) {
             ) : (
               <span className="rail-dim">branch not read yet</span>
             )}
+          </Row>
+        )}
+        {pr && header?.pullRequest && (
+          <Row icon="git-compare" aside={pr.read && prAge ? <span {...src("agentHeaders")}>{prAge === "now" ? "read just now" : `read ${prAge} ago`}</span> : undefined} testid="rail-pull-request">
+            <span data-testid="rail-pull-request-state" data-state={header.pullRequest.state || "UNREAD"} data-checks={header.pullRequest.checks || "UNREAD"} title={header.pullRequest.url} {...src("agentHeaders")}>
+              {pr.number} {pr.state}
+              {pr.checks && <span className="rail-dim"> · {pr.checks}</span>}
+            </span>
           </Row>
         )}
         {mode && (

@@ -18,6 +18,7 @@ import { NewProjectDialog, RenameProjectDialog, SaveViewDialog } from "../projec
 import { archiveProject as archiveProjectWithUndo } from "../projects/archive-project.ts";
 import { newViewId, refusalSentence, workspaceChoices } from "../projects/project-model.ts";
 import type { ProjectsState } from "../projects/use-projects.ts";
+import { mergeArchiveWatcher } from "../apps/pull-request-model.ts";
 
 /** The undo stays at least this long (AFW-B08: not less than 8 s). */
 export const UNDO_MS = 12_000;
@@ -152,6 +153,46 @@ export function AgentList({ onSplit, splitIds, sessionId, connected, selectedTas
       timers.clear();
     };
   }, []);
+
+  // REQ-PX-211: the Core archived a task because its pull request merged and the preference is on: the same notice and Undo as an
+  // archive made here (the Core's record is the archive; Undo is the ordinary ArchiveTask with archived = false).
+  // One watcher for the window's life: it must remember the read that came before the archive across re-renders.
+  const headersRef = useRef(agents.headers);
+  headersRef.current = agents.headers;
+  const agentsRef = useRef(agents);
+  agentsRef.current = agents;
+  const mergedRef = useRef<ReturnType<typeof mergeArchiveWatcher> | null>(null);
+  useEffect(() => {
+    if (!sessionId) return;
+    const merged = (mergedRef.current ??= mergeArchiveWatcher());
+    return window.modbit.onEvent((raw) => {
+      const taskId = merged(raw);
+      if (!taskId) return;
+      const id = `archive:${taskId}`;
+      if (undoTimers.current.has(id)) return;
+      const title = headersRef.current.find((h) => h.taskId === taskId)?.title || "the task";
+      trays.present({
+        id,
+        tone: "info",
+        title: `Archived “${title}”`,
+        body: "Its pull request merged and archive after merge is on. It is hidden from the list, not deleted.",
+        actions: [
+          {
+            id: "undo",
+            label: "Undo",
+            primary: true,
+            run: () => {
+              void agentsRef.current.restore(taskId).then((u) => {
+                if (u.ok) dismissUndo(taskId);
+                else setNote(`Could not undo: ${u.message}`);
+              });
+            },
+          },
+        ],
+      });
+      undoTimers.current.set(id, setTimeout(() => dismissUndo(taskId), UNDO_MS));
+    });
+  }, [sessionId, dismissUndo]);
 
   const doArchive = useCallback(
     async (taskId: string, title: string, stopFirst: boolean) => {

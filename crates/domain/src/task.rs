@@ -2987,6 +2987,49 @@ pub enum TaskEvent {
         /// `ci`.
         provenance: String,
     },
+    /// `ForgePullRequestStateRead` (PX-211, DR-PX-2026-11-11-021 MWS-17):
+    /// what the forge said of the pull request this task opened, read through
+    /// `forge.pr.read` under the task's lease — its state and a summary of
+    /// its checks — and when. It is the only source of the state a header, a
+    /// pane or a row shows: a state that was not read is never shown. An
+    /// audit record about the task, valid in every state.
+    ForgePullRequestStateRead {
+        /// Repository owner.
+        owner: String,
+        /// Repository.
+        repo: String,
+        /// Pull request number.
+        number: u64,
+        /// Web URL as read.
+        url: String,
+        /// `OPEN` | `CLOSED` | `MERGED`.
+        state: String,
+        /// The forge marks it a draft.
+        draft: bool,
+        /// The head commit the forge reported.
+        head_sha: String,
+        /// The commit this Core pushed for the request ("" when the branch
+        /// is not here); a head that differs was moved by someone else.
+        pushed_sha: String,
+        /// `NONE` (no check run) | `PENDING` | `FAILING` | `PASSING` |
+        /// `UNAVAILABLE` (the forge's check runs could not be read).
+        checks: String,
+        /// Check runs the forge listed for the head.
+        checks_total: u32,
+        /// Completed with success, neutral or skipped.
+        checks_passing: u32,
+        /// Completed with failure, timed out, cancelled, action required or
+        /// startup failure.
+        checks_failing: u32,
+        /// Not completed.
+        checks_pending: u32,
+        /// Names of the runs that did not pass (at most 20; untrusted labels).
+        failing_checks: Vec<String>,
+        /// `REQUEST` (a person asked) | `SCHEDULE` (the Core's refresh).
+        trigger: String,
+        /// The `forge.pr.read` call that read it.
+        tool_call_id: String,
+    },
     /// `RequestOutcomeRecorded` (REQ-EPR-010, docs/27 §11.2-11.3, docs/38
     /// "CompleteAccountingAndAttribution" step 4): the request's accounting
     /// and outcome record as of this point — every leg and attempt with its
@@ -3355,6 +3398,7 @@ impl TaskEvent {
             Self::ToolCallReconciled { .. } => "ToolCallReconciled",
             Self::UsageReconciled { .. } => "UsageReconciled",
             Self::CiEvidenceRecorded { .. } => "CiEvidenceRecorded",
+            Self::ForgePullRequestStateRead { .. } => "ForgePullRequestStateRead",
             Self::ReviewCommentsIngested { .. } => "ReviewCommentsIngested",
             Self::PolicyGenerationChanged { .. } => "PolicyGenerationChanged",
             Self::CapabilitySnapshotRecorded { .. } => "CapabilitySnapshotRecorded",
@@ -3614,6 +3658,7 @@ impl Task {
             // CI results (PX-009), which finish on the forge's schedule.
             TaskEvent::SandboxReleased { .. }
             | TaskEvent::CiEvidenceRecorded { .. }
+            | TaskEvent::ForgePullRequestStateRead { .. }
             | TaskEvent::ReviewCommentsIngested { .. }
             | TaskEvent::UsageReconciled { .. }
             | TaskEvent::RequestOutcomeRecorded { .. }

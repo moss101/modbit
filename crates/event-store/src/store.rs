@@ -1646,6 +1646,23 @@ impl EventStore {
         crate::digest::task_digests(&self.conn, session_id)
     }
 
+    /// The sessions where a task opened a pull request (PX-211): the only
+    /// sessions the Core's scheduled refresh has anything to read for.
+    pub fn sessions_with_pull_requests(&self) -> Result<Vec<SessionId>> {
+        let mut stmt = self.conn.prepare_cached(
+            "SELECT DISTINCT session_id FROM events
+             WHERE event_type = 'ForgePullRequestOpened' AND session_id IS NOT NULL",
+        )?;
+        let rows = stmt.query_map([], |r| {
+            Ok(SessionId::from_bytes(
+                r.get::<_, Vec<u8>>(0)?
+                    .try_into()
+                    .map_err(|_| rusqlite::Error::InvalidQuery)?,
+            ))
+        })?;
+        Ok(rows.collect::<std::result::Result<_, _>>()?)
+    }
+
     /// Assistant streams (PX-041) that have deltas and no closing record:
     /// the streams a dead process left open, oldest first.
     pub fn open_streams(&self) -> Result<Vec<[u8; 16]>> {

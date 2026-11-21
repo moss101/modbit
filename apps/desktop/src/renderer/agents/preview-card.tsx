@@ -3,13 +3,14 @@
  * It shows the Core's state with its reason or next action, the last line the assistant wrote (MWS-20, REQ-PX-218: the header's
  * own field, capped and redacted by the Core), the size of the change, the context in use and Open. Everything on it is the
  * task's header and the facts the list already holds: it makes no read of its own and opens no transcript. Open in split view
- * puts the task beside the one in the centre (MWS-11, REQ-PX-204), or says why it cannot. The pull request waits for the row
- * that delivers it (MWS-17).
+ * puts the task beside the one in the centre (MWS-11, REQ-PX-204), or says why it cannot. The task's pull request is the header's
+ * own field (MWS-17, REQ-PX-211): its number, the state and checks the Core last read, and when.
  */
 import { useEffect, useRef } from "react";
 import { Button, StatusDot, useLayer } from "@modbit/ui";
 import type { AgentHeaderView } from "../../shared/conversation-types.ts";
 import { CLASS_META, changeSize, previewReason, relativeAge, type RowFacts } from "./list-model.ts";
+import { requestStateWords } from "../apps/pull-request-model.ts";
 
 export interface PreviewCardProps {
   header: AgentHeaderView;
@@ -40,6 +41,8 @@ export function PreviewCard(p: PreviewCardProps) {
   const reason = previewReason(p.facts);
   const change = changeSize(h);
   const age = relativeAge(h.updatedAtMs, p.nowMs);
+  const pr = requestStateWords(h.pullRequest);
+  const prAge = h.pullRequest ? relativeAge(h.pullRequest.readAtMs, p.nowMs) : "";
   return (
     <div
       className="agents-preview"
@@ -76,6 +79,13 @@ export function PreviewCard(p: PreviewCardProps) {
         <p className="agents-preview-last" data-testid="agent-preview-last">
           <span className="mb-sr-only">The assistant's last line: </span>
           {h.lastLine}
+        </p>
+      )}
+      {pr && (
+        <p className="agents-preview-pr" data-testid="agent-preview-pr" data-state={h.pullRequest?.state || "UNREAD"} data-checks={h.pullRequest?.checks || "UNREAD"}>
+          Pull request {pr.number} · {pr.state}
+          {pr.checks ? ` · ${pr.checks}` : ""}
+          {pr.read && prAge ? ` · read ${prAge === "now" ? "just now" : `${prAge} ago`}` : ""}
         </p>
       )}
       {(change || h.contextPercent > 0) && (

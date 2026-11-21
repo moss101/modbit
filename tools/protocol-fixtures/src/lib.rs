@@ -207,6 +207,29 @@ pub fn samples() -> Vec<Sample> {
             project_id: id(0x63),
             checkout_root: "/repo".into(),
             last_line: "The check passes now: 2 files changed.".into(),
+            pull_request: Some(TaskPullRequest {
+                owner: "o".into(),
+                repo: "r".into(),
+                number: 7,
+                url: "https://github.test/o/r/pull/7".into(),
+                opened_offset: 60,
+                state: "OPEN".into(),
+                draft: false,
+                checks: "FAILING".into(),
+                checks_total: 2,
+                checks_passing: 1,
+                checks_failing: 1,
+                checks_pending: 0,
+                failing_checks: vec!["lint".into()],
+                head_sha: "f".repeat(40),
+                pushed_sha: "f".repeat(40),
+                read_at: Some(prost_types::Timestamp {
+                    seconds: 1_700_000_200,
+                    nanos: 0,
+                }),
+                read_offset: 88,
+                trigger: "REQUEST".into(),
+            }),
         }],
         last_offset: 90,
         events_read: 0,
@@ -1435,7 +1458,16 @@ pub fn samples() -> Vec<Sample> {
                     "subagent": false, "archived": false, "executionLocation": "local",
                     "origin": "cli", "taskState": "ReadyForReview", "lastOffset": "90",
                     "readOffset": "40", "attentionItems": 0, "projectId": idhex(0x63), "checkoutRoot": "/repo",
-                    "lastLine": "The check passes now: 2 files changed."
+                    "lastLine": "The check passes now: 2 files changed.",
+                    "pullRequest": {
+                        "owner": "o", "repo": "r", "number": "7",
+                        "url": "https://github.test/o/r/pull/7", "openedOffset": "60",
+                        "state": "OPEN", "draft": false, "checks": "FAILING",
+                        "checksTotal": 2, "checksPassing": 1, "checksFailing": 1, "checksPending": 0,
+                        "failingChecks": ["lint"], "headSha": "f".repeat(40), "pushedSha": "f".repeat(40),
+                        "readAt": {"seconds": "1700000200", "nanos": 0},
+                        "readOffset": "88", "trigger": "REQUEST"
+                    }
                 }],
                 "lastOffset": "90", "eventsRead": "0", "objectsRead": "0"
             }),
@@ -2589,6 +2621,91 @@ pub fn samples() -> Vec<Sample> {
                 "snapshotMessages": 8, "usageOffset": "9007199254740995"
             }),
             decode: reencode::<NextPromptSuggestion>,
+        },
+        // REQ-PX-211: reading a task's pull request again, and the
+        // session's archive-after-merge preference.
+        Sample {
+            name: "refresh_pull_request",
+            type_name: "modbit.v1.RefreshPullRequest",
+            bytes: RefreshPullRequest { task_id: id(0x21) }.encode_to_vec(),
+            expected: json!({ "taskId": idhex(0x21) }),
+            decode: reencode::<RefreshPullRequest>,
+        },
+        Sample {
+            name: "pull_request_refreshed",
+            type_name: "modbit.v1.PullRequestRefreshed",
+            bytes: PullRequestRefreshed {
+                pull_request: Some(TaskPullRequest {
+                    owner: "o".into(),
+                    repo: "r".into(),
+                    number: 7,
+                    url: "https://github.test/o/r/pull/7".into(),
+                    opened_offset: 60,
+                    state: "MERGED".into(),
+                    draft: false,
+                    checks: "PASSING".into(),
+                    checks_total: 2,
+                    checks_passing: 2,
+                    checks_failing: 0,
+                    checks_pending: 0,
+                    failing_checks: vec![],
+                    head_sha: "f".repeat(40),
+                    pushed_sha: "f".repeat(40),
+                    read_at: Some(prost_types::Timestamp {
+                        seconds: 1_700_000_300,
+                        nanos: 0,
+                    }),
+                    read_offset: 9_007_199_254_740_993,
+                    trigger: "SCHEDULE".into(),
+                }),
+                offset: 9_007_199_254_740_993,
+                archived: true,
+                archive_offset: 9_007_199_254_740_994,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "pullRequest": {
+                    "owner": "o", "repo": "r", "number": "7",
+                    "url": "https://github.test/o/r/pull/7", "openedOffset": "60",
+                    "state": "MERGED", "draft": false, "checks": "PASSING",
+                    "checksTotal": 2, "checksPassing": 2, "checksFailing": 0, "checksPending": 0,
+                    "failingChecks": [], "headSha": "f".repeat(40), "pushedSha": "f".repeat(40),
+                    "readAt": {"seconds": "1700000300", "nanos": 0},
+                    "readOffset": "9007199254740993", "trigger": "SCHEDULE"
+                },
+                "offset": "9007199254740993", "archived": true, "archiveOffset": "9007199254740994"
+            }),
+            decode: reencode::<PullRequestRefreshed>,
+        },
+        Sample {
+            name: "get_pull_request_preferences",
+            type_name: "modbit.v1.GetPullRequestPreferences",
+            bytes: GetPullRequestPreferences { session_id: id(0x10) }.encode_to_vec(),
+            expected: json!({ "sessionId": idhex(0x10) }),
+            decode: reencode::<GetPullRequestPreferences>,
+        },
+        Sample {
+            name: "set_pull_request_preferences",
+            type_name: "modbit.v1.SetPullRequestPreferences",
+            bytes: SetPullRequestPreferences {
+                session_id: id(0x10),
+                archive_after_merge: true,
+            }
+            .encode_to_vec(),
+            expected: json!({ "sessionId": idhex(0x10), "archiveAfterMerge": true }),
+            decode: reencode::<SetPullRequestPreferences>,
+        },
+        Sample {
+            name: "pull_request_preferences",
+            type_name: "modbit.v1.PullRequestPreferences",
+            bytes: PullRequestPreferences {
+                session_id: id(0x10),
+                archive_after_merge: true,
+                offset: 41,
+            }
+            .encode_to_vec(),
+            expected: json!({ "sessionId": idhex(0x10), "archiveAfterMerge": true, "offset": "41" }),
+            decode: reencode::<PullRequestPreferences>,
         },
         // REQ-PX-214: the isolated reviewer's findings in the review bundle,
         // and the commands that fix or set one aside.

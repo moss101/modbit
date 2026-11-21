@@ -52,6 +52,38 @@ export interface AgentHeaderView {
    * the transcript is, at most 200 characters (a longer line ends in an ellipsis). "" or absent when the task has not answered.
    */
   lastLine?: string;
+  /**
+   * The pull request the task opened and what the Core last read of it (PX-211, MWS-17); absent when it opened none. Its state and
+   * checks are "" until the Core has read them: the renderer never assumes a state it was not given.
+   */
+  pullRequest?: PullRequestStateView;
+}
+
+/** A task's pull request as the Core recorded it and last read it through the forge adapter (PX-211). */
+export interface PullRequestStateView {
+  owner: string;
+  repo: string;
+  number: number;
+  url: string;
+  /** "" (not read yet), OPEN, CLOSED or MERGED. */
+  state: string;
+  draft: boolean;
+  /** "" (not read yet), NONE, PENDING, FAILING, PASSING or UNAVAILABLE. */
+  checks: string;
+  checksTotal: number;
+  checksPassing: number;
+  checksFailing: number;
+  checksPending: number;
+  /** Names of the runs that did not pass: other people's labels, shown as text. */
+  failingChecks: string[];
+  headSha: string;
+  pushedSha: string;
+  /** When the Core read it; 0 = never. */
+  readAtMs: number;
+  /** REQUEST (a person asked) or SCHEDULE (the Core's own refresh); "" = never read. */
+  trigger: string;
+  readOffset: string;
+  openedOffset: string;
 }
 
 export interface AgentHeadersView {

@@ -1,26 +1,39 @@
 /**
- * The Pull request pane (REQ-PX-202; DR-PX-2026-11-11-021 MWS-10): the request, its checks and people's comments.
+ * The Pull request pane (REQ-PX-202; DR-PX-2026-11-11-021 MWS-10): the request, its state, its checks and people's comments.
  * Opening or updating the request is the protected effect the Review drives (review/use-pull-request.ts): the Core answers with
- * the approval to decide, and pushes and opens only once the exact intent shown is approved. The checks and the comments are
- * what the Core recorded the last time it was asked to read the forge (`reviewBundle`); Refresh asks it to read again. The
- * renderer calls no forge. The request's state (open, merged, closed) is not shown anywhere: the Core has no read of it (PX-211).
+ * the approval to decide, and pushes and opens only once the exact intent shown is approved. The request's number and its state
+ * (open, merged, closed, and its checks) are what the Core recorded and last read through the forge adapter (REQ-PX-211, MWS-17:
+ * the task's header, or the answer to Refresh), each with when it was read; before a read the pane says so and names no state.
+ * The checks and the comments are what the Core recorded the last time it was asked to read the forge (`reviewBundle`). Refresh
+ * asks it to read all three again. The renderer calls no forge.
  */
 import { useCallback, useEffect, useState } from "react";
 import { Button, Icon, IconButton } from "@modbit/ui";
 import type { ReviewBundleView } from "../../preload/preload.ts";
+import type { PullRequestStateView } from "../../shared/conversation-types.ts";
+import { relativeAge } from "../agents/list-model.ts";
 import { usePullRequest } from "../review/use-pull-request.ts";
 import { PaneActions } from "../shell/pane.tsx";
 import { useDelivered } from "./delivered.ts";
-import { approvalOutcome, canOpenRequest, checkWords, commentWords, forgeErrorWords, refusedWords, requestWords } from "./pull-request-model.ts";
+import { approvalOutcome, canOpenRequest, checkWords, commentWords, forgeErrorWords, refusedWords, requestStateWords, requestWords } from "./pull-request-model.ts";
 
 export interface PullRequestAppProps {
   sessionId: string;
   taskId: string;
   /** Changes whenever the task moves: the recorded checks and comments are read again. */
   refreshKey: string;
+  /** The task's pull request as its header carries it (REQ-PX-211): the Core's record and its latest read; absent when none. */
+  pullRequest?: PullRequestStateView | undefined;
 }
 
-export function PullRequestApp({ sessionId, taskId, refreshKey }: PullRequestAppProps) {
+/** The newer of two reads of the same request (by the offset of their records). */
+function newer(a: PullRequestStateView | undefined, b: PullRequestStateView | null): PullRequestStateView | undefined {
+  if (!b) return a;
+  if (!a) return b;
+  return BigInt(b.readOffset || "0") > BigInt(a.readOffset || "0") ? b : a;
+}
+
+export function PullRequestApp({ sessionId, taskId, refreshKey, pullRequest }: PullRequestAppProps) {
   const [bundle, setBundle] = useState<ReviewBundleView | null>(null);
   const [readError, setReadError] = useState<string | null>(null);
   const load = useCallback(async () => {
@@ -38,11 +51,50 @@ export function PullRequestApp({ sessionId, taskId, refreshKey }: PullRequestApp
   const [refreshed, setRefreshed] = useState<{ checks: string | null; comments: string | null } | null>(null);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  // Refresh asks the Core to read the forge's check runs, then the request's comments, and lists what it recorded.
+  // REQ-PX-211: the answer to this window's last read of the request's state, and whether that read archived the task.
+  const [stateRead, setStateRead] = useState<{ taskId: string; pr: PullRequestStateView | null; archived: boolean } | null>(null);
+  const [stateError, setStateError] = useState<string | null>(null);
+  const [undone, setUndone] = useState<string | null>(null);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+  // A header the list no longer holds (the task was archived, or the list is filtered) is read here, archived ones included, each
+  // time the task moves: the pane goes on showing the Core's latest read of the request instead of none.
+  const [ownHeader, setOwnHeader] = useState<{ taskId: string; pr: PullRequestStateView | undefined } | null>(null);
+  const listed = pullRequest !== undefined;
+  useEffect(() => {
+    if (listed || !sessionId) return;
+    let live = true;
+    void window.modbit
+      .agentHeaders(sessionId, true)
+      .then((v) => live && setOwnHeader({ taskId, pr: v.headers.find((h) => h.taskId === taskId)?.pullRequest }))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [listed, sessionId, taskId, refreshKey]);
+  const header = pullRequest ?? (ownHeader?.taskId === taskId ? ownHeader.pr : undefined);
+  const mine = stateRead?.taskId === taskId ? stateRead : null;
+  const current = newer(header, mine?.pr ?? null);
+  const state = requestStateWords(current);
+  // Refresh asks the Core to read the request's state (REQ-PX-211), then the forge's check runs, then the request's comments, and
+  // lists what it recorded. Each read stands alone: one the Core refuses says why without hiding the others.
   const refresh = async () => {
     if (refreshing) return;
     setRefreshing(true);
     setRefreshError(null);
+    setStateError(null);
+    setUndone(null);
+    if (current) {
+      try {
+        const r = await window.modbit.refreshPullRequest(sessionId, taskId);
+        setStateRead({ taskId, pr: r.pullRequest, archived: r.archived });
+      } catch (e) {
+        setStateError(forgeErrorWords((e as Error).message));
+      }
+    }
     try {
       const ci = await window.modbit.ingestCiResults(sessionId, taskId);
       const comments = await window.modbit.ingestReviewComments(sessionId, taskId);
@@ -68,6 +120,15 @@ export function PullRequestApp({ sessionId, taskId, refreshKey }: PullRequestApp
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [outcome, revision]);
   const request = requestWords(pr);
+  const undoArchive = async () => {
+    try {
+      await window.modbit.archiveTask(sessionId, taskId, false);
+      setStateRead((s) => (s ? { ...s, archived: false } : s));
+      setUndone("Brought back: the task is in the list again.");
+    } catch (e) {
+      setUndone((e as Error).message.replace(/^Error invoking remote method '[^']*': (Error: )?/, ""));
+    }
+  };
   const openable = bundle ? canOpenRequest(bundle.taskState) : "Reading the task…";
   const busy = flow.busy;
   return (
@@ -79,6 +140,62 @@ export function PullRequestApp({ sessionId, taskId, refreshKey }: PullRequestApp
         <p className="meta" role="alert" data-testid="pr-pane-read-error">
           The task's review could not be read: {readError}
         </p>
+      )}
+      {current && state && (
+        <section
+          className="pr-sec"
+          aria-label="State"
+          data-testid="pr-pane-state"
+          data-number={current.number}
+          data-state={current.state || "UNREAD"}
+          data-checks={current.checks || "UNREAD"}
+          data-read-offset={current.readOffset}
+          data-trigger={current.trigger}
+        >
+          <p className="pr-title" data-testid="pr-pane-state-title" data-src={current === mine?.pr ? "refreshPullRequest" : "agentHeaders"}>
+            <Icon name="git-compare" size={14} /> Pull request {state.number} · <span data-testid="pr-pane-state-word" data-tone={state.tone}>{state.state}</span>
+          </p>
+          <p className="meta pr-url" data-testid="pr-pane-state-url" data-src={current === mine?.pr ? "refreshPullRequest" : "agentHeaders"}>
+            {current.url}
+          </p>
+          {state.read ? (
+            <>
+              {state.checks && (
+                <p className="meta" data-testid="pr-pane-state-checks" data-tone={state.checksTone} data-src={current === mine?.pr ? "refreshPullRequest" : "agentHeaders"}>
+                  Checks: {state.checks}
+                  {state.failing && <span className="pr-dim"> ({state.failing})</span>}
+                </p>
+              )}
+              <p className="meta" data-testid="pr-pane-read-at" data-src={current === mine?.pr ? "refreshPullRequest" : "agentHeaders"} title={new Date(current.readAtMs).toLocaleString()}>
+                Read {relativeAge(current.readAtMs, nowMs) === "now" ? "just now" : `${relativeAge(current.readAtMs, nowMs)} ago`}
+                {state.by ? `, ${state.by}` : ""}.
+              </p>
+            </>
+          ) : (
+            <p className="meta" data-testid="pr-pane-read-at" data-src={current === mine?.pr ? "refreshPullRequest" : "agentHeaders"}>
+              The Core has not read this request since it opened it. Refresh asks it to.
+            </p>
+          )}
+          {mine?.archived && (
+            <p className="meta" role="status" data-testid="pr-pane-archived">
+              The task was archived because its request merged and archive after merge is on.{" "}
+              <Button size="sm" variant="outline" onClick={() => void undoArchive()} data-testid="pr-pane-undo-archive">
+                Undo
+              </Button>
+            </p>
+          )}
+          {undone && (
+            <p className="meta" role="status" data-testid="pr-pane-undone">
+              {undone}
+            </p>
+          )}
+          {stateError && (
+            <p className="meta" role="alert" data-testid="pr-pane-state-error">
+              The request could not be read: {stateError}
+              {state.read ? " What is shown is the last read." : ""}
+            </p>
+          )}
+        </section>
       )}
       <section className="pr-sec" aria-label="Request" data-testid="pr-pane-request">
         {request ? (
@@ -112,11 +229,12 @@ export function PullRequestApp({ sessionId, taskId, refreshKey }: PullRequestApp
         ) : (
           <>
             <p className="meta" data-testid="pr-pane-none">
-              {pr?.status === "DENIED" ? "Not opened: the approval was not given, so the branch stays on this machine." : pr?.status === "FAILED" ? `Not opened: ${pr.detail}` : "No pull request has been opened from this window for this task."}
+              {pr?.status === "DENIED" ? "Not opened: the approval was not given, so the branch stays on this machine." : pr?.status === "FAILED" ? `Not opened: ${pr.detail}` : current ? "No pull request has been opened or updated from this window; the one above is the Core's record." : "No pull request has been opened from this window for this task."}
             </p>
             <div className="pr-actions">
-              <Button size="sm" variant="primary" disabled={busy || openable !== true} title={openable === true ? undefined : openable} onClick={() => bundle && void flow.open(false, bundle.workspaceRevision)} data-testid="pr-pane-open">
-                {busy ? "Asking the Core…" : pr ? "Try again" : "Open pull request"}
+              {/* A request the Core has on record is updated, not opened again (REQ-PX-211). */}
+              <Button size="sm" variant="primary" disabled={busy || openable !== true} title={openable === true ? undefined : openable} onClick={() => bundle && void flow.open(current !== undefined && pr?.status !== "DENIED", bundle.workspaceRevision)} data-testid="pr-pane-open">
+                {busy ? "Asking the Core…" : pr ? "Try again" : current ? "Update the request" : "Open pull request"}
               </Button>
               {openable !== true && bundle && (
                 <span className="meta" data-testid="pr-pane-why">

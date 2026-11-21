@@ -88,6 +88,7 @@ mod projects;
 mod promotion;
 mod protocol;
 mod pull_request;
+mod pull_request_state;
 mod replay;
 mod review;
 mod review_comments;

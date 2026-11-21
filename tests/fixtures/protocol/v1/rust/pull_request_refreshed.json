@@ -1,0 +1,31 @@
+{
+  "expected": {
+    "archiveOffset": "9007199254740994",
+    "archived": true,
+    "offset": "9007199254740993",
+    "pullRequest": {
+      "checks": "PASSING",
+      "checksFailing": 0,
+      "checksPassing": 2,
+      "checksPending": 0,
+      "checksTotal": 2,
+      "draft": false,
+      "failingChecks": [],
+      "headSha": "ffffffffffffffffffffffffffffffffffffffff",
+      "number": "7",
+      "openedOffset": "60",
+      "owner": "o",
+      "pushedSha": "ffffffffffffffffffffffffffffffffffffffff",
+      "readAt": {
+        "nanos": 0,
+        "seconds": "1700000300"
+      },
+      "readOffset": "9007199254740993",
+      "repo": "r",
+      "state": "MERGED",
+      "trigger": "SCHEDULE",
+      "url": "https://github.test/o/r/pull/7"
+    }
+  },
+  "type": "modbit.v1.PullRequestRefreshed"
+}

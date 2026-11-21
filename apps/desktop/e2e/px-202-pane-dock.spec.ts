@@ -771,8 +771,10 @@ function fakeGithub(): Promise<Fake> {
 }
 
 /** The preload method a value of the pane names, and the channel main answers it on. */
-const PR_CHANNEL: Record<string, string> = { openPullRequest: "review:pullRequest", reviewBundle: "review:bundle" };
-/** Words that would say what state the request is in on the forge. The Core has no read of it, so the pane must hold none. */
+const PR_CHANNEL: Record<string, string> = { openPullRequest: "review:pullRequest", reviewBundle: "review:bundle", agentHeaders: "agents:headers", refreshPullRequest: "review:refreshPullRequest" };
+/** The reads that carry a request's state (REQ-PX-211): the task's header (read per session) and the answer to Refresh. */
+const STATE_READS = ["agentHeaders", "refreshPullRequest"];
+/** Words that would say what state the request is in on the forge: only a value of a state read may hold them (REQ-PX-211). */
 const STATE_WORDS = /\b(is open|still open|merged|closed|draft|mergeable|ready to merge|approved by|changes requested|conflicts?)\b/i;
 
 /**
@@ -781,12 +783,20 @@ const STATE_WORDS = /\b(is open|still open|merged|closed|draft|mergeable|ready t
  */
 async function unreadInPane(app: ElectronApplication, page: Page, taskId: string): Promise<string[]> {
   const log = await bridgeLog(app);
-  const found = await page.getByTestId("pane-pull-request").evaluate((el) => ({ values: [...el.querySelectorAll<HTMLElement>("[data-src]")].map((v) => ({ text: (v.textContent ?? "").replace(/\s+/g, " ").trim(), src: v.getAttribute("data-src") ?? "" })), text: (el as HTMLElement).innerText.replace(/\s+/g, " ") }));
+  const found = await page.getByTestId("pane-pull-request").evaluate((el, reads) => {
+    // The pane's words outside the values of a state read, each text node apart: a state there is one the Core never read.
+    const inRead = reads.map((r) => `[data-src="${r}"]`).join(",");
+    const words: string[] = [];
+    const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) if (!n.parentElement?.closest(inRead)) words.push(n.textContent ?? "");
+    return { values: [...el.querySelectorAll<HTMLElement>("[data-src]")].map((v) => ({ text: (v.textContent ?? "").replace(/\s+/g, " ").trim(), src: v.getAttribute("data-src") ?? "" })), text: words.join(" ").replace(/\s+/g, " ") };
+  }, STATE_READS);
   const bad: string[] = [];
   for (const v of found.values) {
     const channel = PR_CHANNEL[v.src];
     if (!channel) bad.push(`"${v.text}" names ${v.src}, which is not a read of the pane`);
-    else if (!log.some((c) => c.channel === channel && c.args.includes(taskId))) bad.push(`"${v.text}" names ${v.src}, which the bridge never answered for this task`);
+    // The header is read for the whole session, so its channel names the session, not the task.
+    else if (!log.some((c) => c.channel === channel && (v.src === "agentHeaders" || c.args.includes(taskId)))) bad.push(`"${v.text}" names ${v.src}, which the bridge never answered for this task`);
   }
   const state = STATE_WORDS.exec(found.text);
   if (state) bad.push(`the pane says "${state[0]}": a state of the request the Core never read`);
@@ -934,14 +944,17 @@ test("PX-202: the Pull request pane opens a request through the docked approval 
     await eject();
     expect(await unreadInPane(app, page, taskId)).toEqual([]);
 
-    // ---- After a reload the Core's answer to this window is gone, and the Core has no read of the request (PX-211): the pane
-    // shows no number and no state. The checks and comments are the Core's record and are read again.
+    // ---- After a reload the Core's answer to this window is gone. The request is the Core's record (REQ-PX-211): the pane names it
+    // from the task's header, and since this forge never answered a read of it, with no state. The checks and comments are the
+    // Core's record and are read again.
     await page.reload();
     await expect(page.getByTestId("core-status")).toContainText("Core connected", { timeout: 60_000 });
     await openTask(page, taskId);
     await expect(pane).toBeVisible({ timeout: 30_000 });
     await expect(pr).toHaveAttribute("data-status", "NONE");
     await expect(pane.getByTestId("pr-pane-opened"), "a request this window was not answered about is not shown").toHaveCount(0);
+    await expect(pane.getByTestId("pr-pane-state")).toHaveAttribute("data-number", "1", { timeout: 30_000 });
+    await expect(pane.getByTestId("pr-pane-state"), "a request the Core never read has no state").toHaveAttribute("data-state", "UNREAD");
     await expect(pane.getByTestId("pr-pane-check")).toHaveCount(2, { timeout: 30_000 });
     await expect(pane.getByTestId("pr-pane-comment")).toHaveCount(2);
     expect(await unreadInPane(app, page, taskId)).toEqual([]);

@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2439,
+    "root_and_tooling": 2459,
     "docs_bytes": 2395097
   },
   "sections": [
@@ -1137,6 +1137,11 @@
       "path": "docs/decisions/README.md",
       "bytes": 11823,
       "sha256": "d1a3c30789caf348cb5d7c3c8f95b1ec58d9ae34ab21ce2a9d67c88bccee237e"
+    },
+    {
+      "path": "evidence/.DS_Store",
+      "bytes": 14340,
+      "sha256": "5fedbb820fa1aaad64f7e008239b84b90f67838cad8bc0131c3d5822d7f687b5"
     },
     {
       "path": "evidence/dossier-epr-v1.1/baseline.json",
@@ -5352,6 +5357,101 @@
       "path": "evidence/m10/PX-210/px210-e2e.log",
       "bytes": 1450,
       "sha256": "24d78f17647671c105021b37c3db41a58bdd6d238a9425911028c7de260b608b"
+    },
+    {
+      "path": "evidence/m10/PX-211/TASK_CARD.md",
+      "bytes": 10921,
+      "sha256": "c17f9427437b9cf5b798aedcfd7e42605b46a67f4a00f471f3b209a9788f8b8b"
+    },
+    {
+      "path": "evidence/m10/PX-211/after/archived-after-merge-dark.png",
+      "bytes": 238884,
+      "sha256": "3a0e87e9e45609e53440c495af343f1978e5ff17716fe6bf29b7a3c61590639c"
+    },
+    {
+      "path": "evidence/m10/PX-211/after/archived-after-merge-light.png",
+      "bytes": 239911,
+      "sha256": "23b47fd0cf096e171ac0cc1c287e53dab826c2b2f70723d1c5f462d02ea21346"
+    },
+    {
+      "path": "evidence/m10/PX-211/after/details-rail-pull-request-dark.png",
+      "bytes": 401483,
+      "sha256": "03d2fccccf8a1b1db2851b3f84a359d358eb18142062ac7182228f43d31e2958"
+    },
+    {
+      "path": "evidence/m10/PX-211/after/details-rail-pull-request-light.png",
+      "bytes": 404443,
+      "sha256": "cda8742a1bc3524583fc7711786c9975d4aeb8c1954572ce59a770384005ee56"
+    },
+    {
+      "path": "evidence/m10/PX-211/after/preview-card-pull-request-dark.png",
+      "bytes": 259970,
+      "sha256": "10f9d8cefa053d69d68a0a0c4b397778181e0a4643c686a694647c91e1bd407e"
+    },
+    {
+      "path": "evidence/m10/PX-211/after/preview-card-pull-request-light.png",
+      "bytes": 262134,
+      "sha256": "6f7e482b1d7f915dedd596293fa50f60e68250b751692d14e49b25ba54a66d9c"
+    },
+    {
+      "path": "evidence/m10/PX-211/after/pull-request-checks-failing-dark.png",
+      "bytes": 294312,
+      "sha256": "8822af031fd0740297e7e526931358219ee2728327ef54cac919a2df246a557a"
+    },
+    {
+      "path": "evidence/m10/PX-211/after/pull-request-checks-failing-light.png",
+      "bytes": 296281,
+      "sha256": "ea6af4591ddee4c56033a15376153e51fbb6eb0d419b218ba6f42015c5c303cd"
+    },
+    {
+      "path": "evidence/m10/PX-211/after/restored-after-undo-dark.png",
+      "bytes": 214079,
+      "sha256": "5429e169c22d95968ea6fc5c604730cfd9a60976ad1098ba736069b71cd79eaf"
+    },
+    {
+      "path": "evidence/m10/PX-211/after/restored-after-undo-light.png",
+      "bytes": 215307,
+      "sha256": "6df4bbd4f4201b15e68d360057c42cbc38b9b16f14df3118f7497ce080226e13"
+    },
+    {
+      "path": "evidence/m10/PX-211/after/settings-archive-after-merge-dark.png",
+      "bytes": 368412,
+      "sha256": "033835f3443a760a87c9abec0e1733b62a5b2cb9e6fa5b48a73637d7e93fcfd5"
+    },
+    {
+      "path": "evidence/m10/PX-211/after/settings-archive-after-merge-light.png",
+      "bytes": 370937,
+      "sha256": "557542fa0d33ded8454ef4ee024df647a030e6f0e8fde6f97ab04ebece4ba737"
+    },
+    {
+      "path": "evidence/m10/PX-211/core-suite.log",
+      "bytes": 9420,
+      "sha256": "de61fe6fdafc2e530d93f407b33e0af168824f5287dbcbd1f430d813393fd37b"
+    },
+    {
+      "path": "evidence/m10/PX-211/evidence.json",
+      "bytes": 2261,
+      "sha256": "117f40f2c9d5d1faa62f44e7905a9e0f94a12d7025905815bb41099dcab27a78"
+    },
+    {
+      "path": "evidence/m10/PX-211/mutation-checks-2026-11-21.txt",
+      "bytes": 1704,
+      "sha256": "d4f57e2e3971cbbbbc87797ca0525ff2ec5115c689558d564b36741a71005c5c"
+    },
+    {
+      "path": "evidence/m10/PX-211/other-suites.log",
+      "bytes": 2122,
+      "sha256": "e3da4f8ce9008022b25eab891f43bf98da5e23f2c9eaf816b01cb73a8fbb4c0b"
+    },
+    {
+      "path": "evidence/m10/PX-211/px211-core.log",
+      "bytes": 885,
+      "sha256": "a0b39e44ee58a124f083cd3971d00e8ea761ffcc345eda181c46008d85bf9eb2"
+    },
+    {
+      "path": "evidence/m10/PX-211/px211-e2e-related.log",
+      "bytes": 34853,
+      "sha256": "2ad565a4ebdb590d91da4eadbf15f437c2f6db7891541e05e501cf6dd958d1eb"
     },
     {
       "path": "evidence/m10/PX-214/TASK_CARD.md",
@@ -13065,8 +13165,8 @@
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2641609,
-      "sha256": "032f0489ef408a7eb2b55d6a3301541db54e00a2a0a548e5cff1b8336912713a"
+      "bytes": 2641710,
+      "sha256": "d7937392160840ff7cd23d5cca9dcefed7089203420c5c152447768e51d0d4e2"
     },
     {
       "path": "tools/build_graph.py",
