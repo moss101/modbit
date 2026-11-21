@@ -13712,6 +13712,25 @@ export declare type ReviewCommentsIngestedView = Message<"modbit.v1.ReviewCommen
    * @generated from field: uint64 offset = 7;
    */
   offset: bigint;
+
+  /**
+   * PX-212: auto-fix is on for the task and the steered comments asked for a
+   * repair turn (`auto_fix_input_id` names the AutoFixQueued's input); or the
+   * cap stopped it.
+   *
+   * @generated from field: bool auto_fix_queued = 8;
+   */
+  autoFixQueued: boolean;
+
+  /**
+   * @generated from field: string auto_fix_input_id = 9;
+   */
+  autoFixInputId: string;
+
+  /**
+   * @generated from field: bool auto_fix_stopped = 10;
+   */
+  autoFixStopped: boolean;
 };
 
 /**

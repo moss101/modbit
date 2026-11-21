@@ -1,0 +1,144 @@
+
+Running 7 tests using 1 worker
+
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+[electron] Error occurred in handler for 'review:ingestCi': RejectedError: NO_PULL_REQUEST: no pull request was opened for this task (OpenPullRequest)
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3905:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3881:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'NO_PULL_REQUEST'
+}
+[electron] Debugger ending on ws://127.0.0.1:51453/e18a8304-6528-405d-ba7a-6c8bad8a9026
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Debugger ending on ws://127.0.0.1:51465/78a5ff2d-6e58-4a75-a669-3054b9a1444c
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  1 e2e/forge-evidence.spec.ts:130:1 › review shows the forge's CI runs as external evidence and the pull request's comments as untrusted text, survives a restart, and CI never accepts the task (7.6s)
+[electron] Debugger ending on ws://127.0.0.1:51471/060eefbe-439b-4137-b776-5955b33a4a78
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'terminal:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11784:17)
+    at TerminalHost.client (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11778:9)
+    at TerminalHost.list (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10885:26)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12486:54
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11834:12
+    at eval (eval at evaluate (:311:30), <anonymous>:36:30)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11784:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8209:37
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12404:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11834:12
+    at eval (eval at evaluate (:311:30), <anonymous>:36:30)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11784:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:9616:49
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12404:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11834:12
+    at eval (eval at evaluate (:311:30), <anonymous>:36:30)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11784:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8216:26
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12404:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11834:12
+    at eval (eval at evaluate (:311:30), <anonymous>:36:30)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] (node:56924) UnhandledPromiseRejectionWarning: Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11784:17)
+    at TerminalHost.client (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11778:9)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11018:44
+    at Array.map (<anonymous>)
+    at TerminalHost.detachAll (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11018:28)
+    at BrowserWindow.<anonymous> (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12561:42)
+    at BrowserWindow.emit (node:events:526:24)
+(Use `Electron --trace-warnings ...` to show where the warning was created)
+(node:56924) UnhandledPromiseRejectionWarning: Unhandled promise rejection. This error originated either by throwing inside of an async function without a catch block, or by rejecting a promise which was not handled with .catch(). To terminate the node process on unhandled promise rejection, use the CLI flag `--unhandled-rejections=strict` (see https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode). (rejection id: 5)
+  ✓  2 e2e/px-202-pane-dock.spec.ts:185:1 › PX-202: panes open together and tile; the set and the sizes are the task's and survive a reload; a minimized terminal keeps its session; Activity lists what was delivered and reads nothing; Background tasks stops a terminal and a child; More stays reachable over a docked approval (33.9s)
+[electron] Error occurred in handler for 'review:ingestCi': RejectedError: NO_PULL_REQUEST: no pull request was opened for this task (OpenPullRequest)
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3905:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3881:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'NO_PULL_REQUEST'
+}
+[electron] Error occurred in handler for 'review:refreshPullRequest': RejectedError: FORGE_NOT_FOUND: 404: Not Found
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3905:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3881:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'FORGE_NOT_FOUND'
+}
+[electron] Debugger ending on ws://127.0.0.1:51490/010e12be-b3c8-4442-bfe6-249580156850
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  3 e2e/px-202-pane-dock.spec.ts:806:1 › PX-202: the Pull request pane opens a request through the docked approval card and shows the checks and comments the Core read; a state that was not read is never shown (8.1s)
+[electron] Debugger ending on ws://127.0.0.1:51512/e079d28f-0eb5-4fd8-a3e5-f2161bd5ca1b
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] modbit-core: reattached to the terminal broker a previous Core left alive
+[electron] Debugger ending on ws://127.0.0.1:51531/851ca3b5-2e42-4b45-84af-8b4a952f89ea
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  4 e2e/px-211-pull-request-state.spec.ts:141:1 › PX-211: the Core reads a task's pull request through the forge adapter, the header, row, card, rail and pane show what it read and when, a restart keeps it, and archive after merge is a preference with Undo (14.5s)
+[electron] Error occurred in handler for 'approval:resolve': RejectedError: UNKNOWN_APPROVAL: 01234567-89ab-cdef-0123-456789abcdef
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3905:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3881:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'UNKNOWN_APPROVAL'
+}
+[electron] Error occurred in handler for 'browser:session': RejectedError: UNKNOWN_TASK: 01234567-89ab-cdef-0123-456789abcdef
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3905:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3881:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'UNKNOWN_TASK'
+}
+[electron] Error occurred in handler for 'session:create': Error: SENDER_REFUSED: only the app's own renderer may ask this
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11821:13
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'debug:coreInfo': Error: SENDER_REFUSED: only the app's own renderer may ask this
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11821:13
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'credential:list': Error: SENDER_REFUSED: only the app's own renderer may ask this
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11821:13
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Debugger ending on ws://127.0.0.1:51546/9c45c9d3-5f23-43f6-a7fd-a10f8e094f42
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  5 e2e/workers.spec.ts:162:1 › renderer compromise (REQ-EV-0075): the app's renderer holds no secret, no Node, no socket; the bridge is typed requests only; the Core refuses what the renderer cannot vouch for; a foreign window with the same bridge is refused by main and audited (876ms)
+[renderer-diag] window renderer pid=96775 webContents=1; processes: 96772:Browser 96773:GPU 96774:Utility(Network Service) 96775:Tab
+[renderer-diag] page1.crash at 11 ms
+[electron] modbit-desktop: renderer gone: reason=killed exitCode=2 via=event replacing=true
+[renderer-diag] page1.close at 37 ms
+[renderer-diag] main-replaced at 114 ms
+[renderer-diag] renderer-pid-gone at 119 ms
+[renderer-diag] playwright-window at 119 ms
+[electron] Debugger ending on ws://127.0.0.1:51551/933fecec-dddf-4c68-8f30-20089adf1d26
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  6 e2e/workers.spec.ts:266:1 › renderer killed (REQ-EV-0076): the renderer's process dies mid-session; main keeps the Core, the lease and the stream; the renderer comes back from the Core's snapshot and cursor with the session's truth unchanged and its typed requests answered (2.4s)
+[electron] Debugger ending on ws://127.0.0.1:51558/847aeda3-a0b9-4810-920a-3d1f7044af82
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  7 e2e/workers.spec.ts:385:1 › browser view killed (REQ-EV-0081): the view's process dies under the agent's session; the host restarts the view at its page and attaches it again to the same session; the Core, its log and the task are untouched, and the agent's next observation reads the restarted page (2.7s)
+
+  7 passed (1.2m)

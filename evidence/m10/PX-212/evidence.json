@@ -1,0 +1,33 @@
+{
+  "task": "PX-212",
+  "requirements": ["REQ-PX-212", "QUAL-PX-212", "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-212"],
+  "scenarios": ["QUAL-PX-212 / PX-E2E-212"],
+  "decision_record": "DR-PX-2026-11-11-021 (MWS-17)",
+  "tier": "release-critical",
+  "branch": "px-212-auto-fix",
+  "audit": {
+    "classification": "IMPLEMENTED-PARTIAL around the row (PX-211 reads, PX-008 ingestion, input queue, StartTask, approvals); auto-fix itself NOT-FOUND",
+    "first_missing_link": "nothing turned a failing read or an accepted comment into a queued repair and a turn; no per-task switch"
+  },
+  "protocol": {
+    "added": ["modbit.v1.SetAutoFix", "modbit.v1.AutoFixState", "TaskPullRequest 19-24", "PullRequestRefreshed 5-7", "ReviewCommentsIngestedView 8-10"],
+    "canonical_log": ["TaskEvent AutoFixSet", "TaskEvent AutoFixQueued", "TaskEvent AutoFixStopped"],
+    "command_types": ["SetAutoFix (task.author)"]
+  },
+  "tests": [
+    "services/modbit-core/tests/px_212_auto_fix.rs::qual_px_212_auto_fix_queues_one_repair_per_cause_under_the_tasks_own_run_mode",
+    "services/modbit-core/src/auto_fix.rs (2 unit tests)",
+    "apps/desktop/e2e/px-212-auto-fix.spec.ts",
+    "apps/desktop/src/renderer/apps/pull-request-model.test.ts (1 new test)"
+  ],
+  "logs": ["px212-core.log", "related-core.log", "px212-e2e.log", "px212-e2e-related.log", "core-suite.log", "other-suites.log"],
+  "mutation_check": "mutation-checks-2026-11-21.txt (6 mutations, 6 caught)",
+  "screenshots": "after/*.png (light and dark, 1440x900)",
+  "environment": "macOS 27.0.1 arm64, rustc 1.97.1, node 26.11.1; scripted model; GitHub REST fake; real modbit-core, SQLite store, git with bare remote",
+  "limitations": [
+    "Proven against a wire-faithful GitHub fake.",
+    "Causes are seen only when the Core reads (Refresh or the schedule); no webhooks before PX-126.",
+    "A refused start leaves the input queued and is said on stderr only.",
+    "Linux and Windows are CI's."
+  ]
+}

@@ -28,6 +28,7 @@ mod apply_back;
 mod approval_expiry;
 mod assurance;
 mod attention;
+mod auto_fix;
 mod auto_verify;
 mod automation;
 mod background_process;

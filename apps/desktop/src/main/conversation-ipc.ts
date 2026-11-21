@@ -119,6 +119,12 @@ export function pullRequestView(p: TaskPullRequest): PullRequestStateView {
     trigger: p.trigger,
     readOffset: p.readOffset.toString(),
     openedOffset: p.openedOffset.toString(),
+    autoFix: p.autoFix,
+    autoFixAttempts: p.autoFixAttempts,
+    autoFixCap: p.autoFixCap,
+    autoFixStopped: p.autoFixStopped,
+    autoFixLastCause: p.autoFixLastCause,
+    autoFixLastOffset: p.autoFixLastOffset.toString(),
   };
 }
 

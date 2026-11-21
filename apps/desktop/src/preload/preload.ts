@@ -528,7 +528,12 @@ export interface ModbitBridge {
    * PX-211: the Core reads the task's pull request again (state and checks) through the forge adapter and records it. With the
    * session's archive-after-merge preference on, the read that first finds it merged archives the task (`archived`).
    */
-  refreshPullRequest(sessionId: string, taskId: string): Promise<{ pullRequest: PullRequestStateView | null; offset: string; archived: boolean; archiveOffset: string }>;
+  refreshPullRequest(sessionId: string, taskId: string): Promise<{ pullRequest: PullRequestStateView | null; offset: string; archived: boolean; archiveOffset: string; autoFixQueued: boolean; autoFixStopped: boolean }>;
+  /**
+   * PX-212: turn auto-fix on or off for the task. With it on, a failing check the Core reads or a comment its ingestion accepts
+   * queues one repair turn under the task's own run mode (its pushes still ask); at most `cap` from the time it is turned on.
+   */
+  setAutoFix(sessionId: string, taskId: string, enabled: boolean): Promise<{ enabled: boolean; attempts: number; cap: number; stopped: boolean; offset: string }>;
   /** PX-211: the session's archive-after-merge preference (off until set); `offset` 0 = never set. */
   pullRequestPreferences(sessionId: string): Promise<{ archiveAfterMerge: boolean; offset: string }>;
   setPullRequestPreferences(sessionId: string, archiveAfterMerge: boolean): Promise<{ archiveAfterMerge: boolean; offset: string }>;
@@ -776,6 +781,7 @@ const bridge: ModbitBridge = {
   openPullRequest: (sessionId, taskId, expectedCandidateRevision, update) => ipcRenderer.invoke("review:pullRequest", sessionId, taskId, expectedCandidateRevision, update),
   ingestCiResults: (sessionId, taskId) => ipcRenderer.invoke("review:ingestCi", sessionId, taskId),
   refreshPullRequest: (sessionId, taskId) => ipcRenderer.invoke("review:refreshPullRequest", sessionId, taskId),
+  setAutoFix: (sessionId, taskId, enabled) => ipcRenderer.invoke("review:setAutoFix", sessionId, taskId, enabled),
   pullRequestPreferences: (sessionId) => ipcRenderer.invoke("prefs:pullRequests", sessionId),
   setPullRequestPreferences: (sessionId, archiveAfterMerge) => ipcRenderer.invoke("prefs:setPullRequests", sessionId, archiveAfterMerge),
   ingestReviewComments: (sessionId, taskId) => ipcRenderer.invoke("review:ingestComments", sessionId, taskId),

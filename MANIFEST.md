@@ -1034,6 +1034,23 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-211/other-suites.log` | retained evidence | 2122 | `e3da4f8ce9008022b25eab891f43bf98da5e23f2c9eaf816b01cb73a8fbb4c0b` |
 | `evidence/m10/PX-211/px211-core.log` | retained evidence | 885 | `a0b39e44ee58a124f083cd3971d00e8ea761ffcc345eda181c46008d85bf9eb2` |
 | `evidence/m10/PX-211/px211-e2e-related.log` | retained evidence | 34853 | `2ad565a4ebdb590d91da4eadbf15f437c2f6db7891541e05e501cf6dd958d1eb` |
+| `evidence/m10/PX-212/TASK_CARD.md` | retained evidence | 9963 | `24730794742ccb2a487264eebb6305f119efa2728cfdfbc3926c4ec9967d1054` |
+| `evidence/m10/PX-212/after/auto-fix-on-dark.png` | retained evidence | 301583 | `4093a86e5a089b921716f27c6c10bb48e58201a8cf65ba3ed6d8d80e7f33b131` |
+| `evidence/m10/PX-212/after/auto-fix-on-light.png` | retained evidence | 303554 | `d2b3123c91e89981182d7b9051bb28a00cc969b53211edba71a0bb82ed087568` |
+| `evidence/m10/PX-212/after/auto-fix-one-turn-dark.png` | retained evidence | 457125 | `52ada4c272b81b999d233d89ec1186b8c9dca978a13885547eedd8123347d19d` |
+| `evidence/m10/PX-212/after/auto-fix-one-turn-light.png` | retained evidence | 456365 | `bd6cdcea17d3266d1d2ea9b4a840f7a4c5a7a44e8f74ece750b8e202b3a6b627` |
+| `evidence/m10/PX-212/after/auto-fix-push-asks-dark.png` | retained evidence | 410957 | `82329192fbe544e03ff9dea1fd128b56eb25d85ce4fe8902fd693d630c12eddd` |
+| `evidence/m10/PX-212/after/auto-fix-push-asks-light.png` | retained evidence | 413253 | `7b35ae7ae0115f0167b1b5bf80c065ab59930156bbc5560e8064d77017e9c247` |
+| `evidence/m10/PX-212/after/auto-fix-stopped-dark.png` | retained evidence | 487857 | `8d2f67c539a3605a1730ee2f907778a5c0c20f562cf956c624af56e9755e7535` |
+| `evidence/m10/PX-212/after/auto-fix-stopped-light.png` | retained evidence | 488291 | `a9adda418138d23cea7527d88f3de39b2048d866b19efbc15d480e8fe92d59cd` |
+| `evidence/m10/PX-212/core-suite.log` | retained evidence | 260642 | `ee3cb0aac5d5d720a328d07e5f36191da9bf9d431410ca6d29260e2978c11fbb` |
+| `evidence/m10/PX-212/evidence.json` | retained evidence | 1983 | `a9e6403bb6447982389451fc675dff90e7b0481444b829dd4ce13fcdeedad236` |
+| `evidence/m10/PX-212/mutation-checks-2026-11-21.txt` | retained evidence | 1345 | `5978cabc3a1e5977620b5d8448a55f58a5e55512e56c9b0b39316aa7677d39df` |
+| `evidence/m10/PX-212/other-suites.log` | retained evidence | 60759 | `90b6ba4bbb6d33ecb72e78f71bc471bf5239e9905344a35bf8caa3ddd6a03563` |
+| `evidence/m10/PX-212/px212-core.log` | retained evidence | 797 | `675e5129170593abbdf6eb9175648c1429851914c997fb0110f37aef398c4dd6` |
+| `evidence/m10/PX-212/px212-e2e-related.log` | retained evidence | 12269 | `ca7c39c42e858d70d751760e2c62a6d077b1dd9dccab39fc39c79a6d32822ddf` |
+| `evidence/m10/PX-212/px212-e2e.log` | retained evidence | 969 | `fd9721bde5ece464a3789f8e545c423082054467aa1571e18d4d5e3a710891d0` |
+| `evidence/m10/PX-212/related-core.log` | retained evidence | 2147 | `d12558fef35a38d657e8de5d61cc9145235c4ed0c07351efa0db53cfeb6dc1d4` |
 | `evidence/m10/PX-214/TASK_CARD.md` | retained evidence | 12512 | `b02681724101150a5418a3329e69d5c6ce83f9180ecec195278b8bffa3b4f59e` |
 | `evidence/m10/PX-214/after/review-dismiss-reason-dark.png` | retained evidence | 332246 | `38fcfa178dd2e2aade9df7e273d9e59a45570c4124dcee841e655b07e84d1c88` |
 | `evidence/m10/PX-214/after/review-dismiss-reason-light.png` | retained evidence | 329954 | `e2094bf482c7943c8b3000acfce0db6fb5919ad8fe4d6035e016fef7565efa58` |
@@ -2576,7 +2593,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/zcode-ui/reference/zcode-computed.json` | retained evidence | 718674 | `9ae8821ce72aa0fff3be44aacd0f4c9d995465c54bad7f17d1a81f92841d1c2d` |
 | `evidence/zcode-ui/reference/zcode-tokens-resolved.json` | retained evidence | 30635 | `066725c00059a05d073fbcdac9a8d965eab05f05c1f5df16e654854ff3e22b91` |
 | `graph/PROJECT_GRAPH.md` | human view of the graph | 47980 | `650a63c24a5bb09b20f6f28c58fbb0eaf7f739a9841ea17be3556b845f1225c9` |
-| `graph/project-graph.json` | project driver graph with live status | 2642464 | `805f5931532ab5488cf585b4654375f415a462d2893fa9f917187b272195c6b6` |
+| `graph/project-graph.json` | project driver graph with live status | 2643024 | `976434d5136a67ed8fca5ee536df996cef3c65ab9bfb4cc1c162af322fa6517c` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 69551 | `75bcc309c03df0b898705f3bf58a8c289431dc60cbaf52e1c38f4c5d41d06dd7` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |

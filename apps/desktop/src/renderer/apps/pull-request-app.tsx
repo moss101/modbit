@@ -5,7 +5,9 @@
  * (open, merged, closed, and its checks) are what the Core recorded and last read through the forge adapter (REQ-PX-211, MWS-17:
  * the task's header, or the answer to Refresh), each with when it was read; before a read the pane says so and names no state.
  * The checks and the comments are what the Core recorded the last time it was asked to read the forge (`reviewBundle`). Refresh
- * asks it to read all three again. The renderer calls no forge.
+ * asks it to read all three again. The renderer calls no forge. Auto-fix (REQ-PX-212) is the task's switch held by the Core: with it
+ * on, the Core asks for a repair turn under the task's own run mode when it reads failing checks or accepts a comment; the pane
+ * shows the Core's count and says when the cap stopped it. It starts nothing itself.
  */
 import { useCallback, useEffect, useState } from "react";
 import { Button, Icon, IconButton } from "@modbit/ui";
@@ -15,7 +17,7 @@ import { relativeAge } from "../agents/list-model.ts";
 import { usePullRequest } from "../review/use-pull-request.ts";
 import { PaneActions } from "../shell/pane.tsx";
 import { useDelivered } from "./delivered.ts";
-import { approvalOutcome, canOpenRequest, checkWords, commentWords, forgeErrorWords, refusedWords, requestStateWords, requestWords } from "./pull-request-model.ts";
+import { approvalOutcome, autoFixWords, canOpenRequest, checkWords, commentWords, forgeErrorWords, refusedWords, requestStateWords, requestWords } from "./pull-request-model.ts";
 
 export interface PullRequestAppProps {
   sessionId: string;
@@ -79,6 +81,25 @@ export function PullRequestApp({ sessionId, taskId, refreshKey, pullRequest }: P
   const mine = stateRead?.taskId === taskId ? stateRead : null;
   const current = newer(header, mine?.pr ?? null);
   const state = requestStateWords(current);
+  // REQ-PX-212: the switch's answer from the Core, newer than the header until the header catches up (by the record's offset).
+  const [autoFixSet, setAutoFixSet] = useState<{ taskId: string; enabled: boolean; attempts: number; cap: number; stopped: boolean } | null>(null);
+  const [autoFixError, setAutoFixError] = useState<string | null>(null);
+  const [autoFixBusy, setAutoFixBusy] = useState(false);
+  const mineFix = autoFixSet?.taskId === taskId ? autoFixSet : null;
+  const fixView = current && mineFix && current.autoFix !== mineFix.enabled ? { ...current, autoFix: mineFix.enabled, autoFixAttempts: mineFix.attempts, autoFixCap: mineFix.cap, autoFixStopped: mineFix.stopped } : current;
+  const fix = autoFixWords(fixView);
+  const changeAutoFix = async (on: boolean) => {
+    setAutoFixBusy(true);
+    setAutoFixError(null);
+    try {
+      const r = await window.modbit.setAutoFix(sessionId, taskId, on);
+      setAutoFixSet({ taskId, enabled: r.enabled, attempts: r.attempts, cap: r.cap, stopped: r.stopped });
+    } catch (e) {
+      setAutoFixError((e as Error).message.replace(/^Error invoking remote method '[^']*': (Error: )?/, ""));
+    } finally {
+      setAutoFixBusy(false);
+    }
+  };
   // Refresh asks the Core to read the request's state (REQ-PX-211), then the forge's check runs, then the request's comments, and
   // lists what it recorded. Each read stands alone: one the Core refuses says why without hiding the others.
   const refresh = async () => {
@@ -188,6 +209,22 @@ export function PullRequestApp({ sessionId, taskId, refreshKey, pullRequest }: P
             <p className="meta" role="status" data-testid="pr-pane-undone">
               {undone}
             </p>
+          )}
+          {current.state !== "MERGED" && current.state !== "CLOSED" && (
+            <div className="pr-autofix" data-testid="pr-pane-auto-fix" data-on={fix.on ? "true" : "false"} data-tone={fix.tone} data-attempts={fixView?.autoFixAttempts ?? 0} data-cap={fixView?.autoFixCap ?? 0} data-src={mineFix && current.autoFix !== mineFix.enabled ? "setAutoFix" : "agentHeaders"}>
+              <label className="pr-autofix-row">
+                <input type="checkbox" className="settings-toggle" role="switch" aria-describedby="pr-autofix-detail" data-testid="pr-pane-auto-fix-switch" checked={fix.on} disabled={autoFixBusy} onChange={(e) => void changeAutoFix(e.target.checked)} />
+                <span>Auto-fix</span>
+              </label>
+              <p className="meta" id="pr-autofix-detail" data-testid="pr-pane-auto-fix-detail">
+                {fix.on ? fix.status : "Off. When on, a failing check or a comment addressed to @modbit starts a repair turn. Its pushes still ask."}
+              </p>
+              {autoFixError && (
+                <p className="meta" role="alert" data-testid="pr-pane-auto-fix-error">
+                  Auto-fix could not be changed: {autoFixError}
+                </p>
+              )}
+            </div>
           )}
           {stateError && (
             <p className="meta" role="alert" data-testid="pr-pane-state-error">

@@ -3030,6 +3030,56 @@ pub enum TaskEvent {
         /// The `forge.pr.read` call that read it.
         tool_call_id: String,
     },
+    /// `AutoFixSet` (PX-212, DR-PX-2026-11-11-021 MWS-17): a person turned
+    /// auto-fix on or off for this task. Off unless a person turned it on;
+    /// turning it on again starts a new count of attempts. No state change.
+    AutoFixSet {
+        /// Auto-fix is on.
+        enabled: bool,
+    },
+    /// `AutoFixQueued` (PX-212): with auto-fix on, the Core queued one repair
+    /// input for this task and asked the ordinary start for a turn under the
+    /// task's own run mode, lease and budgets. The cause is named; the input
+    /// is the `TaskInputQueued` with `input_id`. An audit record about the
+    /// task, valid in every state.
+    AutoFixQueued {
+        /// `CHECKS_FAILING` | `REVIEW_COMMENT`.
+        cause: String,
+        /// The pull request.
+        number: u64,
+        /// The head the failing read named ("" for a comment).
+        head_sha: String,
+        /// The checks that did not pass (untrusted labels).
+        failing_checks: Vec<String>,
+        /// The steered comments that caused it.
+        comment_ids: Vec<u64>,
+        /// The repair input.
+        input_id: String,
+        /// This attempt's number since auto-fix was turned on (1-based).
+        attempt: u32,
+        /// The attempt cap in force.
+        cap: u32,
+        /// The record that caused it (the read or the ingestion).
+        cause_offset: u64,
+    },
+    /// `AutoFixStopped` (PX-212): auto-fix found another cause but the task
+    /// already used every attempt its cap allows; nothing was queued and
+    /// nothing will be until a person turns auto-fix on again. Said once per
+    /// cap reached. An audit record, valid in every state.
+    AutoFixStopped {
+        /// `ATTEMPT_CAP`.
+        reason: String,
+        /// Attempts made.
+        attempts: u32,
+        /// The cap.
+        cap: u32,
+        /// The cause that was not acted on.
+        cause: String,
+        /// The head its read named ("" for a comment).
+        head_sha: String,
+        /// The record that carried it.
+        cause_offset: u64,
+    },
     /// `RequestOutcomeRecorded` (REQ-EPR-010, docs/27 §11.2-11.3, docs/38
     /// "CompleteAccountingAndAttribution" step 4): the request's accounting
     /// and outcome record as of this point — every leg and attempt with its
@@ -3399,6 +3449,9 @@ impl TaskEvent {
             Self::UsageReconciled { .. } => "UsageReconciled",
             Self::CiEvidenceRecorded { .. } => "CiEvidenceRecorded",
             Self::ForgePullRequestStateRead { .. } => "ForgePullRequestStateRead",
+            Self::AutoFixSet { .. } => "AutoFixSet",
+            Self::AutoFixQueued { .. } => "AutoFixQueued",
+            Self::AutoFixStopped { .. } => "AutoFixStopped",
             Self::ReviewCommentsIngested { .. } => "ReviewCommentsIngested",
             Self::PolicyGenerationChanged { .. } => "PolicyGenerationChanged",
             Self::CapabilitySnapshotRecorded { .. } => "CapabilitySnapshotRecorded",
@@ -3659,6 +3712,9 @@ impl Task {
             TaskEvent::SandboxReleased { .. }
             | TaskEvent::CiEvidenceRecorded { .. }
             | TaskEvent::ForgePullRequestStateRead { .. }
+            | TaskEvent::AutoFixSet { .. }
+            | TaskEvent::AutoFixQueued { .. }
+            | TaskEvent::AutoFixStopped { .. }
             | TaskEvent::ReviewCommentsIngested { .. }
             | TaskEvent::UsageReconciled { .. }
             | TaskEvent::RequestOutcomeRecorded { .. }

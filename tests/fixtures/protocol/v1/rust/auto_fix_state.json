@@ -1,0 +1,11 @@
+{
+  "expected": {
+    "attempts": 2,
+    "cap": 3,
+    "enabled": true,
+    "offset": "9007199254740993",
+    "stopped": false,
+    "taskId": "21212121212121212121212121212121"
+  },
+  "type": "modbit.v1.AutoFixState"
+}

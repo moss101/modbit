@@ -229,6 +229,13 @@ pub fn samples() -> Vec<Sample> {
                 }),
                 read_offset: 88,
                 trigger: "REQUEST".into(),
+                // PX-212: auto-fix on, one repair turn asked for.
+                auto_fix: true,
+                auto_fix_attempts: 1,
+                auto_fix_cap: 3,
+                auto_fix_stopped: false,
+                auto_fix_last_cause: "CHECKS_FAILING".into(),
+                auto_fix_last_offset: 89,
             }),
         }],
         last_offset: 90,
@@ -1466,7 +1473,9 @@ pub fn samples() -> Vec<Sample> {
                         "checksTotal": 2, "checksPassing": 1, "checksFailing": 1, "checksPending": 0,
                         "failingChecks": ["lint"], "headSha": "f".repeat(40), "pushedSha": "f".repeat(40),
                         "readAt": {"seconds": "1700000200", "nanos": 0},
-                        "readOffset": "88", "trigger": "REQUEST"
+                        "readOffset": "88", "trigger": "REQUEST",
+                        "autoFix": true, "autoFixAttempts": 1, "autoFixCap": 3, "autoFixStopped": false,
+                        "autoFixLastCause": "CHECKS_FAILING", "autoFixLastOffset": "89"
                     }
                 }],
                 "lastOffset": "90", "eventsRead": "0", "objectsRead": "0"
@@ -2657,10 +2666,20 @@ pub fn samples() -> Vec<Sample> {
                     }),
                     read_offset: 9_007_199_254_740_993,
                     trigger: "SCHEDULE".into(),
+                    // PX-212: the cap stopped auto-fix.
+                    auto_fix: true,
+                    auto_fix_attempts: 3,
+                    auto_fix_cap: 3,
+                    auto_fix_stopped: true,
+                    auto_fix_last_cause: "REVIEW_COMMENT".into(),
+                    auto_fix_last_offset: 9_007_199_254_740_995,
                 }),
                 offset: 9_007_199_254_740_993,
                 archived: true,
                 archive_offset: 9_007_199_254_740_994,
+                auto_fix_queued: false,
+                auto_fix_input_id: String::new(),
+                auto_fix_stopped: true,
             }
             .encode_to_vec(),
             expected: json!({
@@ -2671,9 +2690,12 @@ pub fn samples() -> Vec<Sample> {
                     "checksTotal": 2, "checksPassing": 2, "checksFailing": 0, "checksPending": 0,
                     "failingChecks": [], "headSha": "f".repeat(40), "pushedSha": "f".repeat(40),
                     "readAt": {"seconds": "1700000300", "nanos": 0},
-                    "readOffset": "9007199254740993", "trigger": "SCHEDULE"
+                    "readOffset": "9007199254740993", "trigger": "SCHEDULE",
+                    "autoFix": true, "autoFixAttempts": 3, "autoFixCap": 3, "autoFixStopped": true,
+                    "autoFixLastCause": "REVIEW_COMMENT", "autoFixLastOffset": "9007199254740995"
                 },
-                "offset": "9007199254740993", "archived": true, "archiveOffset": "9007199254740994"
+                "offset": "9007199254740993", "archived": true, "archiveOffset": "9007199254740994",
+                "autoFixQueued": false, "autoFixInputId": "", "autoFixStopped": true
             }),
             decode: reencode::<PullRequestRefreshed>,
         },
@@ -2706,6 +2728,33 @@ pub fn samples() -> Vec<Sample> {
             .encode_to_vec(),
             expected: json!({ "sessionId": idhex(0x10), "archiveAfterMerge": true, "offset": "41" }),
             decode: reencode::<PullRequestPreferences>,
+        },
+        // REQ-PX-212: the task's auto-fix switch and its state.
+        Sample {
+            name: "set_auto_fix",
+            type_name: "modbit.v1.SetAutoFix",
+            bytes: SetAutoFix {
+                task_id: id(0x21),
+                enabled: true,
+            }
+            .encode_to_vec(),
+            expected: json!({ "taskId": idhex(0x21), "enabled": true }),
+            decode: reencode::<SetAutoFix>,
+        },
+        Sample {
+            name: "auto_fix_state",
+            type_name: "modbit.v1.AutoFixState",
+            bytes: AutoFixState {
+                task_id: id(0x21),
+                enabled: true,
+                attempts: 2,
+                cap: 3,
+                stopped: false,
+                offset: 9_007_199_254_740_993,
+            }
+            .encode_to_vec(),
+            expected: json!({ "taskId": idhex(0x21), "enabled": true, "attempts": 2, "cap": 3, "stopped": false, "offset": "9007199254740993" }),
+            decode: reencode::<AutoFixState>,
         },
         // REQ-PX-214: the isolated reviewer's findings in the review bundle,
         // and the commands that fix or set one aside.
