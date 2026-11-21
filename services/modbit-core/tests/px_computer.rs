@@ -1285,6 +1285,25 @@ fn alive(pid: u32) -> bool {
 /// Wait for a process to be gone. One sample of `alive` right after a kill races the operating
 /// system (and the Core, which reaps its child when it sees the pipe close), so the answer is
 /// "gone by the deadline", with the deadline generous.
+/// What the operating system lists under `pid`, for the message of a wait that ran out: the
+/// hosted Windows runner once still listed a killed actuator's pid after 90 s (PR 243, run
+/// 44893907539), and a pid alone does not say whether that was the actuator or a process that
+/// was given its number afterwards.
+fn describe(pid: u32) -> String {
+    #[cfg(unix)]
+    let listed = std::process::Command::new("ps")
+        .args(["-o", "pid=,lstart=,command=", "-p", &pid.to_string()])
+        .output();
+    #[cfg(windows)]
+    let listed = std::process::Command::new("tasklist")
+        .args(["/V", "/FO", "CSV", "/NH", "/FI", &format!("PID eq {pid}")])
+        .output();
+    match listed {
+        Ok(o) => String::from_utf8_lossy(&o.stdout).trim().to_owned(),
+        Err(e) => format!("not listed: {e}"),
+    }
+}
+
 async fn process_gone(pid: u32, secs: u64) -> bool {
     let deadline = std::time::Instant::now() + Duration::from_secs(secs);
     loop {
@@ -1351,7 +1370,8 @@ async fn qual_px_069_killing_the_actuator_mid_action_leaves_the_outcome_unknown_
     // The actuator that was killed is gone, and a new one is attached (the tools stay offered).
     assert!(
         process_gone(pid_before, WAIT_SECS).await,
-        "the killed actuator is still there"
+        "the killed actuator is still there: {}",
+        describe(pid_before)
     );
     // The Core relaunches a lost actuator on its supervision tick, so "a new one is attached" is
     // an event to wait for, not a state to sample.
