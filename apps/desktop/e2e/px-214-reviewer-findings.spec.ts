@@ -385,9 +385,14 @@ test("QUAL-PX-214: the reviewer's three findings on Review, walked through, one 
       .poll(async () => (await page.evaluate((t) => window.modbit.reviewBundle(t), task)).reviewer.state, { timeout: 120_000, message: "the Core marked the old report as from an earlier version" })
       .toBe("STALE");
     // The task reached review again while its next review runs, so the app may be showing the task's own review: back to Review.
-    await reviewShowing(page, task, "STALE");
-    await expect(page.getByTestId("reviewer-stale")).toContainText("from an earlier version of the change");
-    await expect(page.getByTestId("reviewer-finding")).toHaveCount(3);
+    // The app opens the task's own review by itself when the fixed candidate reaches review, which can land between Review being
+    // shown and the report being read (CI run 44840634801: the stale report shown, then no findings for 15 s). Showing Review and
+    // reading the report are therefore one step, done again if the window was taken; what must be read is unchanged.
+    await expect(async () => {
+      await reviewShowing(page, task, "STALE");
+      await expect(page.getByTestId("reviewer-stale")).toContainText("from an earlier version of the change", { timeout: 3_000 });
+      await expect(page.getByTestId("reviewer-finding")).toHaveCount(3, { timeout: 3_000 });
+    }).toPass({ timeout: 60_000 });
     await shots(page, "review-stale-report", () => reviewShowing(page, task, "STALE"));
     // The next review's brief lists what is open (f1, f2) and not what was set aside.
     await expect.poll(() => bodies.filter((b) => b.includes("Earlier findings still open")).length, { timeout: 60_000 }).toBeGreaterThan(0);
@@ -406,11 +411,13 @@ test("QUAL-PX-214: the reviewer's three findings on Review, walked through, one 
       .toBe("PASS");
     // The task is ready for review again, so the app shows its own review; Review is one click away.
     await expectTaskState(page, task, "ReadyForReview", 60_000);
-    await reviewShowing(page, task, "CURRENT");
-    await expect(page.getByTestId("reviewer")).toHaveAttribute("data-verdict", "PASS");
-    await expect(page.getByTestId("reviewer-headline")).toHaveText("The reviewer found nothing to change.");
-    await expect(page.getByTestId("reviewer-finding")).toHaveCount(0);
-    await expect(page.getByTestId("reviewer-count")).toHaveText("No findings.");
+    await expect(async () => {
+      await reviewShowing(page, task, "CURRENT");
+      await expect(page.getByTestId("reviewer")).toHaveAttribute("data-verdict", "PASS", { timeout: 3_000 });
+      await expect(page.getByTestId("reviewer-headline")).toHaveText("The reviewer found nothing to change.", { timeout: 3_000 });
+      await expect(page.getByTestId("reviewer-finding")).toHaveCount(0, { timeout: 3_000 });
+      await expect(page.getByTestId("reviewer-count")).toHaveText("No findings.", { timeout: 3_000 });
+    }).toPass({ timeout: 60_000 });
     expect((await page.evaluate((t) => window.modbit.reviewBundle(t), task)).reviewer.resultDigest).not.toBe(digest);
     await shots(page, "review-second-report", () => reviewShowing(page, task, "CURRENT"));
     expect(await rawWords(page, "review-page"), "plain words on the Review page").toEqual([]);
