@@ -56,3 +56,11 @@ Classification: IMPLEMENTED-PARTIAL around the row (open, read tool, CI ingestio
 - The schedule reads each open request every interval in one pass, one at a time; there is no backoff beyond the next interval when the forge refuses (rate limits are typed by the adapter and logged).
 - The Core's archive is recognised by the desktop as the archive right after the read that found the merge (pushed events carry no actor); it changes only the notice's words.
 - macOS only locally; Linux and Windows are CI's.
+
+## CI and merge
+
+- CI run 44915377978 on the PR's final head cdbaded2: all 19 checks green (`ci-run-44915377978.json`). Two earlier runs failed and were fixed forward on the branch: the dossier-integrity job on a stray local `.DS_Store` in the seal (e295ea6d), and the desktop E2E job on the renderer-bridge allow-list missing the three pull-request methods (cdbaded2). Merged as ac354553 (#244). The owner asked for the seal on 2026-11-21.
+
+## Status
+
+COMPLETE (sealed 2026-11-21).

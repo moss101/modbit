@@ -41387,7 +41387,7 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-211",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "E2E_PROVEN",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m10/PX-211/TASK_CARD.md",
     "commit:46e6f7f2",
@@ -41397,9 +41397,20 @@
     "artifact:evidence/m10/PX-211/core-suite.log",
     "test:apps/desktop/e2e/px-211-pull-request-state.spec.ts",
     "artifact:evidence/m10/PX-211/px211-e2e-related.log",
-    "artifact:evidence/m10/PX-211/evidence.json"
+    "artifact:evidence/m10/PX-211/evidence.json",
+    "run:gha-44915377978",
+    "commit:ac3545539548aae161c314749c5a157b9aca5d00",
+    "artifact:evidence/m10/PX-211/ci-run-44915377978.json"
    ],
-   "status_changed_on": "2026-11-21T10:22:11Z"
+   "notes": [
+    {
+     "at": "2026-11-21T16:48:02Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "PR 244 merged green; owner asked to close open tasks"
+    }
+   ],
+   "status_changed_on": "2026-11-21T16:48:02Z"
   },
   {
    "id": "PX-212",
