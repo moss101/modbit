@@ -4200,7 +4200,19 @@ async fn qual_px_153_the_count_survives_a_restart_because_it_is_folded_from_the_
     };
     decide(&mut c, &asked[0], false, g).await;
     wait_task(&mut c, &t, 60).await;
-    let events = replay(&core, &session).await;
+    // `wait_task` returns when the loop reports itself not alive, which can be
+    // true while the run is still parked on the approval just resolved; the
+    // notice lands in one batch with the suspension a moment later. Read the log
+    // until it is there. A run that never parks still fails here, after the
+    // deadline, with the same message.
+    let deadline = Instant::now() + Duration::from_secs(60);
+    let events = loop {
+        let events = replay(&core, &session).await;
+        if !attention_notices(&events, &t).is_empty() || Instant::now() >= deadline {
+            break events;
+        }
+        tokio::time::sleep(Duration::from_millis(250)).await;
+    };
     assert_eq!(
         attention_notices(&events, &t).len(),
         1,
