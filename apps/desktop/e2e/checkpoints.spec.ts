@@ -111,6 +111,8 @@ test("PX-062: Restore puts the bytes of a turn's checkpoint back (Cancel changes
     await expect(undo).toHaveAttribute("data-armed", "false");
     await undo.click();
     await expect(undo).toHaveAttribute("data-armed", "true");
+    // The keyboard's place stays on the button the first click armed: the second press is one Enter away.
+    await expect(undo).toBeFocused();
     // The edit goes back to the commit; the agent's new files are untracked, so they are deleted.
     await expect(details.getByTestId("undo-all-armed")).toContainText("1 file is put back to the last commit (a file that is new since then is removed); 3 files are deleted.");
     expect(snap(repo)).toEqual(end);

@@ -1285,6 +1285,25 @@ fn alive(pid: u32) -> bool {
 /// Wait for a process to be gone. One sample of `alive` right after a kill races the operating
 /// system (and the Core, which reaps its child when it sees the pipe close), so the answer is
 /// "gone by the deadline", with the deadline generous.
+/// What the operating system lists under `pid`, for the message of a wait that ran out: the
+/// hosted Windows runner once still listed a killed actuator's pid after 90 s (PR 243, run
+/// 44893907539), and a pid alone does not say whether that was the actuator or a process that
+/// was given its number afterwards.
+fn describe(pid: u32) -> String {
+    #[cfg(unix)]
+    let listed = std::process::Command::new("ps")
+        .args(["-o", "pid=,lstart=,command=", "-p", &pid.to_string()])
+        .output();
+    #[cfg(windows)]
+    let listed = std::process::Command::new("tasklist")
+        .args(["/V", "/FO", "CSV", "/NH", "/FI", &format!("PID eq {pid}")])
+        .output();
+    match listed {
+        Ok(o) => String::from_utf8_lossy(&o.stdout).trim().to_owned(),
+        Err(e) => format!("not listed: {e}"),
+    }
+}
+
 async fn process_gone(pid: u32, secs: u64) -> bool {
     let deadline = std::time::Instant::now() + Duration::from_secs(secs);
     loop {
@@ -1351,7 +1370,8 @@ async fn qual_px_069_killing_the_actuator_mid_action_leaves_the_outcome_unknown_
     // The actuator that was killed is gone, and a new one is attached (the tools stay offered).
     assert!(
         process_gone(pid_before, WAIT_SECS).await,
-        "the killed actuator is still there"
+        "the killed actuator is still there: {}",
+        describe(pid_before)
     );
     // The Core relaunches a lost actuator on its supervision tick, so "a new one is attached" is
     // an event to wait for, not a state to sample.
@@ -1554,11 +1574,20 @@ async fn qual_px_069_the_on_screen_stop_halts_the_actuator_and_is_sticky_for_the
 
 /// QUAL-PX-069 (CUC-D05): the person's Stop is on the record the moment it is
 /// requested, so an input in flight can never be logged ahead of it, however long
-/// the actuator takes to confirm (the fixture ends the input at once and answers the
-/// stop 300 ms later, inside the 500 ms stop deadline).
+/// the actuator takes to confirm. The fixture ends the input at once and does not
+/// answer the stop for a minute, far past the Core's stop deadline: the Core waits
+/// out that deadline with the in-flight result already back, so a Stop recorded only
+/// once the actuator is done with it would land after that result. Nothing here
+/// depends on how fast the machine is (a reply 300 ms late, meant to stay inside the
+/// deadline, did not always: CI run 44476041746); the stop an actuator confirms in
+/// time is `qual_px_069_the_on_screen_stop_halts_the_actuator_and_is_sticky_for_the_turn`.
 #[tokio::test(flavor = "multi_thread")]
 async fn qual_px_069_the_stop_is_recorded_before_the_in_flight_result_however_slow_the_actuator() {
     use modbit_protocol::v1::{ComputerStop, ComputerStopped};
+    // The Core gives the actuator this long to confirm a stop (`stop_actuator`).
+    const STOP_DEADLINE: Duration = Duration::from_millis(500);
+    // The fixture's stop reply: later than any stop deadline, and than this test.
+    const STOP_REPLY_AFTER: Duration = Duration::from_secs(60);
     let steps = vec![
         start(FORM),
         fx(call("computer.state", json!({}))),
@@ -1570,11 +1599,14 @@ async fn qual_px_069_the_stop_is_recorded_before_the_in_flight_result_however_sl
         }),
     ];
     let opts = Opts {
-        desktop: Some(desktop_with(|d| d["faults"] = json!({"slow_stop_ms": 300}))),
+        desktop: Some(desktop_with(|d| {
+            d["faults"] = json!({"slow_stop_ms": STOP_REPLY_AFTER.as_millis()});
+        })),
         ..Opts::default()
     };
     let mut rig = run(opts, steps, approve_all()).await;
     rig.wait_delivered().await;
+    let started = std::time::Instant::now();
     let ack = rig
         .side_command(
             "ComputerStop",
@@ -1586,8 +1618,23 @@ async fn qual_px_069_the_stop_is_recorded_before_the_in_flight_result_however_sl
         )
         .await
         .unwrap();
+    let stop_took = started.elapsed();
     let stopped: ComputerStopped = Client::result(&ack).unwrap();
-    assert!(stopped.actuator_stopped, "{stopped:?}");
+    // The Core gave the actuator its whole deadline and no longer: it answers the
+    // person without the confirmation, and says so.
+    assert_eq!(stopped.sessions_closed, 1, "{stopped:?}");
+    assert!(
+        !stopped.actuator_stopped,
+        "the actuator had not confirmed: {stopped:?}"
+    );
+    assert!(
+        stop_took >= STOP_DEADLINE,
+        "the stop waited out its deadline: {stop_took:?}"
+    );
+    assert!(
+        stop_took < STOP_REPLY_AFTER / 2,
+        "the stop did not wait for the actuator's reply: {stop_took:?}"
+    );
     rig.finish().await;
     let evs = rig.events().await;
     assert_eq!(of(&evs, "ComputerUserAborted").len(), 1);
