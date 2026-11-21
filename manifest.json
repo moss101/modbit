@@ -2,12 +2,12 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-11-20",
+  "generated_on": "2026-11-21",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2435,
+    "root_and_tooling": 2439,
     "docs_bytes": 2395097
   },
   "sections": [
@@ -2892,6 +2892,26 @@
       "path": "evidence/m10/PX-123/mutation-check.txt",
       "bytes": 3103,
       "sha256": "632b9e3b5aeefeee1c2308225abe1bca8f0eb5071624a401345ab3466fff7b94"
+    },
+    {
+      "path": "evidence/m10/PX-125/TASK_CARD.md",
+      "bytes": 7341,
+      "sha256": "843edac59b6185cf193d910f83b028147b9cdfce5f2422e2fcb3353bd404aebe"
+    },
+    {
+      "path": "evidence/m10/PX-125/ci-run-44826858961.json",
+      "bytes": 65329,
+      "sha256": "0a1d20d4514740f97115485d2ae93caefb922c833ae36021e90d099110549788"
+    },
+    {
+      "path": "evidence/m10/PX-125/mutation-redaction-skipped.log",
+      "bytes": 352,
+      "sha256": "ccfe78b495445674cf3a16979f74ebff87168908cca1942c75d215e47a09df04"
+    },
+    {
+      "path": "evidence/m10/PX-125/px125-live.log",
+      "bytes": 615,
+      "sha256": "4dda893b40a36453b637d1c18671f81bf36a09f53475f672fd5f4b3930b4b27b"
     },
     {
       "path": "evidence/m10/PX-130/TASK_CARD.md",
@@ -13041,12 +13061,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 47980,
-      "sha256": "b5d678f2a5f52b63d09bb73dbd9644f5e071b5ce876bd32f76c970768db4b70c"
+      "sha256": "101cb3cf6dcf25d2ffcafc4a1f900062c73f86a1ea26409156ad7cb81c799dc9"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2640085,
-      "sha256": "ae3ce34f440b395c57c7bce5f9ed7cf272491eefda5a10721b439a9d9a349595"
+      "bytes": 2641609,
+      "sha256": "032f0489ef408a7eb2b55d6a3301541db54e00a2a0a548e5cff1b8336912713a"
     },
     {
       "path": "tools/build_graph.py",

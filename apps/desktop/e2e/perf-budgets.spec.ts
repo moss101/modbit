@@ -110,13 +110,15 @@ test("PERF PX-041/PX-047: a streamed delta renders within 100 ms of its event ti
         queueMicrotask(check);
       });
     });
-    // The drafts are made from the home composer first; each is then started and its conversation opened in turn (one stream is watched at a time).
+    // The drafts are made from the home composer first; each has its conversation opened and is then started in turn (one stream is watched at a time).
+    // Opened first: a row that has just been started leaves the drafts for the running group, and a click aimed at it while it moves lands nowhere
+    // (the conversation stayed on the task before it). The draft's row holds still, and the stream is then watched from its first delta.
     const ids: string[] = [];
     for (let k = 0; k < TASKS; k++) ids.push(await createTask(page, `perf stream ${k}`, repo));
     const sid = await sessionOf(page);
     for (const id of ids) {
-      await page.evaluate(([s, t]) => window.modbit.startTask(s!, t!), [sid, id]);
       await openConversation(page, id);
+      await page.evaluate(([s, t]) => window.modbit.startTask(s!, t!), [sid, id]);
       await expect(page.getByTestId("review")).toBeVisible({ timeout: 600_000 });
       await page.keyboard.press("Escape");
     }

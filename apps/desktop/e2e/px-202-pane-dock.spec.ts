@@ -260,7 +260,8 @@ test("PX-202: panes open together and tile; the set and the sizes are the task's
           throw new Error(`${e.message}\nthe shell: ${await shellState(page)}`);
         });
         await expect(page.getByTestId("apps-panel")).toHaveAttribute("data-panes", "changes terminal evidence");
-        expect(await dockDrift(page, 45), `the stacked dock at ${size.width} x ${size.height}`).toEqual([]);
+        // The segment has just mounted the dock: its panes are laid out a frame later, so the dock is read until it is whole.
+        await expect.poll(() => dockDrift(page, 45), { timeout: 10_000, message: `the stacked dock at ${size.width} x ${size.height}` }).toEqual([]);
         await page.getByTestId("segment-conversation").click();
       } else await expect(page.getByTestId("apps-panel")).toHaveAttribute("data-panes", "changes terminal evidence");
       expect(await titleBarDrift(page), `the title bar at ${size.width} x ${size.height}${stacked ? " (stacked)" : ""}`).toEqual([]);
@@ -622,7 +623,8 @@ test("PX-202: panes open together and tile; the set and the sizes are the task's
     await page.getByTestId("segment-apps").click();
     await expect(page.getByTestId("apps-panel")).toBeVisible();
     await expect(page.getByTestId("apps-panel")).toHaveAttribute("data-panes", "activity background");
-    expect(await dockDrift(page, 45), "stacked at 1000 wide").toEqual([]);
+    // Read until whole, as above: 3 ms after the segment mounted the dock, a CI run found both panes open and neither yet laid out.
+    await expect.poll(() => dockDrift(page, 45), { timeout: 10_000, message: "stacked at 1000 wide" }).toEqual([]);
     expect(await stackDrift(page), "stacked at 1000 wide, with its segment").toEqual([]);
     // The retained mutation: a shell that says it is stacked and draws no segment (the panes out of reach) fails.
     await page.evaluate(() => {
