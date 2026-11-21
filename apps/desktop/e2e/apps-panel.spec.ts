@@ -246,17 +246,29 @@ test("slow consumer at the IPC level: the Core sends no more than the window bey
   const r = await page.evaluate(
     async ({ sessionId, taskId, terminalId }) => {
       const WINDOW = 4096;
-      const att = await window.modbit.terminalAttach(sessionId, taskId, terminalId, "0", { windowBytes: WINDOW });
       let acked = 0n;
       let received = 0n;
       let worst = 0n;
       let lastFrameAt = Date.now();
-      const off = window.modbit.onTerminalFrame((f) => {
-        if (f.attachId !== att.attachId || f.kind !== "output") return;
-        received = BigInt(f.cursor) + BigInt(f.data.length);
+      // The listener is there before the attach, as the app's own terminal has it: the Core may send its first window of frames before
+      // the attach call has answered, and it then sends nothing more until one is acknowledged. A listener added after the answer could
+      // miss them all and wait on a stream that was waiting on it (CI run 44476603385: nothing received in 30 s). Frames that arrive
+      // before the attach id is known are kept and counted once it is.
+      let attachId: string | null = null;
+      const early: { attachId: string; cursor: string; length: number }[] = [];
+      const count = (cursor: string, length: number) => {
+        received = BigInt(cursor) + BigInt(length);
         if (received - acked > worst) worst = received - acked;
         lastFrameAt = Date.now();
+      };
+      const off = window.modbit.onTerminalFrame((f) => {
+        if (f.kind !== "output") return;
+        if (attachId === null) early.push({ attachId: f.attachId, cursor: f.cursor, length: f.data.length });
+        else if (f.attachId === attachId) count(f.cursor, f.data.length);
       });
+      const att = await window.modbit.terminalAttach(sessionId, taskId, terminalId, "0", { windowBytes: WINDOW });
+      attachId = att.attachId;
+      for (const f of early) if (f.attachId === attachId) count(f.cursor, f.length);
       const quiet = async () => {
         // Quiet means no frame for 400 ms after at least one arrived; the Core has nothing more it may send.
         while (Date.now() - lastFrameAt < 400) await new Promise((res) => setTimeout(res, 50));
