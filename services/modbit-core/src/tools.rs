@@ -3617,6 +3617,11 @@ fn ensure_semantic<'a>(
 /// SQLite connection with a ten second busy timeout; a read waits no longer).
 const STORE_READ_WAIT: std::time::Duration = std::time::Duration::from_secs(10);
 
+/// How long a finished pack waits to be recorded on the task's ledger. The
+/// ledger's other holders (a tool recording a read, a turn's prompt compile)
+/// hold it for milliseconds.
+const LEDGER_RECORD_WAIT: std::time::Duration = std::time::Duration::from_secs(2);
+
 /// Lock `m` from synchronous tool code that runs on a runtime worker, waiting
 /// up to `wait` for the holder. A multi-thread runtime lets the worker block
 /// (the holder runs on another worker); on a current-thread runtime the
@@ -4210,12 +4215,20 @@ impl IndexPort {
                     .objects
                     .put(&serde_json::to_vec(&pack).unwrap_or_default())
                     .ok();
-                let mut ledger = self.ledger.try_lock().map_err(|_| {
-                    (
-                        "LEDGER_BUSY".to_owned(),
-                        "the ledger is being updated".to_owned(),
-                    )
-                })?;
+                // The pack is built; only its record is left. A pre-turn pack
+                // that missed its deadline finishes here while the run it
+                // belongs to is reading files and compiling prompts, each of
+                // which holds the ledger for a moment. Trying the lock once
+                // threw the finished pack away as LEDGER_BUSY and it never
+                // joined a later turn (CI run 44496617894), so the holder is
+                // waited for, bounded.
+                let mut ledger =
+                    lock_bounded(&self.ledger, LEDGER_RECORD_WAIT).ok_or_else(|| {
+                        (
+                            "LEDGER_BUSY".to_owned(),
+                            "the ledger is being updated".to_owned(),
+                        )
+                    })?;
                 ledger.record(&pack);
                 let ledger_ref = self
                     .objects
