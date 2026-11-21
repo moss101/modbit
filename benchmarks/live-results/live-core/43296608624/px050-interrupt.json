@@ -1,0 +1,104 @@
+{
+  "checks": [
+    {
+      "detail": "InterruptAccepted { task_id: Some(Id { value: [204, 118, 97, 165, 197, 193, 142, 36, 126, 55, 31, 72, 180, 81, 143, 34] }), interrupt_id: \"int-1\", kind: \"SEND_NOW\", run_alive: true, sequence: 11, offset: 31 }",
+      "name": "accepted_send_now",
+      "ok": true
+    },
+    {
+      "detail": "status 1",
+      "name": "status_accepted_not_replayed",
+      "ok": true
+    },
+    {
+      "detail": "50 ms",
+      "name": "cut_at_the_next_safe_point",
+      "ok": true
+    },
+    {
+      "detail": "outcome \"STREAM_ABORTED\" (the model's answer ended before the interrupt arrived if this is not STREAM_ABORTED)",
+      "name": "stream_was_cut_not_finished",
+      "ok": true
+    },
+    {
+      "detail": "status 2",
+      "name": "replay_of_the_command_is_a_replay",
+      "ok": true
+    },
+    {
+      "detail": "status 2",
+      "name": "same_interrupt_id_is_the_same_interrupt",
+      "ok": true
+    },
+    {
+      "detail": "TaskStatus { state: \"Waiting\", wait_reason: \"UserInput\", run_state: \"Suspended\", loop_alive: false, last_offset: 394, attention_reason: \"3 consecutive turns without progress\", failure_class: \"HARNESS\", failure_code: \"NO_PROGRESS\", retryable: false, user_action: \"steer the task or narrow the goal\", recovery_path: \"the run suspended after consecutive turns without progress; resume with StartTask\", evidence_refs: [], diagnostic_features: [\"class:harness\", \"code:no_progress\", \"not_retryable\", \"source:harness\"], user_explanation: \"A rule of the agent harness refused an action (NO_PROGRESS). Trying again as it is will not help. steer the task or narrow the goal.\", posture: Some(TaskPostureView { task_id: Some(Id { value: [204, 118, 97, 165, 197, 193, 142, 36, 126, 55, 31, 72, 180, 81, 143, 34] }), mode: Agent, mode_offset: 0, mode_in_force: Agent, posture: Some(ModePostureView { effect_ceiling: \"NONE\", allowed_capabilities: [], subagents: true, reproduction_first: false, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"DIRECT\", reason_code: \"NO_ACTIVE_REGISTRY\", detail: \"no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\", floor_mode: \"\", registry_generation: \"\" }) }) }",
+      "name": "run_ended",
+      "ok": true
+    },
+    {
+      "detail": "1 aborted streams",
+      "name": "one_aborted_stream",
+      "ok": true
+    },
+    {
+      "detail": "\"USER_INTERRUPT\" / \"USER_SEND_NOW\"",
+      "name": "typed_source",
+      "ok": true
+    },
+    {
+      "detail": "no delta of the cut stream is on the log",
+      "name": "partial_text_kept",
+      "ok": true
+    },
+    {
+      "detail": "1 vs 1",
+      "name": "delta_count_matches",
+      "ok": true
+    },
+    {
+      "detail": "the cut stream also completed",
+      "name": "cut_stream_never_completes",
+      "ok": true
+    },
+    {
+      "detail": "1",
+      "name": "interrupt_requested_once",
+      "ok": true
+    },
+    {
+      "detail": "[Object {\"cancelled_calls\": Array [], \"event_type\": String(\"TaskInterruptApplied\"), \"interrupt_id\": String(\"int-1\"), \"next\": String(\"DISPATCH\"), \"outcome\": String(\"STREAM_ABORTED\"), \"stream_aborted\": Bool(true), \"unknown_outcome_calls\": Array []}]",
+      "name": "applied_once_with_dispatch_next",
+      "ok": true
+    },
+    {
+      "detail": "[[\"x\"], [\"y\"]]",
+      "name": "new_turn_started_once",
+      "ok": true
+    },
+    {
+      "detail": "[[\"x\"], [\"y\"]]",
+      "name": "next_input_after_it",
+      "ok": true
+    }
+  ],
+  "cost_usd": 0.04713975,
+  "counts": {
+    "first_delta_ms": 13299,
+    "interrupt_applied_after_ms": 50,
+    "partial_deltas": 1
+  },
+  "elapsed_s": 201.087174995,
+  "endpoint": "https://generativelanguage.googleapis.com/v1beta/openai",
+  "input_tokens": 26998,
+  "leg": "interrupt",
+  "live": true,
+  "model": "gemini-3.8-flash",
+  "model_calls": 3,
+  "notes": [],
+  "output_tokens": 7171,
+  "passed": true,
+  "row": "px050",
+  "run_id": "43296608624",
+  "started_at_ms": 1794514183193,
+  "stopped_by_cap": false
+}

@@ -1,0 +1,98 @@
+{
+  "checks": [
+    {
+      "detail": "the first answer had already completed when the inputs were queued",
+      "name": "queued_during_a_streaming_turn",
+      "ok": true
+    },
+    {
+      "detail": "[\"a\", \"b\", \"c\", \"d\"]",
+      "name": "listed_in_order",
+      "ok": true
+    },
+    {
+      "detail": "the run was not alive",
+      "name": "run_alive_while_queued",
+      "ok": true
+    },
+    {
+      "detail": "QUEUED",
+      "name": "edit_applied",
+      "ok": true
+    },
+    {
+      "detail": "[\"c\", \"a\", \"b\"]",
+      "name": "order_after_edits",
+      "ok": true
+    },
+    {
+      "detail": "the edit was not recorded",
+      "name": "edit_text_kept",
+      "ok": true
+    },
+    {
+      "detail": "d was not removed",
+      "name": "delete_recorded",
+      "ok": true
+    },
+    {
+      "detail": "TaskStatus { state: \"ReadyForReview\", wait_reason: \"\", run_state: \"Completed\", loop_alive: false, last_offset: 256, attention_reason: \"\", failure_class: \"\", failure_code: \"\", retryable: false, user_action: \"\", recovery_path: \"\", evidence_refs: [], diagnostic_features: [], user_explanation: \"\", posture: Some(TaskPostureView { task_id: Some(Id { value: [98, 26, 130, 151, 252, 49, 186, 131, 9, 96, 126, 55, 202, 51, 151, 56] }), mode: Agent, mode_offset: 0, mode_in_force: Agent, posture: Some(ModePostureView { effect_ceiling: \"NONE\", allowed_capabilities: [], subagents: true, reproduction_first: false, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"DIRECT\", reason_code: \"NO_ACTIVE_REGISTRY\", detail: \"no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\", floor_mode: \"\", registry_generation: \"\" }) }) }",
+      "name": "run_drained_and_ended",
+      "ok": true
+    },
+    {
+      "detail": "[[\"c\"], [\"a\"], [\"b\"]]",
+      "name": "drained_in_the_order_left",
+      "ok": true
+    },
+    {
+      "detail": "[[\"c\"], [\"a\"], [\"b\"]]",
+      "name": "each_input_its_own_turn",
+      "ok": true
+    },
+    {
+      "detail": "8 assistant messages for the essay and three inputs",
+      "name": "a_turn_per_input",
+      "ok": true
+    },
+    {
+      "detail": "inputs still queued",
+      "name": "queue_settled",
+      "ok": true
+    },
+    {
+      "detail": "[(\"a\", \"DISPATCHED\"), (\"b\", \"DISPATCHED\"), (\"c\", \"DISPATCHED\"), (\"d\", \"REMOVED\")]",
+      "name": "three_dispatched_one_removed",
+      "ok": true
+    },
+    {
+      "detail": "message D reached the conversation",
+      "name": "deleted_input_absent_from_the_conversation",
+      "ok": true
+    },
+    {
+      "detail": "[(\"user:goal\", \"Write an essay of about 1500 words on the history of the printing press, in plain prose with no headings and no lists. Do not call any tool.\"), (\"msg:01a1493c-730d-7ed2-8cd0-607af07f0b9f\", \"The invention that most decisively changed how human beings preserve and spread their ideas was not a single dramatic discovery but a convergence of modest improvements, assembled with unusual skill in the middle of the fifteenth century. Before that convergence, the written word in Europe lived a scarce and laborious existence. Every book was a manuscript, copied letter by letter by a trained scribe, often on parchment made from animal skins. A single Bible could take a team of scribes a year or more to produce, and its cost placed it far beyond the reach of anyone but institutions and the wealthy. Books were treasured objects, chained in libraries, read aloud to audiences who could not own them. In such a world, knowledge traveled slowly, and errors crept in with every copy, as each scribe's hand reproduced and sometimes corrupted the work of another.\\n\\nPrinting itself was not new in the fifteenth century. In China, woodblock printing had flourished for centuries; the Diamond Sutra of 868 is the earliest surviving dated printed book, produced by carving whole pages in mirror image onto wooden blocks, inking them, and pressing paper against them. Around 1040, the Chinese artisan Bi Sheng experimented with movable type, carving individual characters in clay that could be set and reset, and later Chinese and Korean printers refined the idea, cutting type from wood and then casting it in bronze. In Korea, a metal movable type press produced the Jikji, a Buddhist text printed around 1377, well over half a century before Europe's first printed books. Yet in the East Asian context, the enormous number of characters in the writing systems, together with cultural attachment to calligraphic tradition and the efficiency of woodblock methods for their needs, meant that movable type remained a niche technology rather than a transforming one. What changed history was not merely the idea of printing but the particular form it took when it reached Europe.\\n\\nThat form came from a goldsmith of Mainz named Johannes Gensfleisch zur Laden zum Gutenberg. Working first in Strasbourg in the 1430s and then in Mainz around 1450, Gutenberg did not invent printing so much as engineer a complete production system. He devised a hand mold that allowed individual letters to be cast quickly and identically in a durable alloy of lead, tin, and antimony, a mixture that melted at low temperature but held its shape sharply. He formulated an ink that would adhere to metal rather than the water-based inks used for woodblocks, thickening linseed oil with soot. And he adapted the screw press, familiar from wine and paper making, to apply even pressure across a sheet of paper. Together these elements meant that once a page of type was composed, thousands of identical copies could be made, each as accurate as the first. Gutenberg's great monument was the forty-two-line Bible, completed around 1455 in an edition of roughly 180 copies, a work printed so finely that contemporaries mistook it for a manuscript. The venture, financed by the businessman Johann Fust, ended in litigation; Gutenberg lost his press and much of his equipment to Fust, who continued the trade with the printer Peter Schöffer. But the essential secret was already leaking into the world.\\n\\nIt spread with remarkable speed, aided by misfortune. When Mainz was sacked in 1462, printers scattered across Europe, carrying their craft to cities eager for it. Printing houses appeared in Italy by 1465, in Cologne, Basel, Paris, and beyond through the following decade. By 1500, fewer than fifty years after the first Bible, presses were operating in more than two hundred and fifty European towns, and scholars estimate that some twenty million books had been printed. These early volumes, called incunabula, from the Latin for swaddling clothes or cradle, marked the infancy of an industry. Venice became its capital, home to hundreds of printers, among them Aldus Manutius, who pioneered the compact italic typeface and produced portable, relatively affordable editions of the Greek and Latin classics that scholars could carry in a pocket and annotate in a margin. Printing became a trade with its own economics of investment, risk, and distribution, the ancestor of modern publishing.\\n\\nThe consequences unfolded across every domain of European life. The most immediate and best documented was religious. When Martin Luther challenged indulgences in 1517, his arguments circulated as printed pamphlets that reached an enormous audience within weeks, something no manuscript culture could have permitted. Luther translated the Bible into German, and printed editions of it helped fix the German language while allowing laypeople to read scripture themselves. The Reformation, as historians have long argued, was in a real sense a child of the press; without rapid, cheap duplication of tracts, sermons, and vernacular Bibles, it is difficult to imagine religious dissent becoming a mass movement. The response was equally instructive. Catholic authorities organized censorship, published the Index of Prohibited Books, and attempted to control the trade through licensing systems such as England's Stationers' Company, an early sign that rulers and churches understood the press as a power to be managed.\\n\\nScience was transformed more quietly but no less profoundly. The authority of the ancient texts on which medieval scholarship rested had been weakened by centuries of transcription errors; printing restored and stabilized the texts of Aristotle, Galen, and Ptolemy, and then, crucially, allowed their corrections to circulate. A printed table of astronomical observations, a printed anatomical illustration, or a printed diagram of an engine could be duplicated exactly, so that a scholar in Prague could argue from the same evidence as one in Padua. Works such as Copernicus's treatise on the heavens and Vesalius's anatomy of 1543 reached an international community of readers who could check, dispute, and extend them. In 1665 the first scholarly journals appeared in Paris and London, creating a permanent, cumulative record of discovery. The custom of openly publishing results, which remains the foundation of science today, is a direct inheritance of print.\\n\\nThe press also reshaped language and public life itself. Printers, seeking the largest market for each edition, favored the dialects most widely understood, and their choices hardened into national standards of spelling and grammar for German, English, French, Italian, and other tongues. A wider reading public emerged, first among merchants and townspeople, then more broadly as literacy spread with the availability of cheap material to read. Newspapers appeared in the early seventeenth century, and by the eighteenth the coffee houses of London and the salons of Paris were discussing printed journals, pamphlets, and encyclopedias. The Enlightenment's dream of an informed public debating its own affairs was carried by the press, and when political revolution came in America and France, it came in pamphlets as much as in speeches.\\n\\nThe next great transformation was industrial. The wooden hand press had reached its practical limit, turning out perhaps a few hundred sheets an hour at best. Around 1800 Lord Stanhope built a press of cast iron that required less effort and printed larger sheets. In 1814 Friedrich Koenig's steam-driven cylinder press printed the London Times, and the economics of news changed forever; a machine that had produced hundreds of sheets per hour now produced thousands. Richard Hoe's rotary press of the 1840s, in which type revolved against curved plates, and William Bullock's web-fed press of 1863, which printed from a continuous roll of paper, multiplied the rate again. Meanwhile the Fourdrinier machine made paper in continuous lengths, and the mid-century shift to wood-pulp paper ended the dependence on rags. Composition of type, the last handcraft in the process, fell to Ottmar Mergenthaler's linotype in the 1880s, which cast entire lines of type from molten metal as an operator worked a keyboard, and to the competing monotype system. The result was the mass-circulation press of the \"), (\"user:in:a\", \"Message A: reply with just the word ALPHA.\"), (\"user:in:b\", \"Message B, edited: reply with just the word BRAVO-EDITED.\"), (\"user:in:c\", \"Message C: reply with just the word CHARLIE.\"), (\"turn:01a1493c-72c5-7fc0-95a5-bbede34eaff0\", \"\"), (\"msg:01a1493d-97f9-7ed1-80eb-e6e126c71113\", \"CHARLIE\"), (\"turn:01a1493d-97e7-7281-acb7-3afb3ebc3073\", \"\"), (\"msg:01a1493d-ce67-7c52-a711-6241c188c629\", \"ALPHA\"), (\"turn:01a1493d-ce57-7a02-9b78-7b820b2fcbc1\", \"\"), (\"msg:01a1493d-ddd4-7581-bb29-668e6e9b0973\", \"BRAVO-EDITED\"), (\"turn:01a1493d-ddc5-7ab2-88fb-6c5b7dbbee4e\", \"\"), (\"msg:01a1493d-f0b8-78c2-b197-6e3e6e96ca55\", \"There's no new instruction in this turn — only run-state information. The requested essay was delivered earlier in this conversation, per the original goal, without any tool calls, and the subsequent follow-ups (CHARLIE, ALPHA, BRAVO-EDITED) were answered as asked. Nothing here changes the deliverable, so no further work is needed; the essay stands as submitted.\"), (\"turn:01a1493d-f0a8-7f91-8fbe-31128a2e9780\", \"\"), (\"msg:01a1493e-359a-77d1-b02e-ca4089973480\", \"The requested essay was delivered in full earlier in this conversation, meeting every stated requirement — roughly 1,500 words of plain prose, no headings, no lists, and no tool calls used in producing it. The subsequent follow-ups were answered, and the last two turns contained no new instructions. Rather than let the run spin on further no-progress turns, the right move now is to formally close the task with a self-review, which the runtime uses to decide acceptance.\"), (\"turn:01a1493e-3589-7c23-8c41-0dacfd947455\", \"\"), (\"msg:01a1493e-b2a2-7262-84ba-4e1255cc45da\", \"The refusal is procedural: the runtime requires a recorded plan before it will accept completion, and none exists because the whole task was deliberately tool-free. Recording that plan now — with no expected files, since the deliverable is inline text — and then resubmitting completion.\"), (\"plan:209\", \"plan.update Deliver a ~1,500-word essay on the history of the printing press as plain prose with no headings and no lists, written directly in conversation without tool-ass\"), (\"turn:01a1493e-b28f-7703-809d-b36fd795eeda\", \"\"), (\"msg:01a1493f-15dd-7110-bb30-1942dea2bc45\", \"The plan is now recorded (version 1) with both steps marked done, which is what the previous completion attempt was missing. Resubmitting the completion proposal with the same self-review.\"), (\"turn:01a1493f-15cc-7582-a718-537210e20c10\", \"\"), (\"tail\", \"Ready for review\")]",
+      "name": "edited_text_in_the_conversation",
+      "ok": true
+    }
+  ],
+  "cost_usd": 0.0144167,
+  "counts": {
+    "assistant_messages": 8,
+    "first_delta_ms": 30624
+  },
+  "elapsed_s": 187.901834515,
+  "endpoint": "https://api.z.ai/api/coding/paas/v4",
+  "input_tokens": 69628,
+  "leg": "queue",
+  "live": true,
+  "model": "glm-5.3-flash",
+  "model_calls": 8,
+  "notes": [],
+  "output_tokens": 7945,
+  "passed": true,
+  "row": "px050",
+  "run_id": "39020727754",
+  "started_at_ms": 1792230060590,
+  "stopped_by_cap": false
+}

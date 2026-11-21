@@ -1,0 +1,139 @@
+{
+  "checks": [
+    {
+      "detail": "status 1",
+      "name": "pause_accepted",
+      "ok": true
+    },
+    {
+      "detail": "TaskPauseResult { task_id: Some(Id { value: [29, 52, 184, 22, 28, 165, 11, 160, 40, 146, 191, 231, 151, 217, 122, 92] }), state: \"PAUSING\", waits_for_boundary: true, note: \"a turn is in flight (a model stream or a tool call); it finishes, and the run parks before the next turn\", checkpoint_id: \"01a1d181-2600-7993-9179-82dd0950563c\", offset: 53 } (a turn that had already ended is not a streaming-turn pause)",
+      "name": "answer_says_the_turn_is_in_flight",
+      "ok": true
+    },
+    {
+      "detail": "TaskStatus { state: \"Waiting\", wait_reason: \"Paused\", run_state: \"Suspended\", loop_alive: false, last_offset: 82, attention_reason: \"\", failure_class: \"\", failure_code: \"\", retryable: false, user_action: \"\", recovery_path: \"\", evidence_refs: [], diagnostic_features: [], user_explanation: \"\", posture: Some(TaskPostureView { task_id: Some(Id { value: [29, 52, 184, 22, 28, 165, 11, 160, 40, 146, 191, 231, 151, 217, 122, 92] }), mode: Agent, mode_offset: 0, mode_in_force: Agent, posture: Some(ModePostureView { effect_ceiling: \"NONE\", allowed_capabilities: [], subagents: true, reproduction_first: false, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"DIRECT\", reason_code: \"NO_ACTIVE_REGISTRY\", detail: \"no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\", floor_mode: \"\", registry_generation: \"\" }) }) }",
+      "name": "parked_at_the_boundary",
+      "ok": true
+    },
+    {
+      "detail": "TaskStatus { state: \"Waiting\", wait_reason: \"Paused\", run_state: \"Suspended\", loop_alive: false, last_offset: 82, attention_reason: \"\", failure_class: \"\", failure_code: \"\", retryable: false, user_action: \"\", recovery_path: \"\", evidence_refs: [], diagnostic_features: [], user_explanation: \"\", posture: Some(TaskPostureView { task_id: Some(Id { value: [29, 52, 184, 22, 28, 165, 11, 160, 40, 146, 191, 231, 151, 217, 122, 92] }), mode: Agent, mode_offset: 0, mode_in_force: Agent, posture: Some(ModePostureView { effect_ceiling: \"NONE\", allowed_capabilities: [], subagents: true, reproduction_first: false, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"DIRECT\", reason_code: \"NO_ACTIVE_REGISTRY\", detail: \"no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\", floor_mode: \"\", registry_generation: \"\" }) }) }",
+      "name": "a_pause_is_not_a_fault",
+      "ok": true
+    },
+    {
+      "detail": "a pause cut a stream",
+      "name": "no_stream_was_aborted",
+      "ok": true
+    },
+    {
+      "detail": "0 deltas of an unfinished stream",
+      "name": "in_flight_turn_finished",
+      "ok": true
+    },
+    {
+      "detail": "1",
+      "name": "one_pause_record",
+      "ok": true
+    },
+    {
+      "detail": "{\"boundary\":\"TURN_BOUNDARY\",\"checkpoint_id\":\"01a1d181-33af-7bf2-a3de-d777be46eaa4\",\"command_id\":\"d5fa383d-77bd-215f-3afe-edc26f954d86\",\"event_type\":\"TaskPaused\",\"max_no_progress_turns\":6,\"max_tool_calls\":1000,\"max_turns\":30,\"paused_by\":\"User(UserId(b1b1b1b1-b1b1-b1b1-b1b1-b1b1b1b1b1b1))\",\"reason\":\"lunch\"}",
+      "name": "record_names_who_why_and_the_checkpoint",
+      "ok": true
+    },
+    {
+      "detail": "status 2",
+      "name": "duplicate_pause_is_a_replay",
+      "ok": true
+    },
+    {
+      "detail": "more than one request on the log",
+      "name": "duplicate_recorded_nothing",
+      "ok": true
+    },
+    {
+      "detail": "ALREADY_PAUSED",
+      "name": "pause_of_a_paused_task",
+      "ok": true
+    },
+    {
+      "detail": "TaskStatus { state: \"Waiting\", wait_reason: \"Paused\", run_state: \"Suspended\", loop_alive: false, last_offset: 83, attention_reason: \"\", failure_class: \"\", failure_code: \"\", retryable: false, user_action: \"\", recovery_path: \"\", evidence_refs: [], diagnostic_features: [], user_explanation: \"\", posture: Some(TaskPostureView { task_id: Some(Id { value: [29, 52, 184, 22, 28, 165, 11, 160, 40, 146, 191, 231, 151, 217, 122, 92] }), mode: Agent, mode_offset: 0, mode_in_force: Agent, posture: Some(ModePostureView { effect_ceiling: \"NONE\", allowed_capabilities: [], subagents: true, reproduction_first: false, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"DIRECT\", reason_code: \"NO_ACTIVE_REGISTRY\", detail: \"no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\", floor_mode: \"\", registry_generation: \"\" }) }) }",
+      "name": "paused_after_the_kill",
+      "ok": true
+    },
+    {
+      "detail": "Suspended vs Suspended",
+      "name": "same_run_state",
+      "ok": true
+    },
+    {
+      "detail": "01a1d181-33af-7bf2-a3de-d777be46eaa4 vs 01a1d181-33af-7bf2-a3de-d777be46eaa4",
+      "name": "same_checkpoint_held",
+      "ok": true
+    },
+    {
+      "detail": "the pause events changed across the restart",
+      "name": "no_event_lost_or_invented",
+      "ok": true
+    },
+    {
+      "detail": "the stale generation was not refused as STALE_LEASE",
+      "name": "stale_resume_refused",
+      "ok": true
+    },
+    {
+      "detail": "TaskStatus { state: \"Waiting\", wait_reason: \"Paused\", run_state: \"Suspended\", loop_alive: false, last_offset: 83, attention_reason: \"\", failure_class: \"\", failure_code: \"\", retryable: false, user_action: \"\", recovery_path: \"\", evidence_refs: [], diagnostic_features: [], user_explanation: \"\", posture: Some(TaskPostureView { task_id: Some(Id { value: [29, 52, 184, 22, 28, 165, 11, 160, 40, 146, 191, 231, 151, 217, 122, 92] }), mode: Agent, mode_offset: 0, mode_in_force: Agent, posture: Some(ModePostureView { effect_ceiling: \"NONE\", allowed_capabilities: [], subagents: true, reproduction_first: false, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"DIRECT\", reason_code: \"NO_ACTIVE_REGISTRY\", detail: \"no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\", floor_mode: \"\", registry_generation: \"\" }) }) }",
+      "name": "stale_resume_changed_nothing",
+      "ok": true
+    },
+    {
+      "detail": "TaskResumeResult { task_id: Some(Id { value: [29, 52, 184, 22, 28, 165, 11, 160, 40, 146, 191, 231, 151, 217, 122, 92] }), run_id: Some(Id { value: [1, 161, 209, 129, 10, 158, 125, 210, 174, 210, 183, 191, 59, 183, 137, 132] }), resumed: true, endpoint: \"openai\", model: \"gemini-3.8-flash\", offset: 88 } vs Some(Id { value: [1, 161, 209, 129, 10, 158, 125, 210, 174, 210, 183, 191, 59, 183, 137, 132] })",
+      "name": "resumed_the_same_run",
+      "ok": true
+    },
+    {
+      "detail": "status 2",
+      "name": "duplicate_resume_is_a_replay",
+      "ok": true
+    },
+    {
+      "detail": "TaskStatus { state: \"ReadyForReview\", wait_reason: \"\", run_state: \"Completed\", loop_alive: false, last_offset: 225, attention_reason: \"\", failure_class: \"\", failure_code: \"\", retryable: false, user_action: \"\", recovery_path: \"\", evidence_refs: [], diagnostic_features: [], user_explanation: \"\", posture: Some(TaskPostureView { task_id: Some(Id { value: [29, 52, 184, 22, 28, 165, 11, 160, 40, 146, 191, 231, 151, 217, 122, 92] }), mode: Agent, mode_offset: 0, mode_in_force: Agent, posture: Some(ModePostureView { effect_ceiling: \"NONE\", allowed_capabilities: [], subagents: true, reproduction_first: false, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"DIRECT\", reason_code: \"NO_ACTIVE_REGISTRY\", detail: \"no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\", floor_mode: \"\", registry_generation: \"\" }) }) }",
+      "name": "run_ended_after_resume",
+      "ok": true
+    },
+    {
+      "detail": "more than one pause record",
+      "name": "one_pause_one_completion",
+      "ok": true
+    },
+    {
+      "detail": "no model turn completed after the resume",
+      "name": "the_run_made_progress_after_the_resume",
+      "ok": true
+    },
+    {
+      "detail": "not NOT_PAUSED",
+      "name": "resume_of_a_running_or_finished_task_is_refused",
+      "ok": true
+    }
+  ],
+  "cost_usd": 0.04388925,
+  "counts": {
+    "first_delta_ms": 9892
+  },
+  "elapsed_s": 26.025352483,
+  "endpoint": "https://generativelanguage.googleapis.com/v1beta/openai",
+  "input_tokens": 54659,
+  "leg": "pause",
+  "live": true,
+  "model": "gemini-3.8-flash",
+  "model_calls": 6,
+  "notes": [
+    "pause during a running shell command and with a pending approval are model-driven (the model must run a long command or ask) and are proven in the scripted suite only"
+  ],
+  "output_tokens": 772,
+  "passed": true,
+  "row": "px101",
+  "run_id": "43302343430",
+  "started_at_ms": 1794516257225,
+  "stopped_by_cap": false
+}
