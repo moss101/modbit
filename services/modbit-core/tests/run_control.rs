@@ -4370,3 +4370,59 @@ async fn qual_px_152_a_refusal_by_the_sandbox_reaches_the_model_typed_and_a_fail
         "a failing test is a failing test"
     );
 }
+
+/// The estimator beside the provider's count is the one the Core runs: tokens-v2
+/// corrected by the run's calibration. Two identical runs, one against a
+/// provider that reports no count and one against a provider that reports a
+/// count far below the estimate: the second's estimate of its last request is
+/// corrected toward the provider's tokenizer (the calibration's floor is half),
+/// and its categories' estimates still sum to it.
+#[tokio::test]
+async fn qual_px_059_the_estimate_beside_the_providers_count_is_the_calibrated_one() {
+    async fn last_view(report: bool) -> modbit_protocol::v1::ContextAccountingView {
+        let (_repo, root) = plain_repo(&[("a.txt", "alpha\nbeta\ngamma\n")]);
+        let (base, _seen) = model(Arc::new(move |_, n| {
+            let mut step = if n < 3 {
+                Step::call("fs.read", json!({"path": "a.txt"}))
+            } else {
+                Step::text("that is all")
+            };
+            step.usage = Some((u64::from(report), 40));
+            step
+        }))
+        .await;
+        let dir = tempfile::tempdir().unwrap();
+        let core = spawn(dir.path(), &env_of(&base, &[]));
+        let mut c = core.client().await;
+        let (session, g) = session_with_lease(&mut c, 0x10).await;
+        let t = create_task(&mut c, &session, g, &root, 0x11, "local_trusted", "look").await;
+        start(&mut c, &t, g, "gpt-5-mini", 3).await;
+        wait_task(&mut c, &t, 90).await;
+        accounting(&mut c, &t).await
+    }
+    let raw = last_view(false).await;
+    let cal = last_view(true).await;
+    assert_eq!(raw.total_source, "ESTIMATED");
+    assert_eq!(cal.total_source, "PROVIDER_REPORTED");
+    assert_eq!(cal.provider_reported_input, 1);
+    assert!(raw.estimated_total > 1_000, "{}", raw.estimated_total);
+    // Half the uncorrected estimate, give or take the two runs' differing ids.
+    assert!(
+        cal.estimated_total * 10 > raw.estimated_total * 4
+            && cal.estimated_total * 10 < raw.estimated_total * 6,
+        "calibrated {} against uncorrected {}",
+        cal.estimated_total,
+        raw.estimated_total
+    );
+    assert_eq!(
+        cal.categories
+            .iter()
+            .map(|x| x.estimated_tokens)
+            .sum::<u64>(),
+        cal.estimated_total
+    );
+    assert_eq!(
+        u64::from(cal.estimator_error_bp),
+        cal.estimated_total.abs_diff(1) * 10_000
+    );
+}

@@ -612,6 +612,35 @@ struct LastAccounting {
     children: Vec<String>,
     /// PX-182: the latest compiled skill configuration's id.
     skill_configuration: String,
+    /// The run's calibration as it stood when that request was sent: folded
+    /// over the run's earlier requests and the provider's counts of them,
+    /// exactly as the runtime folds it (REQ-PX-109).
+    calibration: modbit_compaction::Calibration,
+}
+
+/// One compiled request of a task, for replaying the run's calibration.
+struct SentRequest {
+    run_id: Option<[u8; 16]>,
+    turn_id: Option<[u8; 16]>,
+    request_estimate: u32,
+}
+
+/// The calibration the runtime held when it sent `requests`' last entry: the
+/// provider's counts of the same run's earlier requests folded in order.
+fn calibration_before_last(
+    requests: &[SentRequest],
+    usage: &std::collections::HashMap<[u8; 16], u64>,
+) -> modbit_compaction::Calibration {
+    let mut calibration = modbit_compaction::Calibration::default();
+    let Some((last, earlier)) = requests.split_last() else {
+        return calibration;
+    };
+    for r in earlier.iter().filter(|r| r.run_id == last.run_id) {
+        if let Some(n) = r.turn_id.and_then(|t| usage.get(&t)) {
+            calibration.observe(r.request_estimate, *n);
+        }
+    }
+    calibration
 }
 
 async fn last_accounting(core: &Core, task_id: TaskId) -> Option<LastAccounting> {
@@ -623,6 +652,7 @@ async fn last_accounting(core: &Core, task_id: TaskId) -> Option<LastAccounting>
     let mut skills: Vec<String> = Vec::new();
     let mut children: Vec<String> = Vec::new();
     let mut skill_configuration = String::new();
+    let mut requests: Vec<SentRequest> = Vec::new();
     for e in &events {
         if e.envelope.task_id != Some(task_id) {
             continue;
@@ -642,6 +672,14 @@ async fn last_accounting(core: &Core, task_id: TaskId) -> Option<LastAccounting>
                     continue;
                 };
                 if let Some(acc) = v.get("accounting") {
+                    requests.push(SentRequest {
+                        run_id: e.envelope.run_id.map(|r| *r.as_bytes()),
+                        turn_id: e.envelope.turn_id.map(|t| *t.as_bytes()),
+                        request_estimate: acc["request_estimate"]
+                            .as_u64()
+                            .and_then(|n| u32::try_from(n).ok())
+                            .unwrap_or(0),
+                    });
                     last = Some(LastAccounting {
                         record: acc.clone(),
                         turn_id: e.envelope.turn_id.map(|t| *t.as_bytes()),
@@ -650,6 +688,7 @@ async fn last_accounting(core: &Core, task_id: TaskId) -> Option<LastAccounting>
                         skills: Vec::new(),
                         children: Vec::new(),
                         skill_configuration: String::new(),
+                        calibration: modbit_compaction::Calibration::default(),
                     });
                 }
             }
@@ -696,6 +735,7 @@ async fn last_accounting(core: &Core, task_id: TaskId) -> Option<LastAccounting>
     last.skills = skills;
     last.children = children;
     last.skill_configuration = skill_configuration;
+    last.calibration = calibration_before_last(&requests, &usage);
     Some(last)
 }
 
@@ -731,7 +771,16 @@ pub(crate) async fn accounting(core: &Core, task_id: TaskId) -> wire::ContextAcc
     for (i, c) in Category::ALL.iter().enumerate() {
         estimates[i] = rec["estimates"][c.name()].as_u64().unwrap_or(0);
     }
-    let estimated_total: u64 = estimates.iter().sum();
+    // The estimator is the one the Core runs: tokens-v2 corrected by the
+    // run's calibration (REQ-PX-109), so its count of a request follows the
+    // provider's tokenizer once the run has seen one count. The categories'
+    // estimates are apportioned to that corrected total by the same rule.
+    let raw_total: u64 = estimates.iter().sum();
+    let estimated_total = u64::from(
+        last.calibration
+            .apply(u32::try_from(raw_total).unwrap_or(u32::MAX)),
+    );
+    let estimates = apportion(&estimates, estimated_total);
     // The provider counted the request when it said so; the estimator's own
     // count stands otherwise, and says it is one.
     let (total, source) = match last.reported_input {
@@ -835,5 +884,55 @@ async fn budget_view(core: &Core, task_id: TaskId) -> wire::BudgetAccountingView
         max_children: state.budgets.max_children,
         live_children: state.live_children,
         forbid_spawn: state.budgets.max_children == 0,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{SentRequest, calibration_before_last};
+    use std::collections::HashMap;
+
+    fn req(run: u8, turn: u8, est: u32) -> SentRequest {
+        SentRequest {
+            run_id: Some([run; 16]),
+            turn_id: Some([turn; 16]),
+            request_estimate: est,
+        }
+    }
+
+    /// The calibration is the run's own, folded over its earlier counted
+    /// requests in order: another run's counts, an uncounted request and the
+    /// request being accounted for teach it nothing.
+    #[test]
+    fn the_calibration_is_the_runs_own_before_the_last_request() {
+        let usage: HashMap<[u8; 16], u64> = [
+            ([1; 16], 800),
+            ([2; 16], 1_600),
+            ([3; 16], 99_999),
+            ([5; 16], 7),
+        ]
+        .into_iter()
+        .collect();
+        let requests = [
+            req(9, 3, 1_000), // another run
+            req(7, 1, 1_000), // 0.8
+            req(7, 4, 1_000), // no count
+            req(7, 2, 2_000), // 0.8
+            req(7, 5, 3_000), // the request accounted for
+        ];
+        let c = calibration_before_last(&requests, &usage);
+        let mut want = modbit_compaction::Calibration::default();
+        want.observe(1_000, 800);
+        want.observe(2_000, 1_600);
+        assert_eq!(c, want);
+        assert_eq!(c.apply(3_000), 2_400);
+        // Nothing earlier in the run: the estimate stands as it is.
+        let first = calibration_before_last(&requests[..2], &usage);
+        assert_eq!(first, modbit_compaction::Calibration::default());
+        assert_eq!(first.apply(1_234), 1_234);
+        assert_eq!(
+            calibration_before_last(&[], &usage),
+            modbit_compaction::Calibration::default()
+        );
     }
 }
