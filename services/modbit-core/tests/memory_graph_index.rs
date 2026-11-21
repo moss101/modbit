@@ -2067,13 +2067,30 @@ async fn px_111_a_core_killed_inside_an_index_write_recovers_to_a_whole_snapshot
                 "{stage}: the previous snapshot, one file derived again: {st:?}"
             );
         }
-        let leftovers: Vec<String> = std::fs::read_dir(&store)
-            .unwrap()
-            .flatten()
-            .map(|e| e.file_name().to_string_lossy().into_owned())
-            .filter(|n| n.contains(".tmp-"))
-            .collect();
         // The load that found the previous snapshot rewrote it and cleaned up.
+        // That rewrite belongs to whichever caller loaded the indexes first
+        // (here the start-up warm of the unfinished task's workspace), and the
+        // indexes answer queries from the moment they are loaded, before the
+        // rewrite's last step removes the temporary files. CI run 43704419709
+        // listed the directory in that window and saw the recovering Core's
+        // own `derived.2.json.tmp-<pid>` beside the dead Core's manifest
+        // fragment. The directory is read until the rewrite is over, bounded.
+        let listed_by = std::time::Instant::now() + Duration::from_secs(30);
+        let leftovers = loop {
+            let leftovers: Vec<String> = std::fs::read_dir(&store)
+                .unwrap()
+                .flatten()
+                .map(|e| e.file_name().to_string_lossy().into_owned())
+                .filter(|n| n.contains(".tmp-"))
+                .collect();
+            if leftovers.is_empty()
+                || stage == "after_manifest"
+                || std::time::Instant::now() >= listed_by
+            {
+                break leftovers;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        };
         assert!(
             leftovers.is_empty() || stage == "after_manifest",
             "{stage}: {leftovers:?}"
