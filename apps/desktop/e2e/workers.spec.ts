@@ -137,6 +137,8 @@ const BRIDGE_ALLOW_LIST = [
   "computerAccess", "computerSetAccess",
   // PX-216 (browser site decisions): answer the pane's question about a site, list the decisions, forget one. Added on purpose; each is a typed request main validates (main.ts: session id, origin, decision).
   "decideBrowserSite", "browserSites", "removeBrowserSite",
+  // PX-211 (task pull-request state): the Core reads the task's pull request again through the forge adapter, and the session's archive-after-merge preference is read and set. Added on purpose; each is one typed Core command or read main validates (main.ts: session id, task id, a boolean).
+  "refreshPullRequest", "pullRequestPreferences", "setPullRequestPreferences",
   // PX-203 (pane pop-out): the app window pops a pane out, lists and brings forward pane windows and hears them close or ask;
   // a pane window asks which pane it shows, says what it shows, asks the app window to show something, and goes back to the
   // dock. Main answers a pane window only on its pane's channels, for its own task (pane-windows.ts).

@@ -1042,6 +1042,16 @@ export declare type AgentHeader = Message<"modbit.v1.AgentHeader"> & {
    * @generated from field: string last_line = 460;
    */
   lastLine: string;
+
+  /**
+   * PX-211 (DR-PX-2026-11-11-021 MWS-17; field numbers 470-479 are the block
+   * PX-211 uses for additions to existing messages): the pull request the
+   * task opened and what the Core last read of it. Absent when the task has
+   * opened none.
+   *
+   * @generated from field: modbit.v1.TaskPullRequest pull_request = 470;
+   */
+  pullRequest?: TaskPullRequest | undefined;
 };
 
 /**
@@ -1190,6 +1200,259 @@ export declare type TaskArchived = Message<"modbit.v1.TaskArchived"> & {
  * Use `create(TaskArchivedSchema)` to create a new message.
  */
 export declare const TaskArchivedSchema: GenMessage<TaskArchived>;
+
+/**
+ * PX-211 (REQ-PX-211, DR-PX-2026-11-11-021 MWS-17): the pull request a task
+ * opened and its state as the Core last read it through the forge adapter.
+ * Everything after `url` is what a read found: before the first read `state`
+ * is "" and `read_at` is unset, and a client says the state was not read; it
+ * never assumes one. A later read that failed leaves the last one standing,
+ * and `read_at` says how old it is.
+ *
+ * @generated from message modbit.v1.TaskPullRequest
+ */
+export declare type TaskPullRequest = Message<"modbit.v1.TaskPullRequest"> & {
+  /**
+   * @generated from field: string owner = 1;
+   */
+  owner: string;
+
+  /**
+   * @generated from field: string repo = 2;
+   */
+  repo: string;
+
+  /**
+   * @generated from field: uint64 number = 3;
+   */
+  number: bigint;
+
+  /**
+   * @generated from field: string url = 4;
+   */
+  url: string;
+
+  /**
+   * the ForgePullRequestOpened record
+   *
+   * @generated from field: uint64 opened_offset = 5;
+   */
+  openedOffset: bigint;
+
+  /**
+   * "" (not read) | OPEN | CLOSED | MERGED
+   *
+   * @generated from field: string state = 6;
+   */
+  state: string;
+
+  /**
+   * @generated from field: bool draft = 7;
+   */
+  draft: boolean;
+
+  /**
+   * "" (not read) | NONE (no check run) | PENDING | FAILING | PASSING |
+   * UNAVAILABLE (the forge's check runs could not be read)
+   *
+   * @generated from field: string checks = 8;
+   */
+  checks: string;
+
+  /**
+   * @generated from field: uint32 checks_total = 9;
+   */
+  checksTotal: number;
+
+  /**
+   * @generated from field: uint32 checks_passing = 10;
+   */
+  checksPassing: number;
+
+  /**
+   * @generated from field: uint32 checks_failing = 11;
+   */
+  checksFailing: number;
+
+  /**
+   * @generated from field: uint32 checks_pending = 12;
+   */
+  checksPending: number;
+
+  /**
+   * untrusted labels, at most 20
+   *
+   * @generated from field: repeated string failing_checks = 13;
+   */
+  failingChecks: string[];
+
+  /**
+   * the head the forge reported
+   *
+   * @generated from field: string head_sha = 14;
+   */
+  headSha: string;
+
+  /**
+   * the commit this Core pushed ("" when unknown)
+   *
+   * @generated from field: string pushed_sha = 15;
+   */
+  pushedSha: string;
+
+  /**
+   * unset = never read
+   *
+   * @generated from field: google.protobuf.Timestamp read_at = 16;
+   */
+  readAt?: Timestamp | undefined;
+
+  /**
+   * the ForgePullRequestStateRead record; 0 = never read
+   *
+   * @generated from field: uint64 read_offset = 17;
+   */
+  readOffset: bigint;
+
+  /**
+   * REQUEST | SCHEDULE; "" = never read
+   *
+   * @generated from field: string trigger = 18;
+   */
+  trigger: string;
+};
+
+/**
+ * Describes the message modbit.v1.TaskPullRequest.
+ * Use `create(TaskPullRequestSchema)` to create a new message.
+ */
+export declare const TaskPullRequestSchema: GenMessage<TaskPullRequest>;
+
+/**
+ * Read the task's pull request through the forge adapter now (`forge.pr.read`
+ * under the task's lease; the kernel and the egress policy decide as for any
+ * forge read) and record what it said. Refused NO_PULL_REQUEST when the task
+ * opened none; a refused or failed read records nothing.
+ *
+ * @generated from message modbit.v1.RefreshPullRequest
+ */
+export declare type RefreshPullRequest = Message<"modbit.v1.RefreshPullRequest"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.RefreshPullRequest.
+ * Use `create(RefreshPullRequestSchema)` to create a new message.
+ */
+export declare const RefreshPullRequestSchema: GenMessage<RefreshPullRequest>;
+
+/**
+ * @generated from message modbit.v1.PullRequestRefreshed
+ */
+export declare type PullRequestRefreshed = Message<"modbit.v1.PullRequestRefreshed"> & {
+  /**
+   * @generated from field: modbit.v1.TaskPullRequest pull_request = 1;
+   */
+  pullRequest?: TaskPullRequest | undefined;
+
+  /**
+   * the read's record
+   *
+   * @generated from field: uint64 offset = 2;
+   */
+  offset: bigint;
+
+  /**
+   * The read found the request merged for the first time and the session's
+   * archive-after-merge preference is on: the task was archived at
+   * `archive_offset` (ArchiveTask with archived = false is the undo).
+   *
+   * @generated from field: bool archived = 3;
+   */
+  archived: boolean;
+
+  /**
+   * @generated from field: uint64 archive_offset = 4;
+   */
+  archiveOffset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.PullRequestRefreshed.
+ * Use `create(PullRequestRefreshedSchema)` to create a new message.
+ */
+export declare const PullRequestRefreshedSchema: GenMessage<PullRequestRefreshed>;
+
+/**
+ * The session's pull-request preferences. Archive after merge is off until a
+ * person turns it on.
+ *
+ * @generated from message modbit.v1.GetPullRequestPreferences
+ */
+export declare type GetPullRequestPreferences = Message<"modbit.v1.GetPullRequestPreferences"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.GetPullRequestPreferences.
+ * Use `create(GetPullRequestPreferencesSchema)` to create a new message.
+ */
+export declare const GetPullRequestPreferencesSchema: GenMessage<GetPullRequestPreferences>;
+
+/**
+ * @generated from message modbit.v1.SetPullRequestPreferences
+ */
+export declare type SetPullRequestPreferences = Message<"modbit.v1.SetPullRequestPreferences"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+
+  /**
+   * @generated from field: bool archive_after_merge = 2;
+   */
+  archiveAfterMerge: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.SetPullRequestPreferences.
+ * Use `create(SetPullRequestPreferencesSchema)` to create a new message.
+ */
+export declare const SetPullRequestPreferencesSchema: GenMessage<SetPullRequestPreferences>;
+
+/**
+ * @generated from message modbit.v1.PullRequestPreferences
+ */
+export declare type PullRequestPreferences = Message<"modbit.v1.PullRequestPreferences"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+
+  /**
+   * @generated from field: bool archive_after_merge = 2;
+   */
+  archiveAfterMerge: boolean;
+
+  /**
+   * the record that set it; 0 = never set (the default)
+   *
+   * @generated from field: uint64 offset = 3;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.PullRequestPreferences.
+ * Use `create(PullRequestPreferencesSchema)` to create a new message.
+ */
+export declare const PullRequestPreferencesSchema: GenMessage<PullRequestPreferences>;
 
 /**
  * The three densities of AFW-C05. They are projections of the same log and

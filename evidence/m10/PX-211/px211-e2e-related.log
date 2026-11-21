@@ -1,0 +1,503 @@
+
+Running 10 tests using 1 worker
+
+[1/10] e2e/agents.spec.ts:26:1 › PX-046: classes show glyph and words from the Core; unread clears when the conversation is seen; a search finds a tool result and opens its row; pins, filters, grouping, archive with undo, keyboard and axe
+e2e/agents.spec.ts:26:1 › PX-046: classes show glyph and words from the Core; unread clears when the conversation is seen; a search finds a tool result and opens its row; pins, filters, grouping, archive with undo, keyboard and axe
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+
+[electron] Debugger ending on ws://127.0.0.1:54072/41068f55-683d-4a19-9942-195c197c82e4
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+    at requireClient (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11765:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11965:19
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11815:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+
+[2/10] e2e/agents.spec.ts:162:1 › PX-046: archiving a running task asks first; stopping is the Core's recorded cancellation, and keeping it running changes nothing
+e2e/agents.spec.ts:162:1 › PX-046: archiving a running task asks first; stopping is the Core's recorded cancellation, and keeping it running changes nothing
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 42ms
+
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3903:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3879:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'TASK_RUNNING'
+}
+
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3903:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3879:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'TASK_RUNNING'
+}
+
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3903:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3879:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'TASK_RUNNING'
+}
+
+[electron] Debugger ending on ws://127.0.0.1:54125/8c04c427-88bd-495d-afab-44eab608f18f
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[electron] modbit-core: supervising client closed its pipe; exiting
+
+[3/10] e2e/agents.spec.ts:200:1 › PX-046: a thousand tasks stay responsive: the list holds only the rows in view, scrolls to the end, filters and groups within a generous bound, and a Core event reaches it
+e2e/agents.spec.ts:200:1 › PX-046: a thousand tasks stay responsive: the list holds only the rows in view, scrolls to the end, filters and groups within a generous bound, and a Core event reaches it
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 9ms
+
+[electron] Debugger ending on ws://127.0.0.1:54196/dda20235-321f-4a6c-83e1-b6c9cdcb6251
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3948:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3953:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5146:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12747:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10766:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10764:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12750:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+
+[electron] modbit-core: connection ended: io: Broken pipe (os error 32)
+
+[4/10] e2e/forge-evidence.spec.ts:130:1 › review shows the forge's CI runs as external evidence and the pull request's comments as untrusted text, survives a restart, and CI never accepts the task
+e2e/forge-evidence.spec.ts:130:1 › review shows the forge's CI runs as external evidence and the pull request's comments as untrusted text, survives a restart, and CI never accepts the task
+
+
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3903:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3879:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'NO_PULL_REQUEST'
+}
+
+[electron] Debugger ending on ws://127.0.0.1:54295/3e7785a6-4ea2-4362-ac96-f9b6eed09057
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[electron] Debugger ending on ws://127.0.0.1:54320/3abd5a30-b171-421d-b778-6ed13a150d10
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[5/10] e2e/px-201-details-rail.spec.ts:250:1 › PX-201: the details rail shows the Core's facts for the open task, each from a read the bridge answered; Stop stops a terminal and a child task; Review and restore open what asks; a reload keeps the Core's phase; at 800 the rail is absent and More holds its facts; the popover is gone
+e2e/px-201-details-rail.spec.ts:250:1 › PX-201: the details rail shows the Core's facts for the open task, each from a read the bridge answered; Stop stops a terminal and a child task; Review and restore open what asks; a reload keeps the Core's phase; at 800 the rail is absent and More holds its facts; the popover is gone
+[electron] Debugger ending on ws://127.0.0.1:54347/cc378b16-1745-4020-8509-084f6562d06f
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3948:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3953:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5146:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12747:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10766:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10764:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12750:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3948:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3953:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5146:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12747:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10766:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10764:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12750:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3948:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3953:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5146:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12747:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10766:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10764:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12750:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3948:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3953:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5146:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12747:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10766:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10764:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12750:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3948:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3953:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5146:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12747:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10766:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10764:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12750:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3948:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3953:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5146:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12747:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10766:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10764:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12750:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3948:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3953:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5146:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12747:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10766:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10764:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12750:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3948:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3953:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5146:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12747:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10766:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10764:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12750:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3948:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3953:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5146:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12747:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10766:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10764:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12750:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3948:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3953:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5146:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12747:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10766:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10764:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12750:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3948:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3953:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5146:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12747:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10766:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10764:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12750:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11765:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:9597:49
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12376:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11815:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11765:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8673:17
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12404:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11815:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11765:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8202:39
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12376:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11815:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11765:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8206:34
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12376:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11815:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11765:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8190:37
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12376:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11815:12
+    at eval (eval at evaluate (:311:30), <anonymous>:27:30)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11765:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8197:26
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12376:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11815:12
+    at eval (eval at evaluate (:311:30), <anonymous>:27:30)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11765:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10076:51
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12376:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11815:12
+    at eval (eval at evaluate (:311:30), <anonymous>:27:30)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11765:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:9985:41
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12376:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11815:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11765:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:9980:28
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12376:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11815:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+modbit-core: connection ended: io: Broken pipe (os error 32)
+modbit-core: supervising client closed its pipe; exiting
+
+[6/10] e2e/px-202-pane-dock.spec.ts:185:1 › PX-202: panes open together and tile; the set and the sizes are the task's and survive a reload; a minimized terminal keeps its session; Activity lists what was delivered and reads nothing; Background tasks stops a terminal and a child; More stays reachable over a docked approval
+e2e/px-202-pane-dock.spec.ts:185:1 › PX-202: panes open together and tile; the set and the sizes are the task's and survive a reload; a minimized terminal keeps its session; Activity lists what was delivered and reads nothing; Background tasks stops a terminal and a child; More stays reachable over a docked approval
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 25ms
+
+[electron] Debugger ending on ws://127.0.0.1:54479/13f33a3c-e1fb-4eb9-85d8-af1b40b3d2b1
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+    at requireClient (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11765:17)
+    at TerminalHost.client (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11759:9)
+    at TerminalHost.list (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10866:26)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12458:54
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11815:12
+    at eval (eval at evaluate (:311:30), <anonymous>:36:30)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11765:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8190:37
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12376:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11815:12
+    at eval (eval at evaluate (:311:30), <anonymous>:36:30)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11765:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:9597:49
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12376:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11815:12
+    at eval (eval at evaluate (:311:30), <anonymous>:36:30)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11765:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8197:26
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12376:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11815:12
+    at eval (eval at evaluate (:311:30), <anonymous>:36:30)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+
+[electron] modbit-core: connection ended: io: Broken pipe (os error 32)
+
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11765:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:9985:41
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12376:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11815:12
+    at eval (eval at evaluate (:311:30), <anonymous>:36:30)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11765:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:9980:28
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12376:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11815:12
+    at eval (eval at evaluate (:311:30), <anonymous>:36:30)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+
+[electron] (node:85483) UnhandledPromiseRejectionWarning: Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11765:17)
+    at TerminalHost.client (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11759:9)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10999:44
+    at Array.map (<anonymous>)
+    at TerminalHost.detachAll (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10999:28)
+    at BrowserWindow.<anonymous> (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12533:42)
+    at BrowserWindow.emit (node:events:526:24)
+(Use `Electron --trace-warnings ...` to show where the warning was created)
+
+[electron] (node:85483) UnhandledPromiseRejectionWarning: Unhandled promise rejection. This error originated either by throwing inside of an async function without a catch block, or by rejecting a promise which was not handled with .catch(). To terminate the node process on unhandled promise rejection, use the CLI flag `--unhandled-rejections=strict` (see https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode). (rejection id: 7)
+
+[7/10] e2e/px-202-pane-dock.spec.ts:806:1 › PX-202: the Pull request pane opens a request through the docked approval card and shows the checks and comments the Core read; a state that was not read is never shown
+e2e/px-202-pane-dock.spec.ts:806:1 › PX-202: the Pull request pane opens a request through the docked approval card and shows the checks and comments the Core read; a state that was not read is never shown
+
+
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3903:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3879:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'NO_PULL_REQUEST'
+}
+
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3903:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3879:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'FORGE_NOT_FOUND'
+}
+
+[electron] Debugger ending on ws://127.0.0.1:55106/6f898c08-12cf-4715-8948-9dd987aadfa3
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[8/10] e2e/px-208-review-settings.spec.ts:203:1 › QUAL-PX-208: Review and Settings in the page shape: change sets and findings, a hunk decision, Appearance at once and kept, Shortcuts equal to the key maps
+e2e/px-208-review-settings.spec.ts:203:1 › QUAL-PX-208: Review and Settings in the page shape: change sets and findings, a hunk decision, Appearance at once and kept, Shortcuts equal to the key maps
+[electron] Debugger ending on ws://127.0.0.1:55181/f9ae3f96-4696-41f1-acec-c2b7aff404c8
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3948:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3953:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5146:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12747:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10766:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10764:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12750:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3948:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3953:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5146:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12747:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10766:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10764:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12750:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3948:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3953:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5146:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12747:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10766:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10764:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12750:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3948:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3953:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5146:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12747:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10766:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10764:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12750:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3948:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3953:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5146:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12747:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10766:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10764:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12750:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3948:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3953:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5146:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12747:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10766:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10764:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12750:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+
+[electron] modbit-core: connection ended: io: Broken pipe (os error 32)
+
+[electron] modbit-core: recovery complete: boot_generation=2 events_verified=290 aggregates=55 projections_rebuilt=false sessions=1 tasks=2 in 30ms
+
+[electron] modbit-core: reattached to the terminal broker a previous Core left alive
+
+[electron] Debugger ending on ws://127.0.0.1:55289/d16ff1bd-f321-4a22-bb28-d27fd0cd2eeb
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[9/10] e2e/px-211-pull-request-state.spec.ts:141:1 › PX-211: the Core reads a task's pull request through the forge adapter, the header, row, card, rail and pane show what it read and when, a restart keeps it, and archive after merge is a preference with Undo
+e2e/px-211-pull-request-state.spec.ts:141:1 › PX-211: the Core reads a task's pull request through the forge adapter, the header, row, card, rail and pane show what it read and when, a restart keeps it, and archive after merge is a preference with Undo
+
+
+[electron] Debugger ending on ws://127.0.0.1:55367/34f356ae-459c-4566-bb91-cbd1ed61f70b
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[electron] modbit-core: reattached to the terminal broker a previous Core left alive
+
+[electron] Debugger ending on ws://127.0.0.1:55464/2abe8d1c-1349-4bde-a5c0-66bcd4cc5527
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[10/10] e2e/px-218-last-line.spec.ts:58:1 › PX-218: after a finished turn the header and the preview card carry the assistant's last line, redacted; a task that has not answered carries none; both say the same after a restart
+e2e/px-218-last-line.spec.ts:58:1 › PX-218: after a finished turn the header and the preview card carry the assistant's last line, redacted; a task that has not answered carries none; both say the same after a restart
+[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 13ms
+
+[electron] Debugger ending on ws://127.0.0.1:55563/fe85f33b-fd4c-47ad-8f18-88b8e3955bcf
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+[electron] modbit-core: supervising client closed its pipe; exiting
+
+[electron] modbit-core: recovery complete: boot_generation=2 events_verified=92 aggregates=19 projections_rebuilt=false sessions=1 tasks=2 in 30ms
+
+[electron] modbit-core: reattached to the terminal broker a previous Core left alive
+
+[electron] Debugger ending on ws://127.0.0.1:55618/30c6b697-5ed0-41e8-9072-61147319a53e
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+  10 passed (2.8m)

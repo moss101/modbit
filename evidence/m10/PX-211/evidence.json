@@ -1,0 +1,34 @@
+{
+  "task": "PX-211",
+  "requirements": ["REQ-PX-211", "QUAL-PX-211", "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-211"],
+  "scenarios": ["QUAL-PX-211 / PX-E2E-211"],
+  "decision_record": "DR-PX-2026-11-11-021 (MWS-17)",
+  "tier": "release-critical",
+  "branch": "px-211-pull-request-state",
+  "audit": {
+    "classification": "IMPLEMENTED-PARTIAL around the row (open, forge.pr.read, CI ingestion, archive/undo); the state read itself NOT-FOUND",
+    "first_missing_link": "nothing in the Core read or recorded a task's pull request after it was opened"
+  },
+  "protocol": {
+    "added": ["modbit.v1.TaskPullRequest", "modbit.v1.AgentHeader.pull_request = 470", "RefreshPullRequest / PullRequestRefreshed", "GetPullRequestPreferences / SetPullRequestPreferences / PullRequestPreferences"],
+    "canonical_log": ["TaskEvent ForgePullRequestStateRead", "SessionEvent PullRequestPreferencesSet"],
+    "command_types": ["RefreshPullRequest (review.decide)", "GetPullRequestPreferences (events.subscribe)", "SetPullRequestPreferences (session.control)"]
+  },
+  "tests": [
+    "services/modbit-core/tests/px_211_pull_request_state.rs::qual_px_211_the_core_records_reads_and_carries_a_tasks_pull_request_state",
+    "services/modbit-core/src/pull_request_state.rs (2 unit tests)",
+    "apps/desktop/e2e/px-211-pull-request-state.spec.ts",
+    "apps/desktop/src/renderer/apps/pull-request-model.test.ts (3 new tests)"
+  ],
+  "logs": ["px211-core.log", "px211-e2e-related.log", "core-suite.log", "other-suites.log"],
+  "mutation_check": "mutation-checks-2026-11-21.txt (5 mutations, 5 caught)",
+  "screenshots": "after/*.png (light and dark, 1440x900)",
+  "environment": "macOS 27.0.1 arm64, rustc 1.97.1, node 26.11.1; scripted model; GitHub REST fake; real modbit-core, SQLite store, git with bare remote",
+  "limitations": [
+    "Proven against a wire-faithful GitHub fake; forge.pr.read itself is proven live by PX-125.",
+    "The preference is per session.",
+    "No backoff beyond the next interval when the forge refuses a scheduled read.",
+    "The desktop recognises the Core's archive by its position right after the merge read (events carry no actor); only the notice's words depend on it.",
+    "Linux and Windows are CI's."
+  ]
+}

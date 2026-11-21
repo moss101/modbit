@@ -3,7 +3,7 @@
  * renderer needs, over Electron's validated IPC. No Node, no fs, no shell.
  */
 import { contextBridge, ipcRenderer, webUtils } from "electron";
-import type { AgentHeaderView, AgentHeadersView, ConversationSearchView, OpenStreamView, PendingApprovalView, PlanInfo, SearchOptions, TranscriptOptions, TranscriptPageView, WorkGraphInfo } from "../shared/conversation-types.ts";
+import type { AgentHeaderView, AgentHeadersView, ConversationSearchView, OpenStreamView, PendingApprovalView, PlanInfo, PullRequestStateView, SearchOptions, TranscriptOptions, TranscriptPageView, WorkGraphInfo } from "../shared/conversation-types.ts";
 import type { TerminalFrameJson, TerminalViewJson } from "../main/terminal-host.ts";
 import type { AttachmentResult, InterruptView, ModeChangedView, ModelCatalogView, PostureView, PreferencePatch, PreferenceSetView, QueuedChangeView, QueueView, SendBehaviorState, SideAnswerView, SlashInventoryView, SuggestionView, TaskModeId, InputModeId } from "../shared/composer-types.ts";
 import type { AutoDetail, AutoEnableInput, AutoKillReport, AutoList, AutoRepoLoad, AutoRun, AutoRunInput, AutoRunStarted, AutoValidation, AutoView } from "../shared/automation-types.ts";
@@ -524,6 +524,14 @@ export interface ModbitBridge {
   openPullRequest(sessionId: string, taskId: string, expectedCandidateRevision: string, update: boolean): Promise<PullRequestAckView>;
   /** PX-127: the Core reads the forge's check runs for the task's pull request and records them as `ci` evidence. */
   ingestCiResults(sessionId: string, taskId: string): Promise<{ commit: string; checks: number; refused: number; evidenceClass: string; offset: string }>;
+  /**
+   * PX-211: the Core reads the task's pull request again (state and checks) through the forge adapter and records it. With the
+   * session's archive-after-merge preference on, the read that first finds it merged archives the task (`archived`).
+   */
+  refreshPullRequest(sessionId: string, taskId: string): Promise<{ pullRequest: PullRequestStateView | null; offset: string; archived: boolean; archiveOffset: string }>;
+  /** PX-211: the session's archive-after-merge preference (off until set); `offset` 0 = never set. */
+  pullRequestPreferences(sessionId: string): Promise<{ archiveAfterMerge: boolean; offset: string }>;
+  setPullRequestPreferences(sessionId: string, archiveAfterMerge: boolean): Promise<{ archiveAfterMerge: boolean; offset: string }>;
   /** PX-127: the Core reads the pull request's comments; allowed authors' comments addressed to Modbit steer as untrusted input. */
   ingestReviewComments(sessionId: string, taskId: string): Promise<{ steered: number; ignored: number; alreadyTaken: number; offset: string }>;
   /** PX-001: decide a protected effect, naming the intent hash shown. */
@@ -767,6 +775,9 @@ const bridge: ModbitBridge = {
   applyUserPatch: (sessionId, taskId, patch) => ipcRenderer.invoke("review:patch", sessionId, taskId, patch),
   openPullRequest: (sessionId, taskId, expectedCandidateRevision, update) => ipcRenderer.invoke("review:pullRequest", sessionId, taskId, expectedCandidateRevision, update),
   ingestCiResults: (sessionId, taskId) => ipcRenderer.invoke("review:ingestCi", sessionId, taskId),
+  refreshPullRequest: (sessionId, taskId) => ipcRenderer.invoke("review:refreshPullRequest", sessionId, taskId),
+  pullRequestPreferences: (sessionId) => ipcRenderer.invoke("prefs:pullRequests", sessionId),
+  setPullRequestPreferences: (sessionId, archiveAfterMerge) => ipcRenderer.invoke("prefs:setPullRequests", sessionId, archiveAfterMerge),
   ingestReviewComments: (sessionId, taskId) => ipcRenderer.invoke("review:ingestComments", sessionId, taskId),
   resolveApproval: (sessionId, approvalId, approve, reason, intentHash) => ipcRenderer.invoke("approval:resolve", sessionId, approvalId, approve, reason, intentHash),
   respondToQuestion: (sessionId, taskId, questionId, optionId, text) => ipcRenderer.invoke("question:respond", sessionId, taskId, questionId, optionId, text),

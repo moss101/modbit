@@ -10,6 +10,7 @@
 import type { Status } from "@modbit/ui";
 import { STATUS_CLASSES, type AgentHeaderView, type StatusClass } from "../../shared/conversation-types.ts";
 import type { ProjectInfo } from "../../shared/project-types.ts";
+import { requestStateLine } from "../apps/pull-request-model.ts";
 
 /** How each class is shown: its own glyph (via the status primitive) and always its words. */
 export const CLASS_META: Record<StatusClass, { status: Status; short: string }> = {
@@ -506,6 +507,8 @@ export function rowTitle(h: AgentHeaderView, facts: RowFacts | undefined, machin
   if (facts?.risk) lines.push(`Risk: ${words(facts.risk)}`);
   if (facts?.evidence) lines.push(`Evidence: ${facts.evidence}`);
   if (facts?.next) lines.push(`Next: ${facts.next}`);
+  const pr = requestStateLine(h.pullRequest);
+  if (pr) lines.push(`${pr.charAt(0).toUpperCase()}${pr.slice(1)}${h.pullRequest && h.pullRequest.readAtMs > 0 ? ` (read ${relativeAge(h.pullRequest.readAtMs, nowMs) === "now" ? "just now" : `${relativeAge(h.pullRequest.readAtMs, nowMs)} ago`})` : ""}`);
   return lines.join("\n");
 }
 
@@ -530,7 +533,7 @@ const filesWords = (n: number): string => `${n} ${n === 1 ? "file" : "files"} ch
 /** Accessible name of a row: title, status words, what the row marks (a child task, changed files, unread, attention, a pin) and what the task needs. */
 export function rowLabel(h: AgentHeaderView, pinned: boolean, facts?: RowFacts, parentTitle?: string): string {
   const files = changedFilesShown(h);
-  return [h.title || "Untitled task", h.statusLabel || CLASS_META[h.statusClass].short, parentTitle ? `child task of ${parentTitle}` : "", h.origin === "automation" ? "started by an automation" : "", files > 0 ? filesWords(files) : "", h.unread ? "unread" : "", h.pendingApproval ? "waiting on your approval" : "", pinned ? "pinned" : "", facts?.next ?? "", facts?.next ? "" : (facts?.phase ?? "")].filter(Boolean).join(", ");
+  return [h.title || "Untitled task", h.statusLabel || CLASS_META[h.statusClass].short, parentTitle ? `child task of ${parentTitle}` : "", h.origin === "automation" ? "started by an automation" : "", files > 0 ? filesWords(files) : "", h.unread ? "unread" : "", h.pendingApproval ? "waiting on your approval" : "", requestStateLine(h.pullRequest), pinned ? "pinned" : "", facts?.next ?? "", facts?.next ? "" : (facts?.phase ?? "")].filter(Boolean).join(", ");
 }
 
 /** What the preview card says under the state: the Core's reason or next action, else the phase an event said; "" when the status says it all. */

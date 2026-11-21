@@ -17,6 +17,7 @@ import { ProjectGlyph } from "../projects/project-glyph.tsx";
 import { projectMenuFor, rollupWords } from "../projects/project-model.ts";
 import { highlightRuns } from "./snippets.ts";
 import { localMachine } from "../location.ts";
+import { requestStateWords } from "../apps/pull-request-model.ts";
 import { IconArchive, IconFilter, IconPin, IconProject, IconRename, IconRestore, IconViews } from "./icons.tsx";
 import { PreviewCard } from "./preview-card.tsx";
 import { rowKeyAction } from "../keyboard.ts";
@@ -646,6 +647,8 @@ function ItemView({ item, top, p, metrics, pinned, selected, tabStop, titles, pr
   const menu = pa ? projectMenuFor(h, p.projects ?? EMPTY_PROJECTS) : [];
   const inProject = (p.projects ?? EMPTY_PROJECTS).find((x) => x.projectId === h.projectId);
   const files = changedFilesShown(h);
+  // REQ-PX-211: the request the task opened, with the state the Core last read (its words are in the row's label and title).
+  const pr = requestStateWords(h.pullRequest);
   const parentTitle = item.depth > 0 ? titles.get(p.parents?.get(h.taskId) ?? "") : undefined;
   // The mark of a pending approval is the state's own glyph while the Core's class is attention; a dot of its own otherwise.
   const attentionOnGlyph = h.pendingApproval && h.statusClass === "NEEDS_ATTENTION";
@@ -714,6 +717,11 @@ function ItemView({ item, top, p, metrics, pinned, selected, tabStop, titles, pr
             </span>
           </span>
           {h.pendingApproval && !attentionOnGlyph && <span className="agents-dot" data-kind="attention" data-testid="agent-attention-dot" aria-hidden="true" />}
+          {pr && (
+            <span className="agents-pr" data-testid="agent-pr" data-state={h.pullRequest?.state || "UNREAD"} data-checks={h.pullRequest?.checks || "UNREAD"} data-tone={pr.tone} data-checks-tone={pr.checksTone} aria-hidden="true">
+              {pr.number}
+            </span>
+          )}
           {files > 0 && (
             <span className="agents-count" data-testid="agent-changes" aria-hidden="true">
               {files}

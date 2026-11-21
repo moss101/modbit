@@ -751,6 +751,7 @@ export function Shell({ app }: { app: AppState }) {
               }}
               onPopOut={(kind, size) => popOut(panelTaskId, panelTask.goalText, kind, size)}
               fileRequest={fileRequest && fileRequest.taskId === panelTaskId ? fileRequest : null}
+              pullRequest={headers.find((h) => h.taskId === panelTaskId)?.pullRequest}
             />
           ) : null
         }
@@ -905,6 +906,7 @@ export function Shell({ app }: { app: AppState }) {
           {settingsOpen ? (
             <SettingsPage
               app={app}
+              sessionId={model.sessionId}
               query={settingsQuery}
               theme={prefs.theme}
               onTheme={(theme) => setPrefs((p) => ({ ...p, theme }))}

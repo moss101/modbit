@@ -67,6 +67,39 @@ pub struct TaskDigest {
     /// finished before the archive, so the header of a put-away task does not
     /// change under it.
     pub last_message: Option<LastMessage>,
+    /// The pull request the task opened and what was last read of it
+    /// (PX-211): the latest `ForgePullRequestOpened` and the latest
+    /// `ForgePullRequestStateRead` of that same request. `None` = the task
+    /// opened none.
+    pub pull_request: Option<PullRequestDigest>,
+}
+
+/// A task's pull request as its records say (PX-211).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PullRequestDigest {
+    /// Owner.
+    pub owner: String,
+    /// Repository.
+    pub repo: String,
+    /// Number.
+    pub number: u64,
+    /// Web URL as opened.
+    pub url: String,
+    /// Offset of the `ForgePullRequestOpened` record.
+    pub opened_offset: u64,
+    /// The latest read of this request; `None` = never read.
+    pub read: Option<PullRequestRead>,
+}
+
+/// One `ForgePullRequestStateRead` record, as a header needs it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PullRequestRead {
+    /// Offset of the record.
+    pub offset: u64,
+    /// When it was recorded.
+    pub at: Timestamp,
+    /// The record's payload (small, inline).
+    pub payload: serde_json::Value,
 }
 
 /// The closing record of a finished assistant message, as far as a header
@@ -131,6 +164,7 @@ pub(crate) fn task_digests(conn: &Connection, session: &SessionId) -> Result<Vec
                     plan_versions: u32::try_from(r.get::<_, i64>(13)?).unwrap_or(u32::MAX),
                     mode: None,
                     last_message: None,
+                    pull_request: None,
                 },
             ))
         })?
@@ -177,6 +211,81 @@ pub(crate) fn task_digests(conn: &Connection, session: &SessionId) -> Result<Vec
         if let Some(&i) = index.get(&task) {
             out[i].last_message = message_before(conn, sid, &task, at)?;
         }
+    }
+    // The pull request each task opened, and the latest read of it (PX-211).
+    for (task, pr) in pull_requests(conn, sid)? {
+        if let Some(&i) = index.get(&task) {
+            out[i].pull_request = Some(pr);
+        }
+    }
+    Ok(out)
+}
+
+/// One task's latest record of a type: task, offset, time, inline payload.
+type LatestRecord = ([u8; 16], i64, i64, String);
+
+/// Each task's latest opened pull request and the latest read of that same
+/// request (PX-211). A read of another request (a number the task no longer
+/// names) is not this one's.
+fn pull_requests(conn: &Connection, session: &[u8]) -> Result<Vec<([u8; 16], PullRequestDigest)>> {
+    let latest = |event_type: &str| -> Result<Vec<LatestRecord>> {
+        let mut stmt = conn.prepare_cached(
+            "SELECT task_id, offset, occurred_at, payload_inline
+             FROM (SELECT task_id, offset, occurred_at, payload_inline,
+                          ROW_NUMBER() OVER (PARTITION BY task_id ORDER BY offset DESC) AS rn
+                   FROM events
+                   WHERE session_id = ?1 AND task_id IS NOT NULL AND event_type = ?2
+                     AND payload_inline IS NOT NULL)
+             WHERE rn = 1",
+        )?;
+        let rows = stmt.query_map(params![session, event_type], |r| {
+            Ok((
+                r.get::<_, Vec<u8>>(0)?
+                    .try_into()
+                    .map_err(|_| rusqlite::Error::InvalidQuery)?,
+                r.get::<_, i64>(1)?,
+                r.get::<_, i64>(2)?,
+                r.get::<_, String>(3)?,
+            ))
+        })?;
+        Ok(rows.collect::<std::result::Result<_, _>>()?)
+    };
+    let reads: std::collections::HashMap<[u8; 16], (i64, i64, serde_json::Value)> =
+        latest("ForgePullRequestStateRead")?
+            .into_iter()
+            .filter_map(|(t, o, at, p)| Some((t, (o, at, serde_json::from_str(&p).ok()?))))
+            .collect();
+    let mut out = Vec::new();
+    for (task, offset, _, payload) in latest("ForgePullRequestOpened")? {
+        let Ok(p) = serde_json::from_str::<serde_json::Value>(&payload) else {
+            continue;
+        };
+        let owner = p["owner"].as_str().unwrap_or_default().to_owned();
+        let repo = p["repo"].as_str().unwrap_or_default().to_owned();
+        let number = p["number"].as_u64().unwrap_or(0);
+        if owner.is_empty() || repo.is_empty() || number == 0 {
+            continue;
+        }
+        let read = reads.get(&task).and_then(|(o, at, r)| {
+            (r["owner"] == p["owner"] && r["repo"] == p["repo"] && r["number"] == p["number"]).then(
+                || PullRequestRead {
+                    offset: *o as u64,
+                    at: Timestamp(*at),
+                    payload: r.clone(),
+                },
+            )
+        });
+        out.push((
+            task,
+            PullRequestDigest {
+                owner,
+                repo,
+                number,
+                url: p["url"].as_str().unwrap_or_default().to_owned(),
+                opened_offset: offset as u64,
+                read,
+            },
+        ));
     }
     Ok(out)
 }

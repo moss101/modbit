@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { PullRequestAckView, ReviewBundleView } from "../../preload/preload.ts";
-import { canOpenRequest, checkWords, commentWords, forgeErrorWords, refusedWords, requestWords } from "./pull-request-model.ts";
+import type { PullRequestStateView } from "../../shared/conversation-types.ts";
+import { canOpenRequest, checkWords, commentWords, forgeErrorWords, refusedWords, mergeArchiveWatcher, requestStateLine, requestStateWords, requestWords } from "./pull-request-model.ts";
 
 const ack = (over: Partial<PullRequestAckView>): PullRequestAckView => ({ status: "OPENED", approvalId: "a".repeat(32), intentHash: "b".repeat(64), number: "7", url: "https://github.test/o/r/pull/7", branch: "modbit/task-1", headSha: "c".repeat(40), candidateRevision: "3", receipts: 2, replayed: false, detail: "", ...over });
 type Check = ReviewBundleView["ciEvidence"][number];
@@ -42,4 +43,46 @@ test("REQ-PX-202: a comment says who wrote it and what became of it", () => {
 test("REQ-PX-202: the Core's refusal to read the forge is said in words with its code", () => {
   assert.match(forgeErrorWords("Error invoking remote method 'review:ingestCi': Error: NO_PULL_REQUEST: the task has no pull request"), /^The Core has no pull request for this task.*\(NO_PULL_REQUEST\)\.$/);
   assert.equal(forgeErrorWords("Error invoking remote method 'review:ingestCi': Error: FORGE_UNAVAILABLE"), "FORGE_UNAVAILABLE");
+});
+
+const state = (over: Partial<PullRequestStateView>): PullRequestStateView => ({ owner: "o", repo: "r", number: 7, url: "https://github.test/o/r/pull/7", state: "OPEN", draft: false, checks: "PASSING", checksTotal: 2, checksPassing: 2, checksFailing: 0, checksPending: 0, failingChecks: [], headSha: "f".repeat(40), pushedSha: "f".repeat(40), readAtMs: 1_700_000_000_000, trigger: "REQUEST", readOffset: "9", openedOffset: "5", ...over });
+
+test("REQ-PX-211: a request the Core has not read has a number and no state", () => {
+  assert.equal(requestStateWords(undefined), null);
+  assert.equal(requestStateWords(null), null);
+  const w = requestStateWords(state({ state: "", checks: "", readAtMs: 0, trigger: "", readOffset: "0" }))!;
+  assert.deepEqual([w.number, w.state, w.tone, w.checks, w.read], ["#7", "not read yet", "unread", "", false]);
+  assert.equal(requestStateLine(state({ state: "", checks: "", readAtMs: 0 })), "pull request #7, not read yet");
+  // A state with no time of reading is not a read.
+  assert.equal(requestStateWords(state({ readAtMs: 0 }))!.read, false);
+});
+
+test("REQ-PX-211: the state and checks are worded as the Core read them", () => {
+  assert.equal(requestStateLine(state({})), "pull request #7, open, all 2 checks passing");
+  assert.equal(requestStateLine(state({ state: "MERGED" })), "pull request #7, merged, all 2 checks passing");
+  assert.equal(requestStateLine(state({ state: "CLOSED", checks: "NONE", checksTotal: 0 })), "pull request #7, closed, no checks");
+  assert.equal(requestStateWords(state({ draft: true }))!.tone, "draft");
+  const failing = requestStateWords(state({ checks: "FAILING", checksPassing: 1, checksFailing: 1, failingChecks: ["lint"] }))!;
+  assert.deepEqual([failing.checks, failing.checksTone, failing.failing], ["1 of 2 checks failing", "bad", "lint"]);
+  const pending = requestStateWords(state({ checks: "PENDING", checksTotal: 1, checksPassing: 0, checksPending: 1 }))!;
+  assert.deepEqual([pending.checks, pending.checksTone], ["1 of 1 check running", "pending"]);
+  assert.equal(requestStateWords(state({ checks: "UNAVAILABLE" }))!.checks, "checks could not be read");
+  assert.equal(requestStateWords(state({ trigger: "SCHEDULE" }))!.by, "by the Core's schedule");
+  assert.equal(requestStateWords(state({ checks: "PASSING", checksTotal: 1 }))!.checks, "the check passing");
+});
+
+test("REQ-PX-211: the Core's archive after merge is the archive right after the read that found the merge, on the same task", () => {
+  const w = mergeArchiveWatcher();
+  const ev = (taskId: string, eventType: string, payload: unknown = null) => ({ taskId, eventType, payload });
+  assert.equal(w(ev("a", "ForgePullRequestStateRead", { state: "MERGED" })), null);
+  assert.equal(w(ev("b", "ConversationArchived")), null, "another task's archive is not this one's");
+  assert.equal(w(ev("a", "ConversationArchived")), "a");
+  // An archive after an open read, or after anything else, is a person's.
+  assert.equal(w(ev("c", "ForgePullRequestStateRead", { state: "OPEN" })), null);
+  assert.equal(w(ev("c", "ConversationArchived")), null);
+  assert.equal(w(ev("d", "ForgePullRequestStateRead", { state: "MERGED" })), null);
+  assert.equal(w(ev("d", "ConversationRead")), null);
+  assert.equal(w(ev("d", "ConversationArchived")), null);
+  assert.equal(w({ eventType: "ConversationArchived" }), null);
+  assert.equal(w(null), null);
 });

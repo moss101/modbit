@@ -257,6 +257,15 @@ pub enum SessionEvent {
         /// The route the call took, as a turn's `ModelUsageRecorded` records it.
         route: serde_json::Value,
     },
+    /// `PullRequestPreferencesSet` (REQ-PX-211, DR-PX-2026-11-11-021
+    /// MWS-17): the person's preference for the session's pull requests.
+    /// With `archive_after_merge` on, the Core archives a task on the read
+    /// that first finds its request merged; off (the default, and before any
+    /// record), it never does. No state change.
+    PullRequestPreferencesSet {
+        /// Archive a task once its pull request is read as merged.
+        archive_after_merge: bool,
+    },
 }
 
 impl SessionEvent {
@@ -280,6 +289,7 @@ impl SessionEvent {
             Self::SessionEnding { .. } => "SessionEnding",
             Self::SessionBranched { .. } => "SessionBranched",
             Self::SuggestionUsageRecorded { .. } => "SuggestionUsageRecorded",
+            Self::PullRequestPreferencesSet { .. } => "PullRequestPreferencesSet",
         }
     }
 }
@@ -343,6 +353,7 @@ impl Session {
             | SessionEvent::ExtensionUnloaded { .. }
             | SessionEvent::ExtensionTrusted { .. }
             | SessionEvent::SuggestionUsageRecorded { .. }
+            | SessionEvent::PullRequestPreferencesSet { .. }
             | SessionEvent::SessionEnding { .. } => {
                 if self.state.is_terminal() {
                     return Err(crate::InvalidTransition {

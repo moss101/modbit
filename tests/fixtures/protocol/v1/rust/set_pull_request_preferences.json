@@ -1,0 +1,7 @@
+{
+  "expected": {
+    "archiveAfterMerge": true,
+    "sessionId": "10101010101010101010101010101010"
+  },
+  "type": "modbit.v1.SetPullRequestPreferences"
+}

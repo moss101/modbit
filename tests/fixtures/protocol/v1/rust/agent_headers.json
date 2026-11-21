@@ -22,6 +22,31 @@
         "pendingApproval": false,
         "pendingPlan": false,
         "projectId": "63636363636363636363636363636363",
+        "pullRequest": {
+          "checks": "FAILING",
+          "checksFailing": 1,
+          "checksPassing": 1,
+          "checksPending": 0,
+          "checksTotal": 2,
+          "draft": false,
+          "failingChecks": [
+            "lint"
+          ],
+          "headSha": "ffffffffffffffffffffffffffffffffffffffff",
+          "number": "7",
+          "openedOffset": "60",
+          "owner": "o",
+          "pushedSha": "ffffffffffffffffffffffffffffffffffffffff",
+          "readAt": {
+            "nanos": 0,
+            "seconds": "1700000200"
+          },
+          "readOffset": "88",
+          "repo": "r",
+          "state": "OPEN",
+          "trigger": "REQUEST",
+          "url": "https://github.test/o/r/pull/7"
+        },
         "readOffset": "40",
         "sessionId": "10101010101010101010101010101010",
         "statusClass": "AGENT_STATUS_CLASS_READY_FOR_REVIEW_UNSEEN",
