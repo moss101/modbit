@@ -71,6 +71,20 @@ export function requestStateLine(pr: PullRequestStateView | undefined | null): s
   return [`pull request ${w.number}`, w.state, w.checks].filter(Boolean).join(", ");
 }
 
+/**
+ * PX-212: what the pane says of auto-fix, from the Core's record only. `status` is "" while it is off; on, it counts the repair
+ * turns the Core asked for against the cap, names the latest cause, or says the cap stopped it.
+ */
+export function autoFixWords(pr: PullRequestStateView | undefined | null): { on: boolean; status: string; tone: "none" | "on" | "stopped" } {
+  if (!pr || !pr.autoFix) return { on: false, status: "", tone: "none" };
+  const cause = pr.autoFixLastCause === "CHECKS_FAILING" ? "failing checks" : pr.autoFixLastCause === "REVIEW_COMMENT" ? "a review comment" : "";
+  if (pr.autoFixStopped) {
+    return { on: true, status: `Stopped after ${pr.autoFixAttempts} of ${pr.autoFixCap} repair turns. Turn it off and on again to allow more.`, tone: "stopped" };
+  }
+  if (pr.autoFixAttempts === 0) return { on: true, status: `On. No repair turn yet; at most ${pr.autoFixCap}.`, tone: "on" };
+  return { on: true, status: `${pr.autoFixAttempts} of ${pr.autoFixCap} repair turns used${cause ? `; the latest for ${cause}` : ""}.`, tone: "on" };
+}
+
 /** Whether the task's changes can become a pull request now, or why not (the Core refuses one before the task is ready for review). */
 export function canOpenRequest(taskState: string): true | string {
   return taskState === "ReadyForReview" || taskState === "Completed" ? true : "The task has to be ready for review before its changes can become a pull request.";

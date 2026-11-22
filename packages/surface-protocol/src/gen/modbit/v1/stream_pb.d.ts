@@ -1320,6 +1320,47 @@ export declare type TaskPullRequest = Message<"modbit.v1.TaskPullRequest"> & {
    * @generated from field: string trigger = 18;
    */
   trigger: string;
+
+  /**
+   * PX-212 (DR-PX-2026-11-11-021 MWS-17): auto-fix for this task. Off until a
+   * person turns it on (SetAutoFix); attempts count from the latest time it
+   * was turned on.
+   *
+   * @generated from field: bool auto_fix = 19;
+   */
+  autoFix: boolean;
+
+  /**
+   * @generated from field: uint32 auto_fix_attempts = 20;
+   */
+  autoFixAttempts: number;
+
+  /**
+   * @generated from field: uint32 auto_fix_cap = 21;
+   */
+  autoFixCap: number;
+
+  /**
+   * The cap was reached and a further cause was not acted on (AutoFixStopped
+   * after the latest AutoFixSet); nothing is queued until it is turned on again.
+   *
+   * @generated from field: bool auto_fix_stopped = 22;
+   */
+  autoFixStopped: boolean;
+
+  /**
+   * CHECKS_FAILING | REVIEW_COMMENT | "" (none yet)
+   *
+   * @generated from field: string auto_fix_last_cause = 23;
+   */
+  autoFixLastCause: string;
+
+  /**
+   * the latest AutoFixQueued or AutoFixStopped; 0 = none
+   *
+   * @generated from field: uint64 auto_fix_last_offset = 24;
+   */
+  autoFixLastOffset: bigint;
 };
 
 /**
@@ -1378,6 +1419,24 @@ export declare type PullRequestRefreshed = Message<"modbit.v1.PullRequestRefresh
    * @generated from field: uint64 archive_offset = 4;
    */
   archiveOffset: bigint;
+
+  /**
+   * PX-212: this read found failing checks, auto-fix is on and a repair turn
+   * was queued (`auto_fix_input_id`) and asked for; or the cap stopped it.
+   *
+   * @generated from field: bool auto_fix_queued = 5;
+   */
+  autoFixQueued: boolean;
+
+  /**
+   * @generated from field: string auto_fix_input_id = 6;
+   */
+  autoFixInputId: string;
+
+  /**
+   * @generated from field: bool auto_fix_stopped = 7;
+   */
+  autoFixStopped: boolean;
 };
 
 /**
@@ -1385,6 +1444,79 @@ export declare type PullRequestRefreshed = Message<"modbit.v1.PullRequestRefresh
  * Use `create(PullRequestRefreshedSchema)` to create a new message.
  */
 export declare const PullRequestRefreshedSchema: GenMessage<PullRequestRefreshed>;
+
+/**
+ * PX-212 (REQ-PX-212, DR-PX-2026-11-11-021 MWS-17): turn auto-fix on or off
+ * for one task. With it on, a failing check the Core reads (RefreshPullRequest
+ * or the schedule) or a review comment the existing ingestion accepts queues
+ * one repair input naming its cause, and the task's turn is asked for through
+ * the ordinary StartTask: the task's run mode, lease, policy and budgets
+ * decide as for any start, and its pushes ask as a person's would. At most
+ * `cap` attempts from the time it is turned on; then AutoFixStopped. Off is
+ * the default. The same value again records nothing.
+ *
+ * @generated from message modbit.v1.SetAutoFix
+ */
+export declare type SetAutoFix = Message<"modbit.v1.SetAutoFix"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: bool enabled = 2;
+   */
+  enabled: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.SetAutoFix.
+ * Use `create(SetAutoFixSchema)` to create a new message.
+ */
+export declare const SetAutoFixSchema: GenMessage<SetAutoFix>;
+
+/**
+ * @generated from message modbit.v1.AutoFixState
+ */
+export declare type AutoFixState = Message<"modbit.v1.AutoFixState"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: bool enabled = 2;
+   */
+  enabled: boolean;
+
+  /**
+   * @generated from field: uint32 attempts = 3;
+   */
+  attempts: number;
+
+  /**
+   * @generated from field: uint32 cap = 4;
+   */
+  cap: number;
+
+  /**
+   * @generated from field: bool stopped = 5;
+   */
+  stopped: boolean;
+
+  /**
+   * the AutoFixSet record; 0 = never set
+   *
+   * @generated from field: uint64 offset = 6;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.AutoFixState.
+ * Use `create(AutoFixStateSchema)` to create a new message.
+ */
+export declare const AutoFixStateSchema: GenMessage<AutoFixState>;
 
 /**
  * The session's pull-request preferences. Archive after merge is off until a

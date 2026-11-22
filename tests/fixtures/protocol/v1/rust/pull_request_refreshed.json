@@ -2,8 +2,17 @@
   "expected": {
     "archiveOffset": "9007199254740994",
     "archived": true,
+    "autoFixInputId": "",
+    "autoFixQueued": false,
+    "autoFixStopped": true,
     "offset": "9007199254740993",
     "pullRequest": {
+      "autoFix": true,
+      "autoFixAttempts": 3,
+      "autoFixCap": 3,
+      "autoFixLastCause": "REVIEW_COMMENT",
+      "autoFixLastOffset": "9007199254740995",
+      "autoFixStopped": true,
       "checks": "PASSING",
       "checksFailing": 0,
       "checksPassing": 2,

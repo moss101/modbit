@@ -390,6 +390,10 @@ section.welcome form { display: flex; flex-direction: column; gap: var(--mb-spac
 .pr-sec { padding: var(--mb-space-2) 0 var(--mb-space-3); min-width: 0; }
 .pr-sec + .pr-sec { border-top: 1px solid var(--color-tab-border); }
 .pr-app p { margin: 0 0 var(--mb-space-1); }
+/* REQ-PX-212: the task's auto-fix switch under the request's state; its words say the count and the stop, never colour alone. */
+.pr-autofix { margin-top: var(--mb-space-2); }
+.pr-autofix-row { display: inline-flex; align-items: center; gap: var(--mb-space-2); cursor: pointer; }
+.pr-autofix[data-tone="stopped"] #pr-autofix-detail { color: var(--mb-color-warn); }
 .pr-title { font-weight: 500; color: var(--mb-color-text); }
 .pr-url { overflow-wrap: anywhere; user-select: text; }
 .pr-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--mb-space-2); margin-top: var(--mb-space-2); }

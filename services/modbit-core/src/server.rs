@@ -839,6 +839,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "RefreshPullRequest",
                     "GetPullRequestPreferences",
                     "SetPullRequestPreferences",
+                    "SetAutoFix",
                     "IngestReviewComments",
                     "CompensateEffect",
                     "UndoToolCall",
@@ -1566,6 +1567,9 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         // read.
         "RefreshPullRequest" => "review.decide",
         "SetPullRequestPreferences" => "session.control",
+        // PX-212: turning auto-fix on lets the Core queue inputs for the task
+        // and ask for its turns: the same class as queueing an input.
+        "SetAutoFix" => "task.author",
         "GetPullRequestPreferences" => "events.subscribe",
         // PX-063: a project is the person's own grouping of their tasks; the
         // reads are reads of the log.
@@ -8350,6 +8354,71 @@ pub(crate) async fn handle_command_as(
             {
                 Ok(v) => accept(cid, false, v.encode_to_vec()),
                 Err((code, msg)) => reject(cid, &code, msg),
+            }
+        }
+        // PX-212: the task's auto-fix switch.
+        "SetAutoFix" => {
+            let Ok(p) = wire::SetAutoFix::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "SetAutoFix");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let task = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
+                return ack;
+            }
+            let mut store = core.store.lock().await;
+            match store.prior_command(&record(&env.command_type)) {
+                Ok(Some(_)) => {
+                    return accept(
+                        cid,
+                        true,
+                        crate::auto_fix::state_view(&store, task_id).encode_to_vec(),
+                    );
+                }
+                Ok(None) => {}
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            }
+            // The same value again records nothing.
+            if crate::auto_fix::status(&store, task_id).enabled == p.enabled {
+                return accept(
+                    cid,
+                    false,
+                    crate::auto_fix::state_view(&store, task_id).encode_to_vec(),
+                );
+            }
+            let event = crate::auto_fix::set_event(p.enabled);
+            let req = AppendRequest {
+                tenant_id: core.tenant_id,
+                session_id: task.session_id,
+                task_id: Some(task_id),
+                run_id: None,
+                turn_id: None,
+                step_id: None,
+                aggregate_type: AggregateType::Task,
+                aggregate_id: *task_id.as_bytes(),
+                expected_sequence: None,
+                events: vec![typed(event.event_type(), &event, actor)],
+            };
+            match store.execute_command(record(&env.command_type), req) {
+                Ok(outcome) => {
+                    let (events, replayed) = split(outcome);
+                    let offset = events.last().map(|e| e.offset).unwrap_or(0);
+                    if !replayed && offset > 0 {
+                        core.last_offset.send_replace(offset);
+                    }
+                    accept(
+                        cid,
+                        replayed,
+                        crate::auto_fix::state_view(&store, task_id).encode_to_vec(),
+                    )
+                }
+                Err(e) => reject(cid, error_code(&e), e.to_string()),
             }
         }
         // PX-211: the session's archive-after-merge preference.
