@@ -41478,7 +41478,7 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-213",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "E2E_PROVEN",
+   "status": "COMPLETE",
    "evidence": [
     "commit:ad5af66c",
     "test:qual_px_213_merge_when_ready_asks_once_checks_pass_and_merges_only_the_approved_head",
@@ -41488,9 +41488,20 @@
     "artifact:evidence/m10/PX-213/px213-e2e.log",
     "artifact:evidence/m10/PX-213/px213-e2e-related.log",
     "artifact:evidence/m10/PX-213/core-suite.log",
-    "artifact:evidence/m10/PX-213/TASK_CARD.md"
+    "artifact:evidence/m10/PX-213/TASK_CARD.md",
+    "run:gha-44994944832",
+    "commit:df72d23adfd1b352c6043cc54a226e35e09aa6c1",
+    "artifact:evidence/m10/PX-213/ci-run-44994944832.json"
    ],
-   "status_changed_on": "2026-11-22T05:30:29Z"
+   "notes": [
+    {
+     "at": "2026-11-22T18:03:21Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "PR 246 CI run 44994944832 all green; merged as df72d23a; owner asked to merge when green"
+    }
+   ],
+   "status_changed_on": "2026-11-22T18:03:21Z"
   },
   {
    "id": "PX-214",

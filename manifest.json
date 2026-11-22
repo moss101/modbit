@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2493,
+    "root_and_tooling": 2494,
     "docs_bytes": 2396550
   },
   "sections": [
@@ -5545,8 +5545,8 @@
     },
     {
       "path": "evidence/m10/PX-213/TASK_CARD.md",
-      "bytes": 11903,
-      "sha256": "1582f6ef7360b7feeca0358c8f386fa6b89137b875cbc968eb3f00f46ee24a9c"
+      "bytes": 12806,
+      "sha256": "14c8b25eb3ae9f4df72073faec587c68576d9aefe1c212f72aa9a36d301d62db"
     },
     {
       "path": "evidence/m10/PX-213/after/merge-asked-dark.png",
@@ -5587,6 +5587,11 @@
       "path": "evidence/m10/PX-213/after/merge-waiting-light.png",
       "bytes": 334156,
       "sha256": "b3dcd8846a61d9121e2b42ce8cf7febb93aaaeeb2b302ec0d698ac4acf833d96"
+    },
+    {
+      "path": "evidence/m10/PX-213/ci-run-44994944832.json",
+      "bytes": 65329,
+      "sha256": "e4fe0fbffbe7798278e69e440c59bbc1d312600173e8303743e00a9977bab546"
     },
     {
       "path": "evidence/m10/PX-213/core-suite.log",
@@ -13331,12 +13336,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 47980,
-      "sha256": "e7d60026a5fe2d2d24473ec85b9592a233d7f66395b9774e282c8431fe071cd0"
+      "sha256": "cad3039026d3e1da2980f80daad5c54c668138af19f5a87efe40e66fbb95c9a2"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2643861,
-      "sha256": "250b19ac5da7abd78b4c2d62684513cc9840fdef6ff4d2c88f1995c37ae966cd"
+      "bytes": 2644222,
+      "sha256": "5189dc24a51167f84eee5c0eb9de0ea97fe8f9ddc8090b2ce97f633a856124b2"
     },
     {
       "path": "tools/build_graph.py",

@@ -67,3 +67,13 @@ Classification: merge when ready NOT-FOUND (documented only); every piece around
 - A repository whose branch rules require reviews or other conditions is refused by the forge (`NOT_MERGEABLE`, merge when ready turned off with the reason); the Core does not read branch protection beforehand.
 - An approved ask whose head moved is never spent but stays `APPROVED` on the approval's record (only a pending approval can be closed); the ledger shows no effect for it.
 - macOS only locally; Linux and Windows are CI's.
+
+## CI and merge
+
+- PR 246 first head f76f9e29: run 44989931790 failed in the three Rust jobs (Linux, macOS, Windows), all at the same assertion in `px_213_merge_when_ready.rs` step 11. The header showed merge_phase MERGED while state was still OPEN, because `MergeCompleted` is recorded before the Core's follow-up read. The test checked between the two. The Core behaved as designed; the fix (b550ad49) makes the test wait for the follow-up read to record the request merged. It passed three times in a row locally.
+- PR 246 head b550ad49: GitHub Actions run 44994944832 — 19 of 19 jobs success (Rust, node, desktop E2E and packaged desktop on macOS, Ubuntu and Windows; cloud; protocol round trip; dossier integrity; supply chain). Saved as `ci-run-44994944832.json`.
+- Squash-merged into `main` as df72d23a on 2026-11-22 (owner: "Yes, merge when green").
+
+## Status
+
+COMPLETE (sealed 2026-11-22).
