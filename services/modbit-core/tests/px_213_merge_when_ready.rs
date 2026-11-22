@@ -565,9 +565,23 @@ async fn qual_px_213_merge_when_ready_asks_once_checks_pass_and_merges_only_the_
     //          the method asked for; the receipt is in the effect ledger. ---
     let a = approval(&mut c, &session, &ask_c).await;
     decide(&mut c, g, &a, true).await.unwrap();
-    let h = wait_phase(&mut c, &session, &task, "MERGED", "merged").await;
-    let v = h.pull_request.unwrap();
-    assert_eq!(v.state, "MERGED", "the read after the merge: {v:?}");
+    wait_phase(&mut c, &session, &task, "MERGED", "merged").await;
+    // MergeCompleted is recorded before the Core's follow-up read, so the
+    // header can show MERGED over the pre-merge read for a moment; the read
+    // after the merge must then record the request merged.
+    let deadline = Instant::now() + Duration::from_secs(30);
+    let v = loop {
+        let v = header(&mut c, &session, &task).await.pull_request.unwrap();
+        if v.state == "MERGED" {
+            break v;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "the read after the merge never recorded it merged: {v:?}"
+        );
+        tokio::time::sleep(Duration::from_millis(150)).await;
+    };
+    assert_eq!(v.merge_phase, "MERGED", "{v:?}");
     assert_eq!(v.merge_head_sha, hc);
     assert!(!v.merge_sha.is_empty());
     let m = merges(&gh);
