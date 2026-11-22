@@ -141,6 +141,7 @@ const BRIDGE_ALLOW_LIST = [
   "refreshPullRequest", "pullRequestPreferences", "setPullRequestPreferences",
   // PX-212 (auto-fix): the task's switch, one typed Core command main validates (a session id, a task id and a boolean).
   "setAutoFix",
+  "setMergeWhenReady",
   // PX-203 (pane pop-out): the app window pops a pane out, lists and brings forward pane windows and hears them close or ask;
   // a pane window asks which pane it shows, says what it shows, asks the app window to show something, and goes back to the
   // dock. Main answers a pane window only on its pane's channels, for its own task (pane-windows.ts).

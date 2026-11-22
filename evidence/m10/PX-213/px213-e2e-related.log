@@ -1,0 +1,862 @@
+
+Running 32 tests using 1 worker
+
+[electron] Debugger ending on ws://127.0.0.1:53845/12f4c961-c261-4f30-9fef-5b59729f9fe3
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12005:19
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓   1 e2e/agents.spec.ts:26:1 › PX-046: classes show glyph and words from the Core; unread clears when the conversation is seen; a search finds a tool result and opens its row; pins, filters, grouping, archive with undo, keyboard and axe (21.9s)
+[electron] Debugger ending on ws://127.0.0.1:53906/9b86429e-4aed-4335-a8e2-319d2dab7ab1
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10020:28
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10020:28
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'worktrees:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:9691:17
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'terminal:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at TerminalHost.client (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11799:9)
+    at TerminalHost.list (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10906:26)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12517:54
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12005:19
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓   2 e2e/agents.spec.ts:162:1 › PX-046: archiving a running task asks first; stopping is the Core's recorded cancellation, and keeping it running changes nothing (1.4s)
+[electron] Debugger ending on ws://127.0.0.1:53913/92bd52b5-1d4f-4b2d-8271-ed6d1b8742d0
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8230:37
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:9637:49
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8237:26
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓   3 e2e/agents.spec.ts:200:1 › PX-046: a thousand tasks stay responsive: the list holds only the rows in view, scrolls to the end, filters and groups within a generous bound, and a Core event reaches it (3.5s)
+[electron] Debugger ending on ws://127.0.0.1:53922/46caa542-4eb5-461e-8d10-cb1a0f8f568c
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓   4 e2e/browser.spec.ts:147:1 › browser session: a sandboxed WebContentsView in the app, attached to the Core, driven by the agent through the CDP bridge; the page is untrusted, file: is refused, nothing privileged is reachable (8.5s)
+[electron] Debugger ending on ws://127.0.0.1:53949/54e44dac-124b-4a8d-a830-5c07cf063dd2
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓   5 e2e/browser.spec.ts:358:1 › browser takeover: the person takes control of the same session and types; the agent's input is blocked at once while it can still observe; returning control moves the lease and the agent acts again (3.9s)
+[electron] Debugger ending on ws://127.0.0.1:53966/d696db8a-7a89-4ca2-bb48-b9d87df5d56b
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'automations:taskHeaders': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3952:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3957:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5172:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12806:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10806:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10804:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12809:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'conversation:transcript': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3952:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3957:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5172:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12806:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10806:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10804:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12809:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'conversation:workGraph': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3952:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3957:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5172:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12806:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10806:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10804:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12809:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'conversation:plan': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3952:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3957:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5172:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12806:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10806:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10804:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12809:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] modbit-core: connection ended: io: Broken pipe (os error 32)
+  ✓   6 e2e/browser.spec.ts:470:1 › prompt injection: hostile page and README are marked data; the key never leaves; the forbidden tool stays unavailable (3.6s)
+[electron] Debugger ending on ws://127.0.0.1:53981/9e9d358c-b95d-4779-aaba-5e82fbce200b
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓   7 e2e/browser.spec.ts:574:1 › credential handle fill: the agent fills a bound credential by handle, never sees the value, and the site receives it in the approved sign-in (6.6s)
+[electron] Debugger ending on ws://127.0.0.1:54009/7845aced-1000-489f-b07c-dfdab30f7eb0
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓   8 e2e/browser.spec.ts:693:1 › human activity preemption: a real key from the person takes control; the agent's input is refused until control is returned (3.9s)
+[electron] Debugger ending on ws://127.0.0.1:54023/d73e098d-079d-4fc1-85f5-2b1a43fe9297
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12005:19
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓   9 e2e/browser.spec.ts:782:1 › human activity preemption: a mouse press or a scroll from the person takes control; a hover does not (1.8s)
+[electron] modbit-core: emergency stop on session 9b21c688-6aff-55bc-5bcc-256f44f59303: 1 lease(s) revoked, 1 live run(s) cancelled, 0 control session(s) stopped (stopped from the Browser panel)
+[electron] Debugger ending on ws://127.0.0.1:54033/b323c01f-c4dc-46d7-9735-a91913d7ea31
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'worktrees:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:9691:17
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12005:19
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'terminal:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at TerminalHost.client (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11799:9)
+    at TerminalHost.list (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10906:26)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12517:54
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'automations:taskHeaders': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10721:17
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓  10 e2e/browser.spec.ts:862:1 › fault taxonomy, clipboard guard and emergency stop on a real page (8.1s)
+[electron] Error occurred in handler for 'review:ingestCi': RejectedError: NO_PULL_REQUEST: no pull request was opened for this task (OpenPullRequest)
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3907:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3883:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'NO_PULL_REQUEST'
+}
+[electron] Debugger ending on ws://127.0.0.1:54055/b1a4f492-5867-4064-b86d-5cc3c79bdf10
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'terminal:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at TerminalHost.client (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11799:9)
+    at TerminalHost.list (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10906:26)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12517:54
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Debugger ending on ws://127.0.0.1:54067/2e1e5eb5-0583-4953-b39b-de9989db2ea8
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  11 e2e/forge-evidence.spec.ts:130:1 › review shows the forge's CI runs as external evidence and the pull request's comments as untrusted text, survives a restart, and CI never accepts the task (7.9s)
+[electron] Debugger ending on ws://127.0.0.1:54078/1f28a332-817e-45b3-82db-3561c948ef7d
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8230:37
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at eval (eval at evaluate (:311:30), <anonymous>:36:30)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:9637:49
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at eval (eval at evaluate (:311:30), <anonymous>:36:30)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8237:26
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at eval (eval at evaluate (:311:30), <anonymous>:36:30)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'terminal:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at TerminalHost.client (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11799:9)
+    at TerminalHost.list (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10906:26)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12517:54
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at eval (eval at evaluate (:311:30), <anonymous>:36:30)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10025:41
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at eval (eval at evaluate (:311:30), <anonymous>:36:30)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10020:28
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at eval (eval at evaluate (:311:30), <anonymous>:36:30)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8230:37
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at eval (eval at evaluate (:311:30), <anonymous>:36:30)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] (node:57596) UnhandledPromiseRejectionWarning: Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at TerminalHost.client (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11799:9)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11039:44
+    at Array.map (<anonymous>)
+    at TerminalHost.detachAll (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11039:28)
+    at BrowserWindow.<anonymous> (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12592:42)
+    at BrowserWindow.emit (node:events:526:24)
+(Use `Electron --trace-warnings ...` to show where the warning was created)
+(node:57596) UnhandledPromiseRejectionWarning: Unhandled promise rejection. This error originated either by throwing inside of an async function without a catch block, or by rejecting a promise which was not handled with .catch(). To terminate the node process on unhandled promise rejection, use the CLI flag `--unhandled-rejections=strict` (see https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode). (rejection id: 8)
+  ✓  12 e2e/px-202-pane-dock.spec.ts:185:1 › PX-202: panes open together and tile; the set and the sizes are the task's and survive a reload; a minimized terminal keeps its session; Activity lists what was delivered and reads nothing; Background tasks stops a terminal and a child; More stays reachable over a docked approval (33.4s)
+[electron] Error occurred in handler for 'review:ingestCi': RejectedError: NO_PULL_REQUEST: no pull request was opened for this task (OpenPullRequest)
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3907:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3883:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'NO_PULL_REQUEST'
+}
+[electron] Error occurred in handler for 'review:refreshPullRequest': RejectedError: FORGE_NOT_FOUND: 404: Not Found
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3907:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3883:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'FORGE_NOT_FOUND'
+}
+[electron] Debugger ending on ws://127.0.0.1:54140/1a7371f1-3b8c-471d-9259-192c674f57e7
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  13 e2e/px-202-pane-dock.spec.ts:806:1 › PX-202: the Pull request pane opens a request through the docked approval card and shows the checks and comments the Core read; a state that was not read is never shown (6.5s)
+[electron] Debugger ending on ws://127.0.0.1:54160/ccad6f1a-b1b4-4aea-a6d6-ce07253fe4ea
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Debugger ending on ws://127.0.0.1:54201/f02b6a7a-be48-4f45-a03c-4cec2f70253f
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  14 e2e/px-211-pull-request-state.spec.ts:141:1 › PX-211: the Core reads a task's pull request through the forge adapter, the header, row, card, rail and pane show what it read and when, a restart keeps it, and archive after merge is a preference with Undo (14.5s)
+[electron] Debugger ending on ws://127.0.0.1:54219/f6ff7b5c-82b6-416b-9806-bb9942163f82
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12005:19
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓  15 e2e/px-212-auto-fix.spec.ts:133:1 › PX-212: auto-fix is the task's switch, off by default; on, a failing read starts one repair turn whose push asks on the approval card; the pane counts turns against the cap and says when it stopped (11.7s)
+[electron] Debugger ending on ws://127.0.0.1:54268/a270484a-b857-4d3a-a1ad-85a49914e6ea
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'conversation:markRead': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8270:17
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓  16 e2e/qual-gaps.spec.ts:18:1 › PX-054: in Ask a write the model asks for is refused by the Core and nothing is written (1.7s)
+[electron] Debugger ending on ws://127.0.0.1:54277/47e19090-575e-478e-80ed-1fa04007e453
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8237:26
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10025:41
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10020:28
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12005:19
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓  17 e2e/qual-gaps.spec.ts:45:1 › PX-054: a mode the Core has not acknowledged is drawn unconfirmed and never as active; the Core's acknowledgement confirms it (847ms)
+[electron] Debugger ending on ws://127.0.0.1:54282/d59aeaef-9802-4851-b239-967c657f294f
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'conversation:transcript': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3952:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3957:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5172:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12806:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10806:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10804:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12809:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'automations:taskHeaders': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10721:17
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] modbit-core: connection ended: io: Broken pipe (os error 32)
+[electron] Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:9637:49
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8230:37
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓  18 e2e/qual-gaps.spec.ts:77:1 › PX-055: the send-behaviour education is shown once and its acknowledgement persists across a reload (2.6s)
+[electron] Debugger ending on ws://127.0.0.1:54292/5b7e4682-1c4b-444f-82ec-aedde6eff4fc
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8237:26
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10025:41
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10020:28
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓  19 e2e/qual-gaps.spec.ts:105:1 › PX-062: a checkpoint of another task is refused and nothing changes; a Continue replayed with its command id restores once (3.5s)
+[electron] Error occurred in handler for 'composer:setPreference': RejectedError: WRONG_SESSION: the task belongs to another session
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3907:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3883:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'WRONG_SESSION'
+}
+[electron] Debugger ending on ws://127.0.0.1:54301/4beca5a3-8f99-4034-91c0-3e6626e9dad6
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12005:19
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓  20 e2e/qual-gaps.spec.ts:154:1 › PX-056: a pin sent from a session that does not own the task is refused by the Core and the task's preference is unchanged (765ms)
+[electron] Debugger ending on ws://127.0.0.1:54307/61ec8bf0-1f0a-4c3a-9ef4-0fb037379f96
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  21 e2e/qual-gaps.spec.ts:173:1 › PX-060: after a compaction the ring and the tray still equal the Core's accounting, and the Core recorded the epoch (3.0s)
+[electron] Debugger ending on ws://127.0.0.1:54316/8b098468-1415-4c8d-b9c9-16d88dd75387
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'checkpoints:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10116:51
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓  22 e2e/qual-gaps.spec.ts:202:1 › PX-060: the ring shows the Core's figure for the task's own model across a model switch and never the other model's numbers (5.3s)
+[electron] Error occurred in handler for 'task:start': RejectedError: TASK_ALREADY_RUNNING: f305167d-8cb9-f306-24cd-7c8d0ca1402a
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3907:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3883:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'TASK_ALREADY_RUNNING'
+}
+[electron] Debugger ending on ws://127.0.0.1:54336/27a673d9-a2be-44cc-9582-06c27b21a752
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'conversation:transcript': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3952:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3957:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5172:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12806:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10806:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10804:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12809:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'conversation:workGraph': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8242:39
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'conversation:plan': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8246:34
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+modbit-core: connection ended: io: Broken pipe (os error 32)
+  ✓  23 e2e/qual-gaps.spec.ts:254:1 › PX-060: a provider failure shows the Core's cause with Retry; Retry (even double-clicked) starts one new run that goes on from the log (5.0s)
+[electron] Debugger ending on ws://127.0.0.1:54348/a7e75731-cff8-4209-ac3c-7e68a5b001cb
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  24 e2e/qual-gaps.spec.ts:303:1 › PX-062: once the agent has worked on after a restore, no redo is offered and the Core refuses the stale redo (4.8s)
+[electron] Error occurred in handler for 'budgets:set': RejectedError: TASK_ENDED: task is Cancelled; its budgets no longer apply
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3907:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3883:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'TASK_ENDED'
+}
+[electron] Error occurred in handler for 'budgets:set': Error: BAD_ARGUMENT: maxWallMs must be a decimal count
+    at bad3 (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8758:9)
+    at validCount (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8864:62)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10108:23
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Debugger ending on ws://127.0.0.1:54368/3d448ced-454a-4638-884f-90a7addc2040
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'terminal:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at TerminalHost.client (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11799:9)
+    at TerminalHost.list (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10906:26)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12517:54
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓  25 e2e/qual-gaps.spec.ts:340:1 › PX-060: a budget change the Core does not allow is refused with its typed reason and the caps stay as they were (1.0s)
+[electron] Error occurred in handler for 'approval:resolve': RejectedError: APPROVAL_EXPIRED: the approval for `shell.exec` expired at 1795323584670 without a decision and can no longer be approved; the effect did not run and the agent was told so; if it is still needed the agent asks again
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3907:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3883:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'APPROVAL_EXPIRED'
+}
+[electron] Debugger ending on ws://127.0.0.1:54378/cb0090c6-4227-40b5-aa08-b23a8ee3f116
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'attention:list': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3952:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3957:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5172:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12806:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10806:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10804:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12809:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'checkpoints:list': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3952:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3957:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5172:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12806:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10806:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10804:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12809:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'composer:queue': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3952:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3957:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5172:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12806:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10806:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10804:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12809:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'conversation:markRead': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3952:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3957:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5172:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12806:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10806:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10804:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12809:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'automations:taskHeaders': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3952:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3957:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5172:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12806:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10806:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10804:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12809:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+Error occurred in handler for 'approvals:expired': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3952:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3957:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5172:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12806:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10806:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10804:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12809:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'conversation:approvals': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8250:27
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'composer:queue': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8617:23
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12463:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8230:37
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:9637:49
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'accounting:get': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10100:56
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'task:economics': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11927:19
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] modbit-core: connection ended: io: Broken pipe (os error 32)
+[electron] Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8237:26
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓  26 e2e/qual-gaps.spec.ts:376:1 › PX-058: an approval nobody answers expires by the Core and shows as expired; it can no longer be approved; the agent is told and asks again (10.3s)
+[electron] Debugger ending on ws://127.0.0.1:54399/61e00fcf-1d2a-4775-bff7-d9d981baafbc
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'modeproposals:list': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3952:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3957:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5172:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12806:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10806:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10804:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12809:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'conversation:approvals': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3952:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3957:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5172:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12806:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10806:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10804:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12809:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'approvals:dock': ProtocolError: DISCONNECTED: closed by client
+    at _CoreClient.fail (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3952:54)
+    at _CoreClient.close (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3957:10)
+    at CoreSupervisor.stop (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:5172:18)
+    at Object.run (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12806:43)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10806:15
+    at Array.map (<anonymous>)
+    at runShutdown (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10804:22)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12809:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'DISCONNECTED'
+}
+[electron] Error occurred in handler for 'conversation:workGraph': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8242:39
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'conversation:plan': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8246:34
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'terminal:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at TerminalHost.client (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11799:9)
+    at TerminalHost.list (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10906:26)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12517:54
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8230:37
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:9637:49
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8237:26
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] modbit-core: connection ended: io: Broken pipe (os error 32)
+modbit-core: supervising client closed its pipe; exiting
+  ✓  27 e2e/qual-gaps.spec.ts:445:1 › PX-055: the agent's mode proposal is a card; nothing changes until Switch; Switch moves the mode through the Core and the card says so (2.3s)
+[electron] Error occurred in handler for 'modeproposals:decide': RejectedError: PROPOSAL_NOT_PENDING: the proposal ended SKIPPED (UNANSWERED_15S); it can no longer be answered
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3907:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3883:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'PROPOSAL_NOT_PENDING'
+}
+[electron] Debugger ending on ws://127.0.0.1:54407/7b2c5081-0575-486e-90ca-87d248e80994
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8237:26
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'automations:taskHeaders': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10721:17
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:9637:49
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'checkpoints:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10116:51
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10025:41
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:10020:28
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] modbit-core: connection ended: io: Broken pipe (os error 32)
+modbit-core: supervising client closed its pipe; exiting
+[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8230:37
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓  28 e2e/qual-gaps.spec.ts:494:1 › PX-055: a proposal left unanswered shows skipped after 15 s, the mode unchanged; Core-side, the late answer is refused (16.9s)
+[electron] modbit-desktop: core restart scheduled: connection lost: connection closed
+[electron] Error occurred in handler for 'conversation:markRead': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at Object.requireClient [as client] (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11805:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:8270:17
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:12435:61
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11855:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] modbit-core: recovery complete: boot_generation=2 events_verified=58 aggregates=14 projections_rebuilt=false sessions=1 tasks=1 in 4ms
+[electron] modbit-core: suspended 1 running task(s) after restart
+[electron] modbit-core: closed 1 open assistant stream(s) as aborted by recovery
+[electron] modbit-core: reattached to the terminal broker a previous Core left alive
+[electron] modbit-core: 1 mode-switch proposal(s) the last Core left pending were skipped
+[electron] Debugger ending on ws://127.0.0.1:54439/8bb95d5c-e522-48cf-be1a-51a1689c9e09
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  29 e2e/qual-gaps.spec.ts:531:1 › PX-055: a Core killed with a proposal pending comes back with it skipped, never accepted (2.7s)
+[electron] Error occurred in handler for 'approval:resolve': RejectedError: UNKNOWN_APPROVAL: 01234567-89ab-cdef-0123-456789abcdef
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3907:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3883:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'UNKNOWN_APPROVAL'
+}
+[electron] Error occurred in handler for 'browser:session': RejectedError: UNKNOWN_TASK: 01234567-89ab-cdef-0123-456789abcdef
+    at _CoreClient.dispatch (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3907:61)
+    at Socket.<anonymous> (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:3883:16)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:567:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)
+    at Readable.push (node:internal/streams/readable:398:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  code: 'UNKNOWN_TASK'
+}
+[electron] Error occurred in handler for 'session:create': Error: SENDER_REFUSED: only the app's own renderer may ask this
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11842:13
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'debug:coreInfo': Error: SENDER_REFUSED: only the app's own renderer may ask this
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11842:13
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Error occurred in handler for 'credential:list': Error: SENDER_REFUSED: only the app's own renderer may ask this
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11842:13
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+[electron] Debugger ending on ws://127.0.0.1:54449/0330d4de-39e8-4f74-a466-fd36966492f6
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  30 e2e/workers.spec.ts:163:1 › renderer compromise (REQ-EV-0075): the app's renderer holds no secret, no Node, no socket; the bridge is typed requests only; the Core refuses what the renderer cannot vouch for; a foreign window with the same bridge is refused by main and audited (701ms)
+[renderer-diag] window renderer pid=77367 webContents=1; processes: 77364:Browser 77365:GPU 77366:Utility(Network Service) 77367:Tab
+[renderer-diag] page1.crash at 9 ms
+[electron] modbit-desktop: renderer gone: reason=killed exitCode=2 via=event replacing=true
+[renderer-diag] page1.close at 35 ms
+[renderer-diag] main-replaced at 115 ms
+[renderer-diag] renderer-pid-gone at 115 ms
+[renderer-diag] playwright-window at 115 ms
+[electron] Debugger ending on ws://127.0.0.1:54455/e562d7f8-dab0-4bfe-b74d-a11e2fe96ec8
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  31 e2e/workers.spec.ts:267:1 › renderer killed (REQ-EV-0076): the renderer's process dies mid-session; main keeps the Core, the lease and the stream; the renderer comes back from the Core's snapshot and cursor with the session's truth unchanged and its typed requests answered (2.4s)
+[electron] Debugger ending on ws://127.0.0.1:54465/79efbc31-1cda-4935-bf94-36e332193999
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  32 e2e/workers.spec.ts:386:1 › browser view killed (REQ-EV-0081): the view's process dies under the agent's session; the host restarts the view at its page and attaches it again to the same session; the Core, its log and the task are untouched, and the agent's next observation reads the restarted page (2.8s)
+
+  32 passed (3.4m)

@@ -82,7 +82,13 @@ const PINS = {
   // holds the switch and asks for any repair turn itself, through the ordinary start under the task's own run mode. The answer of
   // `review:refreshPullRequest` gains two booleans (autoFixQueued, autoFixStopped). No path, command name or free text crosses the
   // bridge for it, the renderer starts nothing, and it is on no pane window's allow list (pane-windows.ts).
-  preloadSha256: "886b9838df462c28224bc1f51656f073f907bfe9cb34204878f0f4ab511d6b97",
+  // PX-213 (2026-11-22, for review with its pull request): one channel and a type-only addition. `review:setMergeWhenReady` (a session
+  // id, a task id, a boolean and a method that main checks is one of merge, squash or rebase) forwards the one typed Core command
+  // SetMergeWhenReady under the session's lease. The Core raises the merge's approval itself once the checks pass, and the merge
+  // happens only on a person's decision on that approval through the existing approval channel; the renderer merges nothing and
+  // makes no forge call. The answer of `review:refreshPullRequest` gains one string (mergePhase). It is on no pane window's allow
+  // list (pane-windows.ts).
+  preloadSha256: "822184ac0ab9a7f11595b554c592398fd3ba067c37313fb96cb0f8903eb84da1",
   cspSha256: "e8c3fcc4286ba170b02ea95b02189f132b16228341d2002412facfec6eb929d1",
   webPreferencesSha256: "28515878dc43e119f2360de779e5a3733283d120b31a113837f7f7a6cf2356ee",
   windowOptionKeys: ["width", "height", "minWidth", "minHeight", "show", "webPreferences"],

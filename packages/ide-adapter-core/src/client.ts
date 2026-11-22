@@ -176,6 +176,9 @@ import {
   SetAutoFixSchema,
   AutoFixStateSchema,
   type AutoFixState,
+  SetMergeWhenReadySchema,
+  MergeWhenReadyStateSchema,
+  type MergeWhenReadyState,
   IngestReviewCommentsSchema,
   ReviewCommentsIngestedViewSchema,
   type ReviewCommentsIngestedView,
@@ -1049,6 +1052,18 @@ export class CoreClient {
     const payload = toBinary(SetAutoFixSchema, create(SetAutoFixSchema, { taskId: { value: unhex(taskId) }, enabled }));
     const ack = await this.command("SetAutoFix", payload, undefined, this.leases.get(sessionId), sessionId);
     return fromBinary(AutoFixStateSchema, ack.result);
+  }
+
+  /**
+   * PX-213: ask for (or withdraw) merge when ready on a task's pull request.
+   * Once a read finds its checks passed, the Core raises the approval of
+   * `forge.pr.merge` bound to that head and method; only a person's decision
+   * on that approval merges. The same request again records nothing.
+   */
+  async setMergeWhenReady(sessionId: string, taskId: string, enabled: boolean, method: string): Promise<MergeWhenReadyState> {
+    const payload = toBinary(SetMergeWhenReadySchema, create(SetMergeWhenReadySchema, { taskId: { value: unhex(taskId) }, enabled, method }));
+    const ack = await this.command("SetMergeWhenReady", payload, undefined, this.leases.get(sessionId), sessionId);
+    return fromBinary(MergeWhenReadyStateSchema, ack.result);
   }
 
   /** PX-211: the session's archive-after-merge preference (off until set). */

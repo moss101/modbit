@@ -85,6 +85,32 @@ export function autoFixWords(pr: PullRequestStateView | undefined | null): { on:
   return { on: true, status: `${pr.autoFixAttempts} of ${pr.autoFixCap} repair turns used${cause ? `; the latest for ${cause}` : ""}.`, tone: "on" };
 }
 
+/**
+ * PX-213: what the pane says of merge when ready, from the Core's record only. Off says what it would do; on says what the merge
+ * waits for, that the approval is asked, that it merged, or why the Core turned it off.
+ */
+export function mergeWords(pr: Pick<PullRequestStateView, "mergeWhenReady" | "mergeMethod" | "mergePhase" | "mergeDetail"> | undefined | null): {
+  on: boolean;
+  phase: string;
+  status: string;
+  tone: "none" | "waiting" | "asked" | "merged" | "cleared";
+} {
+  const off = "Off. When on, Modbit asks you to approve the merge once the checks pass; nothing merges without your approval.";
+  if (!pr) return { on: false, phase: "OFF", status: off, tone: "none" };
+  switch (pr.mergePhase) {
+    case "MERGED":
+      return { on: false, phase: "MERGED", status: pr.mergeDetail, tone: "merged" };
+    case "CLEARED":
+      return { on: false, phase: "CLEARED", status: pr.mergeDetail, tone: "cleared" };
+    case "ASKED":
+      return { on: true, phase: "ASKED", status: `${pr.mergeDetail} The approval is in the approvals tray.`, tone: "asked" };
+    case "WAITING":
+      return { on: true, phase: "WAITING", status: `${pr.mergeDetail} Method: ${pr.mergeMethod || "merge"}.`, tone: "waiting" };
+    default:
+      return { on: pr.mergeWhenReady, phase: pr.mergePhase || "OFF", status: off, tone: "none" };
+  }
+}
+
 /** Whether the task's changes can become a pull request now, or why not (the Core refuses one before the task is ready for review). */
 export function canOpenRequest(taskState: string): true | string {
   return taskState === "ReadyForReview" || taskState === "Completed" ? true : "The task has to be ready for review before its changes can become a pull request.";

@@ -645,6 +645,21 @@
       "test": "qual_px_006_the_forge_adapter_reads_and_writes_github_behind_leases_effects_receipts_and_idempotency_keys"
     },
     {
+      "tool": "forge.pr.merge",
+      "family": "forge",
+      "source_behaviors": [
+        "gh pr merge --match-head-commit",
+        "GitHub merge pull request (MCP github server)"
+      ],
+      "owner": "External Tool Hub (forge adapter)",
+      "effect": "ExternalSideEffect",
+      "capabilities": [
+        "network.egress",
+        "secret.use"
+      ],
+      "test": "qual_px_213_merge_when_ready_asks_once_checks_pass_and_merges_only_the_approved_head"
+    },
+    {
       "tool": "forge.pr.comments.read",
       "family": "forge",
       "source_behaviors": [

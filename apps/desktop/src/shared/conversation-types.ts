@@ -94,6 +94,18 @@ export interface PullRequestStateView {
   /** CHECKS_FAILING or REVIEW_COMMENT; "" before any. */
   autoFixLastCause: string;
   autoFixLastOffset: string;
+  /** PX-213: merge when ready, as the Core holds it. Off until a person asks. */
+  mergeWhenReady: boolean;
+  /** merge, squash or rebase; "" before any request. */
+  mergeMethod: string;
+  /** OFF, WAITING, ASKED (the approval waits for a person), MERGED or CLEARED (the Core turned it off; the detail says why). */
+  mergePhase: string;
+  mergeDetail: string;
+  /** The standing ask's approval; "" when none. */
+  mergeApprovalId: string;
+  mergeHeadSha: string;
+  mergeSha: string;
+  mergeOffset: string;
 }
 
 export interface AgentHeadersView {

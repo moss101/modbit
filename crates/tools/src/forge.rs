@@ -3,7 +3,8 @@
 //! `forge.pr.comments.read`, `forge.ci.status`, `forge.pr.read`,
 //! `forge.pr.diff`) need the `network.egress` capability of the lease and
 //! return untrusted, provenance-bound data; writes (`forge.pr.create`,
-//! `forge.pr.update`, `forge.issue.comment`, `forge.pr.comment`) are
+//! `forge.pr.update`, `forge.pr.merge`, `forge.issue.comment`,
+//! `forge.pr.comment`) are
 //! `ExternalSideEffect`s — approval-bound and receipted by the kernel — and
 //! need `secret.use` as well. A comment body is bounded and has every
 //! credential (the held token and anything credential-shaped) replaced
@@ -827,6 +828,212 @@ tool!(
     }
 );
 
+/// Merge methods the forge accepts.
+const MERGE_METHODS: [&str; 3] = ["merge", "squash", "rebase"];
+
+/// Refusal codes of `forge.pr.merge` that a later read may clear by itself
+/// (the head moves, the checks finish, the forge comes back): the caller may
+/// ask again. Every other refusal needs a person.
+pub const MERGE_RETRYABLE: [&str; 6] = [
+    "HEAD_MOVED",
+    "CHECKS_PENDING",
+    "CHECKS_FAILING",
+    "CHECKS_UNAVAILABLE",
+    "FORGE_RATE_LIMITED",
+    "FORGE_UNREACHABLE",
+];
+
+tool!(
+    ForgePrMerge,
+    // A merge cannot be undone by the forge; a revert is a new change a
+    // person decides on. No compensation is declared.
+    spec(
+        "forge.pr.merge",
+        "Merge a pull request on the configured forge at one exact head commit (`sha`), only while it is open, not a draft and every check run of that head has completed without failing (protected external effect; approval-bound to the head and method; idempotent by key).",
+        EffectClass::ExternalSideEffect,
+        json!({"type":"object","properties":{"owner":{"type":"string","minLength":1},"repo":{"type":"string","minLength":1},"number":{"type":"integer","minimum":1},"sha":{"type":"string","pattern":"^[0-9a-f]{40}$"},"merge_method":{"type":"string","enum":["merge","squash","rebase"]},"idempotency_key":{"type":"string","minLength":8}},"required":["owner","repo","number","sha","merge_method","idempotency_key"],"additionalProperties":false}),
+        &["network.egress", "secret.use"],
+        Idempotency::NonIdempotent
+    ),
+    |ctx, args| {
+        let cfg_owned = match gate(ctx, &args, true) {
+            Ok(c) => c,
+            Err(o) => return *o,
+        };
+        let cfg = &cfg_owned;
+        let (owner, repo, number) = match locate(cfg, &args, "pull") {
+            Ok(x) => x,
+            Err(o) => return *o,
+        };
+        let sha = s(&args, "sha");
+        let method = s(&args, "merge_method");
+        if number == 0 || sha.len() != 40 || !MERGE_METHODS.contains(&method.as_str()) {
+            return ToolOutcome::fail(
+                "BAD_ARGUMENTS",
+                "number, a 40-character head sha and a merge_method (merge, squash, rebase) are required",
+            );
+        }
+        let key = s(&args, "idempotency_key");
+        if let Some(l) = ctx.forge_ledger.as_ref()
+            && let Some(prior) = l.lookup(&key).await
+        {
+            let mut v = prior;
+            v["replayed"] = json!(true);
+            return ToolOutcome::ok(v);
+        }
+        let done = |merge_sha: &str| {
+            json!({
+                "owner": owner, "repo": repo, "number": number,
+                "head_sha": sha, "merge_method": method,
+                "merged": true, "merge_sha": merge_sha,
+                "idempotency_key": key,
+            })
+        };
+        // The request as the forge has it now: the head the approval names,
+        // open, not a draft. A merge this key already made (a crash between
+        // the forge's answer and the ledger) is found here, not made twice.
+        let pr = match call(
+            cfg,
+            reqwest::Method::GET,
+            &format!("repos/{owner}/{repo}/pulls/{number}"),
+            None,
+        )
+        .await
+        {
+            Ok((200, pr)) => pr,
+            Ok((status, body)) => return forge_error(status, &body),
+            Err(o) => return *o,
+        };
+        let head_now = pr["head"]["sha"].as_str().unwrap_or_default().to_owned();
+        if pr["merged"].as_bool() == Some(true) {
+            if head_now == sha {
+                let mut view = done(pr["merge_commit_sha"].as_str().unwrap_or_default());
+                if let Some(l) = ctx.forge_ledger.as_ref() {
+                    l.record("forge.pr.merge", &key, &view).await;
+                }
+                view["replayed"] = json!(true);
+                return ToolOutcome::ok(view);
+            }
+            return ToolOutcome::fail(
+                "PR_NOT_OPEN",
+                format!("pull request #{number} was already merged at another head"),
+            );
+        }
+        if pr["state"] != "open" {
+            return ToolOutcome::fail(
+                "PR_NOT_OPEN",
+                format!(
+                    "pull request #{number} is {}",
+                    pr["state"].as_str().unwrap_or("not open")
+                ),
+            );
+        }
+        if head_now != sha {
+            let mut out = ToolOutcome::fail(
+                "HEAD_MOVED",
+                format!(
+                    "the head of #{number} is {} now, not the approved {}; nothing was merged",
+                    head_now.get(..12).unwrap_or(&head_now),
+                    &sha[..12]
+                ),
+            );
+            out.structured_output = json!({"head_sha": head_now});
+            return out;
+        }
+        if pr["draft"].as_bool() == Some(true) {
+            return ToolOutcome::fail("PR_DRAFT", format!("pull request #{number} is a draft"));
+        }
+        // Every check run of that head has completed and none failed.
+        let checks = match call(
+            cfg,
+            reqwest::Method::GET,
+            &format!("repos/{owner}/{repo}/commits/{sha}/check-runs?per_page=100"),
+            None,
+        )
+        .await
+        {
+            Ok((200, body)) => {
+                checks_summary(body["check_runs"].as_array().map_or(&[][..], Vec::as_slice))
+            }
+            Ok((status, body)) => {
+                let o = forge_error(status, &body);
+                return ToolOutcome::fail(
+                    "CHECKS_UNAVAILABLE",
+                    format!(
+                        "the checks of {} could not be read ({}); nothing was merged",
+                        &sha[..12],
+                        o.error_code.unwrap_or_default()
+                    ),
+                );
+            }
+            Err(o) => return *o,
+        };
+        let failing: Vec<String> = checks["not_passing"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .filter_map(|v| v.as_str().map(str::to_owned))
+                    .collect()
+            })
+            .unwrap_or_default();
+        if !failing.is_empty() {
+            return ToolOutcome::fail(
+                "CHECKS_FAILING",
+                format!(
+                    "checks did not pass at {}: {}; nothing was merged",
+                    &sha[..12],
+                    failing.join(", ")
+                ),
+            );
+        }
+        let pending = checks["not_completed"].as_u64().unwrap_or(0);
+        if pending > 0 {
+            return ToolOutcome::fail(
+                "CHECKS_PENDING",
+                format!(
+                    "{pending} check run(s) of {} have not completed; nothing was merged",
+                    &sha[..12]
+                ),
+            );
+        }
+        // The merge, pinned to the approved head: the forge refuses it (409)
+        // if the head moves between the read above and this call.
+        match call(
+            cfg,
+            reqwest::Method::PUT,
+            &format!("repos/{owner}/{repo}/pulls/{number}/merge"),
+            Some(json!({"sha": sha, "merge_method": method})),
+        )
+        .await
+        {
+            Ok((200, body)) if body["merged"].as_bool() != Some(false) => {
+                let mut view = done(body["sha"].as_str().unwrap_or_default());
+                if let Some(l) = ctx.forge_ledger.as_ref() {
+                    l.record("forge.pr.merge", &key, &view).await;
+                }
+                view["replayed"] = json!(false);
+                ToolOutcome::ok(view)
+            }
+            Ok((409, body)) => ToolOutcome::fail(
+                "HEAD_MOVED",
+                format!(
+                    "the forge refused the merge: {}; nothing was merged",
+                    modbit_secrets::error_text(body["message"].as_str().unwrap_or("head moved"))
+                ),
+            ),
+            Ok((405, body)) => ToolOutcome::fail(
+                "NOT_MERGEABLE",
+                format!(
+                    "the forge says #{number} cannot be merged: {}",
+                    modbit_secrets::error_text(body["message"].as_str().unwrap_or("not mergeable"))
+                ),
+            ),
+            Ok((status, body)) => forge_error(status, &body),
+            Err(o) => *o,
+        }
+    }
+);
+
 tool!(
     ForgePrCommentsRead,
     spec(
@@ -1429,6 +1636,7 @@ pub fn register_forge(registry: &mut ToolRegistry) -> Result<()> {
         ForgeIssueRead::shared(),
         ForgePrCreate::shared(),
         ForgePrUpdate::shared(),
+        ForgePrMerge::shared(),
         ForgePrCommentsRead::shared(),
         ForgeCiStatus::shared(),
         ForgePrRead::shared(),

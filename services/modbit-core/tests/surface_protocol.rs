@@ -24978,7 +24978,7 @@ async fn qual_m5_1_projection_follows_the_plan_and_refuses_crafted_calls() {
         assert!(
             plan_desc.contains("DECLARE_WRITES -> change.apply, change.batch")
                 && plan_desc.contains(
-                    "DECLARE_PROTECTED_EFFECT -> forge.issue.comment, forge.pr.comment, forge.pr.create, forge.pr.update, git.apply.undo, git.apply.worktree, git.merge.commit, git.merge.prepare, git.worktree.close"
+                    "DECLARE_PROTECTED_EFFECT -> forge.issue.comment, forge.pr.comment, forge.pr.create, forge.pr.merge, forge.pr.update, git.apply.undo, git.apply.worktree, git.merge.commit, git.merge.prepare, git.worktree.close"
                 ),
             "{plan_desc}"
         );
@@ -25010,7 +25010,7 @@ async fn qual_m5_1_projection_follows_the_plan_and_refuses_crafted_calls() {
         let plan_desc = description(b, "plan.update");
         assert!(
             plan_desc.contains(
-                "DECLARE_PROTECTED_EFFECT -> forge.issue.comment, forge.pr.comment, forge.pr.create, forge.pr.update, git.apply.undo, git.apply.worktree, git.merge.commit, git.merge.prepare, git.worktree.close"
+                "DECLARE_PROTECTED_EFFECT -> forge.issue.comment, forge.pr.comment, forge.pr.create, forge.pr.merge, forge.pr.update, git.apply.undo, git.apply.worktree, git.merge.commit, git.merge.prepare, git.worktree.close"
             ) && !plan_desc.contains("DECLARE_WRITES"),
             "{plan_desc}"
         );
@@ -25027,7 +25027,7 @@ async fn qual_m5_1_projection_follows_the_plan_and_refuses_crafted_calls() {
     );
     let final_plan_desc = description(&bodies[5], "plan.update");
     assert!(
-        final_plan_desc.contains("DECLARE_PROTECTED_EFFECT -> forge.issue.comment, forge.pr.comment, forge.pr.create, forge.pr.update, git.apply.undo, git.apply.worktree, git.merge.commit, git.merge.prepare, handover.request.")
+        final_plan_desc.contains("DECLARE_PROTECTED_EFFECT -> forge.issue.comment, forge.pr.comment, forge.pr.create, forge.pr.merge, forge.pr.update, git.apply.undo, git.apply.worktree, git.merge.commit, git.merge.prepare, handover.request.")
             && !final_plan_desc.contains("git.worktree.close")
             && !final_plan_desc.contains("DECLARE_WRITES"),
         "{final_plan_desc}"
@@ -25099,6 +25099,7 @@ async fn qual_m5_1_projection_follows_the_plan_and_refuses_crafted_calls() {
             "forge.issue.comment:DECLARE_PROTECTED_EFFECT",
             "forge.pr.comment:DECLARE_PROTECTED_EFFECT",
             "forge.pr.create:DECLARE_PROTECTED_EFFECT",
+            "forge.pr.merge:DECLARE_PROTECTED_EFFECT",
             "forge.pr.update:DECLARE_PROTECTED_EFFECT",
             "git.apply.undo:DECLARE_PROTECTED_EFFECT",
             "git.apply.worktree:DECLARE_PROTECTED_EFFECT",
@@ -25119,6 +25120,7 @@ async fn qual_m5_1_projection_follows_the_plan_and_refuses_crafted_calls() {
             "forge.issue.comment:DECLARE_PROTECTED_EFFECT",
             "forge.pr.comment:DECLARE_PROTECTED_EFFECT",
             "forge.pr.create:DECLARE_PROTECTED_EFFECT",
+            "forge.pr.merge:DECLARE_PROTECTED_EFFECT",
             "forge.pr.update:DECLARE_PROTECTED_EFFECT",
             "git.apply.undo:DECLARE_PROTECTED_EFFECT",
             "git.apply.worktree:DECLARE_PROTECTED_EFFECT",

@@ -684,7 +684,7 @@ handle("review:refreshPullRequest", async (_e: IpcMainInvokeEvent, sessionId: un
   const c = requireClient();
   if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
   const r = await c.refreshPullRequest(sid, tid);
-  return { pullRequest: r.pullRequest ? pullRequestView(r.pullRequest) : null, offset: r.offset.toString(), archived: r.archived, archiveOffset: r.archiveOffset.toString(), autoFixQueued: r.autoFixQueued, autoFixStopped: r.autoFixStopped };
+  return { pullRequest: r.pullRequest ? pullRequestView(r.pullRequest) : null, offset: r.offset.toString(), archived: r.archived, archiveOffset: r.archiveOffset.toString(), autoFixQueued: r.autoFixQueued, autoFixStopped: r.autoFixStopped, mergePhase: r.mergePhase };
 });
 // PX-212: the task's auto-fix switch, held by the Core (its schedule acts on it with nobody connected). The Core asks for the repair
 // turn through the ordinary start, under the task's own run mode; this process starts nothing.
@@ -696,6 +696,18 @@ handle("review:setAutoFix", async (_e: IpcMainInvokeEvent, sessionId: unknown, t
   if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
   const r = await c.setAutoFix(sid, tid, enabled);
   return { enabled: r.enabled, attempts: r.attempts, cap: r.cap, stopped: r.stopped, offset: r.offset.toString() };
+});
+// PX-213: merge when ready, held by the Core. The Core raises the approval of the merge once the checks pass; the merge happens
+// only on a person's decision on that approval (the docked approval card). This process merges nothing.
+handle("review:setMergeWhenReady", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, enabled: unknown, method: unknown) => {
+  const sid = requireSessionId(sessionId);
+  const tid = requireTaskId(taskId);
+  if (typeof enabled !== "boolean") throw new Error("BAD_ARGUMENT: enabled must be a boolean");
+  if (method !== "merge" && method !== "squash" && method !== "rebase") throw new Error("BAD_ARGUMENT: method must be merge, squash or rebase");
+  const c = requireClient();
+  if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
+  const r = await c.setMergeWhenReady(sid, tid, enabled, method);
+  return { enabled: r.enabled, method: r.method, phase: r.phase, detail: r.detail, approvalId: r.approvalId, headSha: r.headSha, mergeSha: r.mergeSha, offset: r.offset.toString() };
 });
 // PX-211: the session's archive-after-merge preference, held by the Core (its schedule archives with nobody connected).
 handle("prefs:pullRequests", async (_e: IpcMainInvokeEvent, sessionId: unknown) => {

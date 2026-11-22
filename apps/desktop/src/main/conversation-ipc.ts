@@ -125,6 +125,14 @@ export function pullRequestView(p: TaskPullRequest): PullRequestStateView {
     autoFixStopped: p.autoFixStopped,
     autoFixLastCause: p.autoFixLastCause,
     autoFixLastOffset: p.autoFixLastOffset.toString(),
+    mergeWhenReady: p.mergeWhenReady,
+    mergeMethod: p.mergeMethod,
+    mergePhase: p.mergePhase,
+    mergeDetail: p.mergeDetail,
+    mergeApprovalId: p.mergeApprovalId,
+    mergeHeadSha: p.mergeHeadSha,
+    mergeSha: p.mergeSha,
+    mergeOffset: p.mergeOffset.toString(),
   };
 }
 

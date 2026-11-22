@@ -161,11 +161,19 @@ export function ApprovalDock({ sessionId, taskId, connected, onChangeMode, title
           {note.text}
         </p>
       )}
-      {expired.map((e) => (
-        <p key={e.approvalId} className="meta appr-last" role="status" data-testid="approval-expired" data-state="EXPIRED" data-approval-id={e.approvalId} data-intent-hash={e.intentHash}>
-          Expired: “{humanTitle(e.toolName)}” (<code>{e.toolName}</code>) was not answered in time, so it can no longer be approved and it did not run. The agent was told; if it still needs the effect it asks again.
-        </p>
-      ))}
+      {expired.map((e) =>
+        // PX-213: closed before its recorded expiry means the Core withdrew it (what it would do no longer stands), not that the
+        // person was too late.
+        Date.now() < e.expiresAtMs ? (
+          <p key={e.approvalId} className="meta appr-last" role="status" data-testid="approval-expired" data-state="WITHDRAWN" data-approval-id={e.approvalId} data-intent-hash={e.intentHash}>
+            Withdrawn: “{humanTitle(e.toolName)}” (<code>{e.toolName}</code>) no longer stands (for a merge, the head moved or the checks stopped passing), so it can no longer be approved and it did not run. A new approval asks for the current one.
+          </p>
+        ) : (
+          <p key={e.approvalId} className="meta appr-last" role="status" data-testid="approval-expired" data-state="EXPIRED" data-approval-id={e.approvalId} data-intent-hash={e.intentHash}>
+            Expired: “{humanTitle(e.toolName)}” (<code>{e.toolName}</code>) was not answered in time, so it can no longer be approved and it did not run. The agent was told; if it still needs the effect it asks again.
+          </p>
+        ),
+      )}
     </>
   );
 }
