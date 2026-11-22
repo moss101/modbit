@@ -400,6 +400,7 @@ pub async fn run_as(
     crate::background_process::spawn_watcher(Arc::clone(&core));
     // PX-211: open pull requests are read again on a schedule.
     crate::pull_request_state::spawn_watcher(Arc::clone(&core));
+    crate::merge_when_ready::spawn_worker(Arc::clone(&core));
     let shutdown = shutdown_signal();
     tokio::pin!(shutdown);
     // Idle exit (headless clients): a Core spawned by a CLI stays up for later
@@ -840,6 +841,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "GetPullRequestPreferences",
                     "SetPullRequestPreferences",
                     "SetAutoFix",
+                    "SetMergeWhenReady",
                     "IngestReviewComments",
                     "CompensateEffect",
                     "UndoToolCall",
@@ -1570,6 +1572,7 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         // PX-212: turning auto-fix on lets the Core queue inputs for the task
         // and ask for its turns: the same class as queueing an input.
         "SetAutoFix" => "task.author",
+        "SetMergeWhenReady" => "task.author",
         "GetPullRequestPreferences" => "events.subscribe",
         // PX-063: a project is the person's own grouping of their tasks; the
         // reads are reads of the log.
@@ -3825,6 +3828,13 @@ pub(crate) async fn handle_command_as(
                 }
             }
             core.last_offset.send_replace(offset);
+            drop(store);
+            // PX-213: a decision on a merge-when-ready ask. Approved: the read
+            // that acts on it runs now (it re-reads the request and merges
+            // only the approved head). Denied: merge when ready is turned off.
+            if approval.tool_name == "forge.pr.merge" {
+                crate::merge_when_ready::decided(task.task_id, approval_id.to_string(), p.approve);
+            }
             accept(
                 cid,
                 false,
@@ -8421,6 +8431,160 @@ pub(crate) async fn handle_command_as(
                 Err(e) => reject(cid, error_code(&e), e.to_string()),
             }
         }
+        // PX-213: merge when ready on the task's pull request.
+        "SetMergeWhenReady" => {
+            let Ok(p) = wire::SetMergeWhenReady::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "SetMergeWhenReady");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let method = if p.method.is_empty() {
+                "merge".to_owned()
+            } else {
+                p.method.clone()
+            };
+            if !crate::merge_when_ready::METHODS.contains(&method.as_str()) {
+                return reject(cid, "BAD_PAYLOAD", "method is merge, squash or rebase");
+            }
+            let task = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
+                return ack;
+            }
+            let (pr, before) = {
+                let store = core.store.lock().await;
+                match store.prior_command(&record(&env.command_type)) {
+                    Ok(Some(_)) => {
+                        return accept(
+                            cid,
+                            true,
+                            crate::merge_when_ready::state_view(&store, task_id).encode_to_vec(),
+                        );
+                    }
+                    Ok(None) => {}
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+                let pr = store
+                    .task_digests(&task.session_id)
+                    .ok()
+                    .and_then(|ds| ds.into_iter().find(|d| d.task_id == task_id))
+                    .and_then(|d| d.pull_request);
+                (pr, crate::merge_when_ready::status(&store, task_id))
+            };
+            let Some(pr) = pr else {
+                return reject(
+                    cid,
+                    "NO_PULL_REQUEST",
+                    "no pull request was opened for this task (OpenPullRequest)",
+                );
+            };
+            let settled = pr
+                .read
+                .as_ref()
+                .and_then(|r| r.payload["state"].as_str().map(str::to_owned))
+                .filter(|st| st == "MERGED" || st == "CLOSED");
+            if p.enabled
+                && let Some(st) = settled
+            {
+                return reject(
+                    cid,
+                    "PR_NOT_OPEN",
+                    format!("pull request #{} is {}", pr.number, st.to_lowercase()),
+                );
+            }
+            // The same request again records nothing.
+            if before.enabled == p.enabled && (!p.enabled || before.method == method) {
+                let store = core.store.lock().await;
+                return accept(
+                    cid,
+                    false,
+                    crate::merge_when_ready::state_view(&store, task_id).encode_to_vec(),
+                );
+            }
+            // Withdrawn (or the method changed) while an ask stands: the ask
+            // no longer is the person's intent.
+            if let Some(a) = &before.open {
+                if let Ok(id) = modbit_domain::ApprovalId::parse(&a.approval_id) {
+                    crate::approval_expiry::void(core, id, "APPROVAL_VOIDED").await;
+                }
+                let voided = modbit_domain::task::TaskEvent::MergeAskVoided {
+                    number: pr.number,
+                    head_sha: a.head_sha.clone(),
+                    approval_id: a.approval_id.clone(),
+                    reason: "TURNED_OFF".into(),
+                };
+                let mut store = core.store.lock().await;
+                if let Err(e) = crate::runtime::append(
+                    &mut store,
+                    core,
+                    crate::runtime::Lineage::task(core.tenant_id, task.session_id, task_id),
+                    AggregateType::Task,
+                    *task_id.as_bytes(),
+                    vec![typed(voided.event_type(), &voided, actor.clone())],
+                ) {
+                    return reject(cid, "STORE", e);
+                }
+            }
+            let event = modbit_domain::task::TaskEvent::MergeWhenReadySet {
+                enabled: p.enabled,
+                method: method.clone(),
+            };
+            let req = AppendRequest {
+                tenant_id: core.tenant_id,
+                session_id: task.session_id,
+                task_id: Some(task_id),
+                run_id: None,
+                turn_id: None,
+                step_id: None,
+                aggregate_type: AggregateType::Task,
+                aggregate_id: *task_id.as_bytes(),
+                expected_sequence: None,
+                events: vec![typed(event.event_type(), &event, actor.clone())],
+            };
+            let replayed = {
+                let mut store = core.store.lock().await;
+                match store.execute_command(record(&env.command_type), req) {
+                    Ok(outcome) => {
+                        let (events, replayed) = split(outcome);
+                        let offset = events.last().map(|e| e.offset).unwrap_or(0);
+                        if !replayed && offset > 0 {
+                            core.last_offset.send_replace(offset);
+                        }
+                        replayed
+                    }
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+            };
+            // On: read the request now, so checks that already passed are
+            // asked about at once. A read that fails leaves it waiting for the
+            // next one.
+            if p.enabled
+                && !replayed
+                && core.tools.forge.get().is_some()
+                && let Err((code, detail)) = crate::pull_request_state::refresh(
+                    core,
+                    task_id,
+                    actor.clone(),
+                    env.expected_generation,
+                    crate::pull_request_state::Trigger::Request,
+                )
+                .await
+            {
+                eprintln!(
+                    "modbit-core: merge when ready read for task {task_id} refused: {code}: {detail}"
+                );
+            }
+            let store = core.store.lock().await;
+            accept(
+                cid,
+                replayed,
+                crate::merge_when_ready::state_view(&store, task_id).encode_to_vec(),
+            )
+        }
         // PX-211: the session's archive-after-merge preference.
         "GetPullRequestPreferences" | "SetPullRequestPreferences" => {
             let (session_id, want) = if env.command_type == "GetPullRequestPreferences" {
@@ -8650,6 +8814,17 @@ fn protocol_state_view(state: &modbit_protocol_state::ProtocolState) -> wire::Pr
 
 /// The refusal text for a decision on an approval that expired.
 fn expired_words(a: &modbit_domain::approval::Approval) -> String {
+    // PX-213: closed before its expiry — the intent it bound no longer
+    // stands (a merge ask whose head moved or whose checks stopped passing).
+    if a.resolved_at
+        .zip(a.expires_at)
+        .is_some_and(|(r, e)| r.0 < e.0)
+    {
+        return format!(
+            "the approval for `{}` was withdrawn by the Core because what it would do no longer stands (for a merge: the head moved or the checks stopped passing); nothing ran; a new approval asks for the current intent",
+            a.tool_name
+        );
+    }
     format!(
         "the approval for `{}` expired{} without a decision and can no longer be approved; the effect did not run and the agent was told so; if it is still needed the agent asks again",
         a.tool_name,

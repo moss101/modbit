@@ -723,6 +723,41 @@ fn route(
                 None => message(404, "Not Found"),
             }
         }
+        // `PUT /repos/{o}/{r}/pulls/{n}/merge` as GitHub documents it: 409
+        // when `sha` is not the head, 405 when the request cannot be merged
+        // (closed, merged, a draft, `mergeable: false`), 200 with the merge
+        // commit otherwise. The request becomes closed and merged.
+        ("PUT", ["repos", o, r, "pulls", n, "merge"]) if n.parse::<u64>().is_ok() => {
+            let n: u64 = n.parse().unwrap();
+            let Some(p) = s.pulls.get_mut(&(format!("{o}/{r}"), n)) else {
+                return message(404, "Not Found");
+            };
+            if let Some(sha) = body["sha"].as_str()
+                && p["head"]["sha"].as_str() != Some(sha)
+            {
+                return message(
+                    409,
+                    "Head branch was modified. Review and try the merge again.",
+                );
+            }
+            if p["state"] != "open"
+                || p["merged"] == true
+                || p["draft"] == true
+                || p["mergeable"] == false
+            {
+                return message(405, "Pull Request is not mergeable");
+            }
+            let merge_sha = format!("{:0>40}", format!("{n:x}e7e7"));
+            p["state"] = json!("closed");
+            p["merged"] = json!(true);
+            p["merge_commit_sha"] = json!(merge_sha);
+            p["merged_at"] = json!(iso_of(1));
+            p["closed_at"] = json!(iso_of(1));
+            json_reply(
+                200,
+                &json!({"sha": merge_sha, "merged": true, "message": "Pull Request successfully merged"}),
+            )
+        }
         ("GET", ["repos", o, r, "commits", sha, "check-runs"]) => {
             let runs = s
                 .check_runs

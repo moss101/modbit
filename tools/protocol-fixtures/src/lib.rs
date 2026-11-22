@@ -236,6 +236,17 @@ pub fn samples() -> Vec<Sample> {
                 auto_fix_stopped: false,
                 auto_fix_last_cause: "CHECKS_FAILING".into(),
                 auto_fix_last_offset: 89,
+                // PX-213: merge when ready asked and waiting for the person.
+                merge_when_ready: true,
+                merge_method: "squash".into(),
+                merge_phase: "ASKED".into(),
+                merge_detail:
+                    "Checks passed at ffffffffffff. Approve the merge (squash) to merge that head."
+                        .into(),
+                merge_approval_id: "0193a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b".into(),
+                merge_head_sha: "f".repeat(40),
+                merge_sha: String::new(),
+                merge_offset: 91,
             }),
         }],
         last_offset: 90,
@@ -1475,7 +1486,11 @@ pub fn samples() -> Vec<Sample> {
                         "readAt": {"seconds": "1700000200", "nanos": 0},
                         "readOffset": "88", "trigger": "REQUEST",
                         "autoFix": true, "autoFixAttempts": 1, "autoFixCap": 3, "autoFixStopped": false,
-                        "autoFixLastCause": "CHECKS_FAILING", "autoFixLastOffset": "89"
+                        "autoFixLastCause": "CHECKS_FAILING", "autoFixLastOffset": "89",
+                        "mergeWhenReady": true, "mergeMethod": "squash", "mergePhase": "ASKED",
+                        "mergeDetail": "Checks passed at ffffffffffff. Approve the merge (squash) to merge that head.",
+                        "mergeApprovalId": "0193a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+                        "mergeHeadSha": "f".repeat(40), "mergeSha": "", "mergeOffset": "91"
                     }
                 }],
                 "lastOffset": "90", "eventsRead": "0", "objectsRead": "0"
@@ -2673,6 +2688,15 @@ pub fn samples() -> Vec<Sample> {
                     auto_fix_stopped: true,
                     auto_fix_last_cause: "REVIEW_COMMENT".into(),
                     auto_fix_last_offset: 9_007_199_254_740_995,
+                    // PX-213: merged by merge when ready.
+                    merge_when_ready: false,
+                    merge_method: "merge".into(),
+                    merge_phase: "MERGED".into(),
+                    merge_detail: "Merged ffffffffffff as eeeeeeeeeeee.".into(),
+                    merge_approval_id: String::new(),
+                    merge_head_sha: "f".repeat(40),
+                    merge_sha: "e".repeat(40),
+                    merge_offset: 9_007_199_254_740_996,
                 }),
                 offset: 9_007_199_254_740_993,
                 archived: true,
@@ -2680,6 +2704,8 @@ pub fn samples() -> Vec<Sample> {
                 auto_fix_queued: false,
                 auto_fix_input_id: String::new(),
                 auto_fix_stopped: true,
+                merge_phase: "MERGED".into(),
+                merge_approval_id: String::new(),
             }
             .encode_to_vec(),
             expected: json!({
@@ -2692,10 +2718,15 @@ pub fn samples() -> Vec<Sample> {
                     "readAt": {"seconds": "1700000300", "nanos": 0},
                     "readOffset": "9007199254740993", "trigger": "SCHEDULE",
                     "autoFix": true, "autoFixAttempts": 3, "autoFixCap": 3, "autoFixStopped": true,
-                    "autoFixLastCause": "REVIEW_COMMENT", "autoFixLastOffset": "9007199254740995"
+                    "autoFixLastCause": "REVIEW_COMMENT", "autoFixLastOffset": "9007199254740995",
+                    "mergeWhenReady": false, "mergeMethod": "merge", "mergePhase": "MERGED",
+                    "mergeDetail": "Merged ffffffffffff as eeeeeeeeeeee.", "mergeApprovalId": "",
+                    "mergeHeadSha": "f".repeat(40), "mergeSha": "e".repeat(40),
+                    "mergeOffset": "9007199254740996"
                 },
                 "offset": "9007199254740993", "archived": true, "archiveOffset": "9007199254740994",
-                "autoFixQueued": false, "autoFixInputId": "", "autoFixStopped": true
+                "autoFixQueued": false, "autoFixInputId": "", "autoFixStopped": true,
+                "mergePhase": "MERGED", "mergeApprovalId": ""
             }),
             decode: reencode::<PullRequestRefreshed>,
         },
@@ -2755,6 +2786,41 @@ pub fn samples() -> Vec<Sample> {
             .encode_to_vec(),
             expected: json!({ "taskId": idhex(0x21), "enabled": true, "attempts": 2, "cap": 3, "stopped": false, "offset": "9007199254740993" }),
             decode: reencode::<AutoFixState>,
+        },
+        // REQ-PX-213: merge when ready on a task's pull request.
+        Sample {
+            name: "set_merge_when_ready",
+            type_name: "modbit.v1.SetMergeWhenReady",
+            bytes: SetMergeWhenReady {
+                task_id: id(0x21),
+                enabled: true,
+                method: "squash".into(),
+            }
+            .encode_to_vec(),
+            expected: json!({ "taskId": idhex(0x21), "enabled": true, "method": "squash" }),
+            decode: reencode::<SetMergeWhenReady>,
+        },
+        Sample {
+            name: "merge_when_ready_state",
+            type_name: "modbit.v1.MergeWhenReadyState",
+            bytes: MergeWhenReadyState {
+                task_id: id(0x21),
+                enabled: true,
+                method: "squash".into(),
+                phase: "WAITING".into(),
+                detail: "Waiting for 1 check(s) to finish.".into(),
+                approval_id: String::new(),
+                head_sha: String::new(),
+                merge_sha: String::new(),
+                offset: 9_007_199_254_740_993,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x21), "enabled": true, "method": "squash", "phase": "WAITING",
+                "detail": "Waiting for 1 check(s) to finish.", "approvalId": "", "headSha": "",
+                "mergeSha": "", "offset": "9007199254740993"
+            }),
+            decode: reencode::<MergeWhenReadyState>,
         },
         // REQ-PX-214: the isolated reviewer's findings in the review bundle,
         // and the commands that fix or set one aside.

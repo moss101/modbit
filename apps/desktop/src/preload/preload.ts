@@ -528,12 +528,19 @@ export interface ModbitBridge {
    * PX-211: the Core reads the task's pull request again (state and checks) through the forge adapter and records it. With the
    * session's archive-after-merge preference on, the read that first finds it merged archives the task (`archived`).
    */
-  refreshPullRequest(sessionId: string, taskId: string): Promise<{ pullRequest: PullRequestStateView | null; offset: string; archived: boolean; archiveOffset: string; autoFixQueued: boolean; autoFixStopped: boolean }>;
+  refreshPullRequest(sessionId: string, taskId: string): Promise<{ pullRequest: PullRequestStateView | null; offset: string; archived: boolean; archiveOffset: string; autoFixQueued: boolean; autoFixStopped: boolean; mergePhase: string }>;
   /**
    * PX-212: turn auto-fix on or off for the task. With it on, a failing check the Core reads or a comment its ingestion accepts
    * queues one repair turn under the task's own run mode (its pushes still ask); at most `cap` from the time it is turned on.
    */
   setAutoFix(sessionId: string, taskId: string, enabled: boolean): Promise<{ enabled: boolean; attempts: number; cap: number; stopped: boolean; offset: string }>;
+  /** PX-213: ask for (or withdraw) merge when ready; the merge itself waits for a person's decision on its approval. */
+  setMergeWhenReady(
+    sessionId: string,
+    taskId: string,
+    enabled: boolean,
+    method: "merge" | "squash" | "rebase",
+  ): Promise<{ enabled: boolean; method: string; phase: string; detail: string; approvalId: string; headSha: string; mergeSha: string; offset: string }>;
   /** PX-211: the session's archive-after-merge preference (off until set); `offset` 0 = never set. */
   pullRequestPreferences(sessionId: string): Promise<{ archiveAfterMerge: boolean; offset: string }>;
   setPullRequestPreferences(sessionId: string, archiveAfterMerge: boolean): Promise<{ archiveAfterMerge: boolean; offset: string }>;
@@ -782,6 +789,7 @@ const bridge: ModbitBridge = {
   ingestCiResults: (sessionId, taskId) => ipcRenderer.invoke("review:ingestCi", sessionId, taskId),
   refreshPullRequest: (sessionId, taskId) => ipcRenderer.invoke("review:refreshPullRequest", sessionId, taskId),
   setAutoFix: (sessionId, taskId, enabled) => ipcRenderer.invoke("review:setAutoFix", sessionId, taskId, enabled),
+  setMergeWhenReady: (sessionId, taskId, enabled, method) => ipcRenderer.invoke("review:setMergeWhenReady", sessionId, taskId, enabled, method),
   pullRequestPreferences: (sessionId) => ipcRenderer.invoke("prefs:pullRequests", sessionId),
   setPullRequestPreferences: (sessionId, archiveAfterMerge) => ipcRenderer.invoke("prefs:setPullRequests", sessionId, archiveAfterMerge),
   ingestReviewComments: (sessionId, taskId) => ipcRenderer.invoke("review:ingestComments", sessionId, taskId),

@@ -68,17 +68,52 @@ pub(crate) fn is_due(a: &Approval, now: Timestamp) -> bool {
 /// call wrote the decision. The record is re-read under the store lock, so a
 /// decision made in the meantime wins and nothing is written twice.
 pub(crate) async fn expire(core: &Arc<Core>, a: &Approval) -> bool {
+    close(core, a.approval_id, None).await
+}
+
+/// Close a pending approval whose intent no longer stands, before its expiry
+/// (PX-213: the head a merge ask bound moved, or the checks stopped
+/// passing). The same records as an expiry — `ApprovalExpired` and the
+/// waiting call's `ToolCallFailed` (`failure_code`) in one transaction — so
+/// nothing can approve it afterwards. Returns whether this call wrote them; an
+/// approval already decided is left as it is.
+pub(crate) async fn void(
+    core: &Arc<Core>,
+    approval_id: modbit_domain::ApprovalId,
+    failure_code: &str,
+) -> bool {
+    close(core, approval_id, Some(failure_code)).await
+}
+
+/// `None`: close only if due (expiry). `Some(code)`: close if still pending.
+async fn close(
+    core: &Arc<Core>,
+    approval_id: modbit_domain::ApprovalId,
+    voided: Option<&str>,
+) -> bool {
     let mut store = core.store.lock().await;
-    let Ok(Some(cur)) = store.approval(&a.approval_id) else {
+    let Ok(Some(cur)) = store.approval(&approval_id) else {
         return false;
     };
-    if !is_due(&cur, Timestamp::now()) {
+    let closable = match voided {
+        None => is_due(&cur, Timestamp::now()),
+        Some(_) => cur.state == ApprovalState::Requested,
+    };
+    if !closable {
         return false;
     }
     let Ok(Some(task)) = store.task(&cur.task_id) else {
         return false;
     };
-    let actor = Actor::Core("approval-expiry".into());
+    let actor = Actor::Core(
+        if voided.is_some() {
+            "merge_when_ready"
+        } else {
+            "approval-expiry"
+        }
+        .into(),
+    );
+    let failure_code = voided.unwrap_or("APPROVAL_EXPIRED").to_owned();
     let mut reqs = vec![AppendRequest {
         tenant_id: core.tenant_id,
         session_id: task.session_id,
@@ -113,7 +148,7 @@ pub(crate) async fn expire(core: &Arc<Core>, a: &Approval) -> bool {
             events: vec![typed(
                 "ToolCallFailed",
                 &ToolCallEvent::ToolCallFailed {
-                    failure_code: "APPROVAL_EXPIRED".into(),
+                    failure_code,
                     result_ref: None,
                 },
                 actor,

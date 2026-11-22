@@ -394,6 +394,11 @@ section.welcome form { display: flex; flex-direction: column; gap: var(--mb-spac
 .pr-autofix { margin-top: var(--mb-space-2); }
 .pr-autofix-row { display: inline-flex; align-items: center; gap: var(--mb-space-2); cursor: pointer; }
 .pr-autofix[data-tone="stopped"] #pr-autofix-detail { color: var(--mb-color-warn); }
+.pr-merge { margin-top: var(--mb-space-2); }
+.pr-merge-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--mb-space-3); }
+.pr-merge-method { display: inline-flex; align-items: center; gap: var(--mb-space-1); }
+.pr-merge[data-tone="cleared"] #pr-merge-detail { color: var(--mb-color-warn); }
+.pr-merge[data-tone="merged"] #pr-merge-detail { color: var(--mb-color-ok); }
 .pr-title { font-weight: 500; color: var(--mb-color-text); }
 .pr-url { overflow-wrap: anywhere; user-select: text; }
 .pr-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--mb-space-2); margin-top: var(--mb-space-2); }

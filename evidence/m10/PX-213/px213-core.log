@@ -1,0 +1,13 @@
+   Compiling modbit-tools v0.0.0 (/Users/mohsin/projects/modbit/crates/tools)
+   Compiling modbit-core v0.0.0 (/Users/mohsin/projects/modbit/services/modbit-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 18.56s
+     Running tests/px_213_merge_when_ready.rs (target/debug/deps/px_213_merge_when_ready-11247763315a831d)
+
+running 1 test
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: recovery complete: boot_generation=2 events_verified=256 aggregates=50 projections_rebuilt=false sessions=1 tasks=1 in 10ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+test qual_px_213_merge_when_ready_asks_once_checks_pass_and_merges_only_the_approved_head ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.61s
+

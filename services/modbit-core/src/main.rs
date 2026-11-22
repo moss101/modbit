@@ -76,6 +76,7 @@ mod media_bridge;
 mod memory;
 mod memory_commands;
 mod merge_tx;
+mod merge_when_ready;
 mod mode_proposals;
 mod model_registry;
 mod onboarding;

@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2477,
-    "docs_bytes": 2395097
+    "root_and_tooling": 2493,
+    "docs_bytes": 2396550
   },
   "sections": [
     {
@@ -302,8 +302,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Client surfaces and source-control integration",
-      "bytes": 26765,
-      "sha256": "956dcb378ad5efa258e2e63bdf4619469f0dca3d38292dd181d0182e116d66a2"
+      "bytes": 28218,
+      "sha256": "ac88f10f03a5f7d9b3aae49df50c33518d3d6912828d27c5e913db56a65c4187"
     },
     {
       "path": "docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
@@ -5542,6 +5542,86 @@
       "path": "evidence/m10/PX-212/related-core.log",
       "bytes": 2147,
       "sha256": "d12558fef35a38d657e8de5d61cc9145235c4ed0c07351efa0db53cfeb6dc1d4"
+    },
+    {
+      "path": "evidence/m10/PX-213/TASK_CARD.md",
+      "bytes": 11903,
+      "sha256": "1582f6ef7360b7feeca0358c8f386fa6b89137b875cbc968eb3f00f46ee24a9c"
+    },
+    {
+      "path": "evidence/m10/PX-213/after/merge-asked-dark.png",
+      "bytes": 394759,
+      "sha256": "e14b850636fa7e6b7971fc12efc1e2c9f1e29e6555d9ef2bd9f7bc2e51f3ac73"
+    },
+    {
+      "path": "evidence/m10/PX-213/after/merge-asked-light.png",
+      "bytes": 397755,
+      "sha256": "e1ebc7d1483834a6d77e4e38e5c935641b3039c18792df29f52b8abbd5803785"
+    },
+    {
+      "path": "evidence/m10/PX-213/after/merge-head-moved-dark.png",
+      "bytes": 450346,
+      "sha256": "d24b6ae0dec512370163219be18f81274d5a94050c30d70dc110a28e7e344d66"
+    },
+    {
+      "path": "evidence/m10/PX-213/after/merge-head-moved-light.png",
+      "bytes": 444053,
+      "sha256": "13c60c9d64ebc9b0dcbf5642326de4da43a22402e42884a0940dd3ec737ee475"
+    },
+    {
+      "path": "evidence/m10/PX-213/after/merge-merged-dark.png",
+      "bytes": 397388,
+      "sha256": "4a753005ac7547993add23f9978a8b7fe5321f8f0dac3b72d1d04470661a0651"
+    },
+    {
+      "path": "evidence/m10/PX-213/after/merge-merged-light.png",
+      "bytes": 399419,
+      "sha256": "54dc415b86df69f26731a77011633e3d518f9397e725d1565c4362a4c793c0d8"
+    },
+    {
+      "path": "evidence/m10/PX-213/after/merge-waiting-dark.png",
+      "bytes": 331993,
+      "sha256": "27a474dda11b26205af818c686f2ad485dd09d16c78758e124a08761f1e76d8f"
+    },
+    {
+      "path": "evidence/m10/PX-213/after/merge-waiting-light.png",
+      "bytes": 334156,
+      "sha256": "b3dcd8846a61d9121e2b42ce8cf7febb93aaaeeb2b302ec0d698ac4acf833d96"
+    },
+    {
+      "path": "evidence/m10/PX-213/core-suite.log",
+      "bytes": 270184,
+      "sha256": "8488842d36d4df6635de1080a642ff24619f807f1439fd9689524ed5df010951"
+    },
+    {
+      "path": "evidence/m10/PX-213/evidence.json",
+      "bytes": 2289,
+      "sha256": "646f44082ea7062aebd3c14fc4425718f66296dae62b5fbf60ba14e2a63984e6"
+    },
+    {
+      "path": "evidence/m10/PX-213/mutation-checks-2026-11-22.txt",
+      "bytes": 410,
+      "sha256": "b3e5f37475bbdd63ce883f09a09b8ab7bce0208975016b868f4e98f88abebbbf"
+    },
+    {
+      "path": "evidence/m10/PX-213/other-suites.log",
+      "bytes": 290,
+      "sha256": "e48c16f3787a0bb9d5c92605f548d17bc56872c09cc821c883fa82966359bd70"
+    },
+    {
+      "path": "evidence/m10/PX-213/px213-core.log",
+      "bytes": 897,
+      "sha256": "1577f5df0f64fc24d370adb29c6c80f4ae5db1cba8caca4b2f806a14e26061f1"
+    },
+    {
+      "path": "evidence/m10/PX-213/px213-e2e-related.log",
+      "bytes": 72971,
+      "sha256": "e4e399c16eaf6ed912f364c4e7186a0ecb694132b41380a3d355acf09d72a309"
+    },
+    {
+      "path": "evidence/m10/PX-213/px213-e2e.log",
+      "bytes": 424,
+      "sha256": "c9e94ea537f80555948fd44d6b8955ff7ea86e10da79667531f0777b19352ec6"
     },
     {
       "path": "evidence/m10/PX-214/TASK_CARD.md",
@@ -13255,8 +13335,8 @@
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2643342,
-      "sha256": "b8ada9a7baa454ee0a166f4319e06747c9c22f2836828c3334b3748bc24f1479"
+      "bytes": 2643861,
+      "sha256": "250b19ac5da7abd78b4c2d62684513cc9840fdef6ff4d2c88f1995c37ae966cd"
     },
     {
       "path": "tools/build_graph.py",

@@ -17,7 +17,7 @@ import { relativeAge } from "../agents/list-model.ts";
 import { usePullRequest } from "../review/use-pull-request.ts";
 import { PaneActions } from "../shell/pane.tsx";
 import { useDelivered } from "./delivered.ts";
-import { approvalOutcome, autoFixWords, canOpenRequest, checkWords, commentWords, forgeErrorWords, refusedWords, requestStateWords, requestWords } from "./pull-request-model.ts";
+import { approvalOutcome, autoFixWords, canOpenRequest, mergeWords, checkWords, commentWords, forgeErrorWords, refusedWords, requestStateWords, requestWords } from "./pull-request-model.ts";
 
 export interface PullRequestAppProps {
   sessionId: string;
@@ -98,6 +98,30 @@ export function PullRequestApp({ sessionId, taskId, refreshKey, pullRequest }: P
       setAutoFixError((e as Error).message.replace(/^Error invoking remote method '[^']*': (Error: )?/, ""));
     } finally {
       setAutoFixBusy(false);
+    }
+  };
+  // REQ-PX-213: merge when ready. The Core's answer stands until the header carries a record at least as new (by offset).
+  const [mergeSet, setMergeSet] = useState<{ taskId: string; enabled: boolean; method: string; phase: string; detail: string; offset: string } | null>(null);
+  const [mergeError, setMergeError] = useState<string | null>(null);
+  const [mergeBusy, setMergeBusy] = useState(false);
+  const [mergeMethod, setMergeMethod] = useState<"merge" | "squash" | "rebase">("merge");
+  const mineMerge = mergeSet?.taskId === taskId ? mergeSet : null;
+  const mergeNewer = !!(current && mineMerge && BigInt(mineMerge.offset || "0") > BigInt(current.mergeOffset || "0"));
+  const mergeView =
+    current && mineMerge && mergeNewer
+      ? { ...current, mergeWhenReady: mineMerge.enabled, mergeMethod: mineMerge.method, mergePhase: mineMerge.phase, mergeDetail: mineMerge.detail }
+      : current;
+  const merge = mergeWords(mergeView);
+  const changeMerge = async (on: boolean) => {
+    setMergeBusy(true);
+    setMergeError(null);
+    try {
+      const r = await window.modbit.setMergeWhenReady(sessionId, taskId, on, mergeMethod);
+      setMergeSet({ taskId, enabled: r.enabled, method: r.method, phase: r.phase, detail: r.detail, offset: r.offset });
+    } catch (e) {
+      setMergeError((e as Error).message.replace(/^Error invoking remote method '[^']*': (Error: )?/, ""));
+    } finally {
+      setMergeBusy(false);
     }
   };
   // Refresh asks the Core to read the request's state (REQ-PX-211), then the forge's check runs, then the request's comments, and
@@ -226,6 +250,48 @@ export function PullRequestApp({ sessionId, taskId, refreshKey, pullRequest }: P
               )}
             </div>
           )}
+          {(current.state !== "MERGED" && current.state !== "CLOSED") || merge.phase === "MERGED" || merge.phase === "CLEARED" ? (
+            <div className="pr-merge" data-testid="pr-pane-merge" data-phase={merge.phase} data-tone={merge.tone} data-src={mergeNewer ? "setMergeWhenReady" : "agentHeaders"}>
+              {current.state !== "MERGED" && current.state !== "CLOSED" && (
+                <div className="pr-merge-row">
+                  <label className="pr-autofix-row">
+                    <input
+                      type="checkbox"
+                      className="settings-toggle"
+                      role="switch"
+                      aria-describedby="pr-merge-detail"
+                      data-testid="pr-pane-merge-switch"
+                      checked={merge.on}
+                      disabled={mergeBusy}
+                      onChange={(e) => void changeMerge(e.target.checked)}
+                    />
+                    <span>Merge when ready</span>
+                  </label>
+                  <label className="pr-merge-method">
+                    <span className="meta">Method</span>
+                    <select
+                      data-testid="pr-pane-merge-method"
+                      value={merge.on ? (mergeView?.mergeMethod || mergeMethod) : mergeMethod}
+                      disabled={merge.on || mergeBusy}
+                      onChange={(e) => setMergeMethod(e.target.value as "merge" | "squash" | "rebase")}
+                    >
+                      <option value="merge">Merge commit</option>
+                      <option value="squash">Squash</option>
+                      <option value="rebase">Rebase</option>
+                    </select>
+                  </label>
+                </div>
+              )}
+              <p className="meta" id="pr-merge-detail" data-testid="pr-pane-merge-detail">
+                {merge.status}
+              </p>
+              {mergeError && (
+                <p className="meta" role="alert" data-testid="pr-pane-merge-error">
+                  Merge when ready could not be changed: {mergeError}
+                </p>
+              )}
+            </div>
+          ) : null}
           {stateError && (
             <p className="meta" role="alert" data-testid="pr-pane-state-error">
               The request could not be read: {stateError}

@@ -233,6 +233,9 @@ pub(crate) enum Trigger {
     Request,
     /// The Core's schedule.
     Schedule,
+    /// A person approved a merge-when-ready ask (PX-213): the read that acts
+    /// on the approval.
+    Approval,
 }
 
 impl Trigger {
@@ -240,6 +243,7 @@ impl Trigger {
         match self {
             Self::Request => "REQUEST",
             Self::Schedule => "SCHEDULE",
+            Self::Approval => "APPROVAL",
         }
     }
 }
@@ -254,6 +258,32 @@ pub(crate) async fn refresh(
     lease_generation: Option<u64>,
     trigger: Trigger,
 ) -> Result<wire::PullRequestRefreshed, Refusal> {
+    let (first, merged) =
+        refresh_once(core, task_id, actor.clone(), lease_generation, trigger).await?;
+    if !merged {
+        return Ok(first);
+    }
+    // PX-213: the read that merged saw the request open; the next one records
+    // it merged (and archives after merge if the person asked for that).
+    match refresh_once(core, task_id, actor, lease_generation, trigger).await {
+        Ok((mut second, _)) => {
+            second.merge_approval_id = first.merge_approval_id;
+            second.auto_fix_queued |= first.auto_fix_queued;
+            Ok(second)
+        }
+        Err(_) => Ok(first),
+    }
+}
+
+/// One read and what follows from it; `true` when merge when ready merged
+/// the request on this read.
+async fn refresh_once(
+    core: &Arc<Core>,
+    task_id: TaskId,
+    actor: Actor,
+    lease_generation: Option<u64>,
+    trigger: Trigger,
+) -> Result<(wire::PullRequestRefreshed, bool), Refusal> {
     let _one = one_at_a_time().lock().await;
     let (task, session, before) = {
         let store = core.store.lock().await;
@@ -449,19 +479,52 @@ pub(crate) async fn refresh(
     } else {
         crate::auto_fix::Outcome::default()
     };
+    // PX-213: merge when ready looks at every read (it does nothing unless a
+    // person asked for it).
+    let merge = crate::merge_when_ready::on_read(
+        core,
+        task_id,
+        &crate::merge_when_ready::Read {
+            owner: pr.owner.clone(),
+            repo: pr.repo.clone(),
+            number: pr.number,
+            state: state.to_owned(),
+            draft: read["draft"].as_bool().unwrap_or(false),
+            head_sha: read["head"]["sha"].as_str().unwrap_or_default().to_owned(),
+            checks: checks.word.to_owned(),
+            offset,
+        },
+        lease_generation,
+    )
+    .await
+    .unwrap_or_else(|e| {
+        eprintln!("modbit-core: merge when ready for task {task_id}: {e}");
+        crate::merge_when_ready::Outcome::default()
+    });
     let mut pull_request = after.as_ref().map(view);
     if let Some(v) = pull_request.as_mut() {
-        crate::auto_fix::decorate(v, &*core.store.lock().await, task_id);
+        let store = core.store.lock().await;
+        crate::auto_fix::decorate(v, &store, task_id);
+        crate::merge_when_ready::decorate(v, &store, task_id);
     }
-    Ok(wire::PullRequestRefreshed {
-        pull_request,
-        offset,
-        archived: archive_offset > 0,
-        archive_offset,
-        auto_fix_queued: fix.queued,
-        auto_fix_input_id: fix.input_id,
-        auto_fix_stopped: fix.stopped,
-    })
+    let merge_phase = pull_request
+        .as_ref()
+        .map(|v| v.merge_phase.clone())
+        .unwrap_or_default();
+    Ok((
+        wire::PullRequestRefreshed {
+            pull_request,
+            offset,
+            archived: archive_offset > 0,
+            archive_offset,
+            auto_fix_queued: fix.queued,
+            auto_fix_input_id: fix.input_id,
+            auto_fix_stopped: fix.stopped,
+            merge_phase,
+            merge_approval_id: merge.asked,
+        },
+        merge.merged,
+    ))
 }
 
 /// How often the schedule reads open requests; `None` = never.

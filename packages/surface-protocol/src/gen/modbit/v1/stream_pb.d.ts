@@ -353,7 +353,7 @@ export declare type ApprovalFacts = Message<"modbit.v1.ApprovalFacts"> & {
   effectClass: string;
 
   /**
-   * REQUESTED | APPROVED | DENIED | EXPIRED | ANSWERED
+   * REQUESTED | APPROVED | DENIED | EXPIRED | WITHDRAWN (PX-213: the Core closed it because its intent no longer stands) | ANSWERED
    *
    * @generated from field: string state = 6;
    */
@@ -1361,6 +1361,63 @@ export declare type TaskPullRequest = Message<"modbit.v1.TaskPullRequest"> & {
    * @generated from field: uint64 auto_fix_last_offset = 24;
    */
   autoFixLastOffset: bigint;
+
+  /**
+   * PX-213 (DR-PX-2026-11-11-021 MWS-17): merge when ready, as the task's log
+   * and the latest read say. Off until a person asks (SetMergeWhenReady).
+   *
+   * @generated from field: bool merge_when_ready = 25;
+   */
+  mergeWhenReady: boolean;
+
+  /**
+   * merge | squash | rebase ("" = never asked)
+   *
+   * @generated from field: string merge_method = 26;
+   */
+  mergeMethod: string;
+
+  /**
+   * OFF | WAITING (checks pending, failing, unavailable, a draft or not read
+   * yet; `merge_detail` says which) | ASKED (the approval waits) | MERGED |
+   * CLEARED (the Core turned it off; `merge_detail` says why)
+   *
+   * @generated from field: string merge_phase = 27;
+   */
+  mergePhase: string;
+
+  /**
+   * @generated from field: string merge_detail = 28;
+   */
+  mergeDetail: string;
+
+  /**
+   * the standing ask's approval ("" = none)
+   *
+   * @generated from field: string merge_approval_id = 29;
+   */
+  mergeApprovalId: string;
+
+  /**
+   * the head the standing ask (or the merge) binds
+   *
+   * @generated from field: string merge_head_sha = 30;
+   */
+  mergeHeadSha: string;
+
+  /**
+   * the forge's merge commit once merged
+   *
+   * @generated from field: string merge_sha = 31;
+   */
+  mergeSha: string;
+
+  /**
+   * the latest merge-when-ready record; 0 = none
+   *
+   * @generated from field: uint64 merge_offset = 32;
+   */
+  mergeOffset: bigint;
 };
 
 /**
@@ -1437,6 +1494,19 @@ export declare type PullRequestRefreshed = Message<"modbit.v1.PullRequestRefresh
    * @generated from field: bool auto_fix_stopped = 7;
    */
   autoFixStopped: boolean;
+
+  /**
+   * PX-213: merge when ready after this read (TaskPullRequest.merge_phase)
+   * and the approval it raised, if it raised one now.
+   *
+   * @generated from field: string merge_phase = 8;
+   */
+  mergePhase: string;
+
+  /**
+   * @generated from field: string merge_approval_id = 9;
+   */
+  mergeApprovalId: string;
 };
 
 /**
@@ -1517,6 +1587,106 @@ export declare type AutoFixState = Message<"modbit.v1.AutoFixState"> & {
  * Use `create(AutoFixStateSchema)` to create a new message.
  */
 export declare const AutoFixStateSchema: GenMessage<AutoFixState>;
+
+/**
+ * PX-213 (REQ-PX-213, DR-PX-2026-11-11-021 MWS-17): ask for (or withdraw)
+ * merge when ready on the task's pull request. With it on, a read
+ * (RefreshPullRequest, the schedule, or this command's own read) that finds
+ * the request open, not a draft and its checks passed raises the approval of
+ * `forge.pr.merge` with the exact intent: repository, number, head sha and
+ * method. Approval merges that head only; a head that moves, or checks that
+ * stop passing, void the ask and it is asked again when they pass. Nothing
+ * approves the merge but a person's decision: no run mode and no allow rule
+ * covers it. Refused NO_PULL_REQUEST before a request is recorded and
+ * PR_NOT_OPEN once it is merged or closed. The same value again records
+ * nothing.
+ *
+ * @generated from message modbit.v1.SetMergeWhenReady
+ */
+export declare type SetMergeWhenReady = Message<"modbit.v1.SetMergeWhenReady"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: bool enabled = 2;
+   */
+  enabled: boolean;
+
+  /**
+   * merge | squash | rebase; "" = merge
+   *
+   * @generated from field: string method = 3;
+   */
+  method: string;
+};
+
+/**
+ * Describes the message modbit.v1.SetMergeWhenReady.
+ * Use `create(SetMergeWhenReadySchema)` to create a new message.
+ */
+export declare const SetMergeWhenReadySchema: GenMessage<SetMergeWhenReady>;
+
+/**
+ * @generated from message modbit.v1.MergeWhenReadyState
+ */
+export declare type MergeWhenReadyState = Message<"modbit.v1.MergeWhenReadyState"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: bool enabled = 2;
+   */
+  enabled: boolean;
+
+  /**
+   * @generated from field: string method = 3;
+   */
+  method: string;
+
+  /**
+   * as TaskPullRequest.merge_phase
+   *
+   * @generated from field: string phase = 4;
+   */
+  phase: string;
+
+  /**
+   * @generated from field: string detail = 5;
+   */
+  detail: string;
+
+  /**
+   * @generated from field: string approval_id = 6;
+   */
+  approvalId: string;
+
+  /**
+   * @generated from field: string head_sha = 7;
+   */
+  headSha: string;
+
+  /**
+   * @generated from field: string merge_sha = 8;
+   */
+  mergeSha: string;
+
+  /**
+   * the latest merge-when-ready record; 0 = none
+   *
+   * @generated from field: uint64 offset = 9;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.MergeWhenReadyState.
+ * Use `create(MergeWhenReadyStateSchema)` to create a new message.
+ */
+export declare const MergeWhenReadyStateSchema: GenMessage<MergeWhenReadyState>;
 
 /**
  * The session's pull-request preferences. Archive after merge is off until a

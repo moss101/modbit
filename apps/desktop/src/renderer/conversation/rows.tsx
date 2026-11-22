@@ -326,6 +326,11 @@ function ApprovalRow({ row, ctx }: { row: TranscriptRowView; ctx: RowContext }) 
           Expired: nobody answered before the Core's recorded expiry, so it can no longer be approved. The effect did not run and the agent was told.
         </p>
       )}
+      {row.hints.status === "WITHDRAWN" && !isQuestion && (
+        <p className="meta" data-testid="conv-approval-withdrawn">
+          Withdrawn: what it would do no longer stands (for a merge, the head moved or the checks stopped passing), so it can no longer be approved. Nothing ran; a new approval asks for the current one.
+        </p>
+      )}
       {!isQuestion && f && (
         <p className="meta">
           {f.effectClass ? `Effect class ${f.effectClass}` : ""}

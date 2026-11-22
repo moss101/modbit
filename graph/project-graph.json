@@ -41478,8 +41478,19 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-213",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "E2E_PROVEN",
+   "evidence": [
+    "commit:ad5af66c",
+    "test:qual_px_213_merge_when_ready_asks_once_checks_pass_and_merges_only_the_approved_head",
+    "artifact:evidence/m10/PX-213/px213-core.log",
+    "artifact:evidence/m10/PX-213/mutation-checks-2026-11-22.txt",
+    "test:PX-E2E-213",
+    "artifact:evidence/m10/PX-213/px213-e2e.log",
+    "artifact:evidence/m10/PX-213/px213-e2e-related.log",
+    "artifact:evidence/m10/PX-213/core-suite.log",
+    "artifact:evidence/m10/PX-213/TASK_CARD.md"
+   ],
+   "status_changed_on": "2026-11-22T05:30:29Z"
   },
   {
    "id": "PX-214",

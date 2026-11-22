@@ -3080,6 +3080,97 @@ pub enum TaskEvent {
         /// The record that carried it.
         cause_offset: u64,
     },
+    /// `MergeWhenReadySet` (PX-213, DR-PX-2026-11-11-021 MWS-17): a person
+    /// asked for (or withdrew) merge when ready on this task's pull request.
+    /// Off unless a person asks; it never approves anything. No state change.
+    MergeWhenReadySet {
+        /// Merge when ready is on.
+        enabled: bool,
+        /// `merge` | `squash` | `rebase`.
+        method: String,
+    },
+    /// `MergeAsked` (PX-213): a read found the request open, not a draft and
+    /// its checks passed at `head_sha`, so the Core raised the approval of
+    /// `forge.pr.merge` with that exact intent (repository, number, head,
+    /// method). An audit record, valid in every state.
+    MergeAsked {
+        /// The pull request.
+        number: u64,
+        /// The head the approval binds.
+        head_sha: String,
+        /// The method the approval binds.
+        method: String,
+        /// This head's ask number since the request was made (0-based).
+        attempt: u32,
+        /// The approval raised.
+        approval_id: String,
+        /// The `forge.pr.merge` call waiting on it.
+        tool_call_id: String,
+        /// The intent hash the approval binds.
+        intent_hash: String,
+        /// The read that found the checks passing.
+        read_offset: u64,
+    },
+    /// `MergeAskVoided` (PX-213): an ask no longer stands — the head moved,
+    /// the checks stopped passing, the request became a draft or closed, the
+    /// person withdrew merge when ready, or the approval expired. A pending
+    /// approval is expired with it; an approved one is never spent. An
+    /// audit record, valid in every state.
+    MergeAskVoided {
+        /// The pull request.
+        number: u64,
+        /// The head the voided ask bound.
+        head_sha: String,
+        /// Its approval.
+        approval_id: String,
+        /// `HEAD_MOVED` | `CHECKS_NOT_PASSING` | `DRAFT` | `CLOSED` |
+        /// `MERGED` | `TURNED_OFF` | `EXPIRED`.
+        reason: String,
+    },
+    /// `MergeCompleted` (PX-213): the approved `forge.pr.merge` merged the
+    /// request at the approved head; the effect's receipt is in the ledger.
+    /// An audit record, valid in every state.
+    MergeCompleted {
+        /// The pull request.
+        number: u64,
+        /// The head that was merged.
+        head_sha: String,
+        /// The method.
+        method: String,
+        /// The forge's merge commit.
+        merge_sha: String,
+        /// The approval spent.
+        approval_id: String,
+        /// The kernel's receipts for the effect.
+        effect_receipt_ids: Vec<String>,
+    },
+    /// `MergeRefused` (PX-213): the approved merge was refused before or by
+    /// the forge (the head moved, a check was pending or failed, the forge
+    /// said it cannot be merged); nothing was merged. An audit record, valid
+    /// in every state.
+    MergeRefused {
+        /// The pull request.
+        number: u64,
+        /// The approved head.
+        head_sha: String,
+        /// The approval spent on the attempt.
+        approval_id: String,
+        /// The tool's typed refusal.
+        code: String,
+        /// Its words.
+        detail: String,
+        /// A later read may clear it (the Core may ask again); otherwise merge
+        /// when ready is cleared and a person must act.
+        retryable: bool,
+    },
+    /// `MergeWhenReadyCleared` (PX-213): the Core turned merge when ready off
+    /// because it cannot go on without a person: the ask was denied, the
+    /// request was closed or merged by someone else, or the forge refused
+    /// the merge for good. An audit record, valid in every state.
+    MergeWhenReadyCleared {
+        /// `DENIED` | `CLOSED` | `MERGED_ELSEWHERE` | `MERGED` | a refusal code.
+        reason: String,
+    },
     /// `RequestOutcomeRecorded` (REQ-EPR-010, docs/27 §11.2-11.3, docs/38
     /// "CompleteAccountingAndAttribution" step 4): the request's accounting
     /// and outcome record as of this point — every leg and attempt with its
@@ -3452,6 +3543,12 @@ impl TaskEvent {
             Self::AutoFixSet { .. } => "AutoFixSet",
             Self::AutoFixQueued { .. } => "AutoFixQueued",
             Self::AutoFixStopped { .. } => "AutoFixStopped",
+            Self::MergeWhenReadySet { .. } => "MergeWhenReadySet",
+            Self::MergeAsked { .. } => "MergeAsked",
+            Self::MergeAskVoided { .. } => "MergeAskVoided",
+            Self::MergeCompleted { .. } => "MergeCompleted",
+            Self::MergeRefused { .. } => "MergeRefused",
+            Self::MergeWhenReadyCleared { .. } => "MergeWhenReadyCleared",
             Self::ReviewCommentsIngested { .. } => "ReviewCommentsIngested",
             Self::PolicyGenerationChanged { .. } => "PolicyGenerationChanged",
             Self::CapabilitySnapshotRecorded { .. } => "CapabilitySnapshotRecorded",
@@ -3715,6 +3812,12 @@ impl Task {
             | TaskEvent::AutoFixSet { .. }
             | TaskEvent::AutoFixQueued { .. }
             | TaskEvent::AutoFixStopped { .. }
+            | TaskEvent::MergeWhenReadySet { .. }
+            | TaskEvent::MergeAsked { .. }
+            | TaskEvent::MergeAskVoided { .. }
+            | TaskEvent::MergeCompleted { .. }
+            | TaskEvent::MergeRefused { .. }
+            | TaskEvent::MergeWhenReadyCleared { .. }
             | TaskEvent::ReviewCommentsIngested { .. }
             | TaskEvent::UsageReconciled { .. }
             | TaskEvent::RequestOutcomeRecorded { .. }
