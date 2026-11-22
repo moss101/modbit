@@ -1,7 +1,7 @@
 # Modbit Dossier Manifest — V3.3 EPR v1.1
 
 > **Authority date:** 2026-09-05  
-> **Generated:** 2026-11-21 by `tools/build_manifest.py`  
+> **Generated:** 2026-11-22 by `tools/build_manifest.py`  
 > **Scope:** every specification file in `docs/` plus the root governing files and tooling. The previous `99_MANIFEST.md` covered only 39 Part 2 files; this manifest covers all 97 docs.
 > **Machine-readable twin:** `manifest.json` (same content, same hashes).
 
@@ -1034,7 +1034,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-211/other-suites.log` | retained evidence | 2122 | `e3da4f8ce9008022b25eab891f43bf98da5e23f2c9eaf816b01cb73a8fbb4c0b` |
 | `evidence/m10/PX-211/px211-core.log` | retained evidence | 885 | `a0b39e44ee58a124f083cd3971d00e8ea761ffcc345eda181c46008d85bf9eb2` |
 | `evidence/m10/PX-211/px211-e2e-related.log` | retained evidence | 34853 | `2ad565a4ebdb590d91da4eadbf15f437c2f6db7891541e05e501cf6dd958d1eb` |
-| `evidence/m10/PX-212/TASK_CARD.md` | retained evidence | 9963 | `24730794742ccb2a487264eebb6305f119efa2728cfdfbc3926c4ec9967d1054` |
+| `evidence/m10/PX-212/TASK_CARD.md` | retained evidence | 10360 | `085f15ebca118fad77d0ffeb6b5231db8cc4c3d92b15f3a820384760dc958e3c` |
 | `evidence/m10/PX-212/after/auto-fix-on-dark.png` | retained evidence | 301583 | `4093a86e5a089b921716f27c6c10bb48e58201a8cf65ba3ed6d8d80e7f33b131` |
 | `evidence/m10/PX-212/after/auto-fix-on-light.png` | retained evidence | 303554 | `d2b3123c91e89981182d7b9051bb28a00cc969b53211edba71a0bb82ed087568` |
 | `evidence/m10/PX-212/after/auto-fix-one-turn-dark.png` | retained evidence | 457125 | `52ada4c272b81b999d233d89ec1186b8c9dca978a13885547eedd8123347d19d` |
@@ -1043,6 +1043,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-212/after/auto-fix-push-asks-light.png` | retained evidence | 413253 | `7b35ae7ae0115f0167b1b5bf80c065ab59930156bbc5560e8064d77017e9c247` |
 | `evidence/m10/PX-212/after/auto-fix-stopped-dark.png` | retained evidence | 487857 | `8d2f67c539a3605a1730ee2f907778a5c0c20f562cf956c624af56e9755e7535` |
 | `evidence/m10/PX-212/after/auto-fix-stopped-light.png` | retained evidence | 488291 | `a9adda418138d23cea7527d88f3de39b2048d866b19efbc15d480e8fe92d59cd` |
+| `evidence/m10/PX-212/ci-run-44931110437.json` | retained evidence | 65329 | `8b11e09cd07008d0eaf366b78e90d1a87c0f96923f3d5e695a9d140b40ad1924` |
 | `evidence/m10/PX-212/core-suite.log` | retained evidence | 260642 | `ee3cb0aac5d5d720a328d07e5f36191da9bf9d431410ca6d29260e2978c11fbb` |
 | `evidence/m10/PX-212/evidence.json` | retained evidence | 1983 | `a9e6403bb6447982389451fc675dff90e7b0481444b829dd4ce13fcdeedad236` |
 | `evidence/m10/PX-212/mutation-checks-2026-11-21.txt` | retained evidence | 1345 | `5978cabc3a1e5977620b5d8448a55f58a5e55512e56c9b0b39316aa7677d39df` |
@@ -2592,8 +2593,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/zcode-ui/reference/zcode-colors-rgba.json` | retained evidence | 18690 | `76372c3edbcd50fe596d5e4b7fcd7991adab9686588ddc578a728afa24b4f028` |
 | `evidence/zcode-ui/reference/zcode-computed.json` | retained evidence | 718674 | `9ae8821ce72aa0fff3be44aacd0f4c9d995465c54bad7f17d1a81f92841d1c2d` |
 | `evidence/zcode-ui/reference/zcode-tokens-resolved.json` | retained evidence | 30635 | `066725c00059a05d073fbcdac9a8d965eab05f05c1f5df16e654854ff3e22b91` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 47980 | `650a63c24a5bb09b20f6f28c58fbb0eaf7f739a9841ea17be3556b845f1225c9` |
-| `graph/project-graph.json` | project driver graph with live status | 2643024 | `976434d5136a67ed8fca5ee536df996cef3c65ab9bfb4cc1c162af322fa6517c` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 47980 | `e7d60026a5fe2d2d24473ec85b9592a233d7f66395b9774e282c8431fe071cd0` |
+| `graph/project-graph.json` | project driver graph with live status | 2643342 | `b8ada9a7baa454ee0a166f4319e06747c9c22f2836828c3334b3748bc24f1479` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 69551 | `75bcc309c03df0b898705f3bf58a8c289431dc60cbaf52e1c38f4c5d41d06dd7` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |

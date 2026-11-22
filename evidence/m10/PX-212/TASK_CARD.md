@@ -64,3 +64,12 @@ Classification: IMPLEMENTED-PARTIAL around the row (read, ingestion, input queue
 - A refused start (capacity, policy file, trust) leaves the repair input queued and is said on stderr only; the pane shows the attempt as used.
 - The Pull request pane's Checks list repeats rows on each Refresh (pre-existing CI-evidence behaviour of PX-009/PX-211, not changed here).
 - macOS only locally; Linux and Windows are CI's.
+
+## CI and merge
+
+- PR 245 head a335c06b: GitHub Actions run 44931110437 — 19 of 19 jobs success (Rust, node, desktop E2E and packaged desktop on macOS, Ubuntu and Windows; cloud; protocol round trip; dossier integrity; supply chain). Saved as `ci-run-44931110437.json`.
+- Squash-merged into `main` as 233cd647 on 2026-11-22 (owner: "green, merge it").
+
+## Status
+
+COMPLETE (sealed 2026-11-22).

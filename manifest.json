@@ -2,12 +2,12 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-11-21",
+  "generated_on": "2026-11-22",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2476,
+    "root_and_tooling": 2477,
     "docs_bytes": 2395097
   },
   "sections": [
@@ -5455,8 +5455,8 @@
     },
     {
       "path": "evidence/m10/PX-212/TASK_CARD.md",
-      "bytes": 9963,
-      "sha256": "24730794742ccb2a487264eebb6305f119efa2728cfdfbc3926c4ec9967d1054"
+      "bytes": 10360,
+      "sha256": "085f15ebca118fad77d0ffeb6b5231db8cc4c3d92b15f3a820384760dc958e3c"
     },
     {
       "path": "evidence/m10/PX-212/after/auto-fix-on-dark.png",
@@ -5497,6 +5497,11 @@
       "path": "evidence/m10/PX-212/after/auto-fix-stopped-light.png",
       "bytes": 488291,
       "sha256": "a9adda418138d23cea7527d88f3de39b2048d866b19efbc15d480e8fe92d59cd"
+    },
+    {
+      "path": "evidence/m10/PX-212/ci-run-44931110437.json",
+      "bytes": 65329,
+      "sha256": "8b11e09cd07008d0eaf366b78e90d1a87c0f96923f3d5e695a9d140b40ad1924"
     },
     {
       "path": "evidence/m10/PX-212/core-suite.log",
@@ -13246,12 +13251,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 47980,
-      "sha256": "650a63c24a5bb09b20f6f28c58fbb0eaf7f739a9841ea17be3556b845f1225c9"
+      "sha256": "e7d60026a5fe2d2d24473ec85b9592a233d7f66395b9774e282c8431fe071cd0"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2643024,
-      "sha256": "976434d5136a67ed8fca5ee536df996cef3c65ab9bfb4cc1c162af322fa6517c"
+      "bytes": 2643342,
+      "sha256": "b8ada9a7baa454ee0a166f4319e06747c9c22f2836828c3334b3748bc24f1479"
     },
     {
       "path": "tools/build_graph.py",
