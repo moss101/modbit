@@ -2,7 +2,7 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-11-23",
+  "generated_on": "2026-11-24",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
@@ -13401,12 +13401,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 47980,
-      "sha256": "bf1dc22c625f99ddb8710948639331a118b4255fc1bdf4f5eed62b485d7ab0cd"
+      "sha256": "b1fabaa8e015597b50db1c227f4a476e11a8d6875254f8965c6b1def403e07b1"
     },
     {
       "path": "graph/project-graph.json",
       "bytes": 2645693,
-      "sha256": "e59bcc6e251b620b58525f7de4ad180aadaa2299e0cd5922f0c518e17d76e732"
+      "sha256": "51213d647221ad84530d1de90b82f89e5f9f9e0bb2f72249e2a9f96b142768fa"
     },
     {
       "path": "tools/build_graph.py",
