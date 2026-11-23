@@ -12,8 +12,10 @@
 //! * requires a `Hello` as the very first frame, at this protocol's major
 //!   version, with a 32-byte per-launch token;
 //! * verifies its parent process is the `core_pid` the hello names;
-//! * when the Core pinned the launch (`MODBIT_ACTUATOR_TOKEN_SHA256`),
-//!   requires the token to hash to it;
+//! * requires the token to hash to the pin the Core set for this launch
+//!   (`MODBIT_ACTUATOR_TOKEN_SHA256`); a launch with no pin welcomes no one
+//!   (fail closed: a helper that accepts a connection without its token is
+//!   the negative QUAL-PX-071 names);
 //!
 //! and otherwise answers a `Welcome` carrying a `refusal` and exits. It stops
 //! injecting and exits the moment the Core's stream ends (CUC-D05: "a Core
@@ -72,9 +74,10 @@ fn vet_hello(h: &wire::ActuatorHello, parent: Option<u32>, pinned_hash: Option<&
     if h.token.len() != 32 {
         return "the launch token is not 32 bytes".into();
     }
-    if let Some(want) = pinned_hash
-        && hex::encode(Sha256::digest(&h.token)) != want.to_ascii_lowercase()
-    {
+    let Some(want) = pinned_hash.filter(|w| !w.trim().is_empty()) else {
+        return "this launch was not pinned to a token (MODBIT_ACTUATOR_TOKEN_SHA256); the helper serves only the Core that launched it".into();
+    };
+    if hex::encode(Sha256::digest(&h.token)) != want.trim().to_ascii_lowercase() {
         return "the launch token is not the one this launch was pinned to".into();
     }
     if let Some(p) = parent
@@ -301,12 +304,17 @@ mod tests {
     #[test]
     fn a_hello_is_accepted_only_with_the_right_major_token_length_parent_and_pin() {
         let t = vec![9u8; 32];
-        assert_eq!(vet_hello(&hello(1, t.clone(), 7), Some(7), None), "");
-        assert!(vet_hello(&hello(2, t.clone(), 7), Some(7), None).contains("protocol major"));
-        assert!(vet_hello(&hello(1, vec![1; 31], 7), Some(7), None).contains("32 bytes"));
-        assert!(vet_hello(&hello(1, t.clone(), 7), Some(8), None).contains("parent"));
         let good = hex::encode(Sha256::digest(&t));
-        assert_eq!(vet_hello(&hello(1, t.clone(), 7), Some(7), Some(&good)), "");
-        assert!(vet_hello(&hello(1, t, 7), Some(7), Some(&"0".repeat(64))).contains("pinned"));
+        let pin = Some(good.as_str());
+        assert_eq!(vet_hello(&hello(1, t.clone(), 7), Some(7), pin), "");
+        assert!(vet_hello(&hello(2, t.clone(), 7), Some(7), pin).contains("protocol major"));
+        assert!(vet_hello(&hello(1, vec![1; 31], 7), Some(7), pin).contains("32 bytes"));
+        assert!(vet_hello(&hello(1, t.clone(), 7), Some(8), pin).contains("parent"));
+        assert!(
+            vet_hello(&hello(1, t.clone(), 7), Some(7), Some(&"0".repeat(64))).contains("pinned")
+        );
+        // Fail closed: a launch with no pin (or an empty one) welcomes no token at all.
+        assert!(vet_hello(&hello(1, t.clone(), 7), Some(7), None).contains("not pinned"));
+        assert!(vet_hello(&hello(1, t, 7), Some(7), Some("")).contains("not pinned"));
     }
 }
