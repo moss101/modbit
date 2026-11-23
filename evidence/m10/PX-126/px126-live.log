@@ -1,0 +1,14 @@
+   Compiling modbit-cloud-worker v0.0.0 (/Users/mohsin/projects/modbit/apps/cloud-worker)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.64s
+     Running tests/px_126_live.rs (target/debug/deps/px_126_live-ee611ea6e2bed2ef)
+
+running 1 test
+modbit-cloud-api: MODBIT_CLOUD_WORKER_KEY_HEX unset; no worker can link to this process
+modbit-cloud-worker[worker-px126-live]: serves fs.read, fs.write, git.read, shell.exec, network.egress, secret.use (gateway features: )
+modbit-cloud-worker[worker-px126-live]: claimed session 01a20746-d41e-7b12-b82e-c3093b815a39 (tenant 01a20746-d3f0-7ad2-b65f-b0448c2f9108, generation 1)
+check ingestion against real GitHub: {"code":"FORGE_FORBIDDEN","command_id":"f69593d9-d380-4d19-86d0-d8dbcc4c03fc","kind":"Ingest:ci","result":{"code":"FORGE_FORBIDDEN","message":"403: Resource not accessible by personal access token","status":409},"status":"REJECTED"}
+modbit-cloud-worker[worker-px126-live]: released session 01a20746-d41e-7b12-b82e-c3093b815a39
+test qual_px_126_live_a_real_review_comment_reaches_the_owning_core_through_the_signed_webhook_as_untrusted_steering ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 16.23s
+

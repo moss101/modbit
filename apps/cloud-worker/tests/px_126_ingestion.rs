@@ -387,3 +387,212 @@ async fn qual_px_126_a_signed_check_or_comment_delivery_makes_the_owning_cores_i
     worker.stop().await;
     api.served.stop();
 }
+
+/// QUAL-PX-126: "a passing one does not override a failing local check".
+/// The task's own check fails in Modbit at completion; a signed green
+/// check-suite delivery then arrives through the cloud and is recorded as
+/// `ci` evidence, and the task's own failed verification and gate verdict
+/// stand: no verification run, gate record or state change comes of it.
+#[tokio::test]
+async fn qual_px_126_a_green_delivery_never_passes_the_tasks_failing_own_check() {
+    let Some(store_cfg) = store_config().await else {
+        eprintln!(
+            "SKIPPED: MODBIT_CLOUD_TEST_DATABASE_URL unset (the hosted cloud job runs this against Postgres)"
+        );
+        return;
+    };
+    assert!(
+        core_bin().exists(),
+        "modbit-core at {}",
+        core_bin().display()
+    );
+    let keep = tempfile::tempdir().unwrap();
+    let data = keep.path().to_path_buf();
+    let api = Api::start(&store_cfg, Some(SECRET)).await;
+    let (tenant, a) = api.tenant("px126-own-check").await;
+    let root = repo(&data.join("repo"));
+    // The task's own check, the one Modbit runs: it fails.
+    std::fs::write(
+        std::path::Path::new(&root).join(".modbit/verification.json"),
+        r#"{"commands": [{"id": "ci", "argv": ["/bin/sh", "-c", "exit 1"]}]}"#,
+    )
+    .unwrap();
+    for args in [
+        vec!["add", "-A"],
+        vec![
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@e",
+            "commit",
+            "-q",
+            "-m",
+            "own check fails",
+        ],
+    ] {
+        assert!(
+            std::process::Command::new("git")
+                .arg("-C")
+                .arg(&root)
+                .args(&args)
+                .status()
+                .unwrap()
+                .success()
+        );
+    }
+
+    let gh = GithubFake::start(TOKEN);
+    let (_, sess) = api
+        .post(
+            &a,
+            "/v1/sessions",
+            json!({"command_id": uuid::Uuid::now_v7().to_string()}),
+        )
+        .await;
+    let sid = sess["session_id"].as_str().unwrap().to_owned();
+    let (s, task) = api
+        .post(&a, &format!("/v1/sessions/{sid}/tasks"), json!({"command_id": uuid::Uuid::now_v7().to_string(), "goal_text": "tidy the notes", "execution_profile": "local_trusted", "workspace_root": root}))
+        .await;
+    assert_eq!(s, 201, "{task}");
+    let tid = task["task_id"].as_str().unwrap().to_owned();
+    let head = format!("modbit/pr-{}", &tid.replace('-', "")[..12]);
+    let sha = branch(&root, &head);
+    gh.add_pull(
+        "acme",
+        "widgets",
+        4,
+        "Tidy the notes",
+        "",
+        &head,
+        &sha,
+        "main",
+        "modbit-bot",
+    );
+    // The forge says CI is green for the task's commit.
+    gh.set_check_runs(
+        "acme",
+        "widgets",
+        &sha,
+        vec![GithubFake::check_run(
+            21,
+            "ci",
+            &sha,
+            "completed",
+            Some("success"),
+            "ok",
+            "",
+            "",
+        )],
+    );
+    seed_pull_request(&api, tenant, &sid, &tid, "acme/widgets", 4, &head, &sha).await;
+    let (s, m) = api
+        .post(
+            &a,
+            "/v1/forge/repositories",
+            json!({"repository": "acme/widgets", "session_id": sid, "installation_id": 42}),
+        )
+        .await;
+    assert_eq!(s, 201, "{m}");
+
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "nothing to change", "expected_files": []}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "nothing needed changing", "self_review": {"findings": []}}}]}),
+    ];
+    let (model, _seen) = scripted_model(script).await;
+    let worker = start(worker_config(
+        &store_cfg,
+        "worker-px126-own",
+        &data.join("w"),
+        &model,
+        Some((&gh.base, TOKEN)),
+    ))
+    .await
+    .expect("worker");
+
+    // The task's own check fails in Modbit and the gate rejects it.
+    let completion_failed = |evs: &[(String, Value)]| {
+        evs.iter().any(|(t, p)| {
+            t == "VerificationRunRecorded" && p["stage"] == "COMPLETION" && p["status"] == "FAILED"
+        })
+    };
+    until("the task's own check to fail in Modbit", 120, async || {
+        let evs = api.events(&a, &sid).await;
+        let (_, v) = api.get(&a, &format!("/v1/sessions/{sid}")).await;
+        (completion_failed(&evs) && v["tasks"][0]["state"] != "RUNNING").then_some(())
+    })
+    .await;
+    // Let the run settle so the comparison below is not a race with it.
+    tokio::time::sleep(Duration::from_millis(1500)).await;
+    let before = api.events(&a, &sid).await;
+    let (_, view) = api.get(&a, &format!("/v1/sessions/{sid}")).await;
+    let state_before = view["tasks"][0]["state"].clone();
+    assert_ne!(
+        state_before, "READY_FOR_REVIEW",
+        "a failing own check never proposes: {view}"
+    );
+    let count = |evs: &[(String, Value)], ty: &str| evs.iter().filter(|(t, _)| t == ty).count();
+
+    // A signed green check suite for the task's pull request.
+    let green = event_body(
+        "check_suite",
+        "acme/widgets",
+        json!({"check_suite": {"id": 7, "head_branch": head, "head_sha": sha, "status": "completed", "conclusion": "success", "updated_at": iso(3), "pull_requests": [{"number": 4}]}, "sender": {"type": "Bot", "login": "github-actions[bot]"}}),
+    );
+    let (s, q) = deliver(&api, "px126-own-1", "check_suite", green).await;
+    assert_eq!(
+        (s, q["code"].as_str()),
+        (202, Some("INGESTION_QUEUED")),
+        "{q}"
+    );
+    let cmd = q["command_id"].as_str().unwrap().to_owned();
+    let done = until("the green ingestion", 60, async || {
+        let (_, c) = api.get(&a, &format!("/v1/commands/{cmd}")).await;
+        (c["status"] != "PENDING").then_some(c)
+    })
+    .await;
+    assert_eq!(done["status"], "ACCEPTED", "{done}");
+    assert_eq!(done["result"]["checks"][0]["conclusion"], "success");
+    until("the evidence on the cloud log", 30, async || {
+        let evs = api.events(&a, &sid).await;
+        (count(&evs, "CiEvidenceRecorded") == 1).then_some(())
+    })
+    .await;
+    let after = api.events(&a, &sid).await;
+    let ci: Vec<&Value> = after
+        .iter()
+        .filter(|(t, _)| t == "CiEvidenceRecorded")
+        .map(|(_, p)| p)
+        .collect();
+    assert_eq!(ci[0]["provenance"], "ci");
+    assert_eq!(ci[0]["checks"][0]["conclusion"], "success");
+    // The green evidence wrote no verification run, gate record or verdict.
+    for t in [
+        "VerificationRunRecorded",
+        "AcceptanceGateEvaluated",
+        "RealizedRiskDerived",
+        "ReviewDecisionRecorded",
+    ] {
+        assert_eq!(
+            count(&after, t),
+            count(&before, t),
+            "{t} after the green delivery"
+        );
+    }
+    let last_completion = after
+        .iter()
+        .rev()
+        .find(|(t, p)| t == "VerificationRunRecorded" && p["stage"] == "COMPLETION")
+        .map(|(_, p)| p)
+        .unwrap();
+    assert_eq!(
+        last_completion["status"], "FAILED",
+        "the task's own check still stands failed: {last_completion:#}"
+    );
+    let (_, view) = api.get(&a, &format!("/v1/sessions/{sid}")).await;
+    assert_eq!(
+        view["tasks"][0]["state"], state_before,
+        "a green CI changed no state"
+    );
+    worker.stop().await;
+    api.served.stop();
+}

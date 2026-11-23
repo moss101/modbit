@@ -473,6 +473,28 @@ async fn qual_px_126_check_and_comment_deliveries_become_durable_ingestion_comma
     );
     assert_eq!(queued(&api, ta, &sa).await.len(), 1);
 
+    // Every refusal above is on the denial audit, under its delivery.
+    let audited = async |n: &str, why: &str| {
+        let rows = api
+            .served
+            .state
+            .store
+            .denials_for_resource(&format!("webhook:github:{}", did(n)))
+            .await
+            .unwrap();
+        assert!(
+            rows.iter().any(|(_, w)| w.contains(why)),
+            "delivery {n} audited as `{why}`: {rows:?}"
+        );
+    };
+    audited("1", "replayed delivery").await;
+    audited("2", "unsigned").await;
+    audited("2", "signature does not verify").await;
+    audited("3b", "outside the accepted window").await;
+    audited("4", "is mapped to no tenant").await;
+    audited("5", "is not the mapping's").await;
+    audited("6", "another tenant").await;
+
     // 7. A pull request nobody's task opened is an ordinary one: ignored, on the ledger.
     let (s, r) = api
         .deliver(

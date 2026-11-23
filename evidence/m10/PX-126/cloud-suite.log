@@ -1,0 +1,164 @@
+   Compiling modbit-cloud-worker v0.0.0 (/Users/mohsin/projects/modbit/apps/cloud-worker)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.31s
+     Running unittests src/lib.rs (target/debug/deps/modbit_cloud_api-fe929840a4fc88dc)
+
+running 9 tests
+test automations::tests::a_read_only_definition_runs_under_plan_and_anything_else_under_cloud_isolated ... ok
+test rate::tests::a_bucket_admits_its_capacity_then_refuses_until_refilled ... ok
+test forge::tests::github_timestamps_parse_to_epoch_milliseconds ... ok
+test forge::tests::the_delivery_id_names_the_command ... ok
+test automations::tests::the_endpoint_secret_derives_from_the_master_key_and_the_rotation_only ... ok
+test forge::tests::a_delivery_verifies_only_under_its_secret_and_exact_body ... ok
+test forge::tests::only_completed_checks_and_created_pull_request_comments_are_ingestion_events ... ok
+test auth::tests::a_token_verifies_under_its_key_only_and_expires ... ok
+test automations::tests::forge_events_normalise_to_what_the_filters_read ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/modbit_cloud_api-bf1277e0b4d1eac7)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cloud_api.rs (target/debug/deps/cloud_api-65ec4a52b7778fe1)
+
+running 7 tests
+test qual_m8_1_leases_fence_by_generation_and_an_append_is_all_or_nothing ... ok
+test qual_m8_1_commands_are_idempotent_events_replay_by_cursor_and_tenants_never_cross ... ok
+test qual_m8_1_the_stream_replays_after_the_cursor_then_delivers_live_commits ... ok
+test qual_px_011_a_signed_forge_webhook_makes_the_canonical_task_for_its_tenant_once_and_the_rest_is_refused_and_audited ... ok
+test qual_m8_1_tokens_are_issued_from_a_secret_and_refresh_rotates_once ... ok
+test qual_m8_1_a_principal_over_its_budget_is_refused_rate_limited ... ok
+test qual_m8_1_approvals_bind_to_intent_and_outputs_read_by_range_within_the_tenant ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.54s
+
+     Running tests/px_085_automations.rs (target/debug/deps/px_085_automations-3123ecf984b2ffc7)
+
+running 11 tests
+test qual_px_085_filters_skip_a_non_matching_body_and_two_concurrent_identical_deliveries_create_one_task ... ok
+test qual_px_085_a_signed_webhook_creates_exactly_one_canonical_task_and_a_duplicate_or_replay_creates_none ... ok
+test qual_px_085_forged_tampered_stale_future_and_malformed_signatures_are_refused_and_audited_under_typed_codes ... ok
+test qual_px_085_the_automation_clock_is_the_database_clock_and_the_offset_needs_the_test_variable ... ok
+test qual_px_085_forge_events_fire_event_triggers_of_the_mapped_tenant_and_the_issue_intake_is_unchanged ... ok
+test qual_px_085_concurrency_policies_hourly_and_daily_limits_pauses_and_kill_switches_decide_in_the_store ... ok
+test qual_px_085_without_a_master_key_no_endpoint_exists_and_the_intake_fails_closed ... ok
+test qual_px_085_an_unapproved_or_edited_definition_does_not_fire_and_the_approval_is_bound_to_the_exact_hash_and_lists ... ok
+test qual_px_085_endpoint_secrets_are_derived_shown_once_never_stored_and_rotation_and_revocation_end_the_old_one ... ok
+test qual_px_085_a_definition_that_can_act_needs_a_cost_limit_and_a_secret_value_is_refused_at_save ... ok
+test qual_px_085_an_endpoint_maps_one_tenant_a_body_or_header_cannot_name_another_and_an_unknown_endpoint_is_indistinguishable ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.47s
+
+     Running tests/px_126_webhooks.rs (target/debug/deps/px_126_webhooks-979c072c7189ffd6)
+
+running 1 test
+test qual_px_126_check_and_comment_deliveries_become_durable_ingestion_commands_for_the_owning_task_and_nothing_else ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.39s
+
+     Running tests/px_129_identity.rs (target/debug/deps/px_129_identity-c01e1dff588c668f)
+
+running 2 tests
+test qual_px_129_only_bundles_the_organisation_signed_with_a_greater_generation_are_accepted_and_served ... ok
+test qual_px_129_oidc_with_pkce_signs_provisioned_principals_in_and_every_forgery_is_refused ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.68s
+
+     Running unittests src/lib.rs (target/debug/deps/modbit_cloud_worker-afdaa7002fe289b0)
+
+running 1 test
+test automation::tests::an_on_time_slot_fires_and_a_downtime_follows_the_policy_once ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+     Running unittests src/main.rs (target/debug/deps/modbit_cloud_worker-052a1aac6549677d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cloud_worker.rs (target/debug/deps/cloud_worker-28e587c20aa94f1e)
+
+running 10 tests
+test qual_px_011_a_webhook_for_a_held_session_is_relayed_and_the_worker_makes_the_canonical_task ... ok
+test qual_m8_5_a_cloud_isolated_tasks_tools_act_inside_its_sandbox_and_the_sandbox_is_released_when_the_task_ends ... ok
+test qual_ev_0023_a_cloud_tasks_starts_emit_every_slo_timestamp_and_cold_and_warm_latencies ... ok
+test qual_m8_9_a_lost_sandbox_is_replaced_and_restored_from_the_latest_checkpoint_and_the_task_resumes ... ok
+test qual_m8_8_a_cloud_tasks_browser_runs_inside_its_sandbox_over_cdp_and_streams_its_view_to_the_person ... ok
+test qual_m8_7_a_local_task_hands_off_to_the_cloud_and_continues_from_its_checkpoint_in_a_sandbox ... ok
+test qual_ev_0072_capabilities_are_negotiated_before_dispatch_an_older_worker_gets_a_compatible_projection_or_the_task_is_refused ... ok
+test qual_ev_0109_the_same_tool_fixture_runs_locally_and_in_the_cloud_with_equivalent_effect_and_event_semantics ... ok
+test qual_m8_2_a_worker_claims_the_lease_runs_the_task_relays_commands_mirrors_the_log_and_a_successor_resumes_fenced ... ok
+test qual_ev_0024_the_workers_outbound_link_proves_identity_reconnect_revocation_and_tenant_isolation ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 19.42s
+
+     Running tests/px_085_cloud_triggers.rs (target/debug/deps/px_085_cloud_triggers-a435fec0b8f02b0c)
+
+running 6 tests
+test qual_px_085_the_workers_claim_loop_is_the_time_evaluator_two_workers_one_firing_per_slot_and_the_task_runs ... ok
+test qual_px_085_a_process_that_dies_between_recording_a_firing_and_creating_its_task_loses_nothing_and_duplicates_nothing ... ok
+test qual_px_085_a_schedule_fires_exactly_once_per_slot_with_workers_racing_on_a_controlled_clock ... ok
+test qual_px_085_a_paused_automation_tenant_or_platform_fires_nothing_on_schedule ... ok
+test qual_px_085_a_missed_window_is_skipped_or_caught_up_once_and_never_replayed_in_bulk ... ok
+test qual_px_085_a_webhook_task_starts_on_a_real_worker_and_core_under_the_definitions_limits ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.27s
+
+     Running tests/px_085_egress.rs (target/debug/deps/px_085_egress-ecb19beef05e6938)
+
+running 1 test
+test qual_px_085_a_cloud_runs_hosts_are_capped_by_the_organisations_allow_list_at_the_gateway_with_a_typed_reason_recorded_on_the_run ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.06s
+
+     Running tests/px_126_ingestion.rs (target/debug/deps/px_126_ingestion-3487bcb696a9c658)
+
+running 2 tests
+test qual_px_126_a_green_delivery_never_passes_the_tasks_failing_own_check ... ok
+test qual_px_126_a_signed_check_or_comment_delivery_makes_the_owning_cores_ingestion_record_ci_evidence_and_untrusted_steering ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.38s
+
+     Running tests/px_126_live.rs (target/debug/deps/px_126_live-ee611ea6e2bed2ef)
+
+running 1 test
+test qual_px_126_live_a_real_review_comment_reaches_the_owning_core_through_the_signed_webhook_as_untrusted_steering ... ignored, real GitHub: needs MODBIT_GITHUB_TOKEN, MODBIT_GITHUB_TEST_REPO and MODBIT_CLOUD_TEST_DATABASE_URL
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/px_128_cloud_client.rs (target/debug/deps/px_128_cloud_client-a9175318348b33e3)
+
+running 1 test
+test qual_px_128_the_cli_hands_a_local_task_to_the_cloud_after_a_confirmation_and_watches_and_answers_its_approval ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 18.47s
+
+     Running tests/px_129_cli_policy.rs (target/debug/deps/px_129_cli_policy-7b00ae6220ba9ebf)
+
+running 1 test
+test qual_px_129_the_cli_signs_and_publishes_a_bundle_and_applies_only_what_it_verifies ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.59s
+
+     Running tests/px_129_policy.rs (target/debug/deps/px_129_policy-f96cb238e9f03b76)
+
+running 1 test
+test qual_px_129_the_worker_enforces_only_bundles_it_verifies_keeps_the_last_good_one_and_starts_nothing_on_an_expired_one ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 31.46s
+
+   Doc-tests modbit_cloud_api
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests modbit_cloud_worker
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
