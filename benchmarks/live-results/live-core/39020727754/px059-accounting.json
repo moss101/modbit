@@ -1,0 +1,162 @@
+{
+  "checks": [
+    {
+      "detail": "TRUSTED_BY_OWNER",
+      "name": "skill_trusted",
+      "ok": true
+    },
+    {
+      "detail": "MemoryPromoted { memory_id: \"5416684e9ffe1744dcaa05e165a16b8a0f12e9aa331109c8170630815f4a2588\", outcome: \"curated\", refusal_code: \"\", refusal_detail: \"\", superseded: [], offset: 8 }",
+      "name": "memory_curated",
+      "ok": true
+    },
+    {
+      "detail": "ContextAccountingView { available: false, total_tokens: 0, total_source: \"\", estimated_total: 0, provider_reported_input: 0, estimator_error_bp: 0, declared_error_bp: 2500, rounding_rule: \"LARGEST_REMAINDER\", window_tokens: 0, window_source: \"\", used_bp: 0, categories: [], endpoint: \"\", model: \"\", turn_id: \"\", turn_ordinal: 0, offset: 0, instruction_layers_in_force: 0, memory_items_injected: 0, compaction_epoch: 0, compaction_summaries: 0, budgets: Some(BudgetAccountingView { max_cost_minor: 0, spent_minor: 0, held_by_children_minor: 0, max_wall_ms: 0, wall_ms_used: 0, max_children: 3, live_children: 0, forbid_spawn: false }) }",
+      "name": "nothing_before_the_first_turn",
+      "ok": true
+    },
+    {
+      "detail": "TaskStatus { state: \"Waiting\", wait_reason: \"UserInput\", run_state: \"Suspended\", loop_alive: false, last_offset: 144, attention_reason: \"3 consecutive turns without progress\", failure_class: \"HARNESS\", failure_code: \"NO_PROGRESS\", retryable: false, user_action: \"steer the task or narrow the goal\", recovery_path: \"the run suspended after consecutive turns without progress; resume with StartTask\", evidence_refs: [], diagnostic_features: [\"class:harness\", \"code:no_progress\", \"not_retryable\", \"source:harness\"], user_explanation: \"A rule of the agent harness refused an action (NO_PROGRESS). Trying again as it is will not help. steer the task or narrow the goal.\", posture: Some(TaskPostureView { task_id: Some(Id { value: [203, 193, 204, 252, 95, 216, 215, 94, 74, 17, 122, 57, 229, 143, 27, 121] }), mode: Agent, mode_offset: 0, mode_in_force: Agent, posture: Some(ModePostureView { effect_ceiling: \"NONE\", allowed_capabilities: [], subagents: true, reproduction_first: false, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"DIRECT\", reason_code: \"NO_ACTIVE_REGISTRY\", detail: \"no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\", floor_mode: \"\", registry_generation: \"\" }) }) }",
+      "name": "run_ended",
+      "ok": true
+    },
+    {
+      "detail": "no accounting after a run",
+      "name": "available",
+      "ok": true
+    },
+    {
+      "detail": "PROVIDER_REPORTED / 9585",
+      "name": "provider_reported",
+      "ok": true
+    },
+    {
+      "detail": "9585 vs 9585",
+      "name": "total_is_the_providers_count",
+      "ok": true
+    },
+    {
+      "detail": "9",
+      "name": "nine_categories",
+      "ok": true
+    },
+    {
+      "detail": "9585 vs 9585",
+      "name": "categories_sum_exactly_to_the_total",
+      "ok": true
+    },
+    {
+      "detail": "Some(9585) vs 9585",
+      "name": "total_matches_the_usage_ledger_of_the_last_step",
+      "ok": true
+    },
+    {
+      "detail": "the estimator counted 11714 against the provider's 9585: 2221 bp off, 2500 bp declared",
+      "name": "estimator_within_declared_error",
+      "ok": true
+    },
+    {
+      "detail": "ContextCategoryView { category: \"SYSTEM\", tokens: 255, estimated_tokens: 312, share_bp: 266, sources: [\"system segment\"] }",
+      "name": "system_non_zero",
+      "ok": true
+    },
+    {
+      "detail": "ContextCategoryView { category: \"TOOLS\", tokens: 4562, estimated_tokens: 5575, share_bp: 4759, sources: [\"browser.act\", \"context.fast\", \"context.pack\", \"fs.glob\", \"fs.list\", \"fs.read\", \"fs.stat\", \"plan.update\", \"proc.exec\", \"proc.wait\", \"repair.attempt\", \"search.exact\", \"search.retrieve\", \"shell.cancel\", \"shell.exec\", \"shell.read\", \"shell.start\", \"skill.load\", \"task.complete\", \"tool.search\", \"user.ask\", \"verify.run\"] }",
+      "name": "tools_non_zero",
+      "ok": true
+    },
+    {
+      "detail": "ContextCategoryView { category: \"RULES\", tokens: 185, estimated_tokens: 226, share_bp: 193, sources: [\"repo-instructions:AGENTS.md\"] }",
+      "name": "rules_non_zero",
+      "ok": true
+    },
+    {
+      "detail": "ContextCategoryView { category: \"SKILLS\", tokens: 62, estimated_tokens: 76, share_bp: 64, sources: [] }",
+      "name": "skills_non_zero",
+      "ok": true
+    },
+    {
+      "detail": "ContextCategoryView { category: \"MCP\", tokens: 632, estimated_tokens: 773, share_bp: 659, sources: [\"external.call\", \"external.cancel\", \"external.describe\", \"external.list\"] }",
+      "name": "mcp_non_zero",
+      "ok": true
+    },
+    {
+      "detail": "ContextCategoryView { category: \"MEMORY\", tokens: 153, estimated_tokens: 187, share_bp: 159, sources: [\"5416684e9ffe1744dcaa05e165a16b8a0f12e9aa331109c8170630815f4a2588\"] }",
+      "name": "memory_non_zero",
+      "ok": true
+    },
+    {
+      "detail": "ContextCategoryView { category: \"SUBAGENTS\", tokens: 1249, estimated_tokens: 1526, share_bp: 1303, sources: [\"agent.attend\", \"agent.cancel\", \"agent.park\", \"agent.result\", \"agent.resume\", \"agent.spawn\", \"agent.steer\", \"agent.wait\"] }",
+      "name": "subagents_non_zero",
+      "ok": true
+    },
+    {
+      "detail": "ContextCategoryView { category: \"CONVERSATION\", tokens: 2476, estimated_tokens: 3026, share_bp: 2583, sources: [\"goal, transcript, run state\"] }",
+      "name": "conversation_non_zero",
+      "ok": true
+    },
+    {
+      "detail": "epoch 0, ContextCategoryView { category: \"SUMMARY\", tokens: 11, estimated_tokens: 13, share_bp: 11, sources: [] }",
+      "name": "summary_names_no_epoch_without_compaction",
+      "ok": true
+    },
+    {
+      "detail": "128000 (ENDPOINT) vs 128000",
+      "name": "window_from_the_catalog",
+      "ok": true
+    },
+    {
+      "detail": "748 bp",
+      "name": "percent_follows_the_window",
+      "ok": true
+    },
+    {
+      "detail": "glm-5.3-flash",
+      "name": "model_is_the_live_model",
+      "ok": true
+    },
+    {
+      "detail": "TaskStatus { state: \"Waiting\", wait_reason: \"UserInput\", run_state: \"Suspended\", loop_alive: false, last_offset: 258, attention_reason: \"3 consecutive turns without progress\", failure_class: \"HARNESS\", failure_code: \"NO_PROGRESS\", retryable: false, user_action: \"steer the task or narrow the goal\", recovery_path: \"the run suspended after consecutive turns without progress; resume with StartTask\", evidence_refs: [], diagnostic_features: [\"class:harness\", \"code:no_progress\", \"not_retryable\", \"source:harness\"], user_explanation: \"A rule of the agent harness refused an action (NO_PROGRESS). Trying again as it is will not help. steer the task or narrow the goal.\", posture: Some(TaskPostureView { task_id: Some(Id { value: [222, 75, 108, 124, 191, 181, 20, 223, 34, 80, 198, 167, 223, 152, 163, 39] }), mode: Agent, mode_offset: 0, mode_in_force: Agent, posture: Some(ModePostureView { effect_ceiling: \"NONE\", allowed_capabilities: [], subagents: true, reproduction_first: false, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"DIRECT\", reason_code: \"NO_ACTIVE_REGISTRY\", detail: \"no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\", floor_mode: \"\", registry_generation: \"\" }) }) }",
+      "name": "second_run_ended",
+      "ok": true
+    },
+    {
+      "detail": "100000 (ENDPOINT)",
+      "name": "window_follows_the_catalog_entry",
+      "ok": true
+    },
+    {
+      "detail": "736 bp of 7364",
+      "name": "percent_follows_the_new_window",
+      "ok": true
+    },
+    {
+      "detail": "sum",
+      "name": "second_categories_sum",
+      "ok": true
+    }
+  ],
+  "cost_usd": 0.0129444,
+  "counts": {
+    "declared_error_bp": 2500,
+    "estimated_total": 11714,
+    "estimator_error_bp": 2221,
+    "provider_reported_input": 9585
+  },
+  "elapsed_s": 110.098923563,
+  "endpoint": "https://api.z.ai/api/coding/paas/v4",
+  "input_tokens": 74406,
+  "leg": "accounting",
+  "live": true,
+  "model": "glm-5.3-flash",
+  "model_calls": 9,
+  "notes": [
+    "a model switch to a second real model was not possible: the gateway key serves one priced model (glm-5.3-flash); the window was moved by changing its catalog entry"
+  ],
+  "output_tokens": 3567,
+  "passed": true,
+  "row": "px059",
+  "run_id": "39020727754",
+  "started_at_ms": 1792231152579,
+  "stopped_by_cap": false
+}

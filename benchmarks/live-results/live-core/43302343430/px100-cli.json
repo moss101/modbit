@@ -1,0 +1,110 @@
+{
+  "checks": [
+    {
+      "detail": "session d0cdd9638983179314dda8c1a2638c1d\n",
+      "name": "session_created",
+      "ok": true
+    },
+    {
+      "detail": "1f874161b32f591d34666412c4c5f82b",
+      "name": "ask_task_created",
+      "ok": true
+    },
+    {
+      "detail": "hello.txt exists",
+      "name": "ask_wrote_nothing",
+      "ok": true
+    },
+    {
+      "detail": "posture mode=ASK in_force=ASK writes=false subagents=false reproduction_first=false effect_ceiling=READONLY\npreference objective= effort= tier= pin= offset=0 applied_offset=0 effort_applied= tier_applied=\nrouting outcome=DIRECT reason=NO_ACTIVE_REGISTRY floor= registry=- no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\n",
+      "name": "cli_mode_is_the_cores_mode",
+      "ok": true
+    },
+    {
+      "detail": "tool_call 55e6446282cfb93a6ed24b5b0e201363 status=POLICY_DENIED error_code=\"MODE_POSTURE\" revision_after=0 approval=- receipts=\nnull\nerror: the task is in ASK mode: ReversibleWrite exceeds the mode's ReadOnly ceiling; the user changes the mode, the agent does not\n",
+      "name": "kernel_refuses_the_write_in_ask",
+      "ok": true
+    },
+    {
+      "detail": "tool_call 5373caf9b390ecc7d04ff44c06ff3983 status=SUCCESS error_code=\"\" revision_after=2 approval=- receipts=\n{\"change\":{\"after_hash\":\"98ea6e4f216f2fb4b69fff9b3a44842c38686ca685f3f55dc48c5d3fb1107be4\",\"before_hash\":null,\"op\":\"atomic_replace\",\"path\":\"control.txt\",\"workspace_revision\":{\"changed\":{\"control.txt\":\"98ea6e4f216f2fb4b69fff9b3a44842c38686ca685f3f55dc48c5d3fb1107be4\"},\"fingerprint\":\"376ed1cf99a021ebf605d0d1cb1eb39d1f9f7cb02a81a7ff5ca149985b3a1286\",\"git_head\":\"48f08dda3c186201ad9d49a888525daedf9851ae\",\"number\":2,\"worktree_id\":\"608c6a14291fc07e18d26bd3707fd0c8e9d23565fdbd53a6c12a9541021d016e\"}}}\n",
+      "name": "control_without_the_flag_writes",
+      "ok": true
+    },
+    {
+      "detail": "plan current_version=1 executed=[0,1,1,1]\n  v1 by model ref=e7bb2da2b433cc1d59bf53a48320c76a352dfd5808ac0bba455ba2ed772cfd67 at=161 outcome=\"Add the file b.txt with content identical to a.txt.\" files=[b.txt] reason=\"\"\n",
+      "name": "plan_recorded",
+      "ok": true
+    },
+    {
+      "detail": "b.txt exists",
+      "name": "plan_wrote_nothing_until_accepted",
+      "ok": true
+    },
+    {
+      "detail": "mode AGENT previous=PLAN effective=IMMEDIATE accepted_plan_version=1 offset=239\n",
+      "name": "acceptance_through_the_cli",
+      "ok": true
+    },
+    {
+      "detail": "posture mode=AGENT in_force=AGENT writes=true subagents=true reproduction_first=false effect_ceiling=NONE\npreference objective=INTELLIGENCE effort= tier= pin= offset=242 applied_offset=0 effort_applied= tier_applied=\nrouting outcome=DIRECT reason=NO_ACTIVE_REGISTRY floor= registry=- no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\n",
+      "name": "objective_recorded_at_creation",
+      "ok": true
+    },
+    {
+      "detail": "posture mode=AGENT in_force=AGENT writes=true subagents=true reproduction_first=false effect_ceiling=NONE\npreference objective=INTELLIGENCE effort= tier= pin= offset=242 applied_offset=242 effort_applied= tier_applied=\nrouting outcome=DIRECT reason=NO_ACTIVE_REGISTRY floor= registry=- no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\n",
+      "name": "objective_in_the_routing_decision",
+      "ok": true
+    },
+    {
+      "detail": "no ExecutionPreferenceSet naming the objective",
+      "name": "preference_event_on_the_log",
+      "ok": true
+    },
+    {
+      "detail": "Some(ExecutionPreferenceView { objective: Intelligence, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 242, applied_offset: 242, effort_applied: \"\", service_tier_applied: \"\" })",
+      "name": "desktop_reads_the_same_objective",
+      "ok": true
+    },
+    {
+      "detail": "modbit-cli: command rejected MODEL_NOT_ALLOWED: openai/ghost-forbidden-px100 is not allowed by the model policy in force (allowed: gemini-3.8-flash)\n",
+      "name": "forbidden_pin_refused_with_the_typed_reason",
+      "ok": true
+    },
+    {
+      "detail": "posture mode=AGENT in_force=AGENT writes=true subagents=true reproduction_first=false effect_ceiling=NONE\npreference objective=INTELLIGENCE effort= tier= pin= offset=242 applied_offset=242 effort_applied= tier_applied=\nrouting outcome=DIRECT reason=NO_ACTIVE_REGISTRY floor= registry=- no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\n",
+      "name": "forbidden_pin_changed_nothing",
+      "ok": true
+    },
+    {
+      "detail": "posture mode=ASK in_force=ASK writes=false subagents=false reproduction_first=false effect_ceiling=READONLY\npreference objective= effort= tier= pin= offset=0 applied_offset=0 effort_applied= tier_applied=\nrouting outcome=DIRECT reason=NO_ACTIVE_REGISTRY floor= registry=- no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\nmodbit-cli: core.ready present but attach failed (io: Connection refused (os error 111)); spawning\n",
+      "name": "ask_mode_after_a_restart",
+      "ok": true
+    },
+    {
+      "detail": "posture mode=AGENT in_force=AGENT writes=true subagents=true reproduction_first=false effect_ceiling=NONE\npreference objective= effort= tier= pin= offset=0 applied_offset=0 effort_applied= tier_applied=\nrouting outcome=DIRECT reason=NO_ACTIVE_REGISTRY floor= registry=- no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\n",
+      "name": "accepted_plan_mode_after_a_restart",
+      "ok": true
+    }
+  ],
+  "cost_usd": 0.05066775,
+  "counts": {
+    "ask_run_exit": 2,
+    "routing_line": "routing outcome=DIRECT reason=NO_ACTIVE_REGISTRY floor= registry=- no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding"
+  },
+  "elapsed_s": 61.087537559,
+  "endpoint": "https://generativelanguage.googleapis.com/v1beta/openai",
+  "input_tokens": 65402,
+  "leg": "cli",
+  "live": true,
+  "model": "gemini-3.8-flash",
+  "model_calls": 11,
+  "notes": [
+    "the VS Code extension host of PX-002 (an IDE adapter showing the CLI-set mode after a restart) is not available on the runner; the desktop-kind protocol client stands in for the shared Core read"
+  ],
+  "output_tokens": 431,
+  "passed": true,
+  "row": "px100",
+  "run_id": "43302343430",
+  "started_at_ms": 1794516196137,
+  "stopped_by_cap": false
+}

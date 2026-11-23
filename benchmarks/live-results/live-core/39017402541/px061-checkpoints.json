@@ -1,0 +1,109 @@
+{
+  "checks": [
+    {
+      "detail": "TaskStatus { state: \"ReadyForReview\", wait_reason: \"\", run_state: \"Completed\", loop_alive: false, last_offset: 239, attention_reason: \"\", failure_class: \"\", failure_code: \"\", retryable: false, user_action: \"\", recovery_path: \"\", evidence_refs: [], diagnostic_features: [], user_explanation: \"\", posture: Some(TaskPostureView { task_id: Some(Id { value: [147, 108, 77, 212, 199, 199, 188, 128, 77, 210, 145, 97, 155, 75, 131, 28] }), mode: Agent, mode_offset: 0, mode_in_force: Agent, posture: Some(ModePostureView { effect_ceiling: \"NONE\", allowed_capabilities: [], subagents: true, reproduction_first: false, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"DIRECT\", reason_code: \"NO_ACTIVE_REGISTRY\", detail: \"no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\", floor_mode: \"\", registry_generation: \"\" }) }) }",
+      "name": "run_ended",
+      "ok": true
+    },
+    {
+      "detail": "[\".modbit/verification.json\", \"a.txt\", \"b.txt\", \"one.txt\", \"two.txt\"]",
+      "name": "the_model_did_the_work",
+      "ok": true
+    },
+    {
+      "detail": "ordinals [1, 2, 3, 4, 5, 6, 7]",
+      "name": "every_turn_has_a_checkpoint",
+      "ok": true
+    },
+    {
+      "detail": "8 snapshots",
+      "name": "snapshots_taken_for_every_checkpoint",
+      "ok": true
+    },
+    {
+      "detail": "[\".modbit/verification.json\", \"a.txt\", \"b.txt\"]",
+      "name": "turn1_precedes_the_work",
+      "ok": true
+    },
+    {
+      "detail": "CheckpointRestoreResult { restored: true, checkpoint_id: \"01a1490c-d239-7863-a062-367dbb235a05\", epoch: 1, chain: [\"01a1490c-d239-7863-a062-367dbb235a05\"], files_written: 0, files_reverted: 3, workspace_revision_after: 7, event_offset: 42, refusal: \"\", detail: \"\", preconditions_checked: 0, pre_restore_checkpoint_id: \"01a1490e-af43-7690-ad42-41ce7ce21b3e\", replayed: false, kept_paths: [], redo: false }",
+      "name": "restored",
+      "ok": true
+    },
+    {
+      "detail": "{\".modbit/verification.json\": \"31433a2aa848e8d143170ef4b4428c97e7fe73d0736338a1894aa47dba3540c3\", \"a.txt\": \"87428fc522803d31065e7bce3cf03fe475096631e5e07bbd7a0fde60c4cf25c7\", \"b.txt\": \"0263829989b6fd954f72baaf2fc64bc2e2f01d692d4de72986ea808f6e99813f\"} vs {\".modbit/verification.json\": \"31433a2aa848e8d143170ef4b4428c97e7fe73d0736338a1894aa47dba3540c3\", \"a.txt\": \"87428fc522803d31065e7bce3cf03fe475096631e5e07bbd7a0fde60c4cf25c7\", \"b.txt\": \"0263829989b6fd954f72baaf2fc64bc2e2f01d692d4de72986ea808f6e99813f\"}",
+      "name": "created_files_deleted_changed_restored_byte_for_byte",
+      "ok": true
+    },
+    {
+      "detail": "status 2, CheckpointRestoreResult { restored: true, checkpoint_id: \"01a1490c-d239-7863-a062-367dbb235a05\", epoch: 1, chain: [\"01a1490c-d239-7863-a062-367dbb235a05\"], files_written: 0, files_reverted: 3, workspace_revision_after: 7, event_offset: 42, refusal: \"\", detail: \"\", preconditions_checked: 0, pre_restore_checkpoint_id: \"01a1490e-af43-7690-ad42-41ce7ce21b3e\", replayed: true, kept_paths: [], redo: false }",
+      "name": "replayed_command_restores_once",
+      "ok": true
+    },
+    {
+      "detail": "CheckpointRestoreResult { restored: true, checkpoint_id: \"01a1490e-af43-7690-ad42-41ce7ce21b3e\", epoch: 9, chain: [\"01a1490c-d239-7863-a062-367dbb235a05\", \"01a1490c-fce7-7981-a8f3-90c7135e8365\", \"01a1490d-2992-7653-a3e3-bfe5b2f41dc6\", \"01a1490d-6309-7442-88bc-08219f0d2702\", \"01a1490d-d07c-7621-b102-f04211589f11\", \"01a1490e-579b-77c3-bbc3-a36d40a82ce0\", \"01a1490e-ac71-7d31-92f7-b08f20f5a4aa\", \"01a1490e-acb4-78e3-aa91-76296710c639\", \"01a1490e-af43-7690-ad42-41ce7ce21b3e\"], files_written: 3, files_reverted: 0, workspace_revision_after: 10, event_offset: 240, refusal: \"\", detail: \"\", preconditions_checked: 0, pre_restore_checkpoint_id: \"01a1490e-af66-7d12-8c9b-666f3a4734bb\", replayed: false, kept_paths: [], redo: true }",
+      "name": "redo_restored",
+      "ok": true
+    },
+    {
+      "detail": "file hashes differ from the state before the restore",
+      "name": "redo_equals_the_pre_restore_state",
+      "ok": true
+    },
+    {
+      "detail": "Some(RewindEntryView { path: \"b.txt\", action: \"REVERT_TO_HEAD\", current_hash: \"91fc0e728e70962f293071fa9dfc04b25f8145bc15e4d67aa5f5ff528ffc504a\", target_hash: \"\" })",
+      "name": "user_edited_file_is_listed",
+      "ok": true
+    },
+    {
+      "detail": "CheckpointRestoreResult { restored: false, checkpoint_id: \"\", epoch: 0, chain: [], files_written: 0, files_reverted: 0, workspace_revision_after: 0, event_offset: 0, refusal: \"HASH_MISMATCH\", detail: \"`b.txt` changed since it was previewed: expected 91fc0e728e70962f293071fa9dfc04b25f8145bc15e4d67aa5f5ff528ffc504a, found 52f4c52cd4729875e0c2e21515d480d3e43ff1eca9326e16f4fea0183121526e\", preconditions_checked: 0, pre_restore_checkpoint_id: \"\", replayed: false, kept_paths: [], redo: false }",
+      "name": "user_edit_refuses_the_restore_without_the_choice",
+      "ok": true
+    },
+    {
+      "detail": "CheckpointRestoreResult { restored: true, checkpoint_id: \"01a1490c-d239-7863-a062-367dbb235a05\", epoch: 1, chain: [\"01a1490c-d239-7863-a062-367dbb235a05\"], files_written: 0, files_reverted: 3, workspace_revision_after: 13, event_offset: 42, refusal: \"\", detail: \"\", preconditions_checked: 0, pre_restore_checkpoint_id: \"01a1490e-af94-79b3-ba66-1eb9fb904d8b\", replayed: false, kept_paths: [\"b.txt\"], redo: false }",
+      "name": "restore_with_the_choice",
+      "ok": true
+    },
+    {
+      "detail": "b.txt or one.txt wrong",
+      "name": "edited_file_kept_others_restored",
+      "ok": true
+    },
+    {
+      "detail": "CheckpointRestoreResult { restored: true, checkpoint_id: \"01a1490e-af94-79b3-ba66-1eb9fb904d8b\", epoch: 13, chain: [\"01a1490e-af56-7cb2-b669-bc1948a0ef62\", \"01a1490e-af66-7d12-8c9b-666f3a4734bb\", \"01a1490e-af77-7662-b148-a05364a9fed3\", \"01a1490e-af94-79b3-ba66-1eb9fb904d8b\"], files_written: 3, files_reverted: 0, workspace_revision_after: 16, event_offset: 258, refusal: \"\", detail: \"\", preconditions_checked: 0, pre_restore_checkpoint_id: \"01a1490e-afb6-76b3-8895-d2c746e51a3e\", replayed: false, kept_paths: [], redo: true }",
+      "name": "redo_after_choice",
+      "ok": true
+    },
+    {
+      "detail": "the injected fault did not stop the Core",
+      "name": "core_died_mid_restore",
+      "ok": true
+    },
+    {
+      "detail": "the mixture had 5 files; after recovery 5 files, expected 5",
+      "name": "never_a_mixture",
+      "ok": true
+    }
+  ],
+  "cost_usd": 0.01448285,
+  "counts": {
+    "files_in_the_mixture": 5,
+    "turn_checkpoints": 7,
+    "turns": 7
+  },
+  "elapsed_s": 234.420522143,
+  "endpoint": "https://api.z.ai/api/coding/paas/v4",
+  "input_tokens": 59699,
+  "leg": "checkpoints",
+  "live": true,
+  "model": "glm-5.3-flash",
+  "model_calls": 7,
+  "notes": [],
+  "output_tokens": 11056,
+  "passed": true,
+  "row": "px061",
+  "run_id": "39017402541",
+  "started_at_ms": 1792226827594,
+  "stopped_by_cap": false
+}

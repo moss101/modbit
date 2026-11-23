@@ -1,0 +1,98 @@
+{
+  "checks": [
+    {
+      "detail": "the first answer had already completed when the inputs were queued",
+      "name": "queued_during_a_streaming_turn",
+      "ok": true
+    },
+    {
+      "detail": "[\"a\", \"b\", \"c\", \"d\"]",
+      "name": "listed_in_order",
+      "ok": true
+    },
+    {
+      "detail": "the run was not alive",
+      "name": "run_alive_while_queued",
+      "ok": true
+    },
+    {
+      "detail": "QUEUED",
+      "name": "edit_applied",
+      "ok": true
+    },
+    {
+      "detail": "[\"c\", \"a\", \"b\"]",
+      "name": "order_after_edits",
+      "ok": true
+    },
+    {
+      "detail": "the edit was not recorded",
+      "name": "edit_text_kept",
+      "ok": true
+    },
+    {
+      "detail": "d was not removed",
+      "name": "delete_recorded",
+      "ok": true
+    },
+    {
+      "detail": "TaskStatus { state: \"Waiting\", wait_reason: \"UserInput\", run_state: \"Suspended\", loop_alive: false, last_offset: 307, attention_reason: \"8 consecutive turns without progress\", failure_class: \"HARNESS\", failure_code: \"NO_PROGRESS\", retryable: false, user_action: \"steer the task or narrow the goal\", recovery_path: \"the run suspended after consecutive turns without progress; resume with StartTask\", evidence_refs: [], diagnostic_features: [\"class:harness\", \"code:no_progress\", \"not_retryable\", \"source:harness\"], user_explanation: \"A rule of the agent harness refused an action (NO_PROGRESS). Trying again as it is will not help. steer the task or narrow the goal.\", posture: Some(TaskPostureView { task_id: Some(Id { value: [187, 65, 107, 228, 221, 171, 93, 137, 65, 144, 3, 144, 72, 192, 95, 173] }), mode: Agent, mode_offset: 0, mode_in_force: Agent, posture: Some(ModePostureView { effect_ceiling: \"NONE\", allowed_capabilities: [], subagents: true, reproduction_first: false, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"DIRECT\", reason_code: \"NO_ACTIVE_REGISTRY\", detail: \"no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\", floor_mode: \"\", registry_generation: \"\" }) }) }",
+      "name": "run_drained_and_ended",
+      "ok": true
+    },
+    {
+      "detail": "[[\"c\"], [\"a\"], [\"b\"]]",
+      "name": "drained_in_the_order_left",
+      "ok": true
+    },
+    {
+      "detail": "[[\"c\"], [\"a\"], [\"b\"]]",
+      "name": "each_input_its_own_turn",
+      "ok": true
+    },
+    {
+      "detail": "8 assistant messages for the essay and three inputs",
+      "name": "a_turn_per_input",
+      "ok": true
+    },
+    {
+      "detail": "inputs still queued",
+      "name": "queue_settled",
+      "ok": true
+    },
+    {
+      "detail": "[(\"a\", \"DISPATCHED\"), (\"b\", \"DISPATCHED\"), (\"c\", \"DISPATCHED\"), (\"d\", \"REMOVED\")]",
+      "name": "three_dispatched_one_removed",
+      "ok": true
+    },
+    {
+      "detail": "message D reached the conversation",
+      "name": "deleted_input_absent_from_the_conversation",
+      "ok": true
+    },
+    {
+      "detail": "[(\"user:goal\", \"Write an essay of about 1500 words on the history of the printing press, in plain prose with no headings and no lists. Do not call any tool.\"), (\"msg:01a1d168-5831-7923-97f9-56a3e650cbbf\", \"The history of the printing press is the history of how human thought became reproducible, durable, and widely accessible. Before the middle of the fifteenth century, the preservation of memory and knowledge depended almost entirely on the laborious craft of human hands. Every philosophical treatise, sacred scripture, legal code, and poetic verse had to be traced quill stroke by quill stroke onto sheets of dried animal skin or primitive paper. This manual transmission made every document unique, but it also made written language scarce, exceedingly expensive, and fragile. A single fire could annihilate the only surviving copy of an ancient masterpiece, and errors made by a fatigued scribe in one generation were faithfully transcribed, compounded, and codified by the next. In this manuscript culture, knowledge was largely enclosed within monasteries, royal courts, and ecclesiastical libraries, guarded by a tiny elite of literate scholars while the vast majority of humanity remained immersed in oral traditions.\\n\\nAlthough Western historiography long celebrated the printing press as an exclusively European invention, the fundamental concept of mechanical reproduction originated centuries earlier in East Asia. During the Tang dynasty in China, artisans began using woodblock printing, known as xylography, carving entire pages of text and intricate imagery into wooden relief blocks, inking them, and transferring the image onto sheets of mulberry paper. The world’s earliest dated printed complete book, a Chinese scroll of the Diamond Sutra produced in eight hundred and sixty-eight, bears witness to the astonishing maturity of this early technology. In the eleventh century, a Chinese alchemist and inventor named Bi Sheng advanced the concept further by crafting individual movable characters from baked clay, setting them into iron frames lined with pine resin and wax. Later Chinese craftsmen experimented with carved wooden movable type and cast bronze. Across the Yellow Sea in Goryeo Korea, state artisans advanced the technique even further in the early thirteenth century by casting movable metal type in sand molds. In thirteen seventy-seven, Korean printers produced the Jikji, an anthology of Zen Buddhist teachings that survives today as the oldest known book printed with movable metal type, predating European experiments by several decades. Despite these remarkable achievements, movable type did not immediately displace woodblock printing across East Asia, largely because the Chinese writing system encompassed tens of thousands of distinct ideographic characters, making the carving and sorting of individual glyphs less economical than carving whole page blocks.\\n\\nIn Europe, however, conditions in the fifteenth century created a unique convergence of technological need and linguistic simplicity. Western European scholarship utilized the Latin alphabet, an economical system consisting of fewer than thirty letters, which made the casting, arranging, and reuse of individual metal characters vastly more practical than in logographic writing systems. At the same time, the social landscape of late medieval Europe was shifting dramatically. The expansion of trade networks, the rise of independent merchant cities, and the founding of secular universities generated a ravenous appetite for books. The monastic scriptorium could no longer meet the demands of growing cohorts of lawyers, physicians, administrators, and university students. To satisfy this commercial hunger, urban workshops had developed the pecia system, in which an authorized master manuscript was divided into individual quires, or peciae, and rented out to students and commercial copyists who duplicated them piece by piece. Simultaneously, the manufacturing of rag paper, introduced to southern Europe through Islamic Iberia and Italy, provided an affordable, smooth, and flexible alternative to expensive calfskin vellum. The stage was set for a technical revolution.\\n\\nThe figure who successfully synthesized these disparate elements into a unified, practical, and industrial system was Johannes Gensfleisch zur Laden zum Gutenberg. Born into a patrician family in the German city of Mainz around the turn of the fifteenth century, Gutenberg was trained in the arts of metallurgy, goldsmithing, and gem cutting. His background gave him an intimate familiarity with the behavior of molten metals, the precision required for delicate casting, and the mechanical construction of presses. During an exile in Strasbourg in the late fourteen thirties, Gutenberg began conducting secretive experiments financed by business partners, ostensibly involving the manufacture of convex pilgrim mirrors and polished gemstones, but in reality laying the groundwork for an artificial writing machine.\\n\\nGutenberg’s genius lay not merely in conceiving the idea of movable type, but in developing an integrated mechanical and chemical system that made mass printing both commercially viable and aesthetically compelling. His first and most profound technical breakthrough was the adjustable hand mold. To create type, an artisan first cut a letter in high relief onto the end of a hard steel rod, creating a punch. This steel punch was then driven into a softer bar of copper to form a matrix, which bore a crisp, reversed indentation of the character. This matrix was inserted into a two-part adjustable steel mold held together with a spring clip. Molten metal was poured into the top, filling the mold instantly and producing a rectangular metal shank crowned with a perfectly uniform letterform. To ensure that the molten metal cooled quickly, filled every minute crevice of the matrix, and neither shrank nor distorted, Gutenberg developed a precise metallurgical alloy of lead, tin, and antimony. The lead provided an economical, low-melting-point base; the tin lowered the melting point further and reduced brittleness; and the antimony expanded slightly as it solidified, forcing the metal into the finest contours of the matrix and leaving a razor-sharp typeface.\\n\\nThe second critical innovation was the formulation of a suitable ink. Traditional water-based inks used by scribes were far too thin for metal type; when applied to lead surfaces, they pooled into unsightly droplets and smeared across the page. Gutenberg devised a thick, viscous ink based on walnut or linseed oil, enriched with soot, turpentine, and walnut oil varnish. This oily formulation clung evenly to the metal faces of the type and transferred cleanly to dampened rag paper without running or fading. Finally, Gutenberg adapted the mechanical design of the agricultural screw press, long used throughout the Rhine Valley for pressing grapes into wine and olives into oil. By mounting a heavy wooden screw within a sturdy upright timber frame and attaching a lever, a pressman could exert uniform, tremendous pressure across an entire sheet of paper, transferring ink from hundreds of individual pieces of assembled metal type in a single downward motion.\\n\\nHaving returned to Mainz, Gutenberg formed a financial partnership with a wealthy financier named Johann Fust and enlisted the artistic assistance of Peter Schöffer, an accomplished calligrapher trained in Paris. Between fourteen fifty and fourteen fifty-five, their workshop undertook its monumental masterpiece: the Forty-Two-Line Bible, now universally known as the Gutenberg Bible. Printed in two substantial folio volumes, the Latin Vulgate text was set in a majestic Gothic textura script that deliberately mirrored the finest liturgical manuscripts of the era. Gutenberg was not attempting to create a strange, machine-made novelty; he sought to produce a book that rivalled the beauty, rhythm, and dignity of hand-lettered manuscripts while achieving flawless typographic regularity. To replicate the subtle variations of scribal handiwork, his font case contained nearly three hundred distinct typographical sorts, including ligatures, abbreviations, and varied character widths. Approximately one hundred and eighty copies were produced on fine paper and calfskin vellum, with blank spaces left for rubricators and illuminators to add colorf\"), (\"user:in:a\", \"Message A: reply with just the word ALPHA.\"), (\"user:in:b\", \"Message B, edited: reply with just the word BRAVO-EDITED.\"), (\"user:in:c\", \"Message C: reply with just the word CHARLIE.\"), (\"turn:01a1d168-57eb-7860-991e-979031c11ca0\", \"\"), (\"msg:01a1d169-0c23-7493-9c43-df8220213c3c\", \"CHARLIE\"), (\"turn:01a1d169-0c11-7941-88e9-834ec4e0af08\", \"\"), (\"msg:01a1d169-13cb-7e62-adc8-fcd58b550c36\", \"ALPHA\"), (\"turn:01a1d169-13b7-7213-b655-9064b8c31db9\", \"\"), (\"msg:01a1d169-1ac4-7883-9459-84cae6ff9226\", \"BRAVO-EDITED\"), (\"turn:01a1d169-1ab3-7cf2-8aed-205a4f0d85db\", \"\"), (\"msg:01a1d169-26c5-7673-a876-c004a16e49f5\", \"The essay on the history of the printing press was completed above in plain prose with no headings or lists, and all subsequent follow-up requests have been answered, adhering strictly to the constraint not to call any tools. Please let me know if there is anything else required.\"), (\"turn:01a1d169-26b2-71a3-823b-34cbba2fe554\", \"\"), (\"msg:01a1d169-65ec-7ee0-9ca5-03995efdf35d\", \"All requested tasks and follow-ups have been completed in accordance with the specified instructions, without invoking any tools.\"), (\"turn:01a1d169-65db-7512-801b-f304a626c873\", \"\"), (\"msg:01a1d169-9b3e-7932-96a9-23c92f3d1a68\", \"The essay on the history of the printing press and all subsequent follow-up requests have been completed. In accordance with your instruction not to call any tools, no tools have been invoked. Please let me know if there is anything further you need.\"), (\"turn:01a1d169-9b2d-7920-9ef9-c17ff27e7a2b\", \"\"), (\"msg:01a1d169-d647-7ef2-887f-f7148bf4e66f\", \"The essay and subsequent follow-up requests have been provided in accordance with all instructions, including the constraint to not call any tools. Everything requested has been completed.\"), (\"turn:01a1d169-d636-76a0-9056-462496608191\", \"\"), (\"tail\", \"Waiting for your answer\")]",
+      "name": "edited_text_in_the_conversation",
+      "ok": true
+    }
+  ],
+  "cost_usd": 0.066576,
+  "counts": {
+    "assistant_messages": 8,
+    "first_delta_ms": 17304
+  },
+  "elapsed_s": 113.859976151,
+  "endpoint": "https://generativelanguage.googleapis.com/v1beta/openai",
+  "input_tokens": 73478,
+  "leg": "queue",
+  "live": true,
+  "model": "gemini-3.8-flash",
+  "model_calls": 8,
+  "notes": [],
+  "output_tokens": 3058,
+  "passed": true,
+  "row": "px050",
+  "run_id": "43296608624",
+  "started_at_ms": 1794514638674,
+  "stopped_by_cap": false
+}

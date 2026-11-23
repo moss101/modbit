@@ -1,0 +1,47 @@
+{
+  "checks": [
+    {
+      "detail": "TaskStatus { state: \"ReadyForReview\", wait_reason: \"\", run_state: \"Completed\", loop_alive: false, last_offset: 370, attention_reason: \"\", failure_class: \"\", failure_code: \"\", retryable: false, user_action: \"\", recovery_path: \"\", evidence_refs: [], diagnostic_features: [], user_explanation: \"\", posture: Some(TaskPostureView { task_id: Some(Id { value: [108, 189, 80, 80, 139, 123, 227, 81, 209, 27, 194, 54, 2, 184, 79, 251] }), mode: Agent, mode_offset: 0, mode_in_force: Agent, posture: Some(ModePostureView { effect_ceiling: \"NONE\", allowed_capabilities: [], subagents: true, reproduction_first: false, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"DIRECT\", reason_code: \"NO_ACTIVE_REGISTRY\", detail: \"no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\", floor_mode: \"\", registry_generation: \"\" }) }) }",
+      "name": "run_ended_despite_the_summarizer",
+      "ok": true
+    },
+    {
+      "detail": "no ContextEpochOpened",
+      "name": "the_run_compacted",
+      "ok": true
+    },
+    {
+      "detail": "\"EXTRACTIVE\" / \"SUMMARIZER_PROVIDER_REJECTED\"",
+      "name": "extractive_fallback_with_a_typed_reason",
+      "ok": true
+    },
+    {
+      "detail": "no CompactionCommitted",
+      "name": "extractive_epoch_installed",
+      "ok": true
+    },
+    {
+      "detail": "no task.complete on the log",
+      "name": "finished_with_task_complete",
+      "ok": true
+    }
+  ],
+  "cost_usd": 0.027543349999999998,
+  "counts": {
+    "fallback_reason": "SUMMARIZER_PROVIDER_REJECTED"
+  },
+  "elapsed_s": 59.072323254,
+  "endpoint": "https://api.z.ai/api/coding/paas/v4",
+  "input_tokens": 175739,
+  "leg": "fallback",
+  "live": true,
+  "model": "glm-5.3-flash",
+  "model_calls": 3,
+  "notes": [],
+  "output_tokens": 2365,
+  "passed": true,
+  "row": "px109",
+  "run_id": "39020727754",
+  "started_at_ms": 1792232067433,
+  "stopped_by_cap": false
+}
