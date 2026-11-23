@@ -197,13 +197,28 @@ pub struct FrameArtifact {
     pub source: String,
 }
 
-/// What a call produced.
+/// An accessibility tree read, ready for the media pipeline (PX-076): the
+/// rendered, redacted tree text as the stored artifact, so it carries
+/// provenance and follows the retention setting as a frame does.
 #[derive(Clone, Debug)]
+pub struct TreeArtifact {
+    /// The rendered tree, UTF-8 (the `tree` of the answer).
+    pub bytes: Vec<u8>,
+    /// The object digest the bytes are stored under (sha256 of the bytes).
+    pub object_digest: String,
+    /// What the tree is of (untrusted provenance text).
+    pub source: String,
+}
+
+/// What a call produced.
+#[derive(Clone, Debug, Default)]
 pub struct Answer {
     /// The structured answer.
     pub output: Value,
     /// A frame to put through the media pipeline.
     pub frame: Option<FrameArtifact>,
+    /// An accessibility tree to put through the media pipeline.
+    pub tree: Option<TreeArtifact>,
 }
 
 /// Why a call did not produce an answer.

@@ -78,6 +78,7 @@ impl ComputerPort for Port {
             self.answer.lock().unwrap().take().unwrap_or(Ok(Answer {
                 output: json!({"ok": true}),
                 frame: None,
+                tree: None,
             }))
         })
     }
@@ -285,6 +286,7 @@ async fn an_unknown_outcome_is_the_calls_status_and_a_frame_goes_through_the_med
             reused: false,
             source: "computer:a.b#Main@w1".into(),
         }),
+        tree: None,
     }));
     let out = rt
         .invoke(&c, ToolCallId::new(), "computer.screenshot", "{}")
@@ -311,6 +313,7 @@ async fn an_unknown_outcome_is_the_calls_status_and_a_frame_goes_through_the_med
             reused: false,
             source: "x".into(),
         }),
+        tree: None,
     }));
     let out = rt
         .invoke(&c, ToolCallId::new(), "computer.screenshot", "{}")

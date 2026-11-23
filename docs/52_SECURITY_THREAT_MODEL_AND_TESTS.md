@@ -79,6 +79,8 @@ As built (M9.6): the fuzzers and property tests are `proptest` suites over the r
 
 Telemetry defaults to metadata, not source/prompt contents. Cloud source/checkpoints are encrypted in transit/at rest. Retention/deletion APIs must delete content-addressed objects when no remaining authorized references exist, while preserving legally required aggregate audit metadata per policy.
 
+Captured screens (PX-076, docs/25 "As built (PX-076, captured screens)"): secure fields are masked inside the actuator and again by the Core before a frame is stored; a locked screen yields `SECURE_DESKTOP` and no frame; a frame or an accessibility tree is stored once, by digest, and every persisted copy of a tool output names it rather than holding its text, so the retention sweep removes the content and keeps only the event that named it; a `cloud_isolated` task cannot read a local capture back by digest (`LOCAL_ARTIFACT`); the control-session audit holds counts and kinds only. Tests: `qual_px_076_*` in `services/modbit-core/tests/px_computer.rs`.
+
 
 ## V2 threats
 

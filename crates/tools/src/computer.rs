@@ -178,6 +178,39 @@ impl Tool for ComputerTool {
                             Err(e) => return ToolOutcome::fail(e.code, e.message),
                         }
                     }
+                    if let Some(tree) = answer.tree {
+                        // PX-076: an accessibility tree is an artifact too - stored by
+                        // digest with provenance and the untrusted label. The answer
+                        // keeps the text for this call; the Core persists the
+                        // reference only (`tree_artifact`), so the text follows the
+                        // retention setting.
+                        let req = crate::media::ReadRequest {
+                            bytes: &tree.bytes,
+                            source: &tree.source,
+                            workspace_revision: None,
+                            task_id: Some(ctx.task_id),
+                            pages: None,
+                            region: None,
+                            budget: crate::media::default_budget(),
+                        };
+                        match crate::media::read(&req, ctx.sink.as_ref()) {
+                            Ok(mut m) => {
+                                if m.envelope.content_ref != tree.object_digest {
+                                    return ToolOutcome::infra(
+                                        "ARTIFACT_DIGEST_MISMATCH",
+                                        "the stored tree does not match the digest recorded for it",
+                                    );
+                                }
+                                // The envelope names the artifact; it never copies its text.
+                                m.envelope.text_derivative = None;
+                                out["tree_artifact"] = json!({
+                                    "digest": tree.object_digest,
+                                    "media": m.envelope,
+                                });
+                            }
+                            Err(e) => return ToolOutcome::fail(e.code, e.message),
+                        }
+                    }
                     ToolOutcome::ok(out)
                 }
                 Err(Failure::Refused(r)) => refusal_outcome(&r),
