@@ -3446,6 +3446,51 @@ async fn qual_px_059_the_categories_sum_to_the_provider_reported_total_and_the_w
     );
 }
 
+/// QUAL-PX-059 (live finding, run 45221342126): a provider whose tokenizer is
+/// coarser than the heuristic (Gemini counted 9760 where tokens-v2 said 12245,
+/// 2546 bp off a declared 2500). Once the provider has counted an earlier
+/// request, the accounting estimate is the calibrated one and lands well
+/// inside the declared bound; the provider's count stays the total.
+#[tokio::test]
+async fn qual_px_059_after_the_first_count_the_estimate_follows_the_providers_tokenizer() {
+    let (_repo, root) = plain_repo(&[("a.txt", "alpha\nbeta\ngamma\n")]);
+    // A tokenizer of about 6.5 bytes a token over what the request carries.
+    let (base, seen) = model(Arc::new(|body: &Value, n| {
+        let bytes = body["messages"].to_string().len() + body["tools"].to_string().len();
+        let mut step = if n < 4 {
+            Step::call("fs.read", json!({"path": "a.txt"}))
+        } else {
+            Step::text("that is all")
+        };
+        step.usage = Some(((bytes as u64 * 10) / 65, 40));
+        step
+    }))
+    .await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = spawn(dir.path(), &env_of(&base, &[]));
+    let mut c = core.client().await;
+    let (session, g) = session_with_lease(&mut c, 0x10).await;
+    let t = create_task(&mut c, &session, g, &root, 0x11, "local_trusted", "look").await;
+    start(&mut c, &t, g, "gpt-5-mini", 5).await;
+    wait_task(&mut c, &t, 90).await;
+    assert!(seen.lock().unwrap().len() >= 5, "a multi-turn run");
+    let v = accounting(&mut c, &t).await;
+    assert_eq!(v.total_source, "PROVIDER_REPORTED");
+    assert_eq!(v.total_tokens, v.provider_reported_input);
+    assert_eq!(
+        v.categories.iter().map(|x| x.tokens).sum::<u64>(),
+        v.total_tokens
+    );
+    assert!(
+        v.estimator_error_bp < 1_000,
+        "the calibrated estimate is {} bp off the provider's count ({} vs {})",
+        v.estimator_error_bp,
+        v.estimated_total,
+        v.provider_reported_input
+    );
+    assert!(v.estimator_error_bp < v.declared_error_bp);
+}
+
 /// A provider that reports no count leaves the estimator's: the total says it
 /// is an estimate, and the categories still sum to it.
 #[tokio::test]

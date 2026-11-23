@@ -1,0 +1,171 @@
+
+running 28 tests
+modbit-core: recovery complete: boot_generation=modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0modbit-core: recovery complete: boot_generation=modbit-core: recovery complete: boot_generation= projections_rebuilt=modbit-core: recovery complete: boot_generation=falsemodbit-core: recovery complete: boot_generation=modbit-core: recovery complete: boot_generation=111 sessions=0 tasks=1 events_verified=00 aggregates=modbit-core: recovery complete: boot_generation=1 events_verified= events_verified=0 projections_rebuilt= events_verified=01 aggregates= events_verified=0 projections_rebuilt=falsemodbit-core: recovery complete: boot_generation= in false sessions=1 sessions=modbit-core: recovery complete: boot_generation=210 events_verified=100 aggregates= events_verified=modbit-core: recovery complete: boot_generation= events_verified=010ms0 aggregates=00
+ events_verified= projections_rebuilt= aggregates= tasks=0 in 1msmodbit-core: recovery complete: boot_generation=0 projections_rebuilt=modbit-core: recovery complete: boot_generation=0false0 tasks=0 in 0 aggregates= sessions= events_verified= aggregates=1
+ events_verified=modbit-core: recovery complete: boot_generation=1falsemodbit-core: recovery complete: boot_generation=0modbit-core: recovery complete: boot_generation= sessions= events_verified=1 projections_rebuilt=1ms0
+1 projections_rebuilt=0 aggregates=0 events_verified= aggregates=false000modbit-core: recovery complete: boot_generation=0false events_verified=1 events_verified= sessions=0 sessions=01 tasks= aggregates= aggregates= aggregates=0 aggregates=00 events_verified= projections_rebuilt= projections_rebuilt=modbit-core: recovery complete: boot_generation= aggregates=0 projections_rebuilt= tasks=false000 projections_rebuilt= projections_rebuilt=0001falsefalse in  sessions= events_verified= projections_rebuilt= tasks= aggregates=false tasks=false0 sessions=0000 projections_rebuilt= projections_rebuilt=0false sessions=20 tasks=0 in  projections_rebuilt= sessions= in  tasks=0ms aggregates= sessions=false tasks=0false in  in 00 sessions=02 tasks=001falsems in 00msms sessions=
+ in 
+ sessions= projections_rebuilt=
+101 tasks= tasks=false0
+ aggregates=00ms tasks=
+ms in 
+ sessions=0ms
+0 tasks=0 in ms
+00 in 0ms
+0 in 0ms
+ projections_rebuilt= tasks=0ms
+ sessions=0 tasks=0 in 0ms
+0 in 1ms
+0 in 1ms
+false sessions=0 tasks=0 in 1ms
+modbit-core: recovery complete: boot_generation=2 events_verified=35 aggregates=8 projections_rebuilt=false sessions=1 tasks=1 in 6ms
+modbit-core: suspended 1 running task(s) after restart
+modbit-core: closed 1 open assistant stream(s) as aborted by recovery
+modbit-core: reattached to the terminal broker a previous Core left alive
+.modbit-core: recovery complete: boot_generation=3 events_verified=78 aggregates=16 projections_rebuilt=false sessions=1 tasks=1 in 10ms
+modbit-core: suspended 1 running task(s) after restart
+modbit-core: closed 1 open assistant stream(s) as aborted by recovery
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 9ms
+.......modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+.modbit-core: recovery complete: boot_generation=modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+.modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 4ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 5ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 5ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 33ms
+..modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 7ms
+...modbit-core: recovery complete: boot_generation=2 events_verified=88 aggregates=23 projections_rebuilt=false sessions=2 tasks=3 in 14ms
+modbit-core: suspended 3 running task(s) after restart
+modbit-core: closed 3 open assistant stream(s) as aborted by recovery
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: recovery complete: boot_generation=2 events_verified=374 aggregates=65 projections_rebuilt=false sessions=1 tasks=7 in 20ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: recovery complete: boot_generation=2 events_verified=117 aggregates=26 projections_rebuilt=false sessions=1 tasks=1 in 10ms
+modbit-core: suspended 1 running task(s) after restart
+modbit-core: closed 1 open assistant stream(s) as aborted by recovery
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: recovery complete: boot_generation=2 events_verified=95 aggregates=21 projections_rebuilt=false sessions=1 tasks=1 in 17ms
+modbit-core: suspended 1 running task(s) after restart
+modbit-core: reattached to the terminal broker a previous Core left alive
+..modbit-core: recovery complete: boot_generation=2 events_verified=111 aggregates=22 projections_rebuilt=false sessions=1 tasks=1 in 9ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+..modbit-core: recovery complete: boot_generation=2 events_verified=533 aggregates=91 projections_rebuilt=false sessions=1 tasks=10 in 27ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+.........
+test result: ok. 28 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 21.17s
+
+
+running 6 tests
+......
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 10 tests
+..........
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 10 tests
+..........
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 20 tests
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 3ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 2ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1msmodbit-core: recovery complete: boot_generation=
+1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=falsemodbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+ sessions=0 tasks=0 in 1ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=modbit-core: recovery complete: boot_generation=false sessions=0 tasks=0 in 1ms
+1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0modbit-core: recovery complete: boot_generation= in 1ms
+1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+0 in 0ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=modbit-core: recovery complete: boot_generation=0 in 0ms
+1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+.modbit-core: recovery complete: boot_generation=2 events_verified=57 aggregates=12 projections_rebuilt=false sessions=1 tasks=1 in 5ms
+..modbit-core: suspended 1 running task(s) after restart
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 22ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 7ms
+.modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 9ms
+modbit-core: recovery complete: boot_generation=2 events_verified=119 aggregates=23 projections_rebuilt=false sessions=1 tasks=1 in 10ms
+modbit-core: suspended 1 running task(s) after restart
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: compaction 01a209ce-9196-72c1-bfc9-6baa9acde023 (epoch 1) refused: RUN_ENDED: the run that requested it ended before its result was installed
+....modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 10ms
+modbit-core: compaction summarizer openai/gpt-5-mini for task d62be516-185c-1dfb-12ac-59550d0305f9: SUMMARIZER_TIMEOUT: no completion within 1500 ms; the extractive epoch stands
+.modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 18ms
+.modbit-core: compaction summarizer openai/gpt-5-mini for task d62be516-185c-1dfb-12ac-59550d0305f9: SUMMARIZER_TIMEOUT: no completion within 1500 ms; the extractive epoch stands
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 6ms
+.....modbit-core: compaction summarizer openai/gpt-5-mini for task d62be516-185c-1dfb-12ac-59550d0305f9: SUMMARIZER_TIMEOUT: no completion within 1500 ms; the extractive epoch stands
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 5ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+.modbit-core: compaction summarizer openai/gpt-5-mini for task d62be516-185c-1dfb-12ac-59550d0305f9: SUMMARIZER_TIMEOUT: no completion within 1500 ms; the extractive epoch stands
+.modbit-core: compaction summarizer openai/gpt-5-mini for task d62be516-185c-1dfb-12ac-59550d0305f9: SUMMARIZER_TIMEOUT: no completion within 1500 ms; the extractive epoch stands
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+.modbit-core: compaction summarizer openai/gpt-5-mini for task d62be516-185c-1dfb-12ac-59550d0305f9: SUMMARIZER_TIMEOUT: no completion within 1500 ms; the extractive epoch stands
+modbit-core: compaction 01a209ce-baf0-7ba0-85f8-3f9c896a61cf (epoch 1) refused: NOT_SUCCESSOR: NotSuccessor { installed: 1, offered: 1 }
+modbit-core: compaction 01a209ce-bd7d-7821-ba4b-ecc3ea845d66 (epoch 2) refused: NOT_SUCCESSOR: NotSuccessor { installed: 2, offered: 2 }
+modbit-core: compaction 01a209ce-c01a-79f3-b6ff-05a37100b8d8 (epoch 3) refused: NOT_SUCCESSOR: NotSuccessor { installed: 3, offered: 3 }
+modbit-core: compaction summarizer openai/gpt-5-mini for task d62be516-185c-1dfb-12ac-59550d0305f9: SUMMARIZER_TIMEOUT: no completion within 1500 ms; the extractive epoch stands
+modbit-core: compaction 01a209ce-c2b1-7c02-a794-0a18ab972a16 (epoch 4) refused: NOT_SUCCESSOR: NotSuccessor { installed: 4, offered: 4 }
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: compaction 01a209ce-c540-7de1-84dc-3f2ef036c173 (epoch 5) refused: RUN_ENDED: the run ended before the worker returned
+.modbit-core: compaction summarizer openai/gpt-5-mini for task 6af20574-744b-0a92-1bb2-f3057841e6ba: SUMMARIZER_RATE_LIMITED: HTTP 429: {"error":{"message":"scripted refusal","type":"server_error"}} (after 3 retries); the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task 6af20574-744b-0a92-1bb2-f3057841e6ba: SUMMARIZER_RATE_LIMITED: HTTP 429: {"error":{"message":"scripted refusal","type":"server_error"}} (after 3 retries); the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task 6af20574-744b-0a92-1bb2-f3057841e6ba: SUMMARIZER_RATE_LIMITED: HTTP 429: {"error":{"message":"scripted refusal","type":"server_error"}} (after 3 retries); the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task 6af20574-744b-0a92-1bb2-f3057841e6ba: SUMMARIZER_RATE_LIMITED: HTTP 429: {"error":{"message":"scripted refusal","type":"server_error"}} (after 3 retries); the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task 6af20574-744b-0a92-1bb2-f3057841e6ba: SUMMARIZER_RATE_LIMITED: HTTP 429: {"error":{"message":"scripted refusal","type":"server_error"}} (after 3 retries); the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task 6af20574-744b-0a92-1bb2-f3057841e6ba: SUMMARIZER_RATE_LIMITED: HTTP 429: {"error":{"message":"scripted refusal","type":"server_error"}} (after 3 retries); the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task 6af20574-744b-0a92-1bb2-f3057841e6ba: SUMMARIZER_RATE_LIMITED: HTTP 429: {"error":{"message":"scripted refusal","type":"server_error"}} (after 3 retries); the extractive epoch stands
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: compaction summarizer openai/gpt-5-mini for task ad276cf3-43f7-de16-c2e1-07272d6a700c: SUMMARY_MALFORMED: SUMMARY_MALFORMED: no JSON object in the answer; the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task ad276cf3-43f7-de16-c2e1-07272d6a700c: SUMMARY_MALFORMED: SUMMARY_MALFORMED: no JSON object in the answer; the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task ad276cf3-43f7-de16-c2e1-07272d6a700c: SUMMARY_MALFORMED: SUMMARY_MALFORMED: no JSON object in the answer; the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task ad276cf3-43f7-de16-c2e1-07272d6a700c: SUMMARY_MALFORMED: SUMMARY_MALFORMED: no JSON object in the answer; the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task ad276cf3-43f7-de16-c2e1-07272d6a700c: SUMMARY_MALFORMED: SUMMARY_MALFORMED: no JSON object in the answer; the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task ad276cf3-43f7-de16-c2e1-07272d6a700c: SUMMARY_MALFORMED: SUMMARY_MALFORMED: no JSON object in the answer; the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task ad276cf3-43f7-de16-c2e1-07272d6a700c: SUMMARY_MALFORMED: SUMMARY_MALFORMED: no JSON object in the answer; the extractive epoch stands
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: compaction summarizer openai/gpt-5-mini for task 8c678c6e-e894-43e4-a13f-782ed95caff6: SUMMARY_DROPPED_USER_MESSAGE: SUMMARY_DROPPED_USER_MESSAGE: user message 0 of the range is not in the summary; the extractive epoch stands
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: compaction summarizer openai/gpt-5-mini for task 1c3ec70a-4ab5-7550-eed0-137ff0b9aea0: SUMMARY_FABRICATED_CITATION: SUMMARY_FABRICATED_CITATION: entry:999; the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task 1c3ec70a-4ab5-7550-eed0-137ff0b9aea0: SUMMARY_FABRICATED_CITATION: SUMMARY_FABRICATED_CITATION: entry:999; the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task 1c3ec70a-4ab5-7550-eed0-137ff0b9aea0: SUMMARY_FABRICATED_CITATION: SUMMARY_FABRICATED_CITATION: entry:999; the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task 1c3ec70a-4ab5-7550-eed0-137ff0b9aea0: SUMMARY_FABRICATED_CITATION: SUMMARY_FABRICATED_CITATION: entry:999; the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task 1c3ec70a-4ab5-7550-eed0-137ff0b9aea0: SUMMARY_FABRICATED_CITATION: SUMMARY_FABRICATED_CITATION: entry:999; the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task 1c3ec70a-4ab5-7550-eed0-137ff0b9aea0: SUMMARY_FABRICATED_CITATION: SUMMARY_FABRICATED_CITATION: entry:999; the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task 1c3ec70a-4ab5-7550-eed0-137ff0b9aea0: SUMMARY_FABRICATED_CITATION: SUMMARY_FABRICATED_CITATION: entry:999; the extractive epoch stands
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: compaction summarizer openai/gpt-5-mini for task 0850b637-378f-638d-0e9b-8e94ca62441e: SUMMARY_FABRICATED_FILE: SUMMARY_FABRICATED_FILE: src/never_existed.rs; the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task 0850b637-378f-638d-0e9b-8e94ca62441e: SUMMARY_FABRICATED_FILE: SUMMARY_FABRICATED_FILE: src/never_existed.rs; the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task 0850b637-378f-638d-0e9b-8e94ca62441e: SUMMARY_FABRICATED_FILE: SUMMARY_FABRICATED_FILE: src/never_existed.rs; the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task 0850b637-378f-638d-0e9b-8e94ca62441e: SUMMARY_FABRICATED_FILE: SUMMARY_FABRICATED_FILE: src/never_existed.rs; the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task 0850b637-378f-638d-0e9b-8e94ca62441e: SUMMARY_FABRICATED_FILE: SUMMARY_FABRICATED_FILE: src/never_existed.rs; the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task 0850b637-378f-638d-0e9b-8e94ca62441e: SUMMARY_FABRICATED_FILE: SUMMARY_FABRICATED_FILE: src/never_existed.rs; the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task 0850b637-378f-638d-0e9b-8e94ca62441e: SUMMARY_FABRICATED_FILE: SUMMARY_FABRICATED_FILE: src/never_existed.rs; the extractive epoch stands
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: compaction summarizer openai/gpt-5-mini for task 7dfab9d4-1c83-9c0b-e809-938dc37f6018: SUMMARY_OVER_BUDGET: SUMMARY_OVER_BUDGET: 20166 tokens against a budget of 750; the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task 7dfab9d4-1c83-9c0b-e809-938dc37f6018: SUMMARY_OVER_BUDGET: SUMMARY_OVER_BUDGET: 20166 tokens against a budget of 750; the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task 7dfab9d4-1c83-9c0b-e809-938dc37f6018: SUMMARY_OVER_BUDGET: SUMMARY_OVER_BUDGET: 20166 tokens against a budget of 750; the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task 7dfab9d4-1c83-9c0b-e809-938dc37f6018: SUMMARY_OVER_BUDGET: SUMMARY_OVER_BUDGET: 20166 tokens against a budget of 750; the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task 7dfab9d4-1c83-9c0b-e809-938dc37f6018: SUMMARY_OVER_BUDGET: SUMMARY_OVER_BUDGET: 20166 tokens against a budget of 750; the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task 7dfab9d4-1c83-9c0b-e809-938dc37f6018: SUMMARY_OVER_BUDGET: SUMMARY_OVER_BUDGET: 20166 tokens against a budget of 750; the extractive epoch stands
+modbit-core: compaction summarizer openai/gpt-5-mini for task 7dfab9d4-1c83-9c0b-e809-938dc37f6018: SUMMARY_OVER_BUDGET: SUMMARY_OVER_BUDGET: 20166 tokens against a budget of 750; the extractive epoch stands
+.
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 43.70s
+
