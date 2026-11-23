@@ -1,0 +1,15 @@
+PX-076 mutation checks, 2026-11-23 (macOS 27.0.1 arm64), each source restored and rebuilt after.
+
+M1  services/modbit-core/src/computer.rs persisted_output always returns the output unchanged
+    (the tree text is persisted in the result object and the transcript entry).
+    qual_px_076_an_accessibility_tree_is_an_artifact_that_follows_retention_and_no_persisted_copy_keeps_its_text
+    -> FAILED at the "text gone after the sweep" assertion (the transcript still showed the label).   CAUGHT
+
+M2  services/modbit-core/src/runtime.rs hydrate_trees call removed from the request build
+    (the model is shown only the reference).
+    qual_px_076_* -> 3 FAILED (secure_fields..., the_audit..., an_accessibility_tree...: the scripted
+    model found no element in the tree it was shown).                                                  CAUGHT
+
+M3  StoreArtifacts without the cloud_isolated check is covered by the unit test
+    tools::px_076_tests::a_cloud_isolated_task_never_reads_a_local_capture_back, which asserts the
+    LOCAL_ARTIFACT refusal directly (a removed check returns the bytes and fails the unwrap_err).

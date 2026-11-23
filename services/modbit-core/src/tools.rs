@@ -345,7 +345,10 @@ fn spawn_or_reattach(data_dir: &Path, replay_generation: u64) -> Result<Execd> {
 }
 
 /// The event store's object directory as the artifact source (`artifact.range`).
-struct StoreArtifacts(ObjectStore);
+/// For a `cloud_isolated` task it also holds the computer host: a frame or an
+/// accessibility tree captured on this machine never reaches such a task,
+/// whatever digest it names (PX-076).
+struct StoreArtifacts(ObjectStore, Option<Arc<crate::computer::ComputerHost>>);
 
 impl modbit_tools::ArtifactSource for StoreArtifacts {
     fn range(
@@ -354,6 +357,14 @@ impl modbit_tools::ArtifactSource for StoreArtifacts {
         offset: u64,
         max_bytes: usize,
     ) -> std::result::Result<(Vec<u8>, u64), (String, String)> {
+        if let Some(computer) = &self.1
+            && computer.is_local_artifact(hash)
+        {
+            return Err((
+                "LOCAL_ARTIFACT".to_owned(),
+                "this is a frame or accessibility tree captured on this machine; a cloud_isolated task never receives one".to_owned(),
+            ));
+        }
         // A digest mismatch is corrupt state, not a missing artifact
         // (REQ-EV-0073): the two are told apart, never blurred.
         let bytes = self.0.get(hash).map_err(|e| {
@@ -1002,9 +1013,12 @@ impl ToolHost {
             None => (None, None),
         };
         let sink: Arc<dyn ObjectSink> = Arc::new(StoreSink(store.lock().await.objects().clone()));
-        let artifacts: Option<Arc<dyn modbit_tools::ArtifactSource>> = Some(Arc::new(
-            StoreArtifacts(store.lock().await.objects().clone()),
-        ));
+        let artifacts: Option<Arc<dyn modbit_tools::ArtifactSource>> =
+            Some(Arc::new(StoreArtifacts(
+                store.lock().await.objects().clone(),
+                (execution_profile == modbit_policy::kernel::PROFILE_CLOUD_ISOLATED)
+                    .then(|| Arc::clone(&self.computer)),
+            )));
         let lease_id = lease.as_ref().map(|l| l.lease_id);
         // M9.4 (REQ-EV-0128): what the task's lease grants decides which
         // external servers it may reach at all — a server is not a way
@@ -2079,7 +2093,15 @@ impl ToolHost {
                 }
             }
         }
-        let result_json = serde_json::to_vec(&result)?;
+        // PX-076: a tree read is persisted as a reference to its artifact.
+        let result_json = match crate::computer::persisted_output(&result.structured_output) {
+            std::borrow::Cow::Borrowed(_) => serde_json::to_vec(&result)?,
+            std::borrow::Cow::Owned(o) => {
+                let mut r = result.clone();
+                r.structured_output = o;
+                serde_json::to_vec(&r)?
+            }
+        };
         let result_ref = store.lock().await.objects().put(&result_json)?;
         if let Some(mut r) = receipt.take() {
             r.evidence_ref = Some(result_ref.clone());
@@ -4671,5 +4693,33 @@ mod store_wait_tests {
         let started = Instant::now();
         assert!(lock_bounded(&store, Duration::from_secs(10)).is_none());
         assert!(started.elapsed() < Duration::from_millis(150));
+    }
+}
+
+#[cfg(test)]
+mod px_076_tests {
+    use super::*;
+    use modbit_tools::ArtifactSource;
+
+    /// QUAL-PX-076: a frame or tree captured on this machine is refused to a
+    /// `cloud_isolated` task by digest; a local task reads it, and a cloud task
+    /// still reads its own results.
+    #[test]
+    fn a_cloud_isolated_task_never_reads_a_local_capture_back() {
+        let dir = tempfile::tempdir().unwrap();
+        let objects = ObjectStore::open(dir.path().join("objects")).unwrap();
+        let frame = objects.put(b"captured pixels").unwrap();
+        let own = objects.put(b"a result of the cloud task").unwrap();
+        let host = Arc::new(crate::computer::ComputerHost::new(dir.path()));
+        host.note_artifact(&frame, 0);
+        let cloud = StoreArtifacts(objects.clone(), Some(Arc::clone(&host)));
+        let (code, why) = cloud.range(&frame, 0, 100).unwrap_err();
+        assert_eq!(code, "LOCAL_ARTIFACT", "{why}");
+        assert_eq!(
+            cloud.range(&own, 0, 100).unwrap().0,
+            b"a result of the cloud task"
+        );
+        let local = StoreArtifacts(objects, None);
+        assert_eq!(local.range(&frame, 0, 100).unwrap().0, b"captured pixels");
     }
 }

@@ -2074,10 +2074,19 @@ async fn qual_px_069_the_faults_an_actuator_can_raise_are_typed_with_their_escal
     .await;
     expect_refusal(&o, 3, "SECURE_DESKTOP", "ask_user");
     expect_refusal(&o, 4, "SECURE_DESKTOP", "ask_user");
+    // The one observation is the tree read before the lock (an artifact since PX-076); the
+    // locked screen added none, frame or tree.
+    let observed: Vec<Value> = of(&rig.events().await, "ComputerObserved")
+        .into_iter()
+        .map(|e| e["payload"]["payload"].clone())
+        .collect();
+    assert_eq!(observed.len(), 1, "{observed:?}");
+    assert_eq!(observed[0]["kind"], "state");
     assert!(
-        of(&rig.events().await, "ComputerObserved")
+        observed
             .iter()
-            .all(|e| e["payload"]["payload"]["artifact_ref"] == "")
+            .all(|p| p["kind"] != "screenshot" || p["artifact_ref"] == ""),
+        "{observed:?}"
     );
 
     // HUMAN_ACTIVE: a physical key parks the controller; observing after the cooldown takes it back.
@@ -2642,8 +2651,127 @@ async fn qual_px_076_the_audit_of_a_session_holds_counts_and_no_content_and_fram
         }
         tokio::time::sleep(Duration::from_millis(250)).await;
     }
-    assert_eq!(expired.len(), 1, "{expired:?}");
-    assert_eq!(expired[0]["payload"]["payload"]["artifact_ref"], digest);
+    // The frame and the tree the state read stored (PX-076) both expire.
+    let deadline = std::time::Instant::now() + Duration::from_secs(WAIT_SECS);
+    while expired.len() < 2 && std::time::Instant::now() < deadline {
+        expired = of(&rig.events().await, "ComputerArtifactExpired")
+            .into_iter()
+            .cloned()
+            .collect();
+        tokio::time::sleep(Duration::from_millis(250)).await;
+    }
+    assert_eq!(expired.len(), 2, "{expired:?}");
+    assert!(
+        expired
+            .iter()
+            .any(|e| e["payload"]["payload"]["artifact_ref"] == digest.as_str()),
+        "{expired:?}"
+    );
+}
+
+/// QUAL-PX-076: an accessibility tree is an artifact of the Media Pipeline as a frame is - stored
+/// by digest with provenance and the untrusted label, named by its `ComputerObserved` event, and
+/// removed by the retention sweep. No persisted copy keeps its text: the result object and the
+/// transcript name the artifact, and the text comes back only into a model request while the
+/// artifact exists; once it is gone the request says so. (That a `cloud_isolated` task cannot
+/// read one back by digest is `tools::px_076_tests`.)
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_076_an_accessibility_tree_is_an_artifact_that_follows_retention_and_no_persisted_copy_keeps_its_text()
+ {
+    // The label is the fixture form's own visible text; it is what a tree read shows.
+    const LABEL: &str = "Simulate the person";
+    let steps = vec![
+        start(FORM),
+        fx(call("computer.state", json!({}))),
+        // Hold the run here until the sweep has removed the tree (retention 2 s; it sweeps every 2 s).
+        st(|_| {
+            std::thread::sleep(Duration::from_secs(7));
+            call("computer.release", json!({}))
+        }),
+    ];
+    let opts = Opts {
+        env: vec![("MODBIT_COMPUTER_RETENTION_SECS", "2".into())],
+        ..Opts::default()
+    };
+    let mut rig = run(opts, steps, approve_all()).await;
+    rig.finish().await;
+    let bodies = rig.seen.lock().unwrap().clone();
+    // The request right after the read shows the tree's text.
+    let after_read = bodies
+        .iter()
+        .map(st_of)
+        .find(|s| s.texts.len() == 3)
+        .expect("a request after the state read");
+    let read = &after_read.outs[2];
+    assert!(read["tree"].as_str().unwrap().contains(LABEL), "{read}");
+    let digest = read["tree_artifact"]["digest"].as_str().unwrap().to_owned();
+    let media = &read["tree_artifact"]["media"];
+    assert_eq!(media["content_ref"], digest.as_str());
+    assert_eq!(media["trust"], "UNTRUSTED_WORKSPACE_CONTENT", "{media}");
+    assert!(
+        media["provenance"]["source"]
+            .as_str()
+            .unwrap()
+            .starts_with(&format!("computer:{FORM}#")),
+        "{media}"
+    );
+    assert!(
+        media["text_derivative"].is_null(),
+        "the envelope copies no text: {media}"
+    );
+    // The event names the artifact.
+    let evs = rig.events().await;
+    let observed: Vec<_> = of(&evs, "ComputerObserved")
+        .into_iter()
+        .filter(|e| e["payload"]["payload"]["kind"] == "state")
+        .collect();
+    assert_eq!(observed.len(), 1);
+    let o = &observed[0]["payload"]["payload"];
+    assert_eq!(o["artifact_ref"], digest.as_str());
+    assert_eq!(
+        (o["codec"].as_str(), o["content"].as_str()),
+        (Some("text"), Some("tree"))
+    );
+    // The sweep removed it and said so.
+    assert!(
+        !object_path(&rig, &digest).exists(),
+        "the tree outlived its retention"
+    );
+    assert!(
+        of(&evs, "ComputerArtifactExpired")
+            .iter()
+            .any(|e| e["payload"]["payload"]["artifact_ref"] == digest.as_str()),
+        "no expiry recorded for the tree"
+    );
+    // The request after the sweep: the same result, the text gone and the removal said.
+    let last = st_of(bodies.last().unwrap());
+    let later = &last.outs[2];
+    assert_eq!(later["tree_artifact"]["digest"], digest.as_str());
+    let shown = later["tree"].as_str().unwrap();
+    assert!(!shown.contains(LABEL), "{shown}");
+    assert!(
+        shown.contains("removed under the retention setting"),
+        "{shown}"
+    );
+    // No persisted copy of the output keeps the text: nothing in the object store holds it.
+    let objects = rig.dir.path().join("core").join("objects");
+    let mut holders = vec![];
+    for shard in std::fs::read_dir(&objects).unwrap().flatten() {
+        for f in std::fs::read_dir(shard.path())
+            .into_iter()
+            .flatten()
+            .flatten()
+        {
+            if String::from_utf8_lossy(&std::fs::read(f.path()).unwrap_or_default()).contains(LABEL)
+            {
+                holders.push(f.path());
+            }
+        }
+    }
+    assert!(
+        holders.is_empty(),
+        "the tree's text persists in {holders:?}"
+    );
 }
 
 /// A restart with a session open and an input in flight.
@@ -3804,6 +3932,38 @@ async fn qual_px_071_the_real_core_drives_a_real_application_through_the_real_he
     assert!(!all.contains("hunter2"), "the secret is in an event");
     assert_eq!(objects_containing(&rig, "hunter2"), 0);
     assert_eq!(of(&evs, "ComputerSessionClosed").len(), 1);
+    // PX-076 on the real helper: the tree read is an artifact - stored once by digest, named by
+    // its event, untrusted, provenance the application's - and only that artifact holds its text.
+    let digest = outs[5].1["tree_artifact"]["digest"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let media = &outs[5].1["tree_artifact"]["media"];
+    assert_eq!(media["trust"], "UNTRUSTED_WORKSPACE_CONTENT", "{media}");
+    assert!(
+        media["provenance"]["source"]
+            .as_str()
+            .unwrap()
+            .starts_with(&format!("computer:{}#", fixture_app::BUNDLE_ID)),
+        "{media}"
+    );
+    assert!(
+        of(&evs, "ComputerObserved")
+            .iter()
+            .any(|e| e["payload"]["payload"]["kind"] == "state"
+                && e["payload"]["payload"]["artifact_ref"] == digest.as_str()),
+        "no event names the tree"
+    );
+    assert_eq!(
+        std::fs::read_to_string(object_path(&rig, &digest)).unwrap(),
+        last,
+        "the stored artifact is the tree the model was shown"
+    );
+    assert_eq!(
+        objects_containing(&rig, last),
+        1,
+        "only the artifact holds the tree's text"
+    );
 }
 
 // ---------------------------------------------------------------- QUAL-PX-069 on the real helper

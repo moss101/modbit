@@ -841,7 +841,11 @@ impl ComputerRuntime {
             out["screenshot"] = ans.output;
             frame = ans.frame;
         }
-        Ok(Answer { output: out, frame })
+        Ok(Answer {
+            output: out,
+            frame,
+            tree: None,
+        })
     }
 }
 

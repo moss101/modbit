@@ -37255,8 +37255,16 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-076",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "E2E_PROVEN",
+   "evidence": [
+    "artifact:evidence/m10/PX-076/TASK_CARD.md",
+    "commit:ebe17426",
+    "artifact:evidence/m10/PX-076/tests.log",
+    "artifact:evidence/m10/PX-076/real-helper-ax-tests.log",
+    "artifact:evidence/m10/PX-076/evidence.json",
+    "artifact:evidence/m10/PX-076/mutation-checks-2026-11-23.txt"
+   ],
+   "status_changed_on": "2026-11-23T17:14:50Z"
   },
   {
    "id": "PX-082",

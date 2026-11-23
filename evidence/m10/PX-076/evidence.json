@@ -1,0 +1,44 @@
+{
+  "task": "PX-076",
+  "requirements": [
+    "REQ-PX-076",
+    "QUAL-PX-076",
+    "REQ-EV-0090",
+    "REQ-EV-0086",
+    "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-076"
+  ],
+  "scenarios": [
+    "QUAL-PX-076 / PX-E2E-076"
+  ],
+  "decision_record": "DR-PX-2026-10-03-008",
+  "tier": "release-critical",
+  "branch": "px-076-tree-artifacts",
+  "base": "c5294eb0",
+  "audit": {
+    "classification": "IMPLEMENTED-PARTIAL: frames, masking, codec, canvas, SECURE_DESKTOP, audit and receipts PRODUCTION-WORKING since PX-069/PX-071",
+    "first_missing_link": "computer.state returned the accessibility tree inline with an empty artifact_ref; its text persisted in the result object and transcript beyond retention; artifact.range served local captures to any task"
+  },
+  "tests": [
+    "services/modbit-core/tests/px_computer.rs::qual_px_076_an_accessibility_tree_is_an_artifact_that_follows_retention_and_no_persisted_copy_keeps_its_text",
+    "services/modbit-core/tests/px_computer.rs::qual_px_076_secure_fields_are_masked_at_the_pixel_level_and_a_planted_secret_reaches_nothing",
+    "services/modbit-core/tests/px_computer.rs::qual_px_076_the_core_masks_when_the_actuator_did_not",
+    "services/modbit-core/tests/px_computer.rs::qual_px_076_a_photographic_window_is_lossy_at_the_same_pixel_size",
+    "services/modbit-core/tests/px_computer.rs::qual_px_076_the_audit_of_a_session_holds_counts_and_no_content_and_frames_follow_retention",
+    "services/modbit-core/tests/px_computer.rs::qual_px_071_the_real_core_drives_a_real_application_through_the_real_helper (real macOS helper)",
+    "services/modbit-core/src/computer.rs::px_076_tree_tests",
+    "services/modbit-core/src/tools.rs::px_076_tests::a_cloud_isolated_task_never_reads_a_local_capture_back"
+  ],
+  "logs": [
+    "tests.log",
+    "real-helper-ax-tests.log",
+    "clippy.log"
+  ],
+  "mutation_check": "mutation-checks-2026-11-23.txt (2 mutations caught; the cloud refusal asserted directly)",
+  "environment": "macOS 27.0.1 arm64, rustc 1.97.1; real modbit-core, fixture actuator and the real macOS helper (PX-071) driving real AppKit fixture applications; scripted model",
+  "limitations": [
+    "Retention is the Core's one setting every task inherits; no per-task retention policy exists.",
+    "A computer-use child's per-step changed tree lines and its stop report's 800-character tree head are not swept.",
+    "Locked screen and APP-scope pixel exclusion proven on the fixture actuator and the helper's code path, not by a real-helper test.",
+    "Compaction and reviewer requests see a tree's reference, not its text."
+  ]
+}
