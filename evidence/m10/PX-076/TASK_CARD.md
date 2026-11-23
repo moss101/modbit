@@ -53,3 +53,12 @@ First missing link: the tree was not an artifact (`crates/computer/src/runtime/o
 - The lossy rungs are PNG channel quantisation, not JPEG (`crates/computer/src/frame.rs`), as before.
 - A locked screen and APP-scope pixel exclusion are proven on the fixture actuator and by the helper's code path, not by a real-helper test.
 - A model request made by compaction or the reviewer sees a tree's reference, not its text.
+
+## CI and merge
+
+- PR 248, head 183b103f: CI run 45226116588 all 19 checks green (`ci-run-45226116588.json`).
+- Squash-merged to main as b1484954 on 2026-11-23 (the owner asked to keep going on M10 and merge green PRs).
+
+## Status
+
+COMPLETE (sealed 2026-11-23). Evidence: run:gha-45226116588, commit:b1484954, the artifacts above. The limitations listed above stand.

@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-11-23",
+ "generated_on": "2026-11-24",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -37255,16 +37255,27 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-076",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "E2E_PROVEN",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m10/PX-076/TASK_CARD.md",
     "commit:ebe17426",
     "artifact:evidence/m10/PX-076/tests.log",
     "artifact:evidence/m10/PX-076/real-helper-ax-tests.log",
     "artifact:evidence/m10/PX-076/evidence.json",
-    "artifact:evidence/m10/PX-076/mutation-checks-2026-11-23.txt"
+    "artifact:evidence/m10/PX-076/mutation-checks-2026-11-23.txt",
+    "run:gha-45226116588",
+    "commit:b14849545e467f042c20d03e0db953f7fc94c744",
+    "artifact:evidence/m10/PX-076/ci-run-45226116588.json"
    ],
-   "status_changed_on": "2026-11-23T17:14:50Z"
+   "notes": [
+    {
+     "at": "2026-11-23T20:57:59Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "PR 248 merged green as b1484954; run 45226116588 all 19 checks pass"
+    }
+   ],
+   "status_changed_on": "2026-11-23T20:57:59Z"
   },
   {
    "id": "PX-082",
