@@ -205,6 +205,13 @@ pub struct Decoder {
     /// Per call index: the `extra_content` object the provider attached
     /// (Gemini's thought signature arrives there), merged across deltas.
     extra: Vec<Option<serde_json::Map<String, Value>>>,
+    /// The slot in `calls` that each provider index currently names. A
+    /// delta whose index is missing counts as index 0, and a delta that
+    /// brings a new call id at an index already holding another call opens
+    /// a new slot: some OpenAI-compatible streams (Gemini's) send parallel
+    /// calls without distinct indexes, and merging them would join two
+    /// argument objects into one invalid call.
+    slot_of: std::collections::HashMap<usize, usize>,
     finish: Option<String>,
     done: bool,
 }
@@ -276,11 +283,24 @@ impl Decoder {
                 out.push(ModelEvent::ReasoningDelta { text: t.to_owned() });
             }
             for tc in delta["tool_calls"].as_array().into_iter().flatten() {
-                let idx = tc["index"].as_u64().unwrap_or(0) as usize;
-                while self.calls.len() <= idx {
-                    self.calls
-                        .push((String::new(), String::new(), String::new()));
-                }
+                let index = tc["index"].as_u64().unwrap_or(0) as usize;
+                let new_id = tc["id"].as_str().filter(|i| !i.is_empty());
+                let idx = match self.slot_of.get(&index).copied() {
+                    Some(slot)
+                        if new_id.is_none_or(|i| {
+                            self.calls[slot].0.is_empty() || self.calls[slot].0 == i
+                        }) =>
+                    {
+                        slot
+                    }
+                    _ => {
+                        self.calls
+                            .push((String::new(), String::new(), String::new()));
+                        let slot = self.calls.len() - 1;
+                        self.slot_of.insert(index, slot);
+                        slot
+                    }
+                };
                 if let Some(obj) = tc.get("extra_content").and_then(Value::as_object) {
                     if self.extra.len() <= idx {
                         self.extra.resize(idx + 1, None);
@@ -318,6 +338,7 @@ impl Decoder {
     }
 
     fn flush_calls(&mut self) -> Vec<ModelEvent> {
+        self.slot_of.clear();
         let mut extra = std::mem::take(&mut self.extra).into_iter();
         std::mem::take(&mut self.calls)
             .into_iter()
@@ -349,7 +370,70 @@ fn normalize_finish(f: Option<&str>) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::is_context_overflow;
+    use super::{Decoder, is_context_overflow};
+    use crate::ModelEvent;
+
+    fn completed(d: &mut Decoder, frames: &[&str]) -> Vec<(String, String, String)> {
+        let mut out = Vec::new();
+        for f in frames {
+            out.extend(d.decode(f));
+        }
+        out.extend(d.decode("[DONE]"));
+        out.into_iter()
+            .filter_map(|e| match e {
+                ModelEvent::ToolCallComplete {
+                    call_id,
+                    name,
+                    arguments_json,
+                    ..
+                } => Some((call_id, name, arguments_json)),
+                _ => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn parallel_calls_without_distinct_indexes_stay_separate_calls() {
+        // Gemini's OpenAI-compatible stream: each parallel call whole in its
+        // own chunk, with its own id, and no index (or index 0 for both).
+        let mut d = Decoder::default();
+        let calls = completed(
+            &mut d,
+            &[
+                r#"{"choices":[{"index":0,"delta":{"tool_calls":[{"id":"a1","type":"function","function":{"name":"agent.spawn","arguments":"{\"key\":\"k1\"}"}}]}}]}"#,
+                r#"{"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"b2","type":"function","function":{"name":"agent.spawn","arguments":"{\"key\":\"k2\"}"}}]},"finish_reason":"tool_calls"}]}"#,
+            ],
+        );
+        assert_eq!(
+            calls,
+            [
+                ("a1".into(), "agent.spawn".into(), r#"{"key":"k1"}"#.into()),
+                ("b2".into(), "agent.spawn".into(), r#"{"key":"k2"}"#.into()),
+            ]
+        );
+    }
+
+    #[test]
+    fn indexed_argument_fragments_still_join_into_their_call() {
+        // OpenAI's own form: the id once, then fragments by index, interleaved.
+        let mut d = Decoder::default();
+        let calls = completed(
+            &mut d,
+            &[
+                r#"{"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"c1","type":"function","function":{"name":"fs.read","arguments":""}}]}}]}"#,
+                r#"{"choices":[{"index":0,"delta":{"tool_calls":[{"index":1,"id":"c2","type":"function","function":{"name":"fs.read","arguments":"{\"path\":"}}]}}]}"#,
+                r#"{"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\"path\":\"a\"}"}}]}}]}"#,
+                r#"{"choices":[{"index":0,"delta":{"tool_calls":[{"index":1,"function":{"arguments":"\"b\"}"}}]},"finish_reason":"tool_calls"}]}"#,
+            ],
+        );
+        assert_eq!(
+            calls,
+            [
+                ("c1".into(), "fs.read".into(), r#"{"path":"a"}"#.into()),
+                ("c2".into(), "fs.read".into(), r#"{"path":"b"}"#.into()),
+            ]
+        );
+    }
 
     #[test]
     fn a_context_length_error_is_an_overflow_and_other_rejections_are_not() {
