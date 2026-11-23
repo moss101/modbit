@@ -2,13 +2,13 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-11-22",
+  "generated_on": "2026-11-23",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2494,
-    "docs_bytes": 2396550
+    "root_and_tooling": 2499,
+    "docs_bytes": 2398645
   },
   "sections": [
     {
@@ -257,8 +257,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Cloud Control Plane, Remote Execution, and Sync",
-      "bytes": 17593,
-      "sha256": "f6e858b9aa75e6f2d452b26d824ad2975436bc19d932dc4dad3906d9fde335a7"
+      "bytes": 19688,
+      "sha256": "ecd189c97f56b8f286422e5782a970987b3c3ba548f725239e41087a951a1884"
     },
     {
       "path": "docs/25_MULTIMODAL_MEDIA_AND_NOTEBOOK_RUNTIME.md",
@@ -2912,6 +2912,31 @@
       "path": "evidence/m10/PX-125/px125-live.log",
       "bytes": 615,
       "sha256": "4dda893b40a36453b637d1c18671f81bf36a09f53475f672fd5f4b3930b4b27b"
+    },
+    {
+      "path": "evidence/m10/PX-126/TASK_CARD.md",
+      "bytes": 5806,
+      "sha256": "1b1fdc53298f9fd1ca913774863dac5e71bd04df4ab762988e2f70709579d76a"
+    },
+    {
+      "path": "evidence/m10/PX-126/cloud-suite.log",
+      "bytes": 9510,
+      "sha256": "6324ecb9da9c79a911ac0e86e0cc84d8cb678f3c3d6f42748a00409868326cf6"
+    },
+    {
+      "path": "evidence/m10/PX-126/evidence.json",
+      "bytes": 1909,
+      "sha256": "8fa2f5861100fed89c10a9dfa317c294393b8eabdd7aee845b0492b65948a894"
+    },
+    {
+      "path": "evidence/m10/PX-126/mutation-checks-2026-11-23.txt",
+      "bytes": 1894,
+      "sha256": "2b7e24477d9ab9fd4fbe19c368916356a09ab73430eea689da78020d04db7157"
+    },
+    {
+      "path": "evidence/m10/PX-126/px126-live.log",
+      "bytes": 1224,
+      "sha256": "5b66a02e5ec6338dc4acd7fa4aff330c1652f79f38d11d14a03885b94891b89f"
     },
     {
       "path": "evidence/m10/PX-130/TASK_CARD.md",
@@ -13336,12 +13361,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 47980,
-      "sha256": "cad3039026d3e1da2980f80daad5c54c668138af19f5a87efe40e66fbb95c9a2"
+      "sha256": "0b798329a2430c5b600c0f5131ca2591f3a8c58aa5e966111d36e644f6feea9f"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2644222,
-      "sha256": "5189dc24a51167f84eee5c0eb9de0ea97fe8f9ddc8090b2ce97f633a856124b2"
+      "bytes": 2644667,
+      "sha256": "797642a04741d412259e3fee0a8920818a397ca06c4abb77a1a2611a5e88ad34"
     },
     {
       "path": "tools/build_graph.py",

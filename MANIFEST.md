@@ -1,7 +1,7 @@
 # Modbit Dossier Manifest — V3.3 EPR v1.1
 
 > **Authority date:** 2026-09-05  
-> **Generated:** 2026-11-22 by `tools/build_manifest.py`  
+> **Generated:** 2026-11-23 by `tools/build_manifest.py`  
 > **Scope:** every specification file in `docs/` plus the root governing files and tooling. The previous `99_MANIFEST.md` covered only 39 Part 2 files; this manifest covers all 97 docs.
 > **Machine-readable twin:** `manifest.json` (same content, same hashes).
 
@@ -14,14 +14,14 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | Section | Range | Files | Bytes |
 |---|---|---:|---:|
 | Authority and orientation | 00–09 | 8 | 91304 |
-| Architecture and subsystems | 10–29 | 20 | 395237 |
+| Architecture and subsystems | 10–29 | 20 | 397332 |
 | Implementation specifications | 30–39 | 10 | 179986 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351840 |
 | Verification and testing | 50–69 | 20 | 1018730 |
 | Delivery and operations | 70–79 | 10 | 125527 |
 | Agent process and governance | 80–97 | 18 | 218965 |
 | Live state | 98–99 | 1 | 14961 |
-| **Total docs** | | **97** | **2396550** |
+| **Total docs** | | **97** | **2398645** |
 
 ## Specification files (`docs/`)
 
@@ -49,7 +49,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 21 | `docs/21_TERMINAL_EXECUTION_AND_SANDBOX.md` | Terminal, Execution Router, and Sandbox Architecture | architecture | 30764 | `7373d4480d7ff4165b57db3204cb2df9eb13d3df2050471f6838af1a67329f4f` |
 | 22 | `docs/22_BROWSER_AND_COMPUTER_USE.md` | Browser and Computer-Use Architecture | architecture | 31715 | `0a846ff68035d09959118091e559439cd5d0f893e9d005e4d52b2ce495baebf7` |
 | 23 | `docs/23_SECURITY_POLICY_EFFECT_LEDGER.md` | Security, Policy, Capabilities, Secrets, and Effect Ledger | architecture | 20490 | `5b46eabc1fe83deee7155bc40860a8d2e98d658d2810e40d3183c6ccce5c1364` |
-| 24 | `docs/24_CLOUD_CONTROL_PLANE_AND_SYNC.md` | Cloud Control Plane, Remote Execution, and Sync | architecture | 17593 | `f6e858b9aa75e6f2d452b26d824ad2975436bc19d932dc4dad3906d9fde335a7` |
+| 24 | `docs/24_CLOUD_CONTROL_PLANE_AND_SYNC.md` | Cloud Control Plane, Remote Execution, and Sync | architecture | 19688 | `ecd189c97f56b8f286422e5782a970987b3c3ba548f725239e41087a951a1884` |
 | 25 | `docs/25_MULTIMODAL_MEDIA_AND_NOTEBOOK_RUNTIME.md` | Multimodal, Media and Notebook Runtime | architecture | 8001 | `8f711ffd6294c377dbba537086356fc869d171240d6ccdf5bef5a0c2d5b9ba3e` |
 | 26 | `docs/26_SKILL_REGISTRY_AND_EVOLUTION.md` | Skill Registry and Evolution Integration — Skill Evolution Without a Second Runtime | architecture | 11590 | `e5b69188c09e95c66a4bb2b42549e00b5f55790b81c163d29f892c62d6a1eec3` |
 | 27 | `docs/27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md` | Execution policy router and verified orchestration | architecture | 67667 | `e4957aff5554b6eea8b04b43dfcecbb1871a11b7e16cdb278f8b110bc86daf5a` |
@@ -526,6 +526,11 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-125/ci-run-44826858961.json` | retained evidence | 65329 | `0a1d20d4514740f97115485d2ae93caefb922c833ae36021e90d099110549788` |
 | `evidence/m10/PX-125/mutation-redaction-skipped.log` | retained evidence | 352 | `ccfe78b495445674cf3a16979f74ebff87168908cca1942c75d215e47a09df04` |
 | `evidence/m10/PX-125/px125-live.log` | retained evidence | 615 | `4dda893b40a36453b637d1c18671f81bf36a09f53475f672fd5f4b3930b4b27b` |
+| `evidence/m10/PX-126/TASK_CARD.md` | retained evidence | 5806 | `1b1fdc53298f9fd1ca913774863dac5e71bd04df4ab762988e2f70709579d76a` |
+| `evidence/m10/PX-126/cloud-suite.log` | retained evidence | 9510 | `6324ecb9da9c79a911ac0e86e0cc84d8cb678f3c3d6f42748a00409868326cf6` |
+| `evidence/m10/PX-126/evidence.json` | retained evidence | 1909 | `8fa2f5861100fed89c10a9dfa317c294393b8eabdd7aee845b0492b65948a894` |
+| `evidence/m10/PX-126/mutation-checks-2026-11-23.txt` | retained evidence | 1894 | `2b7e24477d9ab9fd4fbe19c368916356a09ab73430eea689da78020d04db7157` |
+| `evidence/m10/PX-126/px126-live.log` | retained evidence | 1224 | `5b66a02e5ec6338dc4acd7fa4aff330c1652f79f38d11d14a03885b94891b89f` |
 | `evidence/m10/PX-130/TASK_CARD.md` | retained evidence | 3333 | `32f0be70ed544519250529ff9e869ba690a999c7140a415296c4dfc142748429` |
 | `evidence/m10/PX-130/evidence.json` | retained evidence | 854 | `ef09823e82a68ce86ded2455a791a69911a9b46ffdab24281aef5ce70c6fd62c` |
 | `evidence/m10/PX-130/mutation-check.txt` | retained evidence | 1755 | `0ac0e1ed9287557b41738ecb115cc0fd2f732ed8036c3ff3212b19fc159a644c` |
@@ -2610,8 +2615,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/zcode-ui/reference/zcode-colors-rgba.json` | retained evidence | 18690 | `76372c3edbcd50fe596d5e4b7fcd7991adab9686588ddc578a728afa24b4f028` |
 | `evidence/zcode-ui/reference/zcode-computed.json` | retained evidence | 718674 | `9ae8821ce72aa0fff3be44aacd0f4c9d995465c54bad7f17d1a81f92841d1c2d` |
 | `evidence/zcode-ui/reference/zcode-tokens-resolved.json` | retained evidence | 30635 | `066725c00059a05d073fbcdac9a8d965eab05f05c1f5df16e654854ff3e22b91` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 47980 | `cad3039026d3e1da2980f80daad5c54c668138af19f5a87efe40e66fbb95c9a2` |
-| `graph/project-graph.json` | project driver graph with live status | 2644222 | `5189dc24a51167f84eee5c0eb9de0ea97fe8f9ddc8090b2ce97f633a856124b2` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 47980 | `0b798329a2430c5b600c0f5131ca2591f3a8c58aa5e966111d36e644f6feea9f` |
+| `graph/project-graph.json` | project driver graph with live status | 2644667 | `797642a04741d412259e3fee0a8920818a397ca06c4abb77a1a2611a5e88ad34` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 69551 | `75bcc309c03df0b898705f3bf58a8c289431dc60cbaf52e1c38f4c5d41d06dd7` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |
