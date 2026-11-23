@@ -32,3 +32,17 @@ No product code changed; the behaviour was already there. Tests and the spec:
 - A real CI result through the webhook is not proven: the fine-grained token cannot read check runs. That needs a GitHub App or a classic token, as PX-125 recorded; PX-127 needs the same.
 - The live test runs on this machine only; CI has no repository secrets for it.
 - The "staging Cloud API" is the real API and worker over a real Postgres in-process, as in every cloud qualification here (and the hosted cloud CI job).
+
+## CI and merge
+
+- PR 247, head d1bdf128: CI run 45176604355 all 19 checks green (`ci-run-45176604355.json`).
+- Squash-merged to main as b1c80384 on 2026-11-23 (the owner asked to merge when green).
+- On the way to green the PR also carried four fixes found by its CI: `url` 2.5.9 for RUSTSEC-2026-0592 (supply-chain check);
+  the PX-212 desktop E2E now re-reads until the Core acts on the past-cap head (a single refresh on the Windows runner hit
+  the moment the repair turn's runtime was still letting go); the PX-153 restart test now skips the approvals it already
+  refused after the restart as well as before; and the macOS Rust job gets 110 minutes (successful runs took 67-74 against 75).
+  None of them changes Core behavior.
+
+## Status
+
+COMPLETE (sealed 2026-11-23). Evidence: run:gha-45176604355, commit:b1c80384, the artifacts above. Limitations stand as listed.

@@ -38956,7 +38956,7 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-126",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "E2E_PROVEN",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m10/PX-126/TASK_CARD.md",
     "commit:d10d46d7",
@@ -38965,9 +38965,20 @@
     "artifact:evidence/m10/PX-126/mutation-checks-2026-11-23.txt",
     "artifact:evidence/m10/PX-126/px126-live.log",
     "test:apps/cloud-worker/tests/px_126_live.rs",
-    "artifact:evidence/m10/PX-126/evidence.json"
+    "artifact:evidence/m10/PX-126/evidence.json",
+    "run:gha-45176604355",
+    "commit:b1c80384daa70618bb73cd3470a3de8c8e6adf50",
+    "artifact:evidence/m10/PX-126/ci-run-45176604355.json"
    ],
-   "status_changed_on": "2026-11-23T07:24:56Z"
+   "notes": [
+    {
+     "at": "2026-11-23T16:49:05Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "PR 247 merged green as b1c80384; run 45176604355 all 19 checks pass"
+    }
+   ],
+   "status_changed_on": "2026-11-23T16:49:05Z"
   },
   {
    "id": "PX-127",
