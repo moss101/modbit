@@ -37076,8 +37076,23 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-071",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "artifact:evidence/m10/PX-071/TASK_CARD.md",
+    "commit:5d73c033",
+    "artifact:evidence/m10/PX-071/tests.log",
+    "artifact:evidence/m10/PX-071/real-helper-ax-tests.log",
+    "artifact:evidence/m10/PX-071/evidence.json"
+   ],
+   "notes": [
+    {
+     "at": "2026-11-23T17:33:30Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real helper legs pass; clauses 2,3,5,6,7,N7 open (owner: DR for stdio vs socket, Apple identity, a person for revocation/keyboard, overlay design)"
+    }
+   ],
+   "status_changed_on": "2026-11-23T17:33:30Z"
   },
   {
    "id": "PX-072",
