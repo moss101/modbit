@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2500,
-    "docs_bytes": 2398645
+    "root_and_tooling": 2507,
+    "docs_bytes": 2402742
   },
   "sections": [
     {
@@ -266,8 +266,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Multimodal, Media and Notebook Runtime",
-      "bytes": 8001,
-      "sha256": "8f711ffd6294c377dbba537086356fc869d171240d6ccdf5bef5a0c2d5b9ba3e"
+      "bytes": 11439,
+      "sha256": "faad15c28375e2199e68b0876fb9add890dbc52bf36ebb562480b132d7bb23b2"
     },
     {
       "path": "docs/26_SKILL_REGISTRY_AND_EVOLUTION.md",
@@ -509,8 +509,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Security Threat Model and Verification",
-      "bytes": 8950,
-      "sha256": "74fc40a03aae4ae03d442043517febe559fd7c9b2e4d2d02ee66e95af6d0aa72"
+      "bytes": 9609,
+      "sha256": "9b73b5e7c81d198d6f4155d36b49d428a7395c3d442a31d278921f0368521e7c"
     },
     {
       "path": "docs/53_PERFORMANCE_AND_BENCHMARK_PLAN.md",
@@ -2562,6 +2562,41 @@
       "path": "evidence/m10/PX-074/mutation-check.txt",
       "bytes": 780,
       "sha256": "76fcb1d594ff7dcdceb8f6a03fa5ecaea5c049941aa980d8c81eb17691bafb9e"
+    },
+    {
+      "path": "evidence/m10/PX-076/TASK_CARD.md",
+      "bytes": 6284,
+      "sha256": "7c31f0df8677c5d3d5d9ae2373bbd9424a9e82b0405e7d1cc31097e67e159c4c"
+    },
+    {
+      "path": "evidence/m10/PX-076/ci-run-45226116588.json",
+      "bytes": 65329,
+      "sha256": "552f8cb65cb64a529ef117911fd68033a69eea49b803ccdd88f24f292437e51d"
+    },
+    {
+      "path": "evidence/m10/PX-076/clippy.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "evidence/m10/PX-076/evidence.json",
+      "bytes": 2625,
+      "sha256": "ef7f5911c9296edc8e5d175184e8d6ee8abb3456f6a5031249087a6702273712"
+    },
+    {
+      "path": "evidence/m10/PX-076/mutation-checks-2026-11-23.txt",
+      "bytes": 1120,
+      "sha256": "01b7948e662e236c77a0ef8fecd973d305e8e67ab6132d2e68c3aaffc4edbcfc"
+    },
+    {
+      "path": "evidence/m10/PX-076/real-helper-ax-tests.log",
+      "bytes": 7431,
+      "sha256": "a58403c137657e45d978cb3f0589fe06bcbea7f3791b2087894c1317bf3c5f87"
+    },
+    {
+      "path": "evidence/m10/PX-076/tests.log",
+      "bytes": 11996,
+      "sha256": "a6e175e1ffa9641001579f894ec44b422c06f6c047fd9c2004ec2cba6dc93859"
     },
     {
       "path": "evidence/m10/PX-082/TASK_CARD.md",
@@ -13366,12 +13401,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 47980,
-      "sha256": "d193c4e55b7768993972734f231bf4fb725ad59ac37bab7e65753ae5b1f65862"
+      "sha256": "bf1dc22c625f99ddb8710948639331a118b4255fc1bdf4f5eed62b485d7ab0cd"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2645007,
-      "sha256": "61f2c98235681c1e099383bc188a699384d3c5a6b7453f2991b9c0b42b451d3c"
+      "bytes": 2645693,
+      "sha256": "e59bcc6e251b620b58525f7de4ad180aadaa2299e0cd5922f0c518e17d76e732"
     },
     {
       "path": "tools/build_graph.py",

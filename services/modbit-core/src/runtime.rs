@@ -2549,6 +2549,31 @@ fn frame_window(transcript: &[Message], keep: usize) -> std::borrow::Cow<'_, [Me
     std::borrow::Cow::Owned(out)
 }
 
+/// PX-076: put each accessibility tree a tool result names back into a
+/// transcript copy for one request, while its artifact exists. The stored
+/// transcript keeps the reference, so the text follows the retention setting.
+pub(crate) async fn hydrate_trees(core: &Core, transcript: &mut [Message]) {
+    for message in transcript.iter_mut() {
+        for part in &mut message.parts {
+            let ContentPart::ToolResult { content, .. } = part else {
+                continue;
+            };
+            if !crate::computer::names_a_tree(content) {
+                continue;
+            }
+            let filled = {
+                let store = core.store.lock().await;
+                crate::computer::hydrate_tree_refs(content, OBSERVATION_CEILING_BYTES, |d| {
+                    store.objects().get(d).ok()
+                })
+            };
+            if let Some(f) = filled {
+                *content = f;
+            }
+        }
+    }
+}
+
 /// Fill the media parts of a transcript copy with the bytes of their egress
 /// copies, or drop them when the model cannot take that modality. The stored
 /// transcript keeps references only, so nothing here changes what was logged.
@@ -4337,6 +4362,7 @@ async fn run_loop(
                         transcript: {
                             // The bytes enter the request, never the log or the ledger.
                             let mut t = frame_window(&transcript, kept).into_owned();
+                            hydrate_trees(&core, &mut t).await;
                             hydrate_media(&core, &mut t, vision, &mut bridge).await;
                             t
                         },
@@ -9986,7 +10012,8 @@ async fn execute_tool_call(
             &status,
             r.error_code.as_deref(),
             r.error_message.as_deref(),
-            &r.structured_output.to_string(),
+            // PX-076: the transcript keeps a tree read's reference, not its text.
+            &crate::computer::persisted_output(&r.structured_output).to_string(),
             r.stdout_ref.as_deref(),
             r.stderr_ref.as_deref(),
             &done.result_ref,
