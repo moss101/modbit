@@ -14,14 +14,14 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | Section | Range | Files | Bytes |
 |---|---|---:|---:|
 | Authority and orientation | 00–09 | 8 | 91304 |
-| Architecture and subsystems | 10–29 | 20 | 397332 |
+| Architecture and subsystems | 10–29 | 20 | 400770 |
 | Implementation specifications | 30–39 | 10 | 179986 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351840 |
-| Verification and testing | 50–69 | 20 | 1018730 |
+| Verification and testing | 50–69 | 20 | 1019389 |
 | Delivery and operations | 70–79 | 10 | 125527 |
 | Agent process and governance | 80–97 | 18 | 218965 |
 | Live state | 98–99 | 1 | 14961 |
-| **Total docs** | | **97** | **2398645** |
+| **Total docs** | | **97** | **2402742** |
 
 ## Specification files (`docs/`)
 
@@ -50,7 +50,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 22 | `docs/22_BROWSER_AND_COMPUTER_USE.md` | Browser and Computer-Use Architecture | architecture | 31715 | `0a846ff68035d09959118091e559439cd5d0f893e9d005e4d52b2ce495baebf7` |
 | 23 | `docs/23_SECURITY_POLICY_EFFECT_LEDGER.md` | Security, Policy, Capabilities, Secrets, and Effect Ledger | architecture | 20490 | `5b46eabc1fe83deee7155bc40860a8d2e98d658d2810e40d3183c6ccce5c1364` |
 | 24 | `docs/24_CLOUD_CONTROL_PLANE_AND_SYNC.md` | Cloud Control Plane, Remote Execution, and Sync | architecture | 19688 | `ecd189c97f56b8f286422e5782a970987b3c3ba548f725239e41087a951a1884` |
-| 25 | `docs/25_MULTIMODAL_MEDIA_AND_NOTEBOOK_RUNTIME.md` | Multimodal, Media and Notebook Runtime | architecture | 8001 | `8f711ffd6294c377dbba537086356fc869d171240d6ccdf5bef5a0c2d5b9ba3e` |
+| 25 | `docs/25_MULTIMODAL_MEDIA_AND_NOTEBOOK_RUNTIME.md` | Multimodal, Media and Notebook Runtime | architecture | 11439 | `faad15c28375e2199e68b0876fb9add890dbc52bf36ebb562480b132d7bb23b2` |
 | 26 | `docs/26_SKILL_REGISTRY_AND_EVOLUTION.md` | Skill Registry and Evolution Integration — Skill Evolution Without a Second Runtime | architecture | 11590 | `e5b69188c09e95c66a4bb2b42549e00b5f55790b81c163d29f892c62d6a1eec3` |
 | 27 | `docs/27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md` | Execution policy router and verified orchestration | architecture | 67667 | `e4957aff5554b6eea8b04b43dfcecbb1871a11b7e16cdb278f8b110bc86daf5a` |
 | 28 | `docs/28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md` | Agent competence: planning, verification and repair | architecture | 14318 | `1037dbbe5ae316e72827de32ad5429124f0a29e71fb79d00588d178540b8acfc` |
@@ -77,7 +77,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 49 | `docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md` | Execution policy requirements and implementation tasks | requirements | 49196 | `e90bfba1d3f3594f1ff80bf629b2838be6d3423f4350f9c34c6fd8be4cf0b005` |
 | 50 | `docs/50_TEST_STRATEGY_REAL_SYSTEM_GATES.md` | Test Strategy — Real-System Completion Gates | verification | 8568 | `50aaa50088599fceeb0cc59f0c29eb9adea5b2939147107d9b713015848437aa` |
 | 51 | `docs/51_E2E_ACCEPTANCE_TEST_CATALOG.md` | End-to-End Acceptance Test Catalog | verification | 7941 | `94cb5e496f2fb7d39fa8bd18e9f94da048481c607ba4aabfcd750b29cb5b213c` |
-| 52 | `docs/52_SECURITY_THREAT_MODEL_AND_TESTS.md` | Security Threat Model and Verification | verification | 8950 | `74fc40a03aae4ae03d442043517febe559fd7c9b2e4d2d02ee66e95af6d0aa72` |
+| 52 | `docs/52_SECURITY_THREAT_MODEL_AND_TESTS.md` | Security Threat Model and Verification | verification | 9609 | `9b73b5e7c81d198d6f4155d36b49d428a7395c3d442a31d278921f0368521e7c` |
 | 53 | `docs/53_PERFORMANCE_AND_BENCHMARK_PLAN.md` | Performance, Context Economics, and Benchmark Plan | verification | 7144 | `a2fd331c6d0c824dcdb04b82766763f748ce44107884985122a12985c1d23d4b` |
 | 54 | `docs/54_FAULT_INJECTION_AND_RECOVERY_CATALOG.md` | Fault Injection and Recovery Catalog | verification | 2614 | `1f82e59c6e47c51c688c62a027242d79661a0692d84f8c1055612a3bec84d03a` |
 | 55 | `docs/55_MUTATION_NEGATIVE_AND_CHAOS_TEST_POLICY.md` | Mutation, Negative and Chaos Test Policy | verification | 2283 | `2df95d89972afc627a88224091a6191e26859946dc1f7968f8fed05cde1eec00` |
@@ -456,6 +456,12 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-069/real-mac-run-2026-11-09.txt` | retained evidence | 4902 | `428b29ed6c626369af1f475dd93421fb080249a51ad2c70ca48d7bd66adf49b3` |
 | `evidence/m10/PX-074/TASK_CARD.md` | retained evidence | 1652 | `e00fa4918ff2a625aebd5c75476f3195fc2dc1821724b6f2edc072a54460bad2` |
 | `evidence/m10/PX-074/mutation-check.txt` | retained evidence | 780 | `76fcb1d594ff7dcdceb8f6a03fa5ecaea5c049941aa980d8c81eb17691bafb9e` |
+| `evidence/m10/PX-076/TASK_CARD.md` | retained evidence | 5916 | `6616143081378fb73876ddd2a4d07082b1f9f15a551aaaf2e72b64bce8971c57` |
+| `evidence/m10/PX-076/clippy.log` | retained evidence | 0 | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
+| `evidence/m10/PX-076/evidence.json` | retained evidence | 2625 | `ef7f5911c9296edc8e5d175184e8d6ee8abb3456f6a5031249087a6702273712` |
+| `evidence/m10/PX-076/mutation-checks-2026-11-23.txt` | retained evidence | 1120 | `01b7948e662e236c77a0ef8fecd973d305e8e67ab6132d2e68c3aaffc4edbcfc` |
+| `evidence/m10/PX-076/real-helper-ax-tests.log` | retained evidence | 7431 | `a58403c137657e45d978cb3f0589fe06bcbea7f3791b2087894c1317bf3c5f87` |
+| `evidence/m10/PX-076/tests.log` | retained evidence | 11996 | `a6e175e1ffa9641001579f894ec44b422c06f6c047fd9c2004ec2cba6dc93859` |
 | `evidence/m10/PX-082/TASK_CARD.md` | retained evidence | 1887 | `d5f76af250079ffddeea2995ff978016d8df8912550b937067597191273d11aa` |
 | `evidence/m10/PX-082/ci-run-39993797935.json` | retained evidence | 46978 | `9e0475ef82c7599d39de31c8657f5c37261a57076d2ee12b20a790a5b42798a3` |
 | `evidence/m10/PX-082/evidence.json` | retained evidence | 1822 | `0e086d32630bc0787c0a8de3c79e250799296208f95a18759e2118b0a55792c3` |
@@ -2617,7 +2623,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/zcode-ui/reference/zcode-computed.json` | retained evidence | 718674 | `9ae8821ce72aa0fff3be44aacd0f4c9d995465c54bad7f17d1a81f92841d1c2d` |
 | `evidence/zcode-ui/reference/zcode-tokens-resolved.json` | retained evidence | 30635 | `066725c00059a05d073fbcdac9a8d965eab05f05c1f5df16e654854ff3e22b91` |
 | `graph/PROJECT_GRAPH.md` | human view of the graph | 47980 | `d193c4e55b7768993972734f231bf4fb725ad59ac37bab7e65753ae5b1f65862` |
-| `graph/project-graph.json` | project driver graph with live status | 2645007 | `61f2c98235681c1e099383bc188a699384d3c5a6b7453f2991b9c0b42b451d3c` |
+| `graph/project-graph.json` | project driver graph with live status | 2645353 | `517682830b62fc8ee21fe847bc3127d516241c869e34a6fb005895aed41fad89` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 69551 | `75bcc309c03df0b898705f3bf58a8c289431dc60cbaf52e1c38f4c5d41d06dd7` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |
