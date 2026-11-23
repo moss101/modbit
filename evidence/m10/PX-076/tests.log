@@ -1,0 +1,119 @@
+
+running 58 tests
+iiiimodbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0modbit-core: recovery complete: boot_generation=1 events_verified=modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=modbit-core: recovery complete: boot_generation=1 in  events_verified=00 aggregates=0 projections_rebuilt=0 aggregates=modbit-core: recovery complete: boot_generation=1 events_verified=1false0 projections_rebuilt=false sessions= sessions=modbit-core: recovery complete: boot_generation=0modbit-core: recovery complete: boot_generation=0 aggregates=10 events_verified=0 aggregates=modbit-core: recovery complete: boot_generation=0modbit-core: recovery complete: boot_generation=1 events_verified=00 projections_rebuilt= tasks=ms tasks=1 events_verified= projections_rebuilt=1false events_verified=0modbit-core: recovery complete: boot_generation= projections_rebuilt= aggregates=00 projections_rebuilt=false sessions=0 tasks=
+ aggregates= sessions=0 tasks=0 in 01 events_verified= in 001ms
+ aggregates= in 0false sessions=modbit-core: recovery complete: boot_generation=false201 tasks=ms events_verified=0 sessions=modbit-core: recovery complete: boot_generation=modbit-core: recovery complete: boot_generation=modbit-core: recovery complete: boot_generation=0000 in 1 aggregates=1 events_verified= in 1 events_verified=011
+ms aggregates= tasks=0 in 
+ aggregates=0 projections_rebuilt= projections_rebuilt=modbit-core: recovery complete: boot_generation=001msmodbit-core: recovery complete: boot_generation=
+ events_verified= projections_rebuilt=ms1 events_verified= projections_rebuilt=falsefalse
+0 aggregates=false sessions=00 projections_rebuilt=0 aggregates=0 aggregates= projections_rebuilt= sessions=0false sessions=0 tasks=0 in 0 tasks= tasks=10 in msfalse0 sessions= projections_rebuilt= events_verified=
+020modbit-core: recovery complete: boot_generation=msfalse sessions=0 tasks=0 in 0 aggregates=0 projections_rebuilt= in 1msfalse11modbit-core: recovery complete: boot_generation=01
+ms events_verified=1
+ms projections_rebuilt=
+false sessions=0 tasks=0 in 
+ events_verified=0 tasks=00ms0 sessions= sessions=false aggregates=
+ aggregates=0 projections_rebuilt=false00 tasks=0 projections_rebuilt=false in  sessions=0ms sessions=0
+0 tasks=00 tasks= sessions=0 tasks=0 in 1ms in 
+0 in 0ms0ms
+
+ in 0ms
+ tasks=0 in 0ms
+modbit-core: emergency stop on session 10101010-1010-1010-1010-101010101010: 1 lease(s) revoked, 1 live run(s) cancelled, 1 control session(s) stopped (test)
+modbit-core: recovery complete: boot_generation=2 events_verified=128 aggregates=24 projections_rebuilt=false sessions=1 tasks=1 in 16ms
+modbit-core: suspended 1 running task(s) after restart
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: closed 1 computer-control session(s) the last Core left open
+..iii.modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 26ms
+..modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 16ms
+.modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 10ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 12ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 7ms.
+.modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 15ms
+.modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 15ms
+.modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 4ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+..modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 10ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 20ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 26ms
+.modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 30ms
+..modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 17ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=falsemodbit-core: recovery complete: boot_generation=1 sessions=0 events_verified=0 tasks=0 in 16ms
+ aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 16ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 28ms
+modbit-core: no actuator attached: the actuator could not be started: /nonexistent/modbit-actuator: No such file or directory (os error 2)
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 24ms
+..modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 26ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 24ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 17ms
+.modbit-core: recovery complete: boot_generation=2 events_verified=190 aggregates=35 projections_rebuilt=false sessions=1 tasks=2 in 10ms
+modbit-core: suspended 2 running task(s) after restart
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: closed 1 computer-control session(s) the last Core left open
+.modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 14ms
+.modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 26ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 30ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=.false sessions=0 tasks=0 in 14ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 10ms
+.modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 28ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 27ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 23ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 15ms
+modbit-core: recovery complete: boot_generation=2 events_verified=123 aggregates=24 projections_rebuilt=false sessions=1 tasks=1 in 16ms
+modbit-core: suspended 1 running task(s) after restart
+modbit-core: reattached to the terminal broker a previous Core left alive
+.modbit-core: closed 1 computer-control session(s) the last Core left open
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 17ms
+.modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 4ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 43ms
+.modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 35ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 34ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 13ms
+..modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 18ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 21ms
+.....modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 7ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 24ms
+.modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: recovery complete: boot_generation=2 events_verified=9 aggregates=4 projections_rebuilt=false sessions=1 tasks=1 in 16ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+.modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 12ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 24ms
+.test qual_px_069_the_faults_an_actuator_can_raise_are_typed_with_their_escalations has been running for over 60 seconds
+......modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+..modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+test qual_px_075_the_profile_is_refused_where_it_cannot_be_attended_or_was_not_prepared has been running for over 60 seconds
+.modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+....test qual_px_174_a_long_computer_use_child_is_sent_its_last_three_frames_and_older_steps_as_text has been running for over 60 seconds
+.modbit-core: connection ended: io: Socket is not connected (os error 57)
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+..
+test result: ok. 51 passed; 0 failed; 7 ignored; 0 measured; 0 filtered out; finished in 90.15s
+
+
+running 4 tests
+....
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 104 filtered out; finished in 0.03s
+
+
+running 4 tests
+....
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.48s
+
+
+running 54 tests
+......................................................
+test result: ok. 54 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.77s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
