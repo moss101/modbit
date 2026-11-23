@@ -1,0 +1,43 @@
+{
+  "task": "PX-071",
+  "requirements": [
+    "REQ-PX-071",
+    "QUAL-PX-071",
+    "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-071"
+  ],
+  "scenarios": [
+    "QUAL-PX-071 / PX-E2E-071"
+  ],
+  "decision_record": "DR-PX-2026-10-03-008",
+  "tier": "release-critical",
+  "branch": "px-071-helper-hardening",
+  "base": "48d97a05",
+  "audit": {
+    "classification": "IMPLEMENTED-PARTIAL: helper on main and proven through PX-069; graph stale at NOT_STARTED",
+    "first_missing_link": "a helper launched without a pin welcomed any 32-byte token (N1); no static dependency scan (N4); no turn-end lease test (N6); no real Core kill (8)"
+  },
+  "tests": [
+    "services/modbit-actuator-macos/tests/handshake.rs::an_unpinned_launch_welcomes_no_one",
+    "tools/architecture-lint/tests/real_workspace.rs::qual_px_071_a_helper_holding_a_credential_or_file_path_authority_fails_the_scan",
+    "services/modbit-core/tests/px_computer.rs::qual_px_071_a_control_session_does_not_survive_the_end_of_its_turn",
+    "services/modbit-core/tests/px_computer.rs::qual_px_071_the_real_helper_releases_control_and_exits_when_the_real_core_is_killed (real helper)"
+  ],
+  "logs": [
+    "tests.log",
+    "real-helper-ax-tests.log",
+    "real-helper-ax-tests-run1-flake.log",
+    "clippy.log"
+  ],
+  "mutation_check": "removing the Core's end_run call fails qual_px_071_a_control_session_does_not_survive_the_end_of_its_turn",
+  "environment": "macOS 27.0.1 arm64, rustc 1.97.1; real modbit-core, real macOS helper, real AppKit fixture applications; scripted model",
+  "remaining": [
+    "(3) CUC-E02/QUAL row describe a socket; helper uses the Core's stdio: owner DR",
+    "(5) Developer ID signature refused-when-broken by the real Core: owner Apple identity",
+    "(2) real Accessibility revocation: a person changes System Settings",
+    "(6) real person's keyboard: a person at the machine",
+    "(7) on-screen Stop overlay not built; desktop/emergency-stop timing on the real helper",
+    "N7 permission prompt only from the helper",
+    "(1) cursor assertion in the real-Core drive test",
+    "intermittent empty-first-tree flake in the drive test (pre-existing)"
+  ]
+}
