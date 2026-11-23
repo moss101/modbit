@@ -198,13 +198,14 @@ export function reviewState(input: ReviewInputs): ScreenState {
     return state("review", "degraded", "pull request push denied or failed", { cause: input.pullRequest.detail, nextAction: "decide again to retry the pull request, or leave the branch local", evidence: input.pullRequest.evidence });
   }
   if (input.gate?.verdict === "INCONCLUSIVE") {
-    return state("review", "degraded", "verification incomplete", { cause: `acceptance gate INCONCLUSIVE; missing: ${input.gate.missingEvidence.join(", ") || "evidence"}`, nextAction: "run or fix the missing verification before accepting", evidence: `gate ${input.gate.gateRef.slice(0, 12)}` });
+    return state("review", "degraded", "verification incomplete", { cause: `the acceptance check could not decide; missing: ${input.gate.missingEvidence.join(", ") || "evidence"}`, nextAction: "run or fix the missing verification before accepting", evidence: `gate ${input.gate.gateRef.slice(0, 12)}` });
   }
   if (input.gate?.verdict === "REJECT") {
     return state("review", "degraded", "acceptance rejected", { cause: input.gate.rejectReasons.join("; ") || "the gate rejected the candidate", nextAction: "return the task to work with what must change", evidence: `gate ${input.gate.gateRef.slice(0, 12)}` });
   }
   if (input.bundle.files.length === 0) return state("review", "empty", "the candidate has no changes");
-  return state("review", "populated", `${input.bundle.files.length} file(s) at revision ${input.bundle.workspaceRevision}`);
+  const n = input.bundle.files.length;
+  return state("review", "populated", `${n} changed ${n === 1 ? "file" : "files"}, ready for your decision`);
 }
 
 /** Browser (M7.1, docs/39 "Browser" row: the takeover and visual-fallback

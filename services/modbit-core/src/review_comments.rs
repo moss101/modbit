@@ -170,7 +170,7 @@ fn bounded(s: &str, max: usize) -> String {
 /// `IngestReviewComments`.
 #[allow(clippy::too_many_lines)]
 pub(crate) async fn ingest(
-    core: &Core,
+    core: &std::sync::Arc<Core>,
     task_id: TaskId,
     actor: Actor,
     lease_generation: Option<u64>,
@@ -387,6 +387,24 @@ pub(crate) async fn ingest(
         .map_err(|e| refuse("STORE", e))?
     };
     core.last_offset.send_replace(offset);
+    // PX-212: steered comments are auto-fix's cause (nothing unless the
+    // task's switch is on): the steers already name them, and the turn that
+    // applies them is asked for.
+    let fix = if let Some(first) = steered.first() {
+        crate::auto_fix::on_cause(
+            core,
+            task.task_id,
+            crate::auto_fix::Cause::ReviewComments {
+                number,
+                comment_ids: steered.iter().map(|r| r.comment_id).collect(),
+                input_id: first.input_id.clone(),
+                offset,
+            },
+        )
+        .await
+    } else {
+        crate::auto_fix::Outcome::default()
+    };
     Ok(wire::ReviewCommentsIngestedView {
         owner,
         repo,
@@ -395,6 +413,9 @@ pub(crate) async fn ingest(
         ignored: ignored.iter().map(view).collect(),
         already_taken,
         offset,
+        auto_fix_queued: fix.queued,
+        auto_fix_input_id: fix.input_id,
+        auto_fix_stopped: fix.stopped,
     })
 }
 

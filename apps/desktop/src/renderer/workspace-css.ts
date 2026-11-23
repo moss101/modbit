@@ -71,6 +71,15 @@ export const workspaceCss = `
 .agents-end { flex: none; display: inline-flex; align-items: center; gap: var(--mb-space-1_5); font-size: var(--mb-type-caption-size); color: var(--mb-color-text-muted); }
 .agents-glyph { display: inline-flex; justify-content: center; }
 .agents-count { font-variant-numeric: tabular-nums; }
+/* REQ-PX-211: the request a task opened, with a mark for what the Core last read (its words are in the row's label and title, never colour alone). */
+.agents-pr { display: inline-flex; align-items: center; gap: 3px; font-variant-numeric: tabular-nums; color: var(--mb-color-text-muted); }
+.agents-pr::before { content: ""; width: 6px; height: 6px; border-radius: calc(infinity * 1px); border: 1px solid var(--mb-color-text-muted); background: transparent; }
+.agents-pr[data-tone="merged"]::before { background: var(--mb-color-accent); border-color: var(--mb-color-accent); }
+.agents-pr[data-tone="closed"]::before { background: var(--mb-color-text-muted); }
+.agents-pr[data-tone="open"][data-checks-tone="ok"]::before { background: var(--mb-color-ok); border-color: var(--mb-color-ok); }
+.agents-pr[data-tone="open"][data-checks-tone="bad"]::before { background: var(--mb-color-danger); border-color: var(--mb-color-danger); }
+.agents-pr[data-tone="open"][data-checks-tone="pending"]::before { background: var(--mb-color-warn); border-color: var(--mb-color-warn); }
+.agents-preview-pr { margin: 0; color: var(--mb-color-text-muted); font-variant-numeric: tabular-nums; }
 .agents-origin { display: inline-block; margin-right: var(--mb-space-1); padding: 0 var(--mb-space-1); font-size: var(--mb-type-caption-size); font-weight: 600; border: 1px solid var(--mb-color-border-control); border-radius: calc(infinity * 1px); color: var(--mb-color-text); background: var(--mb-color-sunken); vertical-align: baseline; }
 .agents-dot { flex: none; width: 6px; height: 6px; border-radius: calc(infinity * 1px); display: inline-block; }
 .agents-dot[data-kind="unread"] { background: var(--mb-color-accent); }
@@ -110,10 +119,18 @@ export const workspaceCss = `
 .shell-content:has(> .conv-wrap) { overflow: hidden; }
 /* Banners appear only for trouble and scroll within a capped band. */
 .conv-banners { flex: none; max-height: 22%; overflow-y: auto; }
-.conv-banners:not(:has(.banner, .state[data-kind="degraded"], .state[data-kind="error"], .state[data-kind="recovery"])) { height: 0; overflow: hidden; }
+.conv-banners:not(:has(.banner, .split-paused, .state[data-kind="degraded"], .state[data-kind="error"], .state[data-kind="recovery"])) { height: 0; overflow: hidden; }
 .conv-wrap { height: 100%; min-height: 0; display: flex; flex-direction: column; }
 .conv-wrap > :not(.conv-banners) { flex: 1 1 0; min-height: 0; }
 .conv { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+/* REQ-PX-204 (MWS-11, board C2): two tasks side by side, each a column with its own title bar; the one with the keyboard has an accent rule along its top. */
+.split-view { min-width: 0; display: flex; }
+.split-col { position: relative; flex: none; box-sizing: border-box; min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--mb-surface-conversation); }
+.split-col + .split-col { border-left: 1px solid var(--color-tab-border); }
+.split-col[data-focused="true"] { box-shadow: inset 0 2px 0 var(--mb-color-accent); }
+.split-col-body { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+.split-col-body > .conv { flex: 1 1 0; }
+.split-paused { margin: 0; padding: var(--mb-space-1_5) var(--mb-space-5); border-bottom: 1px solid var(--color-tab-border); }
 .conv-spacer { flex: 1 1 0; }
 .conv-density { display: inline-flex; align-items: center; gap: var(--mb-space-1); }
 .conv-density select { font: inherit; font-size: var(--mb-type-chrome-size); padding: 1px var(--mb-space-1); border: 1px solid var(--mb-color-border-control); border-radius: var(--radius-md); background: var(--mb-surface-fill); color: var(--mb-color-text); }

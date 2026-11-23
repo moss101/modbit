@@ -12,7 +12,7 @@ import { useCallback, useEffect, useId, useState } from "react";
 import { Badge, Button, Dialog, Icon } from "@modbit/ui";
 import type { AddRuleInput, AllowRuleInfo, RunModeInfo } from "../../shared/control-types.ts";
 import { ASK_CLASS_WORDS } from "./model.ts";
-import { EXPIRY_CHOICES, MODE_COPY, SCOPE_WORDS, approvesMore, expiryWords, modeLabel, orderRules, patternFromText, ruleRefusal } from "./run-mode-model.ts";
+import { EXPIRY_CHOICES, MODE_COPY, RUN_MODES, SCOPE_WORDS, approvesMore, expiryWords, modeLabel, orderRules, patternFromText, ruleRefusal } from "./run-mode-model.ts";
 
 export interface RunModePanelProps {
   open: boolean;
@@ -26,12 +26,10 @@ export interface RunModePanelProps {
   now?: number;
 }
 
-const MODES_FALLBACK = ["ASK", "ALLOWLIST", "ALLOWLIST_SANDBOX", "RUN_EVERYTHING", "AUTONOMOUS"];
 
 export function RunModePanel({ open, onClose, info, rules, onSetMode, onAddRule, onRevoke, now = Date.now() }: RunModePanelProps) {
-  const modes = info && info.modes.length > 0 ? info.modes : MODES_FALLBACK;
+  const modes = info && info.modes.length > 0 ? info.modes : RUN_MODES;
   const [pending, setPending] = useState<string | null>(null);
-  const [understood, setUnderstood] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [text, setText] = useState("");
@@ -45,7 +43,6 @@ export function RunModePanel({ open, onClose, info, rules, onSetMode, onAddRule,
   useEffect(() => {
     if (!open) {
       setPending(null);
-      setUnderstood(false);
       setError(null);
     }
   }, [open]);
@@ -54,7 +51,6 @@ export function RunModePanel({ open, onClose, info, rules, onSetMode, onAddRule,
     if (mode === current || busy) return;
     setError(null);
     if (approvesMore(current, mode, modes)) {
-      setUnderstood(false);
       setPending(mode);
       return;
     }
@@ -102,8 +98,6 @@ export function RunModePanel({ open, onClose, info, rules, onSetMode, onAddRule,
     }
   };
   const shown = orderRules(rules).filter((r) => showInactive || r.state === "ACTIVE");
-  const widest = pending === "RUN_EVERYTHING";
-  const autonomous = pending === "AUTONOMOUS";
 
   return (
     <>
@@ -222,44 +216,20 @@ export function RunModePanel({ open, onClose, info, rules, onSetMode, onAddRule,
           </div>
         </div>
       </Dialog>
-      <Dialog open={open && pending !== null} onClose={() => setPending(null)} title={widest ? "Run everything without asking?" : autonomous ? "Let the agent work autonomously?" : "Let more run without asking?"} role="alertdialog" size="md" testId="runmode-warning">
-        <div className="ckpt-dialog">
-          <p data-testid="runmode-warning-text">{info?.warning || "This lets the agent act without asking you first."}</p>
-          {autonomous && (
-            <p className="appr-warn" data-testid="runmode-warning-autonomous">
-              Autonomous runs builds, tests, project tools and the install of the project&apos;s declared dependencies without asking, and it lasts across a restart. Network access, secrets, deletions, pushes, writes outside the workspace and protected paths still ask.
-            </p>
-          )}
-          {widest && (
-            <p className="appr-warn" data-testid="runmode-warning-widest">
-              This is the widest preset. It lasts for this session only and asks again every time you choose it. Effects that always ask still ask.
-            </p>
-          )}
-          <label className="rm-check">
-            <input type="checkbox" checked={understood} onChange={(e) => setUnderstood(e.target.checked)} data-testid="runmode-understood" />{" "}
-            <span>I understand that a prompt injection or a data leak could run inside this mode without my seeing it.</span>
-          </label>
-          {error && (
-            <p className="appr-note" role="alert" data-testid="runmode-warning-error">
-              {error}
-            </p>
-          )}
-          <div className="rm-actions">
-            <Button onClick={() => setPending(null)} data-testid="runmode-warning-cancel">
-              Cancel
-            </Button>
-            <Button variant="danger" disabled={!understood || busy} onClick={() => pending && void apply(pending, true)} data-testid="runmode-warning-confirm">
-              {pending ? `Use ${modeLabel(pending)}` : "Use"}
-            </Button>
-          </div>
-        </div>
-      </Dialog>
+      <RunModeWarning pending={open ? pending : null} warning={info?.warning ?? ""} error={error} busy={busy} onCancel={() => setPending(null)} onConfirm={(mode) => void apply(mode, true)} />
     </>
   );
 }
 
-/** The conversation's run-mode control: a button that names the mode in force and opens the panel. */
-export function RunModeControl({ sessionId, taskId, connected, open, onOpenChange }: { sessionId: string | null; taskId: string; connected: boolean; open: boolean; onOpenChange: (open: boolean) => void }) {
+/** The task's run mode and saved rules as the Core answers them, re-read when either changes. The control under the composer and the details rail show the same read. */
+export interface RunModeState {
+  info: RunModeInfo | null;
+  rules: AllowRuleInfo[];
+  refresh: () => Promise<void>;
+  setInfo: (info: RunModeInfo) => void;
+}
+
+export function useRunMode(taskId: string, connected: boolean, open: boolean): RunModeState {
   const [info, setInfo] = useState<RunModeInfo | null>(null);
   const [rules, setRules] = useState<AllowRuleInfo[]>([]);
   const refresh = useCallback(async () => {
@@ -281,6 +251,12 @@ export function RunModeControl({ sessionId, taskId, connected, open, onOpenChang
     });
     return off;
   }, [taskId, refresh]);
+  return { info, rules, refresh, setInfo };
+}
+
+/** The conversation's run-mode control: a button that names the mode in force and opens the panel. */
+export function RunModeControl({ sessionId, taskId, state, open, onOpenChange }: { sessionId: string | null; taskId: string; state: RunModeState; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const { info, rules, refresh, setInfo } = state;
   const label = info ? modeLabel(info.mode) : "…";
   return (
     <>
@@ -310,5 +286,61 @@ export function RunModeControl({ sessionId, taskId, connected, open, onOpenChang
         }}
       />
     </>
+  );
+}
+
+export interface RunModeWarningProps {
+  /** The mode asked for; the dialog is open while it is set. */
+  pending: string | null;
+  /** The Core's own warning when a task's run mode is read; empty on home, where no task exists yet. */
+  warning: string;
+  error: string | null;
+  busy: boolean;
+  onCancel: () => void;
+  onConfirm: (mode: string) => void;
+}
+
+/**
+ * The acknowledgement a move to a mode that approves more needs (AFW-F07), for a task's run-mode panel and for home's environment
+ * strip (REQ-PX-205): one dialog, one checkbox, the same words. The Core refuses such a move without the acknowledgement.
+ */
+export function RunModeWarning({ pending, warning, error, busy, onCancel, onConfirm }: RunModeWarningProps) {
+  const [understood, setUnderstood] = useState(false);
+  useEffect(() => setUnderstood(false), [pending]);
+  const widest = pending === "RUN_EVERYTHING";
+  const autonomous = pending === "AUTONOMOUS";
+  return (
+    <Dialog open={pending !== null} onClose={onCancel} title={widest ? "Run everything without asking?" : autonomous ? "Let the agent work autonomously?" : "Let more run without asking?"} role="alertdialog" size="md" testId="runmode-warning">
+      <div className="ckpt-dialog">
+        <p data-testid="runmode-warning-text">{warning || "This lets the agent act without asking you first."}</p>
+        {autonomous && (
+          <p className="appr-warn" data-testid="runmode-warning-autonomous">
+            Autonomous runs builds, tests, project tools and the install of the project&apos;s declared dependencies without asking, and it lasts across a restart. Network access, secrets, deletions, pushes, writes outside the workspace and protected paths still ask.
+          </p>
+        )}
+        {widest && (
+          <p className="appr-warn" data-testid="runmode-warning-widest">
+            This is the widest preset. It lasts for this session only and asks again every time you choose it. Effects that always ask still ask.
+          </p>
+        )}
+        <label className="rm-check">
+          <input type="checkbox" checked={understood} onChange={(e) => setUnderstood(e.target.checked)} data-testid="runmode-understood" />{" "}
+          <span>I understand that a prompt injection or a data leak could run inside this mode without my seeing it.</span>
+        </label>
+        {error && (
+          <p className="appr-note" role="alert" data-testid="runmode-warning-error">
+            {error}
+          </p>
+        )}
+        <div className="rm-actions">
+          <Button onClick={onCancel} data-testid="runmode-warning-cancel">
+            Cancel
+          </Button>
+          <Button variant="danger" disabled={!understood || busy} onClick={() => pending && onConfirm(pending)} data-testid="runmode-warning-confirm">
+            {pending ? `Use ${modeLabel(pending)}` : "Use"}
+          </Button>
+        </div>
+      </div>
+    </Dialog>
   );
 }

@@ -8,10 +8,10 @@
  * decides the status class, the density grouping, the unread marker and the
  * search hits, and the renderer shows them.
  */
-import type { AgentHeader, AgentHeaders, ConversationSearchResults, PlanView, TranscriptPage, TranscriptRow, WorkGraphView } from "@modbit/surface-protocol";
+import type { AgentHeader, AgentHeaders, ConversationSearchResults, PlanView, TaskPullRequest, TranscriptPage, TranscriptRow, WorkGraphView } from "@modbit/surface-protocol";
 import { AgentStatusClass, SnippetSource, TranscriptDensity, TranscriptRowKind } from "@modbit/surface-protocol";
 import type { CoreClient } from "@modbit/ide-adapter-core";
-import { DENSITIES, STATUS_CLASSES, type PendingApprovalView, type OpenStreamView, type AgentHeadersView, type ConversationSearchView, type Density, type RowFacts, type RowKind, type StatusClass, type PlanInfo, type TranscriptPageView, type TranscriptRowView, type WorkGraphInfo } from "../shared/conversation-types.ts";
+import { DENSITIES, STATUS_CLASSES, type PendingApprovalView, type OpenStreamView, type AgentHeadersView, type ConversationSearchView, type Density, type RowFacts, type RowKind, type StatusClass, type PlanInfo, type PullRequestStateView, type TranscriptPageView, type TranscriptRowView, type WorkGraphInfo } from "../shared/conversation-types.ts";
 
 const hexOf = (b: Uint8Array | undefined): string => Buffer.from(b ?? []).toString("hex");
 const msOf = (t: { seconds: bigint; nanos: number } | undefined): number => (t ? Number(t.seconds) * 1000 + Math.floor(t.nanos / 1_000_000) : 0);
@@ -98,6 +98,44 @@ export function pageView(taskId: string, p: TranscriptPage): TranscriptPageView 
   };
 }
 
+/** PX-211: the Core's record of a task's pull request and its latest read, as the renderer receives it. */
+export function pullRequestView(p: TaskPullRequest): PullRequestStateView {
+  return {
+    owner: p.owner,
+    repo: p.repo,
+    number: Number(p.number),
+    url: p.url,
+    state: p.state,
+    draft: p.draft,
+    checks: p.checks,
+    checksTotal: p.checksTotal,
+    checksPassing: p.checksPassing,
+    checksFailing: p.checksFailing,
+    checksPending: p.checksPending,
+    failingChecks: [...p.failingChecks],
+    headSha: p.headSha,
+    pushedSha: p.pushedSha,
+    readAtMs: msOf(p.readAt),
+    trigger: p.trigger,
+    readOffset: p.readOffset.toString(),
+    openedOffset: p.openedOffset.toString(),
+    autoFix: p.autoFix,
+    autoFixAttempts: p.autoFixAttempts,
+    autoFixCap: p.autoFixCap,
+    autoFixStopped: p.autoFixStopped,
+    autoFixLastCause: p.autoFixLastCause,
+    autoFixLastOffset: p.autoFixLastOffset.toString(),
+    mergeWhenReady: p.mergeWhenReady,
+    mergeMethod: p.mergeMethod,
+    mergePhase: p.mergePhase,
+    mergeDetail: p.mergeDetail,
+    mergeApprovalId: p.mergeApprovalId,
+    mergeHeadSha: p.mergeHeadSha,
+    mergeSha: p.mergeSha,
+    mergeOffset: p.mergeOffset.toString(),
+  };
+}
+
 function headerView(h: AgentHeader) {
   return {
     taskId: hexOf(h.taskId?.value),
@@ -128,6 +166,7 @@ function headerView(h: AgentHeader) {
     projectId: hexOf(h.projectId?.value),
     checkoutRoot: h.checkoutRoot,
     lastLine: h.lastLine,
+    ...(h.pullRequest ? { pullRequest: pullRequestView(h.pullRequest) } : {}),
   };
 }
 

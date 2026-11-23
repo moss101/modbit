@@ -181,7 +181,9 @@ test("a stopped task says what is wrong and what to do on its row and in its con
     await page.getByTestId("run").click();
     await expect(page.getByTestId("conversation")).toBeVisible();
     const taskId = await opened(page);
-    await expect(page.getByTestId("task-details")).toHaveCount(0);
+    // Nothing is opened: More is closed and so is Details in the rail's head.
+    await expect(page.getByTestId("task-more")).toHaveCount(0);
+    await expect(page.getByTestId("task-details")).toHaveAttribute("data-open", "false");
     const row = agentRow(page, taskId);
     await expect(row.getByTestId("agent-facts")).not.toHaveText("", { timeout: 60_000 });
     // The failure block says it, in the conversation, with its evidence; the notice does not repeat it.
@@ -322,17 +324,17 @@ test("PX-196/197: Escape with the details open closes them, not the card; a conf
     await page.getByTestId("task-details-toggle").click();
     await page.getByTestId("task-cancel").click();
     await expect(page.getByTestId("confirm")).toHaveAttribute("data-confirm-kind", "cancel");
-    if (await page.getByTestId("task-details").isVisible()) await page.getByTestId("task-details-toggle").click();
+    if (await page.getByTestId("task-more").isVisible()) await page.getByTestId("task-details-toggle").click();
     hold.open();
     await expect(page.getByTestId("approval-card")).toBeVisible({ timeout: 60_000 });
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("confirm")).toHaveCount(0);
     await expect(page.getByTestId("approval-card"), "the card behind the confirmation was not skipped").toBeVisible();
-    // With the details open, Escape closes them and the card stays.
+    // With More open, Escape closes it and the card stays.
     await page.getByTestId("task-details-toggle").click();
-    await expect(page.getByTestId("task-details")).toBeVisible();
+    await expect(page.getByTestId("task-more")).toBeVisible();
     await page.keyboard.press("Escape");
-    await expect(page.getByTestId("task-details")).toHaveCount(0);
+    await expect(page.getByTestId("task-more")).toHaveCount(0);
     await expect(page.getByTestId("approval-card"), "Escape stepped back from the details and decided nothing").toBeVisible();
     // Skipped on purpose now: the command never ran, and nothing says it did.
     await page.getByTestId("approval-skip").click();

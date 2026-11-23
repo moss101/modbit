@@ -1,0 +1,10 @@
+== @modbit/surface-protocol
+ℹ tests 72
+ℹ pass 72
+ℹ fail 0
+== apps/desktop unit
+$ tsc -p tsconfig.json
+ℹ tests 487
+ℹ pass 487
+ℹ fail 0
+== cargo clippy -D warnings (modbit-core, modbit-tools, modbit-domain, protocol-fixtures, all targets): exit 0; cargo fmt --all --check: exit 0

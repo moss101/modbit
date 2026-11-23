@@ -1227,6 +1227,87 @@ message ReviewBundle {
   repeated CiRejectedView ci_rejected = 361;
   // The repair attempts of the task, in the order they were recorded.
   repeated RepairAttemptView repair_attempts = 362;
+  // PX-214 (DR-PX-2026-11-11-021 MWS-18): the isolated reviewer's latest
+  // recorded result, read back from the content-addressed object the log
+  // names and re-hashed before anything of it is shown. `reviewer_state` is
+  // "" (the task has no reviewer result), CURRENT (it was made at the
+  // candidate's present revision), STALE (the candidate moved on after it) or
+  // UNREADABLE (the object is missing or its bytes do not hash to the
+  // recorded digest: then nothing of the result is shown, only the digest the
+  // log names and `reviewer_note` saying why).
+  string reviewer_state = 363;
+  string reviewer_verdict = 364;         // PASS | REVISE | BLOCK | UNCERTAIN
+  uint32 reviewer_confidence = 365;      // 0..100
+  string reviewer_summary = 366;
+  uint64 reviewer_candidate_revision = 367;
+  string reviewer_result_digest = 368;   // sha256 of the stored result; commands name it
+  Id reviewer_task_id = 369;             // the review task that reported
+  repeated ReviewFindingView reviewer_findings = 370;
+  repeated string reviewer_questions = 371;
+  string reviewer_note = 372;
+}
+
+// One finding of the isolated reviewer (PX-214). `verified` is the Core's own
+// check against the tree at the candidate revision: the reviewer's word never
+// sets it. A finding that failed it carries `unsupported_reason` and is an
+// assertion, not a fact about the code. `dismissed*` are read from the
+// candidate's log (ReviewFindingDismissed) for this result; `fix_requests`
+// counts the inputs a FixReviewFinding queued for it.
+message ReviewFindingView {
+  string finding_id = 1;        // the reviewer's id, else F<n> by position
+  string severity = 2;          // CRITICAL | HIGH | MEDIUM | LOW
+  string category = 3;
+  string path = 4;
+  uint32 line = 5;              // 0 when the finding names no line
+  string claim = 6;
+  string suggested_action = 7;
+  bool verified = 8;            // resolved against the tree at the candidate revision
+  string unsupported_reason = 9;
+  bool dismissed = 10;
+  string dismissed_by = 11;     // the actor on the log, as "user:<id>"
+  string dismissed_reason = 12;
+  uint64 dismissed_offset = 13;
+  uint32 fix_requests = 14;
+}
+
+// Ask the agent to fix one finding of the reviewer's latest result (PX-214).
+// `result_digest` is the digest of the result the person was looking at: when
+// the latest result is another one, the command is refused (RESULT_CHANGED).
+// The Core queues exactly one input through the task's input queue; the input
+// names this finding and no other. Refused: UNKNOWN_TASK, NO_REVIEWER_RESULT,
+// RESULT_UNREADABLE, RESULT_CHANGED, UNKNOWN_FINDING, FINDING_DISMISSED,
+// TASK_ENDED, BAD_PAYLOAD, and the lease's own refusals.
+message FixReviewFinding {
+  Id task_id = 1;
+  string finding_id = 2;
+  string result_digest = 3;
+}
+
+message ReviewFindingFixQueued {
+  Id task_id = 1;
+  string finding_id = 2;
+  string input_id = 3;
+  uint64 offset = 4;            // the task's log offset of the queued input
+  string task_state = 5;        // the task's state after the command
+}
+
+// Set one finding aside, recording who and why (PX-214): one
+// ReviewFindingDismissed on the candidate's log. The reviewer's result is not
+// edited; the next review's brief leaves the finding out. Refused like
+// FixReviewFinding, and ALREADY_DISMISSED; `reason` is required.
+message DismissReviewFinding {
+  Id task_id = 1;
+  string finding_id = 2;
+  string result_digest = 3;
+  string reason = 4;
+}
+
+message ReviewFindingDismissal {
+  Id task_id = 1;
+  string finding_id = 2;
+  string dismissed_by = 3;
+  string reason = 4;
+  uint64 offset = 5;
 }
 
 message GetCodeView {
@@ -3159,6 +3240,12 @@ message ReviewCommentsIngestedView {
   repeated ReviewCommentView ignored = 5;
   uint32 already_taken = 6;        // comments ingested before, not taken again
   uint64 offset = 7;
+  // PX-212: auto-fix is on for the task and the steered comments asked for a
+  // repair turn (`auto_fix_input_id` names the AutoFixQueued's input); or the
+  // cap stopped it.
+  bool auto_fix_queued = 8;
+  string auto_fix_input_id = 9;
+  bool auto_fix_stopped = 10;
 }
 
 // ---- Reversibility and compensation (REQ-EV-0066; docs/23 "Reversibility") ----

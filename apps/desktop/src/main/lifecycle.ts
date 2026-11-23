@@ -29,6 +29,12 @@ export interface ActiveWork {
   runningTasks: number;
   /** Background terminals whose process is running now. */
   runningTerminals: number;
+  /** REQ-PX-203: pane windows open now (they close with the app). */
+  paneWindows?: number;
+  /** Of the running tasks, those a pane window shows. */
+  tasksInPaneWindows?: number;
+  /** Of the running terminals, those a pane window is attached to. */
+  terminalsInPaneWindows?: number;
 }
 
 export const noWork = (w: ActiveWork): boolean => w.runningTasks === 0 && w.runningTerminals === 0;
@@ -58,11 +64,14 @@ export function quitChoice(work: ActiveWork, response: number): QuitChoice {
 /** The quit confirmation: what is running and, truthfully, what quitting does to it. */
 export function quitPrompt(w: ActiveWork): QuitPrompt {
   const parts: string[] = [];
-  if (w.runningTasks > 0) parts.push(plural(w.runningTasks, "task is running", "tasks are running"));
-  if (w.runningTerminals > 0) parts.push(plural(w.runningTerminals, "background terminal is running", "background terminals are running"));
+  const shown = (n: number | undefined, of: number): string => (n && n > 0 ? (of === 1 ? " (shown in a pane window)" : ` (${n} shown in a pane window)`) : "");
+  if (w.runningTasks > 0) parts.push(plural(w.runningTasks, "task is running", "tasks are running") + shown(w.tasksInPaneWindows, w.runningTasks));
+  if (w.runningTerminals > 0) parts.push(plural(w.runningTerminals, "background terminal is running", "background terminals are running") + shown(w.terminalsInPaneWindows, w.runningTerminals));
   const lines: string[] = ["Quitting stops the local Core that runs your tasks."];
   if (w.runningTasks > 0) lines.push("Everything the Core accepted is already saved. Running tasks are suspended at their last saved step and recovered the next time you open Modbit; nothing continues while Modbit is closed. Choose whether they resume by themselves when you reopen it, or wait for you to resume them.");
   if (w.runningTerminals > 0) lines.push("Background terminals keep running for about a minute and then stop with the Core.");
+  const panes = w.paneWindows ?? 0;
+  if (panes > 0) lines.push(panes === 1 ? "The pane window closes with Modbit; its pane is back in the dock when you open Modbit again." : `The ${panes} pane windows close with Modbit; their panes are back in the dock when you open Modbit again.`);
   const buttons = w.runningTasks > 0 ? ["Keep Modbit open", "Quit and resume on reopen", "Quit and leave suspended"] : ["Keep Modbit open", "Quit and stop"];
   return { message: `${parts.join(" and ")}. Quit anyway?`, detail: lines.join("\n\n"), buttons };
 }
@@ -76,12 +85,14 @@ export interface RecoveryCounts {
 
 export function recoverySummary(c: RecoveryCounts): string {
   if (c.recovered === 0) return "No tasks to recover.";
+  // Plain words for the person (REQ-PX-208's wording review): how many came back, and what each is doing now.
+  const head = `${plural(c.recovered, "task", "tasks")} ${c.recovered === 1 ? "was" : "were"} restored after the restart`;
   const parts: string[] = [];
-  if (c.resumed > 0) parts.push(`${plural(c.resumed, "task", "tasks")} resumed`);
-  if (c.needAttention > 0) parts.push(`${c.needAttention} ${c.needAttention === 1 ? "needs" : "need"} attention`);
+  if (c.resumed > 0) parts.push(`${c.resumed} ${c.resumed === 1 ? "is" : "are"} running again`);
+  if (c.needAttention > 0) parts.push(`${c.needAttention} ${c.needAttention === 1 ? "needs" : "need"} you`);
   const rest = c.recovered - c.resumed - c.needAttention;
-  if (rest > 0) parts.push(`${rest} recovered idle`);
-  return `${parts.join(", ")}.`;
+  if (rest > 0 && parts.length > 0) parts.push(`${rest} ${rest === 1 ? "is" : "are"} waiting`);
+  return parts.length === 0 ? `${head}.` : `${head}: ${parts.join(", ")}.`;
 }
 
 export interface ShutdownStep {

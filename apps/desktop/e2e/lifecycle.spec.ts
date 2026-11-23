@@ -169,13 +169,15 @@ test("PX-049: a restart after a quit with a task running shows the Core's recove
     const summary = page.getByTestId("recovery-summary");
     await expect(summary).toBeVisible({ timeout: 30_000 });
     const text = (await summary.textContent())!;
-    expect(text).toMatch(/^Recovered at start: (\d+ tasks? resumed|\d+ needs? attention|\d+ recovered idle)/);
+    expect(text).toMatch(/^\d+ tasks? (was|were) restored after the restart/);
     // The counts are the Core's: what the summary says needs attention is what the agent list shows as needing attention.
     const attention = await page.locator('[data-testid="agent-row"][data-class="NEEDS_ATTENTION"]').count();
     const running = await page.locator('[data-testid="agent-row"][data-class="RUNNING"]').count();
     const claimed = (re: RegExp) => Number(re.exec(text)?.[1] ?? 0);
-    expect(claimed(/(\d+) needs? attention/)).toBe(attention);
-    expect(claimed(/(\d+) tasks? resumed/)).toBe(running);
+    expect(claimed(/(\d+) needs? you/)).toBe(attention);
+    expect(claimed(/(\d+) (?:is|are) running again/)).toBe(running);
+    expect(Number(await summary.getAttribute("data-attention"))).toBe(attention);
+    expect(Number(await summary.getAttribute("data-resumed"))).toBe(running);
     expect(readShutdownLog(dataDir)).toBeNull();
   } finally {
     hold.open();

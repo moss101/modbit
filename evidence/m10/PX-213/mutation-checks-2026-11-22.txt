@@ -1,0 +1,7 @@
+PX-213 mutation checks, 2026-11-22, cargo test -p modbit-core --test px_213_merge_when_ready per mutation, sources restored after each
+1 Core dispatches an approved ask without comparing heads: CAUGHT
+2 tool does not check the head's runs: CAUGHT
+3 Core asks while checks are pending: CAUGHT
+4 a moved head leaves the pending approval open: CAUGHT
+5 a denial does not turn it off: CAUGHT
+5 mutations, 5 caught

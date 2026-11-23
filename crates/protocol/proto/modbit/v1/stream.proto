@@ -113,7 +113,7 @@ message ApprovalFacts {
   string tool_call_id = 3;
   string tool_name = 4;
   string effect_class = 5;
-  string state = 6;          // REQUESTED | APPROVED | DENIED | EXPIRED | ANSWERED
+  string state = 6;          // REQUESTED | APPROVED | DENIED | EXPIRED | WITHDRAWN (PX-213: the Core closed it because its intent no longer stands) | ANSWERED
   string resolver = 7;
 }
 
@@ -280,6 +280,11 @@ message AgentHeader {
   // answered. A message that is still streaming or was aborted contributes
   // nothing. For an archived task it is the line as of the archive.
   string last_line = 460;
+  // PX-211 (DR-PX-2026-11-11-021 MWS-17; field numbers 470-479 are the block
+  // PX-211 uses for additions to existing messages): the pull request the
+  // task opened and what the Core last read of it. Absent when the task has
+  // opened none.
+  TaskPullRequest pull_request = 470;
 }
 
 message AgentHeaders {
@@ -314,4 +319,154 @@ message TaskArchived {
   Id task_id = 1;
   bool archived = 2;
   uint64 offset = 3;             // where it was recorded; 0 when the task was already in that state
+}
+
+// ------------------------------------------------------------ pull requests
+
+// PX-211 (REQ-PX-211, DR-PX-2026-11-11-021 MWS-17): the pull request a task
+// opened and its state as the Core last read it through the forge adapter.
+// Everything after `url` is what a read found: before the first read `state`
+// is "" and `read_at` is unset, and a client says the state was not read; it
+// never assumes one. A later read that failed leaves the last one standing,
+// and `read_at` says how old it is.
+message TaskPullRequest {
+  string owner = 1;
+  string repo = 2;
+  uint64 number = 3;
+  string url = 4;
+  uint64 opened_offset = 5;          // the ForgePullRequestOpened record
+  string state = 6;                  // "" (not read) | OPEN | CLOSED | MERGED
+  bool draft = 7;
+  // "" (not read) | NONE (no check run) | PENDING | FAILING | PASSING |
+  // UNAVAILABLE (the forge's check runs could not be read)
+  string checks = 8;
+  uint32 checks_total = 9;
+  uint32 checks_passing = 10;
+  uint32 checks_failing = 11;
+  uint32 checks_pending = 12;
+  repeated string failing_checks = 13; // untrusted labels, at most 20
+  string head_sha = 14;              // the head the forge reported
+  string pushed_sha = 15;            // the commit this Core pushed ("" when unknown)
+  google.protobuf.Timestamp read_at = 16; // unset = never read
+  uint64 read_offset = 17;           // the ForgePullRequestStateRead record; 0 = never read
+  string trigger = 18;               // REQUEST | SCHEDULE; "" = never read
+  // PX-212 (DR-PX-2026-11-11-021 MWS-17): auto-fix for this task. Off until a
+  // person turns it on (SetAutoFix); attempts count from the latest time it
+  // was turned on.
+  bool auto_fix = 19;
+  uint32 auto_fix_attempts = 20;
+  uint32 auto_fix_cap = 21;
+  // The cap was reached and a further cause was not acted on (AutoFixStopped
+  // after the latest AutoFixSet); nothing is queued until it is turned on again.
+  bool auto_fix_stopped = 22;
+  string auto_fix_last_cause = 23;   // CHECKS_FAILING | REVIEW_COMMENT | "" (none yet)
+  uint64 auto_fix_last_offset = 24;  // the latest AutoFixQueued or AutoFixStopped; 0 = none
+  // PX-213 (DR-PX-2026-11-11-021 MWS-17): merge when ready, as the task's log
+  // and the latest read say. Off until a person asks (SetMergeWhenReady).
+  bool merge_when_ready = 25;
+  string merge_method = 26;          // merge | squash | rebase ("" = never asked)
+  // OFF | WAITING (checks pending, failing, unavailable, a draft or not read
+  // yet; `merge_detail` says which) | ASKED (the approval waits) | MERGED |
+  // CLEARED (the Core turned it off; `merge_detail` says why)
+  string merge_phase = 27;
+  string merge_detail = 28;
+  string merge_approval_id = 29;     // the standing ask's approval ("" = none)
+  string merge_head_sha = 30;        // the head the standing ask (or the merge) binds
+  string merge_sha = 31;             // the forge's merge commit once merged
+  uint64 merge_offset = 32;          // the latest merge-when-ready record; 0 = none
+}
+
+// Read the task's pull request through the forge adapter now (`forge.pr.read`
+// under the task's lease; the kernel and the egress policy decide as for any
+// forge read) and record what it said. Refused NO_PULL_REQUEST when the task
+// opened none; a refused or failed read records nothing.
+message RefreshPullRequest {
+  Id task_id = 1;
+}
+
+message PullRequestRefreshed {
+  TaskPullRequest pull_request = 1;
+  uint64 offset = 2;                 // the read's record
+  // The read found the request merged for the first time and the session's
+  // archive-after-merge preference is on: the task was archived at
+  // `archive_offset` (ArchiveTask with archived = false is the undo).
+  bool archived = 3;
+  uint64 archive_offset = 4;
+  // PX-212: this read found failing checks, auto-fix is on and a repair turn
+  // was queued (`auto_fix_input_id`) and asked for; or the cap stopped it.
+  bool auto_fix_queued = 5;
+  string auto_fix_input_id = 6;
+  bool auto_fix_stopped = 7;
+  // PX-213: merge when ready after this read (TaskPullRequest.merge_phase)
+  // and the approval it raised, if it raised one now.
+  string merge_phase = 8;
+  string merge_approval_id = 9;
+}
+
+// PX-212 (REQ-PX-212, DR-PX-2026-11-11-021 MWS-17): turn auto-fix on or off
+// for one task. With it on, a failing check the Core reads (RefreshPullRequest
+// or the schedule) or a review comment the existing ingestion accepts queues
+// one repair input naming its cause, and the task's turn is asked for through
+// the ordinary StartTask: the task's run mode, lease, policy and budgets
+// decide as for any start, and its pushes ask as a person's would. At most
+// `cap` attempts from the time it is turned on; then AutoFixStopped. Off is
+// the default. The same value again records nothing.
+message SetAutoFix {
+  Id task_id = 1;
+  bool enabled = 2;
+}
+
+message AutoFixState {
+  Id task_id = 1;
+  bool enabled = 2;
+  uint32 attempts = 3;
+  uint32 cap = 4;
+  bool stopped = 5;
+  uint64 offset = 6;                 // the AutoFixSet record; 0 = never set
+}
+
+// PX-213 (REQ-PX-213, DR-PX-2026-11-11-021 MWS-17): ask for (or withdraw)
+// merge when ready on the task's pull request. With it on, a read
+// (RefreshPullRequest, the schedule, or this command's own read) that finds
+// the request open, not a draft and its checks passed raises the approval of
+// `forge.pr.merge` with the exact intent: repository, number, head sha and
+// method. Approval merges that head only; a head that moves, or checks that
+// stop passing, void the ask and it is asked again when they pass. Nothing
+// approves the merge but a person's decision: no run mode and no allow rule
+// covers it. Refused NO_PULL_REQUEST before a request is recorded and
+// PR_NOT_OPEN once it is merged or closed. The same value again records
+// nothing.
+message SetMergeWhenReady {
+  Id task_id = 1;
+  bool enabled = 2;
+  string method = 3;                 // merge | squash | rebase; "" = merge
+}
+
+message MergeWhenReadyState {
+  Id task_id = 1;
+  bool enabled = 2;
+  string method = 3;
+  string phase = 4;                  // as TaskPullRequest.merge_phase
+  string detail = 5;
+  string approval_id = 6;
+  string head_sha = 7;
+  string merge_sha = 8;
+  uint64 offset = 9;                 // the latest merge-when-ready record; 0 = none
+}
+
+// The session's pull-request preferences. Archive after merge is off until a
+// person turns it on.
+message GetPullRequestPreferences {
+  Id session_id = 1;
+}
+
+message SetPullRequestPreferences {
+  Id session_id = 1;
+  bool archive_after_merge = 2;
+}
+
+message PullRequestPreferences {
+  Id session_id = 1;
+  bool archive_after_merge = 2;
+  uint64 offset = 3;                 // the record that set it; 0 = never set (the default)
 }

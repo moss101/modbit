@@ -166,6 +166,21 @@ impl Act {
         }
     }
 
+    /// What the input needs of the application's standing level (PX-215):
+    /// pointer-style input needs `click`; text, a value or keys need `full`.
+    #[must_use]
+    pub const fn need(&self) -> crate::access::Need {
+        use crate::access::Need;
+        match self {
+            Act::Press { .. }
+            | Act::Click { .. }
+            | Act::Move { .. }
+            | Act::Drag { .. }
+            | Act::Scroll { .. } => Need::Click,
+            Act::SetValue { .. } | Act::Type { .. } | Act::Key { .. } => Need::Keyboard,
+        }
+    }
+
     /// The rung of the action ladder the tool starts on (CUC-A04).
     #[must_use]
     pub const fn modality(&self) -> &'static str {

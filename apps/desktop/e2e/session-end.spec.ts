@@ -187,11 +187,12 @@ test("PX-049: choosing resume at the quit records it in the Core, and the next s
     const summary = page.getByTestId("recovery-summary");
     await expect(summary).toBeVisible({ timeout: 30_000 });
     const text = (await summary.textContent())!;
-    expect(text).toMatch(/^Recovered at start: /);
+    expect(text).toMatch(/^\d+ tasks? (was|were) restored after the restart/);
     await expectTaskState(page, taskId, "Running", 30_000);
     // The counts are the Core's: what the summary says is resumed is what the list shows as running.
     const running = await page.locator('[data-testid="agent-row"][data-state="Running"]').count();
-    expect(Number(/(\d+) tasks? resumed/.exec(text)?.[1] ?? 0)).toBe(running);
+    expect(Number(/(\d+) (?:is|are) running again/.exec(text)?.[1] ?? 0)).toBe(running);
+    expect(Number(await summary.getAttribute("data-resumed"))).toBe(running);
   } finally {
     h.first.open();
     h.later.open();

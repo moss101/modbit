@@ -5058,6 +5058,73 @@ export declare type ReviewBundle = Message<"modbit.v1.ReviewBundle"> & {
    * @generated from field: repeated modbit.v1.RepairAttemptView repair_attempts = 362;
    */
   repairAttempts: RepairAttemptView[];
+
+  /**
+   * PX-214 (DR-PX-2026-11-11-021 MWS-18): the isolated reviewer's latest
+   * recorded result, read back from the content-addressed object the log
+   * names and re-hashed before anything of it is shown. `reviewer_state` is
+   * "" (the task has no reviewer result), CURRENT (it was made at the
+   * candidate's present revision), STALE (the candidate moved on after it) or
+   * UNREADABLE (the object is missing or its bytes do not hash to the
+   * recorded digest: then nothing of the result is shown, only the digest the
+   * log names and `reviewer_note` saying why).
+   *
+   * @generated from field: string reviewer_state = 363;
+   */
+  reviewerState: string;
+
+  /**
+   * PASS | REVISE | BLOCK | UNCERTAIN
+   *
+   * @generated from field: string reviewer_verdict = 364;
+   */
+  reviewerVerdict: string;
+
+  /**
+   * 0..100
+   *
+   * @generated from field: uint32 reviewer_confidence = 365;
+   */
+  reviewerConfidence: number;
+
+  /**
+   * @generated from field: string reviewer_summary = 366;
+   */
+  reviewerSummary: string;
+
+  /**
+   * @generated from field: uint64 reviewer_candidate_revision = 367;
+   */
+  reviewerCandidateRevision: bigint;
+
+  /**
+   * sha256 of the stored result; commands name it
+   *
+   * @generated from field: string reviewer_result_digest = 368;
+   */
+  reviewerResultDigest: string;
+
+  /**
+   * the review task that reported
+   *
+   * @generated from field: modbit.v1.Id reviewer_task_id = 369;
+   */
+  reviewerTaskId?: Id | undefined;
+
+  /**
+   * @generated from field: repeated modbit.v1.ReviewFindingView reviewer_findings = 370;
+   */
+  reviewerFindings: ReviewFindingView[];
+
+  /**
+   * @generated from field: repeated string reviewer_questions = 371;
+   */
+  reviewerQuestions: string[];
+
+  /**
+   * @generated from field: string reviewer_note = 372;
+   */
+  reviewerNote: string;
 };
 
 /**
@@ -5065,6 +5132,250 @@ export declare type ReviewBundle = Message<"modbit.v1.ReviewBundle"> & {
  * Use `create(ReviewBundleSchema)` to create a new message.
  */
 export declare const ReviewBundleSchema: GenMessage<ReviewBundle>;
+
+/**
+ * One finding of the isolated reviewer (PX-214). `verified` is the Core's own
+ * check against the tree at the candidate revision: the reviewer's word never
+ * sets it. A finding that failed it carries `unsupported_reason` and is an
+ * assertion, not a fact about the code. `dismissed*` are read from the
+ * candidate's log (ReviewFindingDismissed) for this result; `fix_requests`
+ * counts the inputs a FixReviewFinding queued for it.
+ *
+ * @generated from message modbit.v1.ReviewFindingView
+ */
+export declare type ReviewFindingView = Message<"modbit.v1.ReviewFindingView"> & {
+  /**
+   * the reviewer's id, else F<n> by position
+   *
+   * @generated from field: string finding_id = 1;
+   */
+  findingId: string;
+
+  /**
+   * CRITICAL | HIGH | MEDIUM | LOW
+   *
+   * @generated from field: string severity = 2;
+   */
+  severity: string;
+
+  /**
+   * @generated from field: string category = 3;
+   */
+  category: string;
+
+  /**
+   * @generated from field: string path = 4;
+   */
+  path: string;
+
+  /**
+   * 0 when the finding names no line
+   *
+   * @generated from field: uint32 line = 5;
+   */
+  line: number;
+
+  /**
+   * @generated from field: string claim = 6;
+   */
+  claim: string;
+
+  /**
+   * @generated from field: string suggested_action = 7;
+   */
+  suggestedAction: string;
+
+  /**
+   * resolved against the tree at the candidate revision
+   *
+   * @generated from field: bool verified = 8;
+   */
+  verified: boolean;
+
+  /**
+   * @generated from field: string unsupported_reason = 9;
+   */
+  unsupportedReason: string;
+
+  /**
+   * @generated from field: bool dismissed = 10;
+   */
+  dismissed: boolean;
+
+  /**
+   * the actor on the log, as "user:<id>"
+   *
+   * @generated from field: string dismissed_by = 11;
+   */
+  dismissedBy: string;
+
+  /**
+   * @generated from field: string dismissed_reason = 12;
+   */
+  dismissedReason: string;
+
+  /**
+   * @generated from field: uint64 dismissed_offset = 13;
+   */
+  dismissedOffset: bigint;
+
+  /**
+   * @generated from field: uint32 fix_requests = 14;
+   */
+  fixRequests: number;
+};
+
+/**
+ * Describes the message modbit.v1.ReviewFindingView.
+ * Use `create(ReviewFindingViewSchema)` to create a new message.
+ */
+export declare const ReviewFindingViewSchema: GenMessage<ReviewFindingView>;
+
+/**
+ * Ask the agent to fix one finding of the reviewer's latest result (PX-214).
+ * `result_digest` is the digest of the result the person was looking at: when
+ * the latest result is another one, the command is refused (RESULT_CHANGED).
+ * The Core queues exactly one input through the task's input queue; the input
+ * names this finding and no other. Refused: UNKNOWN_TASK, NO_REVIEWER_RESULT,
+ * RESULT_UNREADABLE, RESULT_CHANGED, UNKNOWN_FINDING, FINDING_DISMISSED,
+ * TASK_ENDED, BAD_PAYLOAD, and the lease's own refusals.
+ *
+ * @generated from message modbit.v1.FixReviewFinding
+ */
+export declare type FixReviewFinding = Message<"modbit.v1.FixReviewFinding"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: string finding_id = 2;
+   */
+  findingId: string;
+
+  /**
+   * @generated from field: string result_digest = 3;
+   */
+  resultDigest: string;
+};
+
+/**
+ * Describes the message modbit.v1.FixReviewFinding.
+ * Use `create(FixReviewFindingSchema)` to create a new message.
+ */
+export declare const FixReviewFindingSchema: GenMessage<FixReviewFinding>;
+
+/**
+ * @generated from message modbit.v1.ReviewFindingFixQueued
+ */
+export declare type ReviewFindingFixQueued = Message<"modbit.v1.ReviewFindingFixQueued"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: string finding_id = 2;
+   */
+  findingId: string;
+
+  /**
+   * @generated from field: string input_id = 3;
+   */
+  inputId: string;
+
+  /**
+   * the task's log offset of the queued input
+   *
+   * @generated from field: uint64 offset = 4;
+   */
+  offset: bigint;
+
+  /**
+   * the task's state after the command
+   *
+   * @generated from field: string task_state = 5;
+   */
+  taskState: string;
+};
+
+/**
+ * Describes the message modbit.v1.ReviewFindingFixQueued.
+ * Use `create(ReviewFindingFixQueuedSchema)` to create a new message.
+ */
+export declare const ReviewFindingFixQueuedSchema: GenMessage<ReviewFindingFixQueued>;
+
+/**
+ * Set one finding aside, recording who and why (PX-214): one
+ * ReviewFindingDismissed on the candidate's log. The reviewer's result is not
+ * edited; the next review's brief leaves the finding out. Refused like
+ * FixReviewFinding, and ALREADY_DISMISSED; `reason` is required.
+ *
+ * @generated from message modbit.v1.DismissReviewFinding
+ */
+export declare type DismissReviewFinding = Message<"modbit.v1.DismissReviewFinding"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: string finding_id = 2;
+   */
+  findingId: string;
+
+  /**
+   * @generated from field: string result_digest = 3;
+   */
+  resultDigest: string;
+
+  /**
+   * @generated from field: string reason = 4;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message modbit.v1.DismissReviewFinding.
+ * Use `create(DismissReviewFindingSchema)` to create a new message.
+ */
+export declare const DismissReviewFindingSchema: GenMessage<DismissReviewFinding>;
+
+/**
+ * @generated from message modbit.v1.ReviewFindingDismissal
+ */
+export declare type ReviewFindingDismissal = Message<"modbit.v1.ReviewFindingDismissal"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: string finding_id = 2;
+   */
+  findingId: string;
+
+  /**
+   * @generated from field: string dismissed_by = 3;
+   */
+  dismissedBy: string;
+
+  /**
+   * @generated from field: string reason = 4;
+   */
+  reason: string;
+
+  /**
+   * @generated from field: uint64 offset = 5;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.ReviewFindingDismissal.
+ * Use `create(ReviewFindingDismissalSchema)` to create a new message.
+ */
+export declare const ReviewFindingDismissalSchema: GenMessage<ReviewFindingDismissal>;
 
 /**
  * @generated from message modbit.v1.GetCodeView
@@ -13401,6 +13712,25 @@ export declare type ReviewCommentsIngestedView = Message<"modbit.v1.ReviewCommen
    * @generated from field: uint64 offset = 7;
    */
   offset: bigint;
+
+  /**
+   * PX-212: auto-fix is on for the task and the steered comments asked for a
+   * repair turn (`auto_fix_input_id` names the AutoFixQueued's input); or the
+   * cap stopped it.
+   *
+   * @generated from field: bool auto_fix_queued = 8;
+   */
+  autoFixQueued: boolean;
+
+  /**
+   * @generated from field: string auto_fix_input_id = 9;
+   */
+  autoFixInputId: string;
+
+  /**
+   * @generated from field: bool auto_fix_stopped = 10;
+   */
+  autoFixStopped: boolean;
 };
 
 /**

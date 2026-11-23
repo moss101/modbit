@@ -32,7 +32,7 @@ import { closeApp, launch, makeRepo, setContentSize } from "./support/ui-harness
 import { dist, pacedModel, retain, type Dist, type Part } from "./support/perf.ts";
 import { Gate } from "./support/stream-model.ts";
 import { createTask, openConversation, sessionOf } from "./support/conversation-harness.ts";
-import { openTaskDetails, toNewTask } from "./support/new-task.ts";
+import { openTaskMore, toNewTask } from "./support/new-task.ts";
 
 const PROFILE = process.env.MODBIT_PERF_PROFILE ?? "ci";
 const ENFORCE = PROFILE === "reference";
@@ -110,13 +110,15 @@ test("PERF PX-041/PX-047: a streamed delta renders within 100 ms of its event ti
         queueMicrotask(check);
       });
     });
-    // The drafts are made from the home composer first; each is then started and its conversation opened in turn (one stream is watched at a time).
+    // The drafts are made from the home composer first; each has its conversation opened and is then started in turn (one stream is watched at a time).
+    // Opened first: a row that has just been started leaves the drafts for the running group, and a click aimed at it while it moves lands nowhere
+    // (the conversation stayed on the task before it). The draft's row holds still, and the stream is then watched from its first delta.
     const ids: string[] = [];
     for (let k = 0; k < TASKS; k++) ids.push(await createTask(page, `perf stream ${k}`, repo));
     const sid = await sessionOf(page);
     for (const id of ids) {
-      await page.evaluate(([s, t]) => window.modbit.startTask(s!, t!), [sid, id]);
       await openConversation(page, id);
+      await page.evaluate(([s, t]) => window.modbit.startTask(s!, t!), [sid, id]);
       await expect(page.getByTestId("review")).toBeVisible({ timeout: 600_000 });
       await page.keyboard.press("Escape");
     }
@@ -339,7 +341,7 @@ test("PERF PX-047: a long transcript scrolls; the frame distribution is recorded
     }
     await openConversation(page, taskId);
     // Nothing folds in the detailed density: the rows the Core projected are the rows on the page.
-    await openTaskDetails(page);
+    await openTaskMore(page);
     await page.getByTestId("conv-density").selectOption("DETAILED");
     await expect(page.getByTestId("conversation")).toHaveAttribute("data-density", "DETAILED");
     const total = await page.evaluate((t) => window.modbit.transcript(t, { density: "DETAILED", limit: 1 }).then((v) => v.totalRows), taskId);

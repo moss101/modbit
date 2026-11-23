@@ -1,0 +1,83 @@
+{
+ "task": "PX-205",
+ "requirements": [
+  "REQ-PX-205",
+  "QUAL-PX-205",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-205"
+ ],
+ "scenarios": [
+  "QUAL-PX-205 / PX-E2E-205"
+ ],
+ "decision_record": "DR-PX-2026-11-11-021 (MWS-12, sections 5.1, 5.11 and 9); DR-PX-2026-11-04-020 AWS-01, AWS-07..10 in force",
+ "tier": "release-critical",
+ "branch": "wip/desktop-2-home",
+ "base": "origin/main 9da82128, with origin/main 978fe135 (PX-204 seal) merged",
+ "status": "built and proven locally on macOS arm64; not sealed (graph.py was not run: sealing is not this task's)",
+ "audit": {
+  "classification": "IMPLEMENTED-PARTIAL: send, Alt+Enter, the mode and pin before start, the location menu and the first-run controls PRODUCTION-WORKING; no tray, no run mode on home, nothing waiting on the person shown on home",
+  "first_missing_link": "the session's pending approvals could only be read for an open task (useDockApprovals returned nothing without a task id), and the only decision path lived inside ApprovalDock, with no rule for what a list may not decide",
+  "traced": "Home -> useDockApprovals(sessionId, null) -> window.modbit.dockApprovals(session) -> Waiting -> decideFromList (decidableFromList, else NOT_FROM_A_LIST) -> resolveShown -> window.modbit.resolveApproval(intentHash); undecidable -> requestNav task -> Conversation -> ApprovalDock (two steps for an irreversible effect) -> resolveShown. Home submit -> createTask -> composerSetMode / composerSetPreference / setRunMode -> startTask (send only)"
+ },
+ "bridge": {
+  "added": [],
+  "protocol_change": "none",
+  "preload_change": "none",
+  "main_change": "none",
+  "csp_change": "none",
+  "rust_change": "none",
+  "locked_files_changed": "none"
+ },
+ "decided_here": {
+  "column": "the tray takes --mb-column (768), the conversation's column",
+  "tray": "chrome fill (--mb-surface-fill), radius the composer's 14 plus its 6 of padding",
+  "decidable_from_a_list": "everything but an effect that cannot be undone (Destructive, external), native control and a budget raise; those open their task",
+  "run_mode_on_home": "the five presets, Supervised by default; one that approves more takes the task panel's acknowledgement dialog (one component); sent after CreateTask, before StartTask",
+  "first_run_steps": "provider, trust a repository, first task; done by fact, never by click; shown while onboarding"
+ },
+ "left_out": [
+  "branch on the strip (no bridge reads a folder's branch before a task; no preload change allowed)",
+  "the board's Cloud | This Mac switch (one location control, the strip's menu)",
+  "the board's / skills button, Schedule an automation step and Dismiss",
+  "questions and mode proposals answered in place (PX-206); home opens their task",
+  "keyboard decisions on home's list (buttons only)"
+ ],
+ "tests": [
+  "apps/desktop/e2e/px-205-home.spec.ts",
+  "apps/desktop/src/renderer/home/home.test.ts",
+  "apps/desktop/e2e/issue-intake.spec.ts",
+  "apps/desktop/e2e/keyboard.spec.ts"
+ ],
+ "unit": "@modbit/desktop 430 of 430 (+6 home.test.ts); @modbit/ui 11 of 11; pnpm typecheck clean.",
+ "proof": "e2e/px-205-home.spec.ts 2 of 2 locally against the real app and a real Core (see TASK_CARD.md Verification)",
+ "retained_mutations": [
+  "a destructive effect decided while home showed it (resolved through the bridge): destructiveDecidedFromHome fails; decideFromList refuses Destructive and native control in home.test.ts with nothing reaching the bridge",
+  "cloud made choosable in the open location menu while PX-128 is not COMPLETE: cloudDrift fails",
+  "a first request off the chosen pin (pin moved through the bridge before start): offPin fails",
+  "a button nobody proves added to the strip: inertControls fails",
+  "the environment strip drawn above the composer: trayDrift fails"
+ ],
+ "removed_test_ids": [],
+ "removed_checks": [],
+ "changed_checks": [
+  "issue-intake.spec.ts:118 opens the issue field from add context before filling it (MWS-12); assertions unchanged",
+  "keyboard.spec.ts:116 the home tab order from the goal is add context, mode, model, location, folder (was mode, model, repository), and five Shift+Tab return to the goal (was three); the same fact: every home control is reached by keyboard in reading order"
+ ],
+ "screenshots": "after/*.png: the running app against a real Core at 1440 x 900 (captured at 2x), written by e2e/px-205-home.spec.ts with MODBIT_SHOTS_DIR set, each in comfortable and compact, light and dark. home-first-run-*: a fresh profile, no provider, no trusted folder. home-location-menu-*: the location menu open with cloud disabled and its reason (provider and folder set). home-waiting-*: two tasks waiting, a protected write with Skip and Allow once, a destructive one with Cannot be undone and Open to decide. home-destructive-opens-task-*: the destructive task opened from home, its card on the second step.",
+ "build_digest": {
+  "dist/renderer/index.js": "sha256:b00bef876bfb67e44ecd30ee3bd153c867cf076c69314c166a9405e39a9be7c2",
+  "dist/renderer/app.css": "sha256:025c5039cbb3ee516fa0c0b4552559cd54dc9506fc2f75d35e5c6df4fae13394",
+  "dist/preload/preload.cjs": "sha256:91365bcfca1d747a1a96ab101bce7a96942c2872665042634fbda087d3e7bbf1",
+  "dist/main/main.cjs": "sha256:3878cc18e3b0a5ca59be7dd91d23f089d27edff080129fd8a68bc85f747c8b14",
+  "note": "the final build: the screenshots and the last reruns used it; the whole local suite (run 1) ran on an earlier build (app.css sha256:f36af4d1...) before the switch and strip fixes; preload and main unchanged from PX-204"
+ },
+ "core_binary": {
+  "path": "research/desktop-2/bin/modbit-core (prebuilt from main's Rust; not in the repository)",
+  "sha256": "c5ec630a2c92680ceaccf3dc72a663ecf0e3f369c3e1309e146a691807234fcb"
+ },
+ "full_suite_results": "evidence/m10/PX-205/desktop-e2e-full-results.txt",
+ "full_suite": "run 1: 213 passed, 2 failed, 3 skipped (the two live-model specs and the Windows-only one). Both failures were caused by this change: keyboard.spec.ts:80 (home tab order; moved with the surface) and worktrees.spec.ts:64 (the own-worktree switch input was 1 px and the track took the click; the input now covers the switch). After the fixes: keyboard.spec.ts 1 of 1, worktrees.spec.ts 4 of 4, px-205-home.spec.ts 2 of 2. The whole suite was not run a second time.",
+ "ci": {
+  "run_1": "43808273820 on 8c48c2c6 (draft pull request 223): desktop E2E ubuntu failed in px-205-home.spec.ts:408, caused by this change: with the Linux location name (This computer) and a long folder path the environment strip wrapped and the run mode went to a second line (trayDrift caught it). Fixed: the strip is one line and the folder gives way; the spec now also checks the strip at 1100 and 900 wide. The rest of the ubuntu suite: 214 passed, 3 skipped. Other jobs at the time of the fix: see run_2.",
+  "run_2": "43814166045 on 61712c96: passed: desktop E2E windows (px-205 2 of 2), packaged desktop ubuntu, windows and macOS, node on all three, protocol, cloud, supply chain, locked files, dossier, rust ubuntu. Failed: desktop E2E ubuntu: task-list.spec.ts:492 only (the known flake: an archived row still listed; px-205 2 of 2 passed; 214 passed); desktop E2E macos: awl.spec.ts:246 homeDrift and px-205-home.spec.ts:243 trayDrift, both 'not centred', caused by this change: the CI Mac draws scroll bars that take room, and first-run home is taller than the window, so the column moved left by half a scroll bar. Fixed with scrollbar-gutter: stable both-edges on home (checked locally with a 15 px scroll bar forced: offset 0). rust macOS: apps/cli/tests/lifecycle.rs fix_17 (a CLI lifecycle test; no Rust changed here; not caused by this change). Release supply chain and rust windows were still running when the next push superseded the run."
+ }
+}

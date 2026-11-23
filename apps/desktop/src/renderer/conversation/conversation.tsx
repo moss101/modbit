@@ -10,26 +10,30 @@
  * inline approval and question cards live here.
  * Nothing in this file holds authority: every effect is a typed preload call.
  */
-import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Button, Icon, IconButton, StatusDot, TrayHost, useLayer } from "@modbit/ui";
+import { Button, Icon, IconButton, StatusDot, TrayHost, TrayStoreContext, trays as appTrays, useLayer, type TrayStore } from "@modbit/ui";
+import { KEY_FOCUS_ATTR } from "../key-focus.ts";
+import { LandmarkTaskContext } from "../landmark.ts";
+import { DENSITIES, type AgentHeaderView, type Density } from "../../shared/conversation-types.ts";
+import type { TerminalViewJson } from "../../preload/preload.ts";
 import type { TranscriptRowView } from "../../shared/conversation-types.ts";
 import { noticeWanted, type ScreenState as DerivedScreenState } from "../screens.ts";
-import { TaskDetails } from "./task-details.tsx";
+import { moreMaxHeight } from "./more-fit.ts";
+import { DetailsRail } from "./details-rail.tsx";
 import { StateLine } from "../shell/state-line.tsx";
-import { localMachine } from "../location.ts";
 import { withCoreFacts, type TaskCard } from "../model.ts";
 import { INITIAL_FOLLOW, TIMED_PHASES, elapsedWords, identityOf, messageIds, onDismiss, onJumpToBottom, onMessages, onScroll, pillText, stallLevel, tokenWords, turnStartMs, withDivider, withLiveOnly, withPlanCard, type Follow } from "./model.ts";
 import { PlanCard } from "./plan-card.tsx";
 import { usePlan } from "./use-plan.ts";
-import { ContextRingView, useAccounting } from "../context/ring.tsx";
+import { ContextRingView, ContextTrayHost, useAccounting } from "../context/ring.tsx";
 import { RowView, type RowContext } from "./rows.tsx";
 import { loadConversationPrefs, saveConversationPrefs, type ConversationPrefs } from "./prefs.ts";
 import { useConversation } from "./use-conversation.ts";
 import { Composer } from "../composer/composer.tsx";
 import { ApprovalDock } from "../approvals/approval-dock.tsx";
 import { ModeProposalDock } from "../approvals/mode-proposal-dock.tsx";
-import { RunModeControl } from "../approvals/run-mode.tsx";
+import { RunModeControl, useRunMode } from "../approvals/run-mode.tsx";
 import { useCheckpointSurface } from "./use-checkpoint-surface.tsx";
 import { useComputerCards } from "../computer/use-computer.ts";
 import { callKey } from "../computer/model.ts";
@@ -51,22 +55,39 @@ export interface ConversationProps {
   onOpenTask?: ((taskId: string) => void) | undefined;
   /** A task's name for the approvals of other agents shown above this composer. */
   titleOf?: ((taskId: string) => string) | undefined;
-  /** The top bar's slot for this conversation's state and branch. */
-  topSlot?: HTMLElement | null | undefined;
-  /** The top bar's last slot, after the pane toggles: More (the task's details). */
+  /** The top bar's last slot, after the pane toggles: More. */
   topEndSlot?: HTMLElement | null | undefined;
+  /** The details rail's place beside the conversation (MWS-09); null where the task area has no room for it or it is hidden, and its content is then under More. */
+  railSlot?: HTMLElement | null | undefined;
   subtasks?: readonly TaskCard[] | undefined;
   screenState?: DerivedScreenState | null | undefined;
-  /** The task works in a worktree of its own. */
-  worktree?: boolean | undefined;
-  /** Where the Core says the task runs ("local" or "cloud"). */
-  executionLocation?: string | undefined;
-  /** The branch, once the Changes app has read it; unknown until then. */
-  branch?: string | undefined;
+  /** The task's header as the task list read it from the Core (where it runs, its folder, the size of its change). */
+  header?: AgentHeaderView | undefined;
+  /** The terminals the Core lists for the task. */
+  terminals?: readonly TerminalViewJson[] | undefined;
+  onTerminalsChanged?: (() => void) | undefined;
   onReview?: (() => void) | undefined;
   onBrowser?: (() => void) | undefined;
   onCancelTask?: (() => void) | undefined;
+  /** Asks to cancel a child of this task. */
+  onStopChild?: ((taskId: string) => void) | undefined;
+  onCustomize?: (() => void) | undefined;
+  /**
+   * Split view (REQ-PX-204): whether this conversation has the keyboard. With one task it always has; with two, only the
+   * focused one, and every keyboard decision (the approval card's keys, approve, deny, steer) is routed to it.
+   */
+  keyFocus?: boolean | undefined;
+  /** The tray store this conversation docks its approval card, queue and context into; the app's one store by default. In split view each task has its own. */
+  trayStore?: TrayStore<ReactNode> | undefined;
+  /** Also host the app's own trays (limits, undo) above this composer: the focused task does in split view. */
+  hostsAppTrays?: boolean | undefined;
+  /** Tasks shown beside this one (split view): their approvals dock on their own card, not here as another agent's. */
+  shownBeside?: readonly string[] | undefined;
+  /** Split view: every landmark inside says whose it is ("Composer: title"), so two tasks' landmarks are told apart. */
+  nameLandmarks?: boolean | undefined;
 }
+
+const DENSITY_LABEL: Record<Density, string> = { COMPACT: "Compact", BALANCED: "Balanced", DETAILED: "Detailed" };
 
 const findRow = (rows: readonly TranscriptRowView[], id: string, path: string[] = []): string[] | null => {
   for (const r of rows) {
@@ -93,7 +114,9 @@ function collectTurnText(rows: readonly TranscriptRowView[], turnId: string, out
 }
 
 export function Conversation(props: ConversationProps) {
-  const { taskId, sessionId, connected, card, title, focusRowId, onResume, onNewTask, onOpenTerminal, onOpenTask, titleOf, topSlot, topEndSlot, subtasks, screenState, worktree, executionLocation, branch, onReview, onBrowser, onCancelTask } = props;
+  const { taskId, sessionId, connected, card, title, focusRowId, onResume, onNewTask, onOpenTerminal, onOpenTask, titleOf, topEndSlot, railSlot, subtasks, screenState, header, terminals, onTerminalsChanged, onReview, onBrowser, onCancelTask, onStopChild, onCustomize, keyFocus = true, trayStore, hostsAppTrays = false, shownBeside, nameLandmarks = false } = props;
+  const store = trayStore ?? (appTrays as TrayStore<ReactNode>);
+  const section = useRef<HTMLElement>(null);
   const [prefs, setPrefs] = useState<ConversationPrefs>(loadConversationPrefs);
   useEffect(() => saveConversationPrefs(prefs), [prefs]);
   const conv = useConversation(taskId, sessionId, prefs.density, connected);
@@ -108,9 +131,29 @@ export function Conversation(props: ConversationProps) {
   const ckpt = useCheckpointSurface({ taskId, sessionId, connected, card, onResume, onOpenTask });
   // PX-196: what the Core folded from the task's log stands in for what this window has not seen since it started.
   const detailsCard = useMemo(() => (card && conv.factsTaskId === taskId ? withCoreFacts(card, conv.facts, conv.asOfOffset) : card), [card, conv.facts, conv.factsTaskId, conv.asOfOffset, taskId]);
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  // A layer: Escape closes the panel and nothing else, before any key scope (a docked card's Skip) sees it.
-  useLayer(detailsOpen, "task-details", false, () => setDetailsOpen(false));
+  const [moreOpen, setMoreOpen] = useState(false);
+  // A layer: Escape closes More and nothing else, before any key scope (a docked card's Skip) sees it.
+  useLayer(moreOpen, "task-more", false, () => setMoreOpen(false));
+  // A docked approval card stays on top of More (its answers must always be clickable): More ends above it and scrolls inside.
+  const moreEl = useRef<HTMLDivElement>(null);
+  const cardsWaiting = conv.approvals.length;
+  useEffect(() => {
+    const el = moreEl.current;
+    if (!moreOpen || !el) return;
+    const fit = () => {
+      const card = section.current?.querySelector<HTMLElement>('.mb-tray[data-tray-id="approvals"]') ?? null;
+      const limit = moreMaxHeight(el.getBoundingClientRect(), card ? card.getBoundingClientRect() : null);
+      el.style.maxHeight = limit === null ? "" : `${limit}px`;
+      el.dataset.bounded = limit === null ? "false" : "true";
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(document.body);
+    const host = section.current?.querySelector<HTMLElement>(":scope > .mb-tray-host") ?? null;
+    if (host) ro.observe(host);
+    return () => ro.disconnect();
+  }, [moreOpen, cardsWaiting, railSlot]);
+  const runMode = useRunMode(taskId, connected, modeOpen);
 
   // REQ-PX-200: the plan is the Core's work graph, read again whenever the task's log moves; the accounting feeds the ring and the status line.
   const plan = usePlan(taskId, connected, conv.lastOffset);
@@ -177,6 +220,7 @@ export function Conversation(props: ConversationProps) {
 
   // A search hit: open the folds around the row, scroll to it and mark it for a moment.
   const focused = useRef<string | null>(null);
+  const focusTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   useEffect(() => {
     if (!focusRowId || !conv.loaded || focused.current === focusRowId) return;
     const path = findRow(conv.rows, focusRowId);
@@ -184,17 +228,24 @@ export function Conversation(props: ConversationProps) {
     focused.current = focusRowId;
     if (path.length > 0) setOpenGroups((g) => new Set([...g, ...path]));
     setFollow((f) => ({ ...f, pinned: false }));
-    const t = setTimeout(() => {
-      const el = scroller.current?.querySelector<HTMLElement>(`[data-row-id="${CSS.escape(focusRowId)}"]`);
-      el?.scrollIntoView({ block: "center" });
-      setHighlight(focusRowId);
-    }, 0);
-    const off = setTimeout(() => setHighlight(null), 3500);
-    return () => {
-      clearTimeout(t);
-      clearTimeout(off);
-    };
+    // The timers belong to this focus, not to this run of the effect: a row that arrives while the task runs re-runs the
+    // effect, and a cleanup that cleared them there dropped the scroll and the mark before they happened (PX-104).
+    for (const t of focusTimers.current) clearTimeout(t);
+    focusTimers.current = [
+      setTimeout(() => {
+        const el = scroller.current?.querySelector<HTMLElement>(`[data-row-id="${CSS.escape(focusRowId)}"]`);
+        el?.scrollIntoView({ block: "center" });
+        setHighlight(focusRowId);
+      }, 0),
+      setTimeout(() => setHighlight(null), 3500),
+    ];
   }, [focusRowId, conv.loaded, conv.rows]);
+  useEffect(
+    () => () => {
+      for (const t of focusTimers.current) clearTimeout(t);
+    },
+    [],
+  );
 
   const toggleGroup = useCallback((rowId: string, open: boolean) => {
     setOpenGroups((g) => {
@@ -281,37 +332,82 @@ export function Conversation(props: ConversationProps) {
   const tokens = usage.economics ? BigInt(usage.economics.inputTokens) + BigInt(usage.economics.outputTokens) : 0n;
   const planCard = graph ? <PlanCard key="plan-card" graph={graph} plan={plan.plan} running={phase === "RUNNING"} needsPerson={conv.approvals.length > 0 || phase === "NEEDS_ATTENTION" || (phase === "WAITING" && card?.waitReason !== "Capacity")} /> : null;
 
+  const ended = !card || card.state === "Completed" || card.state === "Cancelled" || card.state === "Failed";
+  // MWS-09: one body, beside the conversation where the task area has room and under More where it has not.
+  const rail = (
+    <DetailsRail
+      taskId={taskId}
+      sessionId={sessionId}
+      connected={connected}
+      card={detailsCard}
+      stateWords={card?.state ?? conv.taskState}
+      header={header}
+      subtasks={subtasks ?? []}
+      terminals={terminals ?? []}
+      approvals={conv.approvals}
+      runMode={runMode}
+      accounting={usage.accounting}
+      economics={usage.economics}
+      checkpoints={ckpt.list}
+      checkpointContext={ckpt.context}
+      onRunMode={() => setModeOpen(true)}
+      onReview={onReview}
+      onOpenTask={(id) => onOpenTask?.(id)}
+      onOpenTerminal={onOpenTerminal ? (id) => onOpenTerminal(taskId, id) : undefined}
+      onStopChild={(id) => onStopChild?.(id)}
+      onTerminalsChanged={onTerminalsChanged}
+      onCustomize={onCustomize}
+    />
+  );
+
   return (
-    <section className="conv" aria-label={`Conversation: ${title}`} data-testid="conversation" data-task-id={taskId} data-density={prefs.density} data-loaded={conv.loaded}>
+    <TrayStoreContext.Provider value={store}>
+    <LandmarkTaskContext.Provider value={nameLandmarks ? title : ""}>
+    <section ref={section} className="conv" aria-label={`Conversation: ${title}`} data-testid="conversation" data-task-id={taskId} data-density={prefs.density} data-loaded={conv.loaded} {...{ [KEY_FOCUS_ATTR]: keyFocus }}>
       <span className="mb-sr-only" data-testid="conv-status">
         {card ? `${card.state}${card.waitReason ? `, waiting on ${card.waitReason}` : ""}` : conv.taskState}
       </span>
-      {topSlot &&
+      {connected && <ContextTrayHost key={taskId} taskId={taskId} accounting={usage.accounting} economics={usage.economics} />}
+      {railSlot && createPortal(rail, railSlot)}
+      {topEndSlot &&
         createPortal(
           <>
-            <span className="topbar-pill" data-testid="top-bar-state">
-              {card?.state ?? conv.taskState}
-            </span>
-            <span className="topbar-spacer" />
-            {branch && (
-              <span className="topbar-branch" data-testid="top-bar-branch" title={branch}>
-                <Icon name="git-branch" size={14} />
-                <span>{branch}</span>
-              </span>
+            <IconButton label="More" icon={<Icon name="ellipsis" />} pressed={moreOpen} aria-haspopup="dialog" onClick={() => setMoreOpen((o) => !o)} data-testid="task-details-toggle" />
+            {moreOpen && (
+              <div ref={moreEl} className="task-more" role="dialog" aria-label={railSlot ? "More" : "More: task details"} data-testid="task-more" data-task-id={taskId} data-holds-details={!railSlot}>
+                <div className="task-controls">
+                  <label className="conv-density">
+                    <span className="meta">Density</span>
+                    <select value={prefs.density} onChange={(e) => setPrefs((p) => ({ ...p, density: e.target.value as Density }))} data-testid="conv-density" aria-label="Conversation density">
+                      {DENSITIES.map((d) => (
+                        <option key={d} value={d}>
+                          {DENSITY_LABEL[d]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {ckpt.head}
+                  <span className="conv-spacer" />
+                  {!ended && (
+                    <Button size="sm" onClick={() => onBrowser?.()} data-testid="task-browser">
+                      Browser
+                    </Button>
+                  )}
+                  {!ended && (
+                    <Button size="sm" variant="ghost" onClick={() => onCancelTask?.()} data-testid="task-cancel">
+                      Cancel task
+                    </Button>
+                  )}
+                </div>
+                {/* The controls stand first: what is under them grows as the Core answers, and a control must not move under a click. */}
+                {!railSlot && rail}
+              </div>
             )}
           </>,
-          topSlot,
-        )}
-      {(topEndSlot ?? topSlot) &&
-        createPortal(
-          <>
-            <IconButton label="More: task details" icon={<Icon name="ellipsis" />} pressed={detailsOpen} onClick={() => setDetailsOpen((o) => !o)} data-testid="task-details-toggle" />
-            {detailsOpen && <TaskDetails taskId={taskId} card={detailsCard} subtasks={subtasks ?? []} density={prefs.density} onDensity={(density) => setPrefs((p) => ({ ...p, density }))} undoAll={ckpt.head} onBrowser={() => onBrowser?.()} onCancel={() => onCancelTask?.()} onOpenTask={(id) => onOpenTask?.(id)} />}
-          </>,
-          (topEndSlot ?? topSlot)!,
+          topEndSlot,
         )}
       <div className="conv-body">
-        <div ref={scroller} className="conv-scroll" role="region" aria-label="Messages" tabIndex={0} onScroll={onScrollEvent} onKeyDown={onKeyDown} data-testid="conv-scroll" data-pinned={follow.pinned} data-row-count={placed.rows.length}>
+        <div ref={scroller} className="conv-scroll" role="region" aria-label={nameLandmarks ? `Messages: ${title}` : "Messages"} tabIndex={0} onScroll={onScrollEvent} onKeyDown={onKeyDown} data-testid="conv-scroll" data-pinned={follow.pinned} data-row-count={placed.rows.length}>
           <div ref={inner} className="conv-inner">
           {!conv.loaded && !conv.error && (
             <p className="meta conv-empty" role="status" data-testid="conv-loading">
@@ -367,16 +463,19 @@ export function Conversation(props: ConversationProps) {
       )}
       {ckpt.bar}
       <ModeProposalDock sessionId={sessionId} taskId={taskId} connected={connected} />
-      <ApprovalDock sessionId={sessionId} taskId={taskId} connected={connected} onChangeMode={() => setModeOpen(true)} titleOf={titleOf ?? ((id) => id.slice(0, 8))} onOpenTask={onOpenTask ?? (() => {})} />
+      <ApprovalDock sessionId={sessionId} taskId={taskId} connected={connected} onChangeMode={() => setModeOpen(true)} titleOf={titleOf ?? ((id) => id.slice(0, 8))} onOpenTask={onOpenTask ?? (() => {})} shownBeside={shownBeside} />
       {ckpt.overlay}
-      {/* The one tray host: docked directly above the composer, never beside or below it (AFW-H01). */}
-      <TrayHost />
+      {/* The app's own trays (limits, undo) dock above the focused task's composer when this task has a store of its own. */}
+      {hostsAppTrays && store !== appTrays && <TrayHost store={appTrays as TrayStore<ReactNode>} />}
+      {/* The task's tray host: docked directly above the composer, never beside or below it (AFW-H01). */}
+      <TrayHost label={nameLandmarks ? `Notices: ${title}` : undefined} />
       <Composer taskId={taskId} sessionId={sessionId} connected={connected} card={card} approvalPending={conv.approvals.length > 0} lastUserText={lastUserText} hasMessages={conv.rows.length > 0} onResume={onResume} onNewTask={onNewTask} onOpenTerminal={onOpenTerminal} onReview={onReview}
-        foot={<span className="cmp-foot-item" data-testid="conv-location"><Icon name={executionLocation === "cloud" ? "globe" : "laptop"} size={14} /> {executionLocation === "cloud" ? "Isolated cloud" : localMachine()}{worktree ? " · worktree" : ""}</span>}
-        runMode={<RunModeControl sessionId={sessionId} taskId={taskId} connected={connected} open={modeOpen} onOpenChange={setModeOpen} />}
-        ring={connected ? <ContextRingView key={taskId} taskId={taskId} accounting={usage.accounting} economics={usage.economics} /> : null}
+        runMode={<RunModeControl sessionId={sessionId} taskId={taskId} state={runMode} open={modeOpen} onOpenChange={setModeOpen} />}
+        ring={connected ? <ContextRingView accounting={usage.accounting} /> : null}
       />
     </section>
+    </LandmarkTaskContext.Provider>
+    </TrayStoreContext.Provider>
   );
 }
 

@@ -1,0 +1,77 @@
+{
+ "task": "DOC-GOV-009",
+ "change_record": "DR-GOV-2026-11-11-009",
+ "edition": "V3.3 EPR v1.1",
+ "scope": "Workspace Editor withdrawn: DR-PX-2026-10-03-009 rejected, REQ-PX-077..081 withdrawn DEFERRED rows, PX-077..081 leave Release Zero; dossier only",
+ "recorded_at_utc": "2026-11-10T23:56:13.860433+00:00",
+ "environment": {
+  "python": "3.9.6 (default, Oct 19 2026, 19:18:13) \n[Clang 21.0.0 (clang-2100.4.1.1)]",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "dependencies": "Python standard library only"
+ },
+ "git": {
+  "remote": "https://github.com/moss101/modbit.git",
+  "branch": "dossier/drop-workspace-editor",
+  "baseline_commit": "29af453aa600672d940a5b12cda41a062ea13245",
+  "change_commit": "recorded as commit: evidence on DOC-GOV-009 after the change lands"
+ },
+ "added_files": [
+  "docs/decisions/DR-GOV-2026-11-11-009-withdraw-the-workspace-editor.md",
+  "evidence/dossier-gov-009/baseline.json",
+  "evidence/dossier-gov-009/tests.log",
+  "evidence/dossier-gov-009/validation.json"
+ ],
+ "corrected_files": {
+  "docs/02_AUTHORITY_AND_DECISIONS.md": {
+   "before_sha256": "55523c6c81e2aad51a94c005d54240e5877e77f7788c9308e2b80e04be54b0e5",
+   "after_sha256": "e4820abe6198d06fce295fd830b0766da220c3fb1ea051a7485e6bf7e737d1a9"
+  },
+  "docs/03_ARCHITECTURAL_CONFLICTS_AND_SUPERSESSIONS.md": {
+   "before_sha256": "ea0fad94a60f65459b4eae3d43873cbf94ee73559d8d4b547f287d904302f5b9",
+   "after_sha256": "f3dcd205bf9076d04098dadafa7c05382ea5602816703571079ab588f7db2946"
+  },
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md": {
+   "before_sha256": "db81113d3b3e12473efe2f5382a99f5cd0b4a21e6ae5460c6ad49b1d54aa28c7",
+   "after_sha256": "88dbbfae3b041e3c6c2972413b435a012c4d87470e3b6ea30072cc4c55bf99a7"
+  },
+  "docs/67_WORKSPACE_EDITOR_SPECIFICATION.md": {
+   "before_sha256": "ebbfeea104ec2266087b5b70601e5487fb54d5e0dab91031f1e1a05223fe4022",
+   "after_sha256": "2577c248d4acaaafe9d663b8e2fbb60a0a2b2bf6ae910311996c11f74cedb67e"
+  },
+  "docs/97_DOSSIER_MAINTENANCE_LOG.md": {
+   "before_sha256": "52641648eeaf99f90409046fc1d2229cf4e742cf5da1bce95201c5e623a8f3c0",
+   "after_sha256": "03d8d40fde46d5128838479ea11c3dcccde6d640919a3902265d23f264643c84"
+  },
+  "docs/decisions/DR-PX-2026-10-03-009-workspace-editor.md": {
+   "before_sha256": "395ce8a3a048b0cbbe9ceceef41853fcb3865113c74a77f2de95b6c2de787037",
+   "after_sha256": "c1be8361e5d7f0de6a2787453d077df79d7d5f0c22949ead4f8bec7f8fe17d9c"
+  },
+  "docs/decisions/README.md": {
+   "before_sha256": "063ce1263209688a7948246a7bc1fecaf4f5f1a1b01b6e1f64f461fa0800c117",
+   "after_sha256": "9f03b6156bc144ebbcc783c7f9195dab91ee0f41e67f2bd3d901e586d1c2c9b5"
+  },
+  "tools/build_graph.py": {
+   "before_sha256": "3df787bdd1053b447b28e905d9d859d4c4f440e8a2761649b122e0c1983b04b0",
+   "after_sha256": "33013fadc1f4475cd01d3ab92f7c9f3a82ec79b1e906f4d4f4e124895f192a67"
+  },
+  "tools/test_dossier.py": {
+   "before_sha256": "c2c66987337777856d41eb10236756d173f2dccf9440b37effd7363259cc6af8",
+   "after_sha256": "5ab280b07f11d9a9246dec68b53ca8bef1f0d5311476b9678c5d224ff3511235"
+  }
+ },
+ "graph_effect": {
+  "RELEASE_ZERO_work_items": "539 -> 534",
+  "ALPHA": "114/114 READY (unchanged)",
+  "BETA": "318/318 READY (unchanged)",
+  "PX_rows": "198 (unchanged)",
+  "ADOPT_tasks": "176 -> 171",
+  "DEFERRED_rows": "22 -> 27",
+  "DR-PX-2026-10-03-009": "PROPOSED -> REJECTED",
+  "removed_nodes": "PX-077..081, PX-E2E-077..081"
+ },
+ "checks": {
+  "check_dossier_manifest": "exit 0 (OK: 97 docs; base 291 REQ-EV/265 IMP-EV/291 QUAL-EV + EPR 20 + PX 198 (171 ADOPT tasks) = 509 requirements effective; manifest hashes verified)",
+  "test_dossier": "90 tests OK (evidence/dossier-gov-009/tests.log)",
+  "example_runner": "exit 0 (11 example blocks)"
+ }
+}

@@ -35,6 +35,20 @@ export * from "./gen/modbit/v1/customize_pb.js";
 // PX-074: the desktop surface's computer-control messages. Named exports only: the actuator RPC in the same file
 // (Rect, Point, Scope, ...) is the Core's and the actuator's, and a client never speaks it.
 export {
+  ComputerAccessApplicationSchema,
+  ComputerAccessChangeSchema,
+  ComputerAccessChangedSchema,
+  ComputerAccessEntrySchema,
+  ComputerAccessViewSchema,
+  GetComputerAccessSchema,
+  SetComputerAccessSchema,
+  type ComputerAccessApplication,
+  type ComputerAccessChange,
+  type ComputerAccessChanged,
+  type ComputerAccessEntry,
+  type ComputerAccessView,
+  type GetComputerAccess,
+  type SetComputerAccess,
   ComputerActivityEntrySchema,
   ComputerActivityViewSchema,
   ComputerLatchResolvedSchema,

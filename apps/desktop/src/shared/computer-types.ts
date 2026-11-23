@@ -126,6 +126,8 @@ export interface ComputerCardView {
   latched: boolean;
   /** The person's Stop ended this call's run. */
   userAborted: boolean;
+  /** PX-215: the call was refused because the person's standing access for the application does not allow it (the Core's own record). */
+  standingAccess: { level: AccessLevel; needed: AccessNeed; reason: string } | null;
 }
 
 export interface ComputerCardsInfo {
@@ -140,4 +142,66 @@ export interface ComputerFrameInfo {
   height: number;
   /** The thumbnail is a reduction of the stored frame; the stored one is `full`. */
   full: boolean;
+}
+
+// ------------------------------------------------------ standing access (PX-215)
+
+/** The levels the person may set for one application, narrowest first. The Core owns them; this is the order and the words. */
+export const ACCESS_LEVELS = ["never", "view_only", "click", "full"] as const;
+export type AccessLevel = (typeof ACCESS_LEVELS)[number];
+
+/** What a refused call needed of the application. */
+export const ACCESS_NEEDS = ["observe", "click", "keyboard"] as const;
+export type AccessNeed = (typeof ACCESS_NEEDS)[number];
+
+export interface ComputerAccessEntryInfo {
+  /** The key: a bundle identifier, else `exe:<file name>`. */
+  bundleId: string;
+  /** The application's name when the level was set: an untrusted label. */
+  application: string;
+  level: AccessLevel;
+  setAtMs: number;
+}
+
+export interface ComputerAccessAppInfo {
+  bundleId: string;
+  /** An untrusted label. */
+  name: string;
+  /** Its level, "" when none is set. */
+  level: AccessLevel | "";
+}
+
+export interface ComputerAccessInfo {
+  /** Every level that is set. */
+  entries: ComputerAccessEntryInfo[];
+  /** The applications the helper reports as running and drivable; empty when no helper is attached. */
+  running: ComputerAccessAppInfo[];
+  attached: boolean;
+  /** The log offset of the last change, as a decimal string; "0" when none was made. */
+  lastChangeOffset: string;
+  /** The audit trail read back from the Core's log, oldest first. */
+  changes: ComputerAccessChangeInfo[];
+}
+
+/** One recorded change of a standing level. */
+export interface ComputerAccessChangeInfo {
+  offset: string;
+  atMs: number;
+  bundleId: string;
+  application: string;
+  /** After the change, "" when cleared. */
+  level: AccessLevel | "";
+  previous: AccessLevel | "";
+  /** Who, as the log records it (`user:<id>`). */
+  by: string;
+}
+
+export interface ComputerAccessChangedInfo {
+  bundleId: string;
+  application: string;
+  /** In force now, "" when cleared. */
+  level: AccessLevel | "";
+  previous: AccessLevel | "";
+  changed: boolean;
+  offset: string;
 }

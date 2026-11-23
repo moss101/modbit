@@ -11,7 +11,7 @@ import { memo, useEffect, useRef, useState, type ReactNode } from "react";
 import { Button, Icon, StatusDot, type IconName } from "@modbit/ui";
 import type { PendingApprovalView, TranscriptRowView } from "../../shared/conversation-types.ts";
 import type { TaskCard } from "../model.ts";
-import { needsEyes, presentAssistant, streamKey, toolVerb, callStatus, unfinishedCalls, type LiveStreams, type MessageState, type PresentedRow } from "./model.ts";
+import { needsEyes, presentAssistant, streamKey, toolVerb, callStatus, unfinishedCalls, type LiveStreams, type MessageState, type PresentedRow, stepText } from "./model.ts";
 import { sameBlock, splitBlocks, type Block } from "./blocks.ts";
 import { EditBox, MessageActions, TurnMarker, type CheckpointContext } from "./checkpoint-controls.tsx";
 import { ComputerActionCard, type ComputerCardContext } from "../computer/action-card.tsx";
@@ -169,13 +169,6 @@ const CLASS_ICON: Record<string, IconName> = { READ: "search", SEARCH: "search",
 const baseName = (p: string): string => p.replace(/[/\\]+$/, "").split(/[/\\]/).pop() ?? p;
 const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`;
 
-/** A file edit reads by its file name; everything else by the Core's text for the call. */
-const stepText = (row: TranscriptRowView): string => {
-  const f = row.facts.type === "tool" ? row.facts : null;
-  if (f?.toolClass === "EDIT" && f.paths.length === 1) return baseName(f.paths[0]!);
-  return f && row.text.startsWith(`${f.toolName} `) ? row.text.slice(f.toolName.length + 1) : row.text;
-};
-
 /** What a fold of tool calls did, in words, from the calls' own facts (the Core's label stays in the row's title). */
 export function groupSummary(children: readonly TranscriptRowView[]): { icon: IconName; words: string } | null {
   const calls = children.filter((c) => c.facts.type === "tool");
@@ -331,6 +324,11 @@ function ApprovalRow({ row, ctx }: { row: TranscriptRowView; ctx: RowContext }) 
       {row.hints.status === "EXPIRED" && !isQuestion && (
         <p className="meta" data-testid="conv-approval-expired">
           Expired: nobody answered before the Core's recorded expiry, so it can no longer be approved. The effect did not run and the agent was told.
+        </p>
+      )}
+      {row.hints.status === "WITHDRAWN" && !isQuestion && (
+        <p className="meta" data-testid="conv-approval-withdrawn">
+          Withdrawn: what it would do no longer stands (for a merge, the head moved or the checks stopped passing), so it can no longer be approved. Nothing ran; a new approval asks for the current one.
         </p>
       )}
       {!isQuestion && f && (

@@ -1,0 +1,8 @@
+{
+  "expected": {
+    "enabled": true,
+    "method": "squash",
+    "taskId": "21212121212121212121212121212121"
+  },
+  "type": "modbit.v1.SetMergeWhenReady"
+}

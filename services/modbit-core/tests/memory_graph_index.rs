@@ -2067,13 +2067,30 @@ async fn px_111_a_core_killed_inside_an_index_write_recovers_to_a_whole_snapshot
                 "{stage}: the previous snapshot, one file derived again: {st:?}"
             );
         }
-        let leftovers: Vec<String> = std::fs::read_dir(&store)
-            .unwrap()
-            .flatten()
-            .map(|e| e.file_name().to_string_lossy().into_owned())
-            .filter(|n| n.contains(".tmp-"))
-            .collect();
         // The load that found the previous snapshot rewrote it and cleaned up.
+        // That rewrite belongs to whichever caller loaded the indexes first
+        // (here the start-up warm of the unfinished task's workspace), and the
+        // indexes answer queries from the moment they are loaded, before the
+        // rewrite's last step removes the temporary files. CI run 43704419709
+        // listed the directory in that window and saw the recovering Core's
+        // own `derived.2.json.tmp-<pid>` beside the dead Core's manifest
+        // fragment. The directory is read until the rewrite is over, bounded.
+        let listed_by = std::time::Instant::now() + Duration::from_secs(30);
+        let leftovers = loop {
+            let leftovers: Vec<String> = std::fs::read_dir(&store)
+                .unwrap()
+                .flatten()
+                .map(|e| e.file_name().to_string_lossy().into_owned())
+                .filter(|n| n.contains(".tmp-"))
+                .collect();
+            if leftovers.is_empty()
+                || stage == "after_manifest"
+                || std::time::Instant::now() >= listed_by
+            {
+                break leftovers;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        };
         assert!(
             leftovers.is_empty() || stage == "after_manifest",
             "{stage}: {leftovers:?}"
@@ -2137,9 +2154,7 @@ async fn px_111_sigkill_during_repeated_refreshes_never_leaves_an_unusable_index
                     std::thread::sleep(Duration::from_millis(5));
                 }
                 std::thread::sleep(kill_after);
-                #[cfg(unix)]
                 sigkill(pid);
-                let _ = pid;
             })
         };
         for n in 0..40 {
@@ -2195,11 +2210,19 @@ async fn px_111_sigkill_during_repeated_refreshes_never_leaves_an_unusable_index
     }
 }
 
-#[cfg(unix)]
 fn sigkill(pid: u32) {
-    // SIGKILL through the shell: the workspace forbids unsafe code, and `kill`
-    // is the same system call the test harness's `Child::kill` makes.
+    // A hard, uncatchable kill of exactly this process. Unix: SIGKILL through
+    // the shell (the workspace forbids unsafe code, and `kill` is the same
+    // system call the test harness's `Child::kill` makes). Windows:
+    // TerminateProcess via taskkill /F, without /T so the tree is not swept.
+    #[cfg(unix)]
     let _ = Command::new("kill").args(["-9", &pid.to_string()]).status();
+    #[cfg(windows)]
+    let _ = Command::new("taskkill")
+        .args(["/F", "/PID", &pid.to_string()])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status();
 }
 
 /// The indexed search path over the real Core returns what the scan returns,

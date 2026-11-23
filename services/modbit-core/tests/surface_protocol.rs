@@ -20875,9 +20875,29 @@ async fn qual_m4_5_e2e_008_a_background_command_survives_a_core_restart_and_resu
             r#"{{"session_id":"{handle}","after_cursor":{after},"wait_ms":500,"max_bytes":{max}}}"#
         )
     };
-    let r = invoke_tool(&mut c, &task, g, 0xE3, 0xF2, "shell.read", &read(0, 400)).await;
-    let p1: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
-    assert_eq!(p1["running"], true, "{p1}");
+    // The first read is repeated, each a call of its own, until the shell has
+    // printed: on a slow runner its first line can take longer than one
+    // read's wait to appear (CI run 44848382000, Windows: next_cursor 0 after
+    // 500 ms). Bounded at twenty reads; what is asserted of the read that
+    // sees output is unchanged.
+    let mut p1 = serde_json::Value::Null;
+    for attempt in 0..20u8 {
+        let r = invoke_tool(
+            &mut c,
+            &task,
+            g,
+            0xA0 + attempt,
+            0xC0 + attempt,
+            "shell.read",
+            &read(0, 400),
+        )
+        .await;
+        p1 = serde_json::from_str(&r.structured_output_json).unwrap();
+        assert_eq!(p1["running"], true, "{p1}");
+        if p1["next_cursor"].as_u64().unwrap() > 0 {
+            break;
+        }
+    }
     let acknowledged = p1["next_cursor"].as_u64().unwrap();
     assert!(acknowledged > 0, "{p1}");
     let first_preview = p1["preview"].as_str().unwrap().to_owned();
@@ -24958,7 +24978,7 @@ async fn qual_m5_1_projection_follows_the_plan_and_refuses_crafted_calls() {
         assert!(
             plan_desc.contains("DECLARE_WRITES -> change.apply, change.batch")
                 && plan_desc.contains(
-                    "DECLARE_PROTECTED_EFFECT -> forge.issue.comment, forge.pr.comment, forge.pr.create, forge.pr.update, git.apply.undo, git.apply.worktree, git.merge.commit, git.merge.prepare, git.worktree.close"
+                    "DECLARE_PROTECTED_EFFECT -> forge.issue.comment, forge.pr.comment, forge.pr.create, forge.pr.merge, forge.pr.update, git.apply.undo, git.apply.worktree, git.merge.commit, git.merge.prepare, git.worktree.close"
                 ),
             "{plan_desc}"
         );
@@ -24990,7 +25010,7 @@ async fn qual_m5_1_projection_follows_the_plan_and_refuses_crafted_calls() {
         let plan_desc = description(b, "plan.update");
         assert!(
             plan_desc.contains(
-                "DECLARE_PROTECTED_EFFECT -> forge.issue.comment, forge.pr.comment, forge.pr.create, forge.pr.update, git.apply.undo, git.apply.worktree, git.merge.commit, git.merge.prepare, git.worktree.close"
+                "DECLARE_PROTECTED_EFFECT -> forge.issue.comment, forge.pr.comment, forge.pr.create, forge.pr.merge, forge.pr.update, git.apply.undo, git.apply.worktree, git.merge.commit, git.merge.prepare, git.worktree.close"
             ) && !plan_desc.contains("DECLARE_WRITES"),
             "{plan_desc}"
         );
@@ -25007,7 +25027,7 @@ async fn qual_m5_1_projection_follows_the_plan_and_refuses_crafted_calls() {
     );
     let final_plan_desc = description(&bodies[5], "plan.update");
     assert!(
-        final_plan_desc.contains("DECLARE_PROTECTED_EFFECT -> forge.issue.comment, forge.pr.comment, forge.pr.create, forge.pr.update, git.apply.undo, git.apply.worktree, git.merge.commit, git.merge.prepare, handover.request.")
+        final_plan_desc.contains("DECLARE_PROTECTED_EFFECT -> forge.issue.comment, forge.pr.comment, forge.pr.create, forge.pr.merge, forge.pr.update, git.apply.undo, git.apply.worktree, git.merge.commit, git.merge.prepare, handover.request.")
             && !final_plan_desc.contains("git.worktree.close")
             && !final_plan_desc.contains("DECLARE_WRITES"),
         "{final_plan_desc}"
@@ -25079,6 +25099,7 @@ async fn qual_m5_1_projection_follows_the_plan_and_refuses_crafted_calls() {
             "forge.issue.comment:DECLARE_PROTECTED_EFFECT",
             "forge.pr.comment:DECLARE_PROTECTED_EFFECT",
             "forge.pr.create:DECLARE_PROTECTED_EFFECT",
+            "forge.pr.merge:DECLARE_PROTECTED_EFFECT",
             "forge.pr.update:DECLARE_PROTECTED_EFFECT",
             "git.apply.undo:DECLARE_PROTECTED_EFFECT",
             "git.apply.worktree:DECLARE_PROTECTED_EFFECT",
@@ -25099,6 +25120,7 @@ async fn qual_m5_1_projection_follows_the_plan_and_refuses_crafted_calls() {
             "forge.issue.comment:DECLARE_PROTECTED_EFFECT",
             "forge.pr.comment:DECLARE_PROTECTED_EFFECT",
             "forge.pr.create:DECLARE_PROTECTED_EFFECT",
+            "forge.pr.merge:DECLARE_PROTECTED_EFFECT",
             "forge.pr.update:DECLARE_PROTECTED_EFFECT",
             "git.apply.undo:DECLARE_PROTECTED_EFFECT",
             "git.apply.worktree:DECLARE_PROTECTED_EFFECT",

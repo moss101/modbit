@@ -12,12 +12,13 @@ import type { AgentHeaderView, ConversationSearchView } from "../../shared/conve
 import { AgentListView } from "./agent-list-view.tsx";
 import type { Density } from "@modbit/design-tokens";
 import { deleteView, listItems, nearestSibling, passes, pin as pinTask, saveView, unpin as unpinTask, visibleTaskIds, type FactField, type Filters, type Grouping, type RowDetails, type RowFacts, type SortKey, type StoredView, type SubtitleField } from "./list-model.ts";
-import { loadListPrefs, saveListPrefs, type ListPrefs } from "./prefs.ts";
+import { currentListPrefs, subscribeListPrefs, updateListPrefs, type ListPrefs } from "./prefs.ts";
 import { useAgents } from "./use-agents.ts";
 import { NewProjectDialog, RenameProjectDialog, SaveViewDialog } from "../projects/project-dialogs.tsx";
 import { archiveProject as archiveProjectWithUndo } from "../projects/archive-project.ts";
 import { newViewId, refusalSentence, workspaceChoices } from "../projects/project-model.ts";
 import type { ProjectsState } from "../projects/use-projects.ts";
+import { mergeArchiveWatcher } from "../apps/pull-request-model.ts";
 
 /** The undo stays at least this long (AFW-B08: not less than 8 s). */
 export const UNDO_MS = 12_000;
@@ -60,12 +61,20 @@ export interface AgentListProps {
   onNewTaskIn?: ((root: string) => void) | undefined;
   /** Hands the shell the list's pin and archive, for the open task's title menu; null when the list goes away. */
   onTaskActions?: ((actions: TaskActions | null) => void) | undefined;
+  /** Opens a task in split view (MWS-11, REQ-PX-204): Alt+click on a row and the preview card. */
+  onSplit?: ((taskId: string) => void) | undefined;
+  /** The two tasks side by side while split view is open. */
+  splitIds?: readonly string[] | undefined;
 }
 
-export function AgentList({ sessionId, connected, selectedTaskId, onSelect, onHeaders, onHeaderList, facts, projects, selectedProjectId = null, onOpenProject, onProjectArchived, parents, density, onSearch, onNewTaskIn, onTaskActions }: AgentListProps) {
-  const [prefs, setPrefs] = useState<ListPrefs>(loadListPrefs);
-  const update = useCallback((f: (p: ListPrefs) => ListPrefs) => setPrefs((p) => f(p)), []);
-  useEffect(() => saveListPrefs(prefs), [prefs]);
+export function AgentList({ onSplit, splitIds, sessionId, connected, selectedTaskId, onSelect, onHeaders, onHeaderList, facts, projects, selectedProjectId = null, onOpenProject, onProjectArchived, parents, density, onSearch, onNewTaskIn, onTaskActions }: AgentListProps) {
+  // REQ-PX-208: the window's one copy of the list's preferences, shared with Settings' Appearance (agents/prefs.ts).
+  const [prefs, setPrefs] = useState<ListPrefs>(currentListPrefs);
+  useEffect(() => {
+    setPrefs(currentListPrefs());
+    return subscribeListPrefs(setPrefs);
+  }, []);
+  const update = useCallback((f: (p: ListPrefs) => ListPrefs) => updateListPrefs(f), []);
   const agents = useAgents(sessionId, prefs.filters.showArchived, connected);
   const [note, setNote] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -89,6 +98,8 @@ export function AgentList({ sessionId, connected, selectedTaskId, onSelect, onHe
     onHeaders?.({ total: agents.headers.length, attention: agents.headers.filter((h) => h.statusClass === "NEEDS_ATTENTION").length });
   }, [agents.headers, onHeaders]);
   useEffect(() => onHeaderList?.(agents.headers), [agents.headers, onHeaderList]);
+  // A list that is not on screen reads nothing: the shell must not go on showing what it last read (the details rail then reads the header itself).
+  useEffect(() => () => onHeaderList?.([]), [onHeaderList]);
 
   useEffect(() => {
     if (!note) return;
@@ -142,6 +153,46 @@ export function AgentList({ sessionId, connected, selectedTaskId, onSelect, onHe
       timers.clear();
     };
   }, []);
+
+  // REQ-PX-211: the Core archived a task because its pull request merged and the preference is on: the same notice and Undo as an
+  // archive made here (the Core's record is the archive; Undo is the ordinary ArchiveTask with archived = false).
+  // One watcher for the window's life: it must remember the read that came before the archive across re-renders.
+  const headersRef = useRef(agents.headers);
+  headersRef.current = agents.headers;
+  const agentsRef = useRef(agents);
+  agentsRef.current = agents;
+  const mergedRef = useRef<ReturnType<typeof mergeArchiveWatcher> | null>(null);
+  useEffect(() => {
+    if (!sessionId) return;
+    const merged = (mergedRef.current ??= mergeArchiveWatcher());
+    return window.modbit.onEvent((raw) => {
+      const taskId = merged(raw);
+      if (!taskId) return;
+      const id = `archive:${taskId}`;
+      if (undoTimers.current.has(id)) return;
+      const title = headersRef.current.find((h) => h.taskId === taskId)?.title || "the task";
+      trays.present({
+        id,
+        tone: "info",
+        title: `Archived “${title}”`,
+        body: "Its pull request merged and archive after merge is on. It is hidden from the list, not deleted.",
+        actions: [
+          {
+            id: "undo",
+            label: "Undo",
+            primary: true,
+            run: () => {
+              void agentsRef.current.restore(taskId).then((u) => {
+                if (u.ok) dismissUndo(taskId);
+                else setNote(`Could not undo: ${u.message}`);
+              });
+            },
+          },
+        ],
+      });
+      undoTimers.current.set(id, setTimeout(() => dismissUndo(taskId), UNDO_MS));
+    });
+  }, [sessionId, dismissUndo]);
 
   const doArchive = useCallback(
     async (taskId: string, title: string, stopFirst: boolean) => {
@@ -302,6 +353,8 @@ export function AgentList({ sessionId, connected, selectedTaskId, onSelect, onHe
         focusRequest={focusRequest}
         onQuery={setQuery}
         onSelect={(id, rowId) => onSelect(id, rowId)}
+        onSplit={onSplit}
+        splitIds={splitIds}
         onPin={onPin}
         onUnpin={onUnpin}
         onArchive={requestArchive}

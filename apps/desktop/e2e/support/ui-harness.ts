@@ -63,12 +63,25 @@ export async function accessible(page: Page, what: string, selector?: string): P
   await page.evaluate(() => new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done()))));
   // A colour mid-transition (or mid-fade) is not a colour: let every finite CSS transition and animation finish before measuring. A
   // child's colour follows its parent's, so a finished transition can start the next one down the tree: wait until none is left.
+  // Every wait here is bounded: a transition whose clock does not advance (a window the OS is not painting) once held a test for its
+  // whole timeout. After the bound the stragglers are finished (jumped to their end state, which is the colour to measure) and named.
   await page.evaluate(async () => {
     const pending = () =>
       document.getAnimations().filter((a) => a instanceof CSSTransition || (a instanceof CSSAnimation && Number.isFinite(a.effect?.getComputedTiming().endTime as number)));
+    const within = (ms: number, p: Promise<unknown>) => Promise.race([p.then(() => true), new Promise<boolean>((done) => setTimeout(() => done(false), ms))]);
     for (let round = 0; round < 8 && pending().length > 0; round++) {
-      await Promise.all(pending().map((a) => a.finished.catch(() => undefined)));
-      await new Promise<void>((done) => requestAnimationFrame(() => done()));
+      const settled = await within(5_000, Promise.all(pending().map((a) => a.finished.catch(() => undefined))));
+      if (!settled) {
+        for (const a of pending()) {
+          console.warn(`accessible(): finishing a transition that did not end in 5 s: ${a instanceof CSSTransition ? a.transitionProperty : (a as CSSAnimation).animationName}`);
+          try {
+            a.finish();
+          } catch {
+            a.cancel();
+          }
+        }
+      }
+      await within(1_000, new Promise<void>((done) => requestAnimationFrame(() => done())));
     }
   });
   await page.evaluate(axeSource);

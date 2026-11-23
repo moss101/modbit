@@ -5,8 +5,8 @@ export interface SplitterProps {
   value: number;
   min: number;
   max: number;
-  /** A drag to this clientX; the owner converts it to its own width. */
-  onDragTo: (clientX: number) => void;
+  /** A drag to this clientX (clientY for a horizontal separator); the owner converts it to its own size. */
+  onDragTo: (client: number) => void;
   /** Keyboard: grow (+) or shrink (-) the region this separator sizes by `delta` px. */
   onNudge: (delta: number) => void;
   onJump: (to: "min" | "max") => void;
@@ -14,7 +14,9 @@ export interface SplitterProps {
   /** The separator sizes a region to its right, so ArrowLeft grows it. */
   growsLeft?: boolean | undefined;
   /** Which edge of its region the separator sits on. */
-  edge: "left" | "right";
+  edge: "left" | "right" | "top";
+  /** The separator's own direction: a vertical line between regions side by side (the default), or a horizontal one between a region and the one under it, moved with ArrowUp and ArrowDown. */
+  axis?: "vertical" | "horizontal" | undefined;
   testId: string;
 }
 
@@ -23,11 +25,11 @@ export interface SplitterProps {
  * aria-valuenow/min/max, moves with the arrow keys (Shift for a larger step),
  * Home and End jump to the limits, Enter resets, and the pointer drags it.
  */
-export function Splitter({ label, value, min, max, onDragTo, onNudge, onJump, onReset, growsLeft = false, edge, testId }: SplitterProps) {
+export function Splitter({ label, value, min, max, onDragTo, onNudge, onJump, onReset, growsLeft = false, edge, axis = "vertical", testId }: SplitterProps) {
   const dragging = useRef(false);
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
     const step = e.shiftKey ? 64 : 16;
-    const dir = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+    const dir = axis === "horizontal" ? (e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0) : e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
     if (dir !== 0) {
       e.preventDefault();
       onNudge(dir * (growsLeft ? -1 : 1) * step);
@@ -48,7 +50,7 @@ export function Splitter({ label, value, min, max, onDragTo, onNudge, onJump, on
     e.preventDefault();
   };
   const onMove = (e: PointerEvent<HTMLDivElement>) => {
-    if (dragging.current) onDragTo(e.clientX);
+    if (dragging.current) onDragTo(axis === "horizontal" ? e.clientY : e.clientX);
   };
   const onUp = (e: PointerEvent<HTMLDivElement>) => {
     dragging.current = false;
@@ -57,7 +59,7 @@ export function Splitter({ label, value, min, max, onDragTo, onNudge, onJump, on
   return (
     <div
       role="separator"
-      aria-orientation="vertical"
+      aria-orientation={axis}
       aria-label={label}
       aria-valuenow={Math.round(value)}
       aria-valuemin={Math.round(min)}
@@ -65,6 +67,7 @@ export function Splitter({ label, value, min, max, onDragTo, onNudge, onJump, on
       tabIndex={0}
       className="splitter"
       data-edge={edge}
+      data-axis={axis}
       data-testid={testId}
       onKeyDown={onKey}
       onPointerDown={onDown}

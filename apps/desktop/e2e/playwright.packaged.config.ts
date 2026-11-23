@@ -24,6 +24,7 @@ export default defineConfig({
   expect: { timeout: 15_000 },
   retries: 0,
   workers: 1,
-  reporter: [["list"], ["json", { outputFile: "../../target/desktop-packaged-report.json" }]],
+  // at-close-reporter: closeApp records each window at the end of every test; the reporter keeps that only for a test that did not pass.
+  reporter: [["list"], ["json", { outputFile: "../../target/desktop-packaged-report.json" }], ["./support/at-close-reporter.ts"]],
   use: { trace: "retain-on-failure" },
 });

@@ -124,7 +124,7 @@ Do **not** preload the whole dossier. `89_BUILD_AGENT_CONTEXT_LOADING_POLICY.md`
 - `64_VERIFICATION_EXECUTION_CONTRACTS.md` — how the verification plan executes: BASELINE/TARGETED/COMPLETION stages, normalized `TestReport`/`CheckResult`, `failure_signature` derivation, flake rerun and quarantine, diff invariants DI-1..DI-9, regression attribution, Alpha defaults
 - `65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md` — clean-room specification of the agent-first workspace (DR-PX-2026-10-03-007): 108 tagged requirements, implementation audit, traceability to PX-041..068, the register of what is still unverified
 - `66_NATIVE_COMPUTER_CONTROL_SPECIFICATION.md` — semantic-first native computer control and browser control hardening (DR-PX-2026-10-03-008, PX-069..076)
-- `67_WORKSPACE_EDITOR_SPECIFICATION.md` — the transactional Workspace Editor under the no-Monaco, no-Code-OSS constraint (DR-PX-2026-10-03-009, PX-077..081)
+- `67_WORKSPACE_EDITOR_SPECIFICATION.md` — WITHDRAWN: the rejected Workspace Editor proposal (DR-PX-2026-10-03-009, rejected by DR-GOV-2026-11-11-009; PX-077..081 withdrawn), kept as provenance
 - `68_AUTOMATIONS_SPECIFICATION.md` — automations through the existing Scheduler, policy and approval owners (DR-PX-2026-10-03-010, PX-082..086)
 - `69_EXTENSION_MARKETPLACE_AND_CUSTOMIZE_SPECIFICATION.md` — catalog, install, update, hostile-input handling and the Customize surface (DR-PX-2026-10-03-011, PX-087..093)
 

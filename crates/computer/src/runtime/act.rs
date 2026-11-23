@@ -150,6 +150,9 @@ impl ComputerRuntime {
                 format!("`{}` is never driven ({why})", app.bundle_id),
             ));
         }
+        // PX-215: the person's standing level for this application. It sits
+        // after every check that already existed and only ever refuses.
+        self.check_access(ctx, &found.control_id, &app, act.need())?;
         if act.needs_screen() && scope != Scope::Screen {
             return Err(Refusal::new(
                 Code::UnsupportedRequest,

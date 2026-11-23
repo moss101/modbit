@@ -17,7 +17,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { closeApp } from "./support/close-app.ts";
 import { readyForReview } from "./support/browser-harness.ts";
-import { agentRow, gearMenu, openTask, openTaskDetails, queueTask } from "./support/new-task.ts";
+import { agentRow, gearMenu, openTask, openTaskDetails, openTaskMore, queueTask } from "./support/new-task.ts";
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const coreBin = process.env.MODBIT_CORE_BIN ?? resolve(appDir, "..", "..", "target", "debug", process.platform === "win32" ? "modbit-core.exe" : "modbit-core");
@@ -117,7 +117,7 @@ function git(cwd: string, ...args: string[]): string {
 
 /** The open task's Browser panel, opened from the task's details (the panel is the host's view of the task's session). */
 async function openBrowserPanel(page: Page): Promise<void> {
-  await openTaskDetails(page);
+  await openTaskMore(page);
   await page.getByTestId("task-browser").click();
   await expect(page.getByTestId("browser")).toBeVisible();
 }
@@ -137,7 +137,7 @@ async function approveOnCard(page: Page): Promise<void> {
 }
 
 async function launch(dataDir: string, extraEnv: Record<string, string>): Promise<{ app: ElectronApplication; page: Page }> {
-  const app = await electron.launch({ args: [join(appDir, "dist", "main", "main.cjs")], env: { ...process.env, MODBIT_DATA_DIR: dataDir, MODBIT_CORE_BIN: coreBin, OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "", MODBIT_SUPPRESS_OS_NOTIFICATIONS: "1", MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1", ...extraEnv } });
+  const app = await electron.launch({ args: [join(appDir, "dist", "main", "main.cjs")], env: { ...process.env, MODBIT_DATA_DIR: dataDir, MODBIT_CORE_BIN: coreBin, OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "", MODBIT_SUPPRESS_OS_NOTIFICATIONS: "1", MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1", MODBIT_BROWSER_ALLOW_SITES: "http://127.0.0.1:*,http://localhost:*,https://127.0.0.1:*,https://localhost:*", ...extraEnv } });
   const page = await app.firstWindow();
   app.process().stderr?.on("data", (d: Buffer) => process.stderr.write(`[electron] ${d}`));
   await expect(page.getByTestId("core-status")).toContainText("Core connected", { timeout: 60_000 });

@@ -17,7 +17,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ECHO_LOOP, expectTerminals, gate, nodeTerminal, readTerminal, steppedModel, type Step } from "./support/apps-harness.ts";
-import { expectTaskState, queueTask } from "./support/new-task.ts";
+import { expectTaskState, queueTask, soloPane } from "./support/new-task.ts";
 import { accessible, closeApp, launch, makeRepo, MOD, setContentSize } from "./support/ui-harness.ts";
 
 test.describe.configure({ mode: "serial" });
@@ -69,11 +69,13 @@ test.beforeAll(async () => {
   await setContentSize(app, page, 1280, 800);
   taskId = await queueTask(page, "Run the builds", repo);
   sessionId = (await page.evaluate(() => window.modbit.localState()).then((s) => s.sessionId))!;
-  // Started from the conversation, so the Running state is awaited from the start itself: the scripted model's third step is never
-  // reached (the four terminals' results jump the step count), and the Core suspends the task for no progress about half a second in.
+  // Started from the conversation. The scripted model's third step is never reached (the four terminals' results jump the step
+  // count) and the Core suspends the task for no progress about half a second in, so the row is Running for well under a second:
+  // a poll on a slow runner steps over it and then sees Waiting for the full timeout. The four terminals are what proves the start;
+  // the row is then Running or already suspended to Waiting, never anything that means the task did not start.
   await page.getByTestId("conv-start").click();
-  await expectTaskState(page, taskId, "Running");
   await expectTerminals(page, taskId, 4);
+  await expectTaskState(page, taskId, /^(Running|Waiting)$/);
   const all = await listTerminals();
   const by = (needle: string) => all.find((t) => t.title.includes(needle))!.terminalId;
   handle.paced = by("MARK_PACED");
@@ -82,7 +84,7 @@ test.beforeAll(async () => {
   handle.echo = by("READY");
   await page.keyboard.press(`${MOD}+e`);
   await expect(page.getByTestId("region-apps")).toBeVisible();
-  await page.getByTestId("tab-terminal").click();
+  await soloPane(page, "terminal");
 });
 
 test.afterAll(async () => {

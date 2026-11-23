@@ -10,6 +10,12 @@
  */
 import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import {
+  ComputerAccessChangedSchema,
+  ComputerAccessViewSchema,
+  GetComputerAccessSchema,
+  SetComputerAccessSchema,
+  type ComputerAccessChanged,
+  type ComputerAccessView,
   ComputerActivityViewSchema,
   ComputerLatchResolvedSchema,
   ComputerPresenceViewSchema,
@@ -64,4 +70,21 @@ export async function resolveComputerLatch(c: CoreClient, sessionId: string, tas
   const payload = toBinary(ResolveComputerLatchSchema, create(ResolveComputerLatchSchema, { taskId: id(taskId), note }));
   const ack = await c.command("ResolveComputerLatch", payload, undefined, c.leaseGeneration(sessionId), sessionId);
   return fromBinary(ComputerLatchResolvedSchema, ack.result);
+}
+
+/** The standing levels the person has set per application (PX-215), the applications the helper reports as running, and the levels to choose from. */
+export async function getComputerAccess(c: CoreClient): Promise<ComputerAccessView> {
+  const ack = await c.command("GetComputerAccess", toBinary(GetComputerAccessSchema, create(GetComputerAccessSchema, {})));
+  return fromBinary(ComputerAccessViewSchema, ack.result);
+}
+
+/**
+ * Set one application's standing level (`never` | `view_only` | `click` | `full`), or clear it with an empty level so the grant alone decides
+ * again (PX-215). A Core-wide setting: no session and no lease. The Core records one event on its own ledger and the level applies from the
+ * agent's next action.
+ */
+export async function setComputerAccess(c: CoreClient, bundleId: string, application: string, level: string): Promise<ComputerAccessChanged> {
+  const payload = toBinary(SetComputerAccessSchema, create(SetComputerAccessSchema, { bundleId, application, level }));
+  const ack = await c.command("SetComputerAccess", payload);
+  return fromBinary(ComputerAccessChangedSchema, ack.result);
 }

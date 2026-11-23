@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Badge, Button } from "@modbit/ui";
 import type { BrowserViewDescription } from "../../preload/preload.ts";
+import { SiteAskCard } from "../browser/site-ask.tsx";
 
 /**
  * The Browser tab (REQ-PX-048): the task's browser session as the panel shows
@@ -55,6 +56,7 @@ export function BrowserApp({ taskId, onOpenBrowser }: { taskId: string; onOpenBr
               lease generation {host?.leaseGeneration ?? 0}
             </span>
           </p>
+          <SiteAskCard browserSessionId={views[0]!.browserSessionId} ask={host?.siteAsk} />
           <p className="meta" data-testid="browser-tab-page">
             {host?.title || "untitled"} · {host?.url || "no page yet"}
           </p>

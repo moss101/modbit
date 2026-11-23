@@ -3,8 +3,8 @@
  * (`settings-nav.tsx`). Every control here does what it says through the existing typed preload calls or the shell's own
  * preferences. A setting that belongs to one task (its run mode, its send behaviour) stays with the task, and this page says so.
  */
-import { useEffect, useState, type ReactNode } from "react";
-import { Button, Icon, type IconName } from "@modbit/ui";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { Button, Icon, Kbd, isMacPlatform, type IconName } from "@modbit/ui";
 import { DENSITIES, DENSITY_LABEL, THEME_LABEL, THEME_PREFERENCES, type Density, type ThemePreference } from "@modbit/design-tokens";
 import type { NotificationKind } from "../notifications.ts";
 import { StateLine } from "../shell/state-line.tsx";
@@ -12,6 +12,25 @@ import { UpdateIndicator } from "../shell/update-indicator.tsx";
 import type { AppState } from "../state/use-app.ts";
 import { ProviderForm } from "./provider-form.tsx";
 import { localMachine } from "../location.ts";
+import { GROUPINGS, ROW_DETAILS, type Grouping, type RowDetails } from "../agents/list-model.ts";
+import { currentListPrefs, subscribeListPrefs, updateListPrefs } from "../agents/prefs.ts";
+import { shellRegistry } from "../shell/commands.ts";
+import { SCOPES, SCOPE_WORDS, shortcutSheet } from "./shortcut-sheet.ts";
+import { ACCESS_LEVELS, type AccessLevel } from "../../shared/computer-types.ts";
+import { ACCESS_WORDS } from "../computer/model.ts";
+import { useStandingAccess } from "../computer/use-standing-access.ts";
+
+/** What this platform has earned (docs/76), in words; the recorded state stays on `data-state` and the record's sentence in the tooltip. */
+function platformWords(p: { state: string; statement: string }): string {
+  // The record's sentence starts with the platform and its architecture ("macOS arm64: …").
+  const where = p.statement.includes(":") ? p.statement.slice(0, p.statement.indexOf(":")) : "This platform";
+  if (p.state === "RELEASE_GRADE") return `${where}: the packaged app passed its full end-to-end tests on this platform.`;
+  if (p.state === "CI_COMPATIBLE") return `${where}: built and tested in CI. That is a development guarantee, not a support claim.`;
+  return `${where}: not built or tested on this platform.`;
+}
+
+/** The words for a row's second line (MWS-04's Row details), as Settings says them. */
+const ROW_DETAIL_WORDS: Record<RowDetails, string> = { auto: "When needed", always: "Always", never: "Never" };
 
 export interface SettingsEntry {
   id: string;
@@ -30,10 +49,11 @@ export const SETTINGS_ENTRIES: readonly SettingsEntry[] = [
   { id: "browser", group: "Agent", label: "Browser permissions", icon: "globe", keywords: "origins allowlist certificates trust" },
   { id: "memory", group: "Agent", label: "Memory, skills and hooks", icon: "blocks", keywords: "customize engineering memory skills hooks extensions" },
   { id: "account", group: "Account", label: "Account and cloud", icon: "globe", keywords: "sign in login oidc tenant organization cloud" },
-  { id: "appearance", group: "App", label: "Appearance", icon: "eye", keywords: "theme dark light high contrast system zoom size density comfortable compact rows" },
+  { id: "appearance", group: "App", label: "Appearance", icon: "eye", keywords: "theme dark light high contrast system zoom size density comfortable compact rows task list second line group grouping project status environment date" },
   { id: "notifications", group: "App", label: "Notifications", icon: "clock", keywords: "alerts attention completion failure quiet hours" },
-  { id: "tools", group: "App", label: "Automations and worktrees", icon: "git-branch", keywords: "automations worktrees dashboard cost" },
-  { id: "about", group: "About", label: "This build", icon: "file-text", keywords: "version platform languages support shortcuts keyboard update updates" },
+  { id: "shortcuts", group: "App", label: "Shortcuts", icon: "circle-question-mark", keywords: "keyboard keys shortcuts chords bindings" },
+  { id: "tools", group: "App", label: "Automations and worktrees", icon: "git-branch", keywords: "automations worktrees dashboard cost pull request merge merged archive after merge" },
+  { id: "about", group: "About", label: "This build", icon: "file-text", keywords: "version platform languages support update updates" },
 ];
 
 export const settingsMatches = (e: SettingsEntry, query: string): boolean => {
@@ -66,8 +86,8 @@ function Row({ title, detail, children }: { title: ReactNode; detail?: ReactNode
   );
 }
 
-function Toggle({ testId, label, checked, onChange }: { testId: string; label: string; checked: boolean; onChange: (on: boolean) => void }) {
-  return <input type="checkbox" className="settings-toggle" role="switch" aria-label={label} data-testid={testId} checked={checked} onChange={(e) => onChange(e.target.checked)} />;
+function Toggle({ testId, label, checked, onChange, disabled = false }: { testId: string; label: string; checked: boolean; onChange: (on: boolean) => void; disabled?: boolean }) {
+  return <input type="checkbox" className="settings-toggle" role="switch" aria-label={label} data-testid={testId} checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />;
 }
 
 const NOTIFY_WORDS: Record<NotificationKind, [string, string]> = {
@@ -92,12 +112,20 @@ export interface SettingsPageProps {
   onDashboard: (() => void) | null;
   onShortcuts: () => void;
   onComputerPermissions: () => void;
+  /** The session the archive-after-merge preference belongs to (REQ-PX-211); null before one exists. */
+  sessionId?: string | null;
 }
 
-export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, density, onDensity, onCustomize, onAutomations, onWorktrees, onDashboard, onShortcuts, onComputerPermissions }: SettingsPageProps) {
+export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, density, onDensity, onCustomize, onAutomations, onWorktrees, onDashboard, onShortcuts, onComputerPermissions, sessionId = null }: SettingsPageProps) {
   const { core, provider, credentials, credentialForm, setCredentialForm, credentialError, setCredentialError, refreshCredentials, prefs, settings, savePrefs, platform, languages } = app;
   const connected = core.state === "connected";
+  // The task list's own preferences (one copy in this window, agents/prefs.ts): a choice here is the list's at once.
+  const [list, setList] = useState(currentListPrefs);
+  useEffect(() => subscribeListPrefs(setList), []);
   const [changingProvider, setChangingProvider] = useState(false);
+  // PX-215: the person's standing level per application, held and enforced by the Core.
+  const access = useStandingAccess(connected);
+  const [accessForm, setAccessForm] = useState<{ application: string; level: AccessLevel }>({ application: "", level: "view_only" });
   const [browser, setBrowser] = useState<{ origins: string[]; targets: string[]; trusts: number } | null>(null);
   useEffect(() => {
     if (!connected) return;
@@ -109,6 +137,40 @@ export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, density
       live = false;
     };
   }, [connected]);
+  // PX-216: the sites the person decided for the agent's navigation, each removable (the origin then asks again).
+  const [sites, setSites] = useState<{ origin: string; decision: "allow" | "deny"; decidedAtMs: number; source: "person" | "startup" }[] | null>(null);
+  const loadSites = useCallback(() => {
+    if (!connected) return;
+    void window.modbit.browserSites().then(setSites).catch(() => setSites(null));
+  }, [connected]);
+  useEffect(() => loadSites(), [loadSites]);
+  const removeSite = async (origin: string) => {
+    await window.modbit.removeBrowserSite(origin);
+    loadSites();
+  };
+  // REQ-PX-211: archive after merge, held by the Core for the session (its schedule archives with nobody connected). Off until set.
+  const [archiveAfterMerge, setArchiveAfterMerge] = useState<boolean | null>(null);
+  const [archivePrefError, setArchivePrefError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!connected || !sessionId) return;
+    let live = true;
+    void window.modbit
+      .pullRequestPreferences(sessionId)
+      .then((r) => live && setArchiveAfterMerge(r.archiveAfterMerge))
+      .catch((e: Error) => live && setArchivePrefError(e.message));
+    return () => {
+      live = false;
+    };
+  }, [connected, sessionId]);
+  const changeArchiveAfterMerge = async (on: boolean) => {
+    if (!sessionId) return;
+    setArchivePrefError(null);
+    try {
+      setArchiveAfterMerge((await window.modbit.setPullRequestPreferences(sessionId, on)).archiveAfterMerge);
+    } catch (e) {
+      setArchivePrefError((e as Error).message.replace(/^Error invoking remote method '[^']*': (Error: )?/, ""));
+    }
+  };
   const noMatch = !SETTINGS_ENTRIES.some((e) => settingsMatches(e, query));
   const providerWords = provider === null ? "Reading the provider's state…" : provider.configured ? `${provider.endpoints.join(", ") || provider.provider} is set up. ${provider.stored ? "The key is in the OS keychain." : "The key is held for this session only."}` : "No provider is set up, so tasks can be created but will not start.";
   return (
@@ -142,7 +204,7 @@ export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, density
         <Section id="locations" query={query}>
           <div className="settings-card" data-testid="settings-locations">
             <Row title={localMachine()} detail="Available. A new task runs here unless you choose otherwise, and never takes its location from the task you last viewed. It can work in your checkout or in a worktree of its own." />
-            <Row title="Isolated cloud" detail={<span data-testid="settings-cloud-state">Not available from this app yet: the desktop has no cloud client (PX-128). The command line can hand a task over with <code>modbit cloud handoff</code>.</span>} />
+            <Row title="Isolated cloud" detail={<span data-testid="settings-cloud-state">Not available from this app yet: the desktop cannot hand a task to the cloud. The command line can hand a task over with <code>modbit cloud handoff</code>.</span>} />
           </div>
         </Section>
 
@@ -154,6 +216,75 @@ export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, density
                 Review
               </Button>
             </Row>
+          </div>
+          <div className="settings-card" data-testid="settings-computer-access" data-state={access.info === null ? "unknown" : "ready"}>
+            <Row title="Standing access for applications" detail="How far the agent may go in one application, until you change it. Nothing is set by default: an application with no level follows each task's own grant. A level only ever narrows what a task may do, and you still approve every action." />
+            {access.info !== null && access.info.entries.length === 0 && (
+              <Row title="No application has a standing level" detail={<span data-testid="settings-access-none">Every application follows each task's own grant.</span>} />
+            )}
+            {access.info?.entries.map((e) => (
+              <Row key={e.bundleId} title={<span data-testid="settings-access-app">{e.application || e.bundleId}</span>} detail={<span data-testid="settings-access-does"><code>{e.bundleId}</code> · {ACCESS_WORDS[e.level].does}</span>}>
+                <select className="settings-select" aria-label={`Standing access for ${e.application || e.bundleId}`} data-testid="settings-access-level" data-bundle={e.bundleId} value={e.level} disabled={access.busy} onChange={(ev) => void access.set(e.bundleId, e.application, ev.target.value as AccessLevel | "")}>
+                  <option value="">Not set</option>
+                  {ACCESS_LEVELS.map((l) => (
+                    <option key={l} value={l}>
+                      {ACCESS_WORDS[l].label}
+                    </option>
+                  ))}
+                </select>
+              </Row>
+            ))}
+            <div className="settings-card-body">
+              <form
+                className="settings-form"
+                data-testid="settings-access-form"
+                onSubmit={(ev) => {
+                  ev.preventDefault();
+                  const running = access.info?.running.find((a) => a.bundleId === accessForm.application.trim());
+                  void access.set(accessForm.application.trim(), running?.name ?? "", accessForm.level).then((ok) => ok && setAccessForm({ application: "", level: accessForm.level }));
+                }}
+              >
+                <label className="meta">
+                  Application
+                  <input data-testid="settings-access-application" list="settings-access-running" placeholder="com.example.app" value={accessForm.application} onChange={(ev) => setAccessForm({ ...accessForm, application: ev.target.value })} />
+                  <datalist id="settings-access-running">
+                    {access.info?.running.map((a) => (
+                      <option key={a.bundleId} value={a.bundleId}>
+                        {a.name}
+                      </option>
+                    ))}
+                  </datalist>
+                </label>
+                <label className="meta">
+                  Level
+                  <select className="settings-select" data-testid="settings-access-new-level" value={accessForm.level} onChange={(ev) => setAccessForm({ ...accessForm, level: ev.target.value as AccessLevel })}>
+                    {ACCESS_LEVELS.map((l) => (
+                      <option key={l} value={l}>
+                        {ACCESS_WORDS[l].label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div>
+                  <Button size="sm" type="submit" data-testid="settings-access-set" disabled={!connected || access.busy || accessForm.application.trim() === ""}>
+                    Set level
+                  </Button>
+                </div>
+              </form>
+              <p className="meta settings-note" data-testid="settings-access-words">
+                {ACCESS_WORDS[accessForm.level].does}
+              </p>
+              {access.note && (
+                <p className="meta settings-note" role="status" data-testid="settings-access-note">
+                  {access.note}
+                </p>
+              )}
+              {access.error && (
+                <p className="meta settings-note" role="alert" data-testid="settings-access-error">
+                  {access.error}
+                </p>
+              )}
+            </div>
           </div>
         </Section>
 
@@ -169,7 +300,7 @@ export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, density
                 {credentials.map((c) => (
                   <li key={c.handle} className="meta settings-list-row" data-testid="credential" data-handle={c.handle} data-origin={c.origin}>
                     <span>
-                      <code>{c.handle}</code> · {c.label} · {c.origin} · {c.username || "(no account name)"} · {c.persisted ? "in the OS keychain" : "held for this session only"}
+                      <span title={`Handle ${c.handle}`}>{c.label}</span> · {c.origin} · {c.username || "no account name"} · {c.persisted ? "in the OS keychain" : "held for this session only"}
                     </span>
                     <Button size="sm" variant="ghost" data-testid="credential-remove" onClick={() => void window.modbit.removeCredential(c.handle).then(refreshCredentials)}>
                       Forget
@@ -224,6 +355,26 @@ export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, density
           <div className="settings-card" data-testid="settings-browser">
             <Row title="Sites the browser may open" detail={browser === null ? "Unavailable until the Core is connected." : browser.origins.length + browser.targets.length === 0 ? "None added beyond the defaults." : [...browser.origins, ...browser.targets].join(", ")} />
             <Row title="Trusted certificates" detail={browser === null ? "Unavailable until the Core is connected." : `${browser.trusts} kept; each was decided in the browser panel.`} />
+            <Row title="Sites you decided for the agent" detail={sites === null ? "Unavailable until the Core is connected." : sites.length === 0 ? "None yet. The agent asks in the browser panel the first time it wants to open a site." : "The agent opens an allowed site without asking and never opens a denied one. Remove a site to be asked about it again."} />
+            {sites !== null && sites.length > 0 && (
+              <ul className="settings-sites" data-testid="settings-sites" aria-label="Sites you decided for the agent">
+                {sites.map((e) => (
+                  <li key={e.origin} className="settings-row" data-testid="settings-site" data-origin={e.origin} data-decision={e.decision}>
+                    <div className="settings-row-text">
+                      <div>{e.origin}</div>
+                      <div className="meta">{e.decision === "allow" ? "Always allowed" : "Denied"}{e.source === "startup" ? ", set when the app started" : ""}</div>
+                    </div>
+                    {e.source === "person" && (
+                      <div className="settings-row-control">
+                        <Button size="sm" variant="outline" onClick={() => void removeSite(e.origin)} aria-label={`Remove ${e.origin}`} data-testid="settings-site-remove">
+                          Remove
+                        </Button>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </Section>
 
@@ -239,7 +390,7 @@ export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, density
 
         <Section id="account" query={query}>
           <div className="settings-card" data-testid="settings-account">
-            <Row title="Signed in" detail={<span data-testid="settings-account-state">Nobody: this app has no sign-in yet (PX-128, PX-129), and it works without one on this Mac.</span>} />
+            <Row title="Signed in" detail={<span data-testid="settings-account-state">Nobody: this app has no sign-in yet, and it works without one on this Mac.</span>} />
           </div>
         </Section>
 
@@ -274,6 +425,24 @@ export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, density
                 ))}
               </span>
             </Row>
+            <Row title="Second line on task rows" detail="When needed: only a task that needs you or has failed shows its reason under the title.">
+              <span className="settings-seg" role="radiogroup" aria-label="Second line on task rows" data-testid="settings-row-details">
+                {ROW_DETAILS.map((d) => (
+                  <button key={d.id} type="button" role="radio" aria-checked={list.rowDetails === d.id} className="settings-seg-btn" data-testid={`settings-row-details-${d.id}`} onClick={() => updateListPrefs((p) => ({ ...p, rowDetails: d.id }))}>
+                    {ROW_DETAIL_WORDS[d.id]}
+                  </button>
+                ))}
+              </span>
+            </Row>
+            <Row title="Group tasks by" detail="The same choice as the list's own options.">
+              <select className="settings-select" aria-label="Group tasks by" data-testid="settings-grouping" value={list.grouping} onChange={(e) => updateListPrefs((p) => ({ ...p, grouping: e.target.value as Grouping }))}>
+                {GROUPINGS.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.label}
+                  </option>
+                ))}
+              </select>
+            </Row>
           </div>
         </Section>
 
@@ -302,7 +471,27 @@ export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, density
           </div>
         </Section>
 
+        <Section id="shortcuts" query={query}>
+          <Shortcuts onShow={onShortcuts} />
+        </Section>
+
         <Section id="tools" query={query}>
+          <div className="settings-card" data-testid="settings-pull-requests">
+            <Row
+              title="Archive after merge"
+              detail={
+                <span data-testid="settings-archive-after-merge-detail">
+                  {archivePrefError
+                    ? `The preference could not be read or changed: ${archivePrefError}`
+                    : archiveAfterMerge === null
+                      ? "Reading the preference…"
+                      : "When the Core reads a task's pull request as merged, it archives the task. Undo brings it back. Off until you turn it on."}
+                </span>
+              }
+            >
+              <Toggle testId="settings-archive-after-merge" label="Archive after merge" checked={archiveAfterMerge === true} disabled={archiveAfterMerge === null} onChange={(on) => void changeArchiveAfterMerge(on)} />
+            </Row>
+          </div>
           <div className="settings-card">
             {(
               [
@@ -322,26 +511,64 @@ export function SettingsPage({ app, query, theme, onTheme, zoom, onZoom, density
 
         <Section id="about" query={query}>
           <div className="settings-card" data-testid="about-build">
-            {platform && <Row title="Platform" detail={<span data-testid="platform-state" data-state={platform.state}>{platform.statement}</span>} />}
+            {platform && <Row title="Platform" detail={<span data-testid="platform-state" data-state={platform.state} title={platform.statement}>{platformWords(platform)}</span>} />}
             {languages.length > 0 && (
               <Row
                 title="Languages"
                 detail={
                   <span data-testid="language-labels" title={languages.map((l) => `${l.language}: ${l.label}`).join("\n")}>
-                    {languages.filter((l) => l.tier === "ALPHA_BASELINE").map((l) => l.language).join(", ")} at the Alpha baseline (Tier C plus compile and test evidence; structural intelligence not yet claimed); everything else unsupported.
+                    {languages.filter((l) => l.tier === "ALPHA_BASELINE").map((l) => l.language).join(", ")} at the Alpha baseline: the agent can edit, build and test them, with no deeper code understanding claimed yet; everything else unsupported.
                   </span>
                 }
               />
             )}
             <Row title="Updates" detail={<UpdateIndicator />} />
-            <Row title="Keyboard shortcuts">
-              <Button size="sm" variant="outline" onClick={onShortcuts} data-testid="settings-shortcuts">
-                Show
-              </Button>
-            </Row>
           </div>
         </Section>
       </section>
+    </div>
+  );
+}
+
+/**
+ * The Shortcuts section (REQ-PX-208): generated from the command registry and the two key maps (settings/shortcut-sheet.ts),
+ * each key checked against the map that dispatches it. Nothing here is written by hand, and nothing new is bound.
+ */
+function Shortcuts({ onShow }: { onShow: () => void }) {
+  const mac = isMacPlatform();
+  const sheet = shortcutSheet(shellRegistry.all() as never, (e, m) => shellRegistry.forEvent(e, m)?.id, mac);
+  const help = shellRegistry.get("help.shortcuts")?.keys?.[0];
+  return (
+    <div className="settings-shortcuts" data-testid="settings-shortcut-sheet">
+      <div className="settings-card">
+        <Row title="Show this list anywhere" detail={help ? <>Press <Kbd chord={help} /> in any view.</> : undefined}>
+          <Button size="sm" variant="outline" onClick={onShow} data-testid="settings-shortcuts">
+            Show
+          </Button>
+        </Row>
+      </div>
+      {SCOPES.map((scope) => {
+        const rows = sheet.rows.filter((r) => r.scope === scope);
+        if (rows.length === 0) return null;
+        return (
+          <div key={scope} className="settings-shortcut-group" data-testid="settings-shortcut-group" data-scope={scope}>
+            <h4 className="settings-subheading">{SCOPE_WORDS[scope].title}</h4>
+            <p className="meta settings-note">{SCOPE_WORDS[scope].note}</p>
+            <ul className="settings-card settings-shortcut-list" aria-label={SCOPE_WORDS[scope].title}>
+              {rows.map((r) => (
+                <li key={r.id} className="settings-row" data-testid="settings-shortcut" data-id={r.id} data-scope={r.scope} data-probes={JSON.stringify(r.probes)}>
+                  <span className="settings-row-text">{r.what}</span>
+                  <span className="settings-row-control settings-keys">
+                    {r.probes.map((p) => (
+                      <Kbd key={p.chord} chord={p.chord} />
+                    ))}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
     </div>
   );
 }

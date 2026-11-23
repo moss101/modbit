@@ -1,0 +1,36 @@
+{
+  "expected": {
+    "entries": [
+      {
+        "accessLevel": "view_only",
+        "accessNeeded": "click",
+        "application": "Form App",
+        "approvalId": "",
+        "artifactDigest": "",
+        "artifactExpired": false,
+        "artifactRef": "",
+        "atMs": "1791626001000",
+        "bundleId": "org.example.fixture.form",
+        "code": "ACTION_UNSAFE",
+        "controlId": "c0123456789ab",
+        "detail": "",
+        "durationMs": "0",
+        "elements": 0,
+        "intentHash": "",
+        "kind": "ACCESS_REFUSED",
+        "maskedRegions": 0,
+        "modality": "",
+        "offset": "43",
+        "outcome": "",
+        "reason": "your standing access for `org.example.fixture.form` is view only: clicking needs click or full",
+        "scope": "",
+        "secureWithheld": 0,
+        "toolCallId": "01a08f33-0d97-7d40-b299-f8a7bc5cda62",
+        "verified": false,
+        "verifiedKnown": false
+      }
+    ],
+    "truncated": false
+  },
+  "type": "modbit.v1.ComputerActivityView"
+}

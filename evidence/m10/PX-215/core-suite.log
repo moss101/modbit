@@ -1,0 +1,99 @@
+# cargo test -p modbit-core --locked --no-fail-fast on this tree (base c73af3359fd55b7e4256a00a3966679bb95a2717 + the PX-215 change, uncommitted at the time), per-binary results; helper binaries (modbit-execd, modbit-mcp-testserver, modbit-actuator-fixture, modbit-cli) built first
+     Running unittests src/main.rs (target/debug/deps/modbit_core-17cf696cfc3694fc)
+test result: ok. 97 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.91s
+     Running tests/automations_px.rs (target/debug/deps/automations_px-436138ddc39182a2)
+test result: ok. 27 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 20.37s
+     Running tests/background_wake.rs (target/debug/deps/background_wake-7382247463cd61d0)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.35s
+     Running tests/checkpoints_px.rs (target/debug/deps/checkpoints_px-0a36c0706ca5d79f)
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 35.74s
+     Running tests/composer_catalog.rs (target/debug/deps/composer_catalog-5a5422d6d421fc14)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+     Running tests/context_rules_pack.rs (target/debug/deps/context_rules_pack-e64a4e2ec992d4fa)
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 41.31s
+     Running tests/execd_object_store.rs (target/debug/deps/execd_object_store-e9d86b68853e2a55)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.57s
+     Running tests/memory_graph_index.rs (target/debug/deps/memory_graph_index-eea4bc4e2224461b)
+test result: ok. 20 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 9.63s
+     Running tests/projects_px.rs (target/debug/deps/projects_px-348603b59eddf137)
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.49s
+     Running tests/provider_data_resume.rs (target/debug/deps/provider_data_resume-9c8f0c25c60903a9)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.14s
+     Running tests/px_048_changes.rs (target/debug/deps/px_048_changes-464b92a2de2f6623)
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.60s
+     Running tests/px_049_session_end.rs (target/debug/deps/px_049_session_end-c5daf5749b7d1a9b)
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.76s
+     Running tests/px_060_budget_policy.rs (target/debug/deps/px_060_budget_policy-d1a2db576dfa1d36)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.19s
+     Running tests/px_103_hunks.rs (target/debug/deps/px_103_hunks-e637b2069213e2a6)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.95s
+     Running tests/px_106_customize.rs (target/debug/deps/px_106_customize-5c084df4c1cb8d99)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.85s
+     Running tests/px_114_projection.rs (target/debug/deps/px_114_projection-fdf6cd005e729260)
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.97s
+     Running tests/px_114_trial.rs (target/debug/deps/px_114_trial-f12e0f304f994ed3)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 29.49s
+     Running tests/px_115_mcp.rs (target/debug/deps/px_115_mcp-ce54001fcfbcd244)
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.02s
+     Running tests/px_117_hooks.rs (target/debug/deps/px_117_hooks-37dc99dcc43bbe7a)
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.59s
+     Running tests/px_125_forge.rs (target/debug/deps/px_125_forge-7bf74889c0a5c078)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.29s
+     Running tests/px_130_broker.rs (target/debug/deps/px_130_broker-bd922ca72bcd445c)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.49s
+     Running tests/px_131_epoch.rs (target/debug/deps/px_131_epoch-9d876b4893cdd7e1)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.09s
+     Running tests/px_132_services.rs (target/debug/deps/px_132_services-672055a472e1642f)
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 17.71s
+     Running tests/px_134_activation.rs (target/debug/deps/px_134_activation-3da45b92eceb440e)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.83s
+     Running tests/px_135_adversarial_gate.rs (target/debug/deps/px_135_adversarial_gate-ed77c73fd412bf16)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.94s
+     Running tests/px_135_live.rs (target/debug/deps/px_135_live-c502d7ceb56d9dc0)
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 59.79s
+     Running tests/px_136_paired.rs (target/debug/deps/px_136_paired-8a8a82359718355c)
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 18.46s
+     Running tests/px_139_otel.rs (target/debug/deps/px_139_otel-3d4027e13f930724)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 29.45s
+     Running tests/px_148_hardening.rs (target/debug/deps/px_148_hardening-1ab6442ca65c50b2)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.39s
+     Running tests/px_155_context_overflow.rs (target/debug/deps/px_155_context_overflow-73281e85700e4b26)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.23s
+     Running tests/px_156_parked_time.rs (target/debug/deps/px_156_parked_time-9ae57fd71f48ef64)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.40s
+     Running tests/px_158_image_tokens.rs (target/debug/deps/px_158_image_tokens-0fd7c72278c50695)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 11.22s
+     Running tests/px_161_parallel_reads.rs (target/debug/deps/px_161_parallel_reads-5968c18a963f4d38)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.91s
+     Running tests/px_171_faults.rs (target/debug/deps/px_171_faults-97eb9b061a87a8b2)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.86s
+     Running tests/px_210_next_prompt.rs (target/debug/deps/px_210_next_prompt-e40c596a9412e2a2)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.44s
+     Running tests/px_214_reviewer_findings.rs (target/debug/deps/px_214_reviewer_findings-6cf26917c716bf71)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.47s
+     Running tests/px_browser_runtime.rs (target/debug/deps/px_browser_runtime-57835d8834a94c09)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.07s
+     Running tests/px_computer.rs (target/debug/deps/px_computer-4e5c33966899cf2a)
+test result: ok. 50 passed; 0 failed; 7 ignored; 0 measured; 0 filtered out; finished in 86.37s
+     Running tests/run_control.rs (target/debug/deps/run_control-5cc0fef4e385f9e1)
+test result: ok. 27 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 19.10s
+     Running tests/slash_inventory.rs (target/debug/deps/slash_inventory-bcdd1f365d3049fe)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+     Running tests/stream_transcript.rs (target/debug/deps/stream_transcript-023993f5fb246bb8)
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 16.95s
+     Running tests/surface_protocol.rs (target/debug/deps/surface_protocol-1404355db54e4332)
+test result: ok. 208 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 230.37s
+     Running tests/task_modes.rs (target/debug/deps/task_modes-ddc3de5d7528a161)
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.49s
+     Running tests/terminal_stream.rs (target/debug/deps/terminal_stream-ffa5fbe0eee32210)
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 38.91s
+     Running tests/update_cli.rs (target/debug/deps/update_cli-be91fdc43db5449d)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+     Running tests/wave6_core_gaps.rs (target/debug/deps/wave6_core_gaps-eb1c4a25610f2d3a)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 17.00s
+     Running tests/workspace_files.rs (target/debug/deps/workspace_files-f0037d2c64220fae)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+     Running tests/worktrees_px.rs (target/debug/deps/worktrees_px-bb1b11f78b1522d1)
+test result: ok. 39 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 34.98s
+exit 0
+# total: 697 passed, 0 failed, 8 ignored, 48 test binaries

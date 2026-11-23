@@ -20,6 +20,12 @@
 //! * **Retention.** A stored frame is removed from the object store once the
 //!   retention window passes (`MODBIT_COMPUTER_RETENTION_SECS`, default a
 //!   day); the observation's record stays, the pixels do not.
+//! * **Standing access (PX-215).** The person's level per application is held
+//!   by the runtime's store and changed only through `SetComputerAccess`, which
+//!   appends one `ComputerAccessSet` / `ComputerAccessCleared` event on the
+//!   Core's own ledger session (aggregate `computer_access`, the person as the
+//!   actor) before the level is in force; boot folds the whole log back into the store. A call the level
+//!   refuses leaves a `ComputerAccessRefused` event on the task's log.
 //! * **Commands.** `GetComputerRuntime`, `ResolveComputerLatch`, `ComputerStop`,
 //!   and the desktop surface's reads (PX-074): `GetComputerPresence` (who holds
 //!   the machine, the operating-system permissions) and `ListComputerActivity`
@@ -30,6 +36,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use modbit_computer::access::{self, AccessEvent, Level};
 use modbit_computer::actuator::{ActuatorConfig, BoxFuture};
 use modbit_computer::policy::{self, ComputerPolicy};
 use modbit_computer::runtime::Latch;
@@ -40,7 +47,7 @@ use modbit_computer::{
 use modbit_domain::event::{Actor, AggregateType};
 use modbit_domain::task::TaskEvent;
 use modbit_domain::{SessionId, TaskId, TenantId};
-use modbit_event_store::{AppendRequest, EventStore, NewEvent};
+use modbit_event_store::{AppendRequest, CommandOutcome, CommandRecord, EventStore, NewEvent};
 use modbit_policy::config::{Permission, ResolvedConfig};
 use modbit_protocol::v1 as wire;
 use prost::Message;
@@ -653,10 +660,35 @@ impl ComputerHost {
         }
     }
 
+    /// Fold the standing-access events of the whole log into the runtime's
+    /// store, in log order (PX-215). A level the person set survives a
+    /// restart; one that was cleared does not come back.
+    async fn recover_access(&self, core: &Core) {
+        let st = core.store.lock().await;
+        let events = match st.read_all_of_types_to_end(&AccessEvent::TYPES, 0) {
+            Ok(e) => e,
+            Err(e) => {
+                eprintln!("modbit-core: standing computer access unreadable at boot: {e}");
+                return;
+            }
+        };
+        let standing = self.runtime.standing();
+        for e in &events {
+            let Ok(payload) = st.payload(&e.envelope) else {
+                continue;
+            };
+            let Ok(ev) = serde_json::from_value::<AccessEvent>(payload) else {
+                continue;
+            };
+            standing.apply(&ev, e.envelope.occurred_at.millis());
+        }
+    }
+
     /// Fold the computer events of the whole log once, at boot: the latches,
     /// the stops, and the sessions a dead Core left open (closed
     /// `CORE_RESTART`: the actuator stopped with the Core's pipe).
     pub(crate) async fn recover(&self, core: &Core) {
+        self.recover_access(core).await;
         struct Open {
             task: TaskId,
             session: SessionId,
@@ -1274,6 +1306,7 @@ fn activity_view(store: &EventStore, task_id: TaskId) -> wire::ComputerActivityV
         "ComputerSessionClosed",
         "ComputerUserAborted",
         "ComputerArtifactExpired",
+        "ComputerAccessRefused",
     ];
     let Ok(events) = store.read_aggregate_of_types(task_id.as_bytes(), &types, 0) else {
         return wire::ComputerActivityView::default();
@@ -1361,6 +1394,16 @@ fn activity_view(store: &EventStore, task_id: TaskId) -> wire::ComputerActivityV
                 en.kind = "USER_ABORTED".into();
                 en.reason = s(&p, "reason");
             }
+            // PX-215: a call the person's standing level did not allow.
+            "ComputerAccessRefused" => {
+                en.kind = "ACCESS_REFUSED".into();
+                en.bundle_id = s(&p, "bundle_id");
+                en.application = s(&p, "application");
+                en.access_level = s(&p, "level");
+                en.access_needed = s(&p, "needed");
+                en.reason = s(&p, "reason");
+                en.code = "ACTION_UNSAFE".into();
+            }
             "ComputerArtifactExpired" => {
                 expired.insert(s(&p, "artifact_ref"));
                 continue;
@@ -1412,4 +1455,250 @@ pub(crate) fn argv_drives_gui(argv: &[String]) -> bool {
 /// The set of tool names `computer.*` (for the projection filter).
 pub(crate) fn is_computer_tool(name: &str) -> bool {
     name.starts_with("computer.")
+}
+
+// ---- standing access (PX-215) ----
+
+/// The one aggregate every standing-access event lands on.
+const ACCESS_AGGREGATE: [u8; 16] = *b"modbit/comp-acce";
+
+/// The Core's own ledger session for them: a standing level belongs to the person's machine, not to any one session
+/// of theirs, so (like the automation ledger) it is recorded on a session of the Core's own and needs no lease.
+const ACCESS_LEDGER_SESSION: [u8; 16] = [0xC5; 16];
+
+/// The newest changes the view carries.
+const ACCESS_CHANGES_SHOWN: usize = 100;
+
+/// How long the view waits for the actuator to list running applications.
+const RUNNING_LIST_WAIT: Duration = Duration::from_secs(2);
+
+fn access_entries(host: &ComputerHost) -> Vec<wire::ComputerAccessEntry> {
+    host.runtime
+        .standing()
+        .list()
+        .into_iter()
+        .map(|s| wire::ComputerAccessEntry {
+            bundle_id: s.key,
+            application: s.application,
+            level: s.level.as_str().to_owned(),
+            set_at_ms: s.set_at_ms,
+        })
+        .collect()
+}
+
+async fn access_view(core: &Core) -> wire::ComputerAccessView {
+    let host = &core.tools.computer;
+    let standing = host.runtime.standing();
+    let running = if host.runtime.attached() {
+        tokio::time::timeout(RUNNING_LIST_WAIT, host.runtime.drivable_applications())
+            .await
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+    let (last_change_offset, changes) = {
+        let st = core.store.lock().await;
+        let events = st
+            .read_all_of_types_to_end(&AccessEvent::TYPES, 0)
+            .unwrap_or_default();
+        let last = events.last().map_or(0, |e| e.offset);
+        let mut changes: Vec<wire::ComputerAccessChange> = events
+            .iter()
+            .filter_map(|e| {
+                let ev =
+                    serde_json::from_value::<AccessEvent>(st.payload(&e.envelope).ok()?).ok()?;
+                let (key, application, level, previous) = match ev {
+                    AccessEvent::ComputerAccessSet {
+                        key,
+                        application,
+                        level,
+                        previous,
+                    } => (key, application, Some(level), previous),
+                    AccessEvent::ComputerAccessCleared {
+                        key,
+                        application,
+                        previous,
+                    } => (key, application, None, Some(previous)),
+                };
+                Some(wire::ComputerAccessChange {
+                    offset: e.offset,
+                    at_ms: e.envelope.occurred_at.millis(),
+                    bundle_id: key,
+                    application,
+                    level: level.map(|l| l.as_str().to_owned()).unwrap_or_default(),
+                    previous: previous.map(|l| l.as_str().to_owned()).unwrap_or_default(),
+                    by: crate::review_findings::actor_label(&e.envelope.actor),
+                })
+            })
+            .collect();
+        if changes.len() > ACCESS_CHANGES_SHOWN {
+            changes.drain(..changes.len() - ACCESS_CHANGES_SHOWN);
+        }
+        (last, changes)
+    };
+    wire::ComputerAccessView {
+        entries: access_entries(host),
+        levels: Level::ALL.iter().map(|l| l.as_str().to_owned()).collect(),
+        running: running
+            .into_iter()
+            .map(|(key, name)| wire::ComputerAccessApplication {
+                level: standing
+                    .get(&key)
+                    .map(|l| l.as_str().to_owned())
+                    .unwrap_or_default(),
+                bundle_id: key,
+                name,
+            })
+            .collect(),
+        attached: host.runtime.attached(),
+        non_drivable_version: policy::NON_DRIVABLE_VERSION.to_owned(),
+        last_change_offset,
+        changes,
+    }
+}
+
+/// A label a client sent for the record: bounded, one line.
+fn label_of(raw: &str) -> String {
+    raw.chars()
+        .filter(|c| !c.is_control())
+        .take(200)
+        .collect::<String>()
+        .trim()
+        .to_owned()
+}
+
+/// The identity a key stands for, for the list of applications no approval lifts.
+fn identity_of_key(key: &str) -> modbit_computer::model::AppIdentity {
+    match key.strip_prefix("exe:") {
+        Some(exe) => modbit_computer::model::AppIdentity {
+            executable_path: exe.to_owned(),
+            ..Default::default()
+        },
+        None => modbit_computer::model::AppIdentity {
+            bundle_id: key.to_owned(),
+            ..Default::default()
+        },
+    }
+}
+
+/// `GetComputerAccess` and `SetComputerAccess`.
+pub(crate) async fn handle_access(
+    core: &Arc<Core>,
+    env: &wire::CommandEnvelope,
+    record: CommandRecord,
+    actor: Actor,
+) -> wire::CommandAck {
+    let cid = env.command_id.clone();
+    match env.command_type.as_str() {
+        "GetComputerAccess" => {
+            if wire::GetComputerAccess::decode(env.payload.as_slice()).is_err() {
+                return reject(cid, "BAD_PAYLOAD", "GetComputerAccess");
+            }
+            accept(cid, false, access_view(core).await.encode_to_vec())
+        }
+        "SetComputerAccess" => {
+            let Ok(p) = wire::SetComputerAccess::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "SetComputerAccess");
+            };
+            let key = match access::normalize_key(&p.bundle_id) {
+                Ok(k) => k,
+                Err(why) => return reject(cid, "BAD_APPLICATION", why),
+            };
+            let level = if p.level.is_empty() {
+                None
+            } else if let Some(l) = Level::parse(&p.level) {
+                Some(l)
+            } else {
+                return reject(
+                    cid,
+                    "BAD_LEVEL",
+                    format!(
+                        "`{}` is not a level: never, view_only, click or full (or empty to clear)",
+                        p.level.chars().take(40).collect::<String>()
+                    ),
+                );
+            };
+            // A level cannot make an application drivable: one no approval lifts
+            // may be set to never, and to nothing else.
+            if level.is_some_and(|l| l != Level::Never)
+                && let Some(why) = policy::non_drivable(&identity_of_key(&key), 0)
+            {
+                return reject(
+                    cid,
+                    "NOT_DRIVABLE",
+                    format!("`{key}` is never driven ({why}); no level lifts that"),
+                );
+            }
+            let standing = core.tools.computer.runtime.standing();
+            let mut store = core.store.lock().await;
+            let previous = standing.get(&key);
+            let label = {
+                let given = label_of(&p.application);
+                if given.is_empty() { key.clone() } else { given }
+            };
+            let unchanged = wire::ComputerAccessChanged {
+                bundle_id: key.clone(),
+                application: label.clone(),
+                level: level.map(|l| l.as_str().to_owned()).unwrap_or_default(),
+                previous: previous.map(|l| l.as_str().to_owned()).unwrap_or_default(),
+                changed: false,
+                offset: 0,
+            };
+            if level == previous {
+                return accept(cid, false, unchanged.encode_to_vec());
+            }
+            let event = match (level, previous) {
+                (Some(level), previous) => AccessEvent::ComputerAccessSet {
+                    key: key.clone(),
+                    application: label.clone(),
+                    level,
+                    previous,
+                },
+                (None, Some(previous)) => AccessEvent::ComputerAccessCleared {
+                    key: key.clone(),
+                    application: label.clone(),
+                    previous,
+                },
+                (None, None) => return accept(cid, false, unchanged.encode_to_vec()),
+            };
+            let req = AppendRequest {
+                tenant_id: core.tenant_id,
+                session_id: SessionId::from_bytes(ACCESS_LEDGER_SESSION),
+                task_id: None,
+                run_id: None,
+                turn_id: None,
+                step_id: None,
+                aggregate_type: AggregateType::ComputerAccess,
+                aggregate_id: ACCESS_AGGREGATE,
+                expected_sequence: None,
+                events: vec![crate::runtime::typed(event.event_type(), &event, actor)],
+            };
+            let outcome = match store.execute_command(record, req) {
+                Ok(o) => o,
+                Err(e) => return reject(cid, crate::server::error_code(&e), e.to_string()),
+            };
+            let (events, replayed) = match outcome {
+                CommandOutcome::Applied(e) => (e, false),
+                CommandOutcome::Replayed(e) => (e, true),
+            };
+            let offset = events.last().map_or(0, |e| e.offset);
+            if !replayed {
+                // The event is on the log: only now is the level in force.
+                standing.apply(&event, modbit_domain::Timestamp::now().millis());
+                core.last_offset.send_replace(offset);
+            }
+            drop(store);
+            accept(
+                cid,
+                replayed,
+                wire::ComputerAccessChanged {
+                    changed: true,
+                    offset,
+                    ..unchanged
+                }
+                .encode_to_vec(),
+            )
+        }
+        other => reject(cid, "UNKNOWN_COMMAND", other),
+    }
 }

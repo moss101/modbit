@@ -19,7 +19,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { closeApp } from "./support/close-app.ts";
-import { agentRow, expectTaskState, openTaskDetails, queueTask, runTask } from "./support/new-task.ts";
+import { agentRow, expectTaskState, openTaskMore, queueTask, runTask } from "./support/new-task.ts";
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const coreBin = process.env.MODBIT_CORE_BIN ?? resolve(appDir, "..", "..", "target", "debug", process.platform === "win32" ? "modbit-core.exe" : "modbit-core");
@@ -102,7 +102,7 @@ async function readyForReview(page: Page, taskId: string, model: { toolTexts: st
 
 
 async function launch(dataDir: string, extraEnv: Record<string, string>): Promise<{ app: ElectronApplication; page: Page }> {
-  const app = await electron.launch({ args: [join(appDir, "dist", "main", "main.cjs")], env: { ...process.env, MODBIT_DATA_DIR: dataDir, MODBIT_CORE_BIN: coreBin, OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "", MODBIT_SUPPRESS_OS_NOTIFICATIONS: "1", MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1", ...extraEnv } });
+  const app = await electron.launch({ args: [join(appDir, "dist", "main", "main.cjs")], env: { ...process.env, MODBIT_DATA_DIR: dataDir, MODBIT_CORE_BIN: coreBin, OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "", MODBIT_SUPPRESS_OS_NOTIFICATIONS: "1", MODBIT_BROWSER_ALLOW_TARGETS: "127.0.0.1", MODBIT_BROWSER_ALLOW_SITES: "http://127.0.0.1:*,http://localhost:*,https://127.0.0.1:*,https://localhost:*", ...extraEnv } });
   const page = await app.firstWindow();
   app.process().stderr?.on("data", (d: Buffer) => process.stderr.write(`[electron] ${d}`));
   await expect(page.getByTestId("core-status")).toContainText("Core connected", { timeout: 60_000 });
@@ -131,10 +131,28 @@ const BRIDGE_ALLOW_LIST = [
   "composerSuggest",
   // REQ-PX-200 (the plan card). Added on purpose: two reads over projections of the task's log, GetWorkGraph and GetPlan; main validates the task id (conversation-ipc.ts) and nothing is leased or changed.
   "workGraph", "plan",
+  // PX-214 (the reviewer's findings): Fix this one and Dismiss on the Review page. Added on purpose; each is one typed Core command main validates (review-findings-ipc.ts: finding id, result digest, reason).
+  "fixReviewFinding", "dismissReviewFinding",
+  // PX-215 (standing computer access): the Settings control reads the Core's level per application and sets one. Added on purpose; each is one typed Core command main validates (computer-ipc.ts: application identifier, name, level).
+  "computerAccess", "computerSetAccess",
+  // PX-216 (browser site decisions): answer the pane's question about a site, list the decisions, forget one. Added on purpose; each is a typed request main validates (main.ts: session id, origin, decision).
+  "decideBrowserSite", "browserSites", "removeBrowserSite",
+  // PX-211 (task pull-request state): the Core reads the task's pull request again through the forge adapter, and the session's archive-after-merge preference is read and set. Added on purpose; each is one typed Core command or read main validates (main.ts: session id, task id, a boolean).
+  "refreshPullRequest", "pullRequestPreferences", "setPullRequestPreferences",
+  // PX-212 (auto-fix): the task's switch, one typed Core command main validates (a session id, a task id and a boolean).
+  "setAutoFix",
+  "setMergeWhenReady",
+  // PX-203 (pane pop-out): the app window pops a pane out, lists and brings forward pane windows and hears them close or ask;
+  // a pane window asks which pane it shows, says what it shows, asks the app window to show something, and goes back to the
+  // dock. Main answers a pane window only on its pane's channels, for its own task (pane-windows.ts).
+  "popOutPane", "paneWindows", "focusPaneWindow", "onPaneWindows", "onPaneReturned", "onPaneShow", "paneContext", "reportPaneState", "paneShow", "returnPane",
   // REQ-PX-057 / 058 / 060 / 062 (approval stack, run modes, context accounting, checkpoints). Added on purpose; each is a typed request main validates (control-ipc.ts, control-args.ts).
   "dockApprovals", "allowAlways", "runMode", "setRunMode", "allowRules", "addAllowRule", "revokeAllowRule", "contextAccounting", "setTaskBudgets", "checkpoints", "previewRestore", "restoreCheckpoint", "forkFromTurn",
   // REQ-PX-055 / 058 (Wave 6): the agent's mode proposal and the approvals the Core closed as expired. Added on purpose; each is a typed request main validates (control-ipc.ts, control-args.ts).
   "expiredApprovals", "modeProposals", "decideModeProposal",
+  // REQ-PX-206 (Inbox): the record of updates main keeps from the Core's headers (list, mark one read, mark all read, clear; no
+  // call adds to it) and two events: the record changed, and a notification the OS showed was clicked.
+  "inboxUpdates", "markUpdateRead", "markAllUpdatesRead", "clearUpdates", "onInboxChanged", "onNotificationOpen",
   // REQ-PX-074 (native computer control's surface): presence, Stop, the latch, the action cards, a masked frame by reference and a System Settings pane. Added on purpose; each is a typed request main validates (computer-ipc.ts, computer-args.ts). None captures the screen or sends input.
   "computerPresence", "computerStop", "computerResolveLatch", "computerCards", "computerFrame", "computerOpenSettings", "debugOpenedSettings",
   // REQ-PX-086 (automations surface): definitions, validation, the enable approval, runs, history, pause and kill. Added on purpose; each is a typed request main validates (automation-ipc.ts, automation-args.ts).
@@ -387,7 +405,7 @@ test("browser view killed (REQ-EV-0081): the view's process dies under the agent
     const { app, page } = await launch(dataDir, { MODBIT_OPENAI_BASE_URL: model.url });
     const taskId = await queueTask(page, "read the greeter twice", repo);
     await expect(agentRow(page, taskId)).toContainText("read the greeter twice", { timeout: 30_000 });
-    await (await openTaskDetails(page)).getByTestId("task-browser").click();
+    await (await openTaskMore(page)).getByTestId("task-browser").click();
     const panel = page.getByTestId("browser");
     await expect(panel).toHaveAttribute("data-browser-session-id", /^[0-9a-f]{32}$/, { timeout: 30_000 });
     const bsid = (await panel.getAttribute("data-browser-session-id"))!;

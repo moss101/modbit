@@ -11,6 +11,8 @@
 //! fresh screenshot, then raw input (CUC-A04).
 //!
 //! * [`taxonomy`] - the 25 typed refusal codes and their escalations.
+//! * [`access`] - the person's standing level per application (PX-215), which
+//!   only ever narrows what a grant allows.
 //! * [`canvas`] - the fixed 1280 x 800 coordinate canvas and its one scaler.
 //! * [`model`], [`tree`] - what an actuator reports and how a tree reads as text.
 //! * [`policy`] - the versioned list of applications no approval lifts, and
@@ -28,6 +30,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod access;
 pub mod actuator;
 pub mod canvas;
 pub mod frame;

@@ -1,0 +1,61 @@
+PX-215 retained mutation checks, 2026-11-20. Each mutation is applied to the product source, the PX-215 tests are run, the failing tests are listed, and the source is restored (git diff is clean of the mutation afterwards).
+
+== M1-level-not-enforced (crates/computer/src/runtime/mod.rs)
+test qual_px_215_a_level_is_the_fold_of_the_log_and_survives_a_restart ... ok
+test qual_px_215_at_never_the_session_is_refused_and_no_approval_is_asked ... FAILED
+test qual_px_215_a_level_never_widens_what_the_grant_allows ... ok
+test qual_px_215_at_view_only_a_click_and_a_type_are_refused_with_their_reason ... FAILED
+test qual_px_215_a_change_mid_session_applies_from_the_next_action_and_is_audited ... FAILED
+test qual_px_215_at_click_a_click_goes_through_and_a_type_is_refused ... FAILED
+test qual_px_215_with_no_level_set_the_grant_alone_decides ... ok
+test result: FAILED. 3 passed; 4 failed; 0 ignored; 0 measured; 50 filtered out; finished in 9.15s
+error: test failed, to rerun pass `-p modbit-core --test px_computer`
+test runtime::tests::at_never_the_session_is_refused_before_anything_is_acquired_or_asked ... FAILED
+test runtime::tests::at_view_only_inputs_are_refused_with_their_reason_and_looking_still_works ... FAILED
+test runtime::tests::a_change_mid_session_applies_from_the_next_action_both_ways ... FAILED
+test runtime::tests::at_click_a_click_goes_through_and_typing_is_refused ... FAILED
+test result: FAILED. 14 passed; 4 failed; 0 ignored; 0 measured; 36 filtered out; finished in 0.14s
+
+== M2-refusal-not-recorded-on-the-log (crates/computer/src/runtime/mod.rs)
+test qual_px_215_a_level_is_the_fold_of_the_log_and_survives_a_restart ... ok
+test qual_px_215_a_level_never_widens_what_the_grant_allows ... ok
+test qual_px_215_at_never_the_session_is_refused_and_no_approval_is_asked ... FAILED
+test qual_px_215_at_view_only_a_click_and_a_type_are_refused_with_their_reason ... FAILED
+test qual_px_215_a_change_mid_session_applies_from_the_next_action_and_is_audited ... FAILED
+test qual_px_215_with_no_level_set_the_grant_alone_decides ... ok
+test qual_px_215_at_click_a_click_goes_through_and_a_type_is_refused ... FAILED
+test result: FAILED. 3 passed; 4 failed; 0 ignored; 0 measured; 50 filtered out; finished in 5.97s
+error: test failed, to rerun pass `-p modbit-core --test px_computer`
+
+== M3-change-not-in-the-audit-trail (services/modbit-core/src/computer.rs)
+test qual_px_215_a_level_is_the_fold_of_the_log_and_survives_a_restart ... FAILED
+test qual_px_215_a_level_never_widens_what_the_grant_allows ... FAILED
+test qual_px_215_at_never_the_session_is_refused_and_no_approval_is_asked ... ok
+test qual_px_215_at_view_only_a_click_and_a_type_are_refused_with_their_reason ... ok
+test qual_px_215_with_no_level_set_the_grant_alone_decides ... ok
+test qual_px_215_a_change_mid_session_applies_from_the_next_action_and_is_audited ... FAILED
+test qual_px_215_at_click_a_click_goes_through_and_a_type_is_refused ... ok
+test result: FAILED. 4 passed; 3 failed; 0 ignored; 0 measured; 50 filtered out; finished in 6.26s
+error: test failed, to rerun pass `-p modbit-core --test px_computer`
+
+== M4-level-widens-what-no-approval-lifts (services/modbit-core/src/computer.rs)
+test qual_px_215_a_level_is_the_fold_of_the_log_and_survives_a_restart ... ok
+test qual_px_215_a_level_never_widens_what_the_grant_allows ... FAILED
+test qual_px_215_at_never_the_session_is_refused_and_no_approval_is_asked ... ok
+test qual_px_215_at_view_only_a_click_and_a_type_are_refused_with_their_reason ... ok
+test qual_px_215_a_change_mid_session_applies_from_the_next_action_and_is_audited ... ok
+test qual_px_215_with_no_level_set_the_grant_alone_decides ... ok
+test qual_px_215_at_click_a_click_goes_through_and_a_type_is_refused ... ok
+test result: FAILED. 6 passed; 1 failed; 0 ignored; 0 measured; 50 filtered out; finished in 6.45s
+error: test failed, to rerun pass `-p modbit-core --test px_computer`
+
+== M2 against the Playwright spec (real Electron app, real Core built with the mutation)
+  ✓  1 e2e/px-215-standing-access.spec.ts:79:1 › PX-215: Settings shows nothing set by default, sets, changes and clears a level through the Core, shows the Core's refusals and is accessible (4.7s)
+  ✘  2 e2e/px-215-standing-access.spec.ts:163:1 › PX-215: at view only the agent's click and typing are refused on the cards with the level, what they needed and where to change it; at never the start is; the person is asked for neither (2.0m)
+    Error: expect(locator).toHaveAttribute(expected) failed
+    Locator:  locator('[data-testid="computer-card"][data-n="3"]')
+    Expected: "view_only"
+    Received: ""
+  1 failed
+  1 passed (2.1m)
+

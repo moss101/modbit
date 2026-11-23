@@ -1,0 +1,23 @@
+{
+ "revision": "dossier/drop-workspace-editor at origin/main 29af453a, before DOC-GOV-009 (withdraw the Workspace Editor, PX-077..081)",
+ "git": {
+  "remote": "https://github.com/moss101/modbit.git",
+  "baseline_commit": "29af453aa600672d940a5b12cda41a062ea13245",
+  "branch": "dossier/drop-workspace-editor"
+ },
+ "files": {
+  "AGENTS.md": "52facabdca45abd2fcdaf10a7b0141057895217af95560395dc0d24a8793b64f",
+  "docs/02_AUTHORITY_AND_DECISIONS.md": "55523c6c81e2aad51a94c005d54240e5877e77f7788c9308e2b80e04be54b0e5",
+  "docs/03_ARCHITECTURAL_CONFLICTS_AND_SUPERSESSIONS.md": "ea0fad94a60f65459b4eae3d43873cbf94ee73559d8d4b547f287d904302f5b9",
+  "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md": "db81113d3b3e12473efe2f5382a99f5cd0b4a21e6ae5460c6ad49b1d54aa28c7",
+  "docs/67_WORKSPACE_EDITOR_SPECIFICATION.md": "ebbfeea104ec2266087b5b70601e5487fb54d5e0dab91031f1e1a05223fe4022",
+  "docs/97_DOSSIER_MAINTENANCE_LOG.md": "52641648eeaf99f90409046fc1d2229cf4e742cf5da1bce95201c5e623a8f3c0",
+  "docs/decisions/DR-PX-2026-10-03-009-workspace-editor.md": "395ce8a3a048b0cbbe9ceceef41853fcb3865113c74a77f2de95b6c2de787037",
+  "docs/decisions/README.md": "063ce1263209688a7948246a7bc1fecaf4f5f1a1b01b6e1f64f461fa0800c117",
+  "tools/build_graph.py": "3df787bdd1053b447b28e905d9d859d4c4f440e8a2761649b122e0c1983b04b0",
+  "tools/test_dossier.py": "c2c66987337777856d41eb10236756d173f2dccf9440b37effd7363259cc6af8",
+  "graph/project-graph.json": "39998aac62bf92e2be481656446e2427a6888a9239c3f8981458b0df380c0841",
+  "MANIFEST.md": "7f04a324e5e0ed2da4fe1d51686f472a4caed9b939b40ab8a57c7c59d6fc336a",
+  "manifest.json": "404f9d837b2656fface34104f7a20a514707b2ca24e940b8d9668dd958a45671"
+ }
+}

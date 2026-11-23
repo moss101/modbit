@@ -68,6 +68,10 @@ import {
   CreateSessionSchema,
   CreateTaskSchema,
   DecideReviewSchema,
+  FixReviewFindingSchema,
+  ReviewFindingFixQueuedSchema,
+  DismissReviewFindingSchema,
+  ReviewFindingDismissalSchema,
   ListApprovalsSchema,
   ApprovalListSchema,
   type ApprovalList,
@@ -162,6 +166,19 @@ import {
   IngestCiResultsSchema,
   CiResultsIngestedSchema,
   type CiResultsIngested,
+  RefreshPullRequestSchema,
+  PullRequestRefreshedSchema,
+  type PullRequestRefreshed,
+  GetPullRequestPreferencesSchema,
+  SetPullRequestPreferencesSchema,
+  PullRequestPreferencesSchema,
+  type PullRequestPreferences,
+  SetAutoFixSchema,
+  AutoFixStateSchema,
+  type AutoFixState,
+  SetMergeWhenReadySchema,
+  MergeWhenReadyStateSchema,
+  type MergeWhenReadyState,
   IngestReviewCommentsSchema,
   ReviewCommentsIngestedViewSchema,
   type ReviewCommentsIngestedView,
@@ -222,6 +239,8 @@ import {
   SuggestNextPromptSchema,
   NextPromptSuggestionSchema,
   type NextPromptSuggestion,
+  type ReviewFindingFixQueued,
+  type ReviewFindingDismissal,
   EditQueuedInputSchema,
   GetSendBehaviorSchema,
   InterruptAcceptedSchema,
@@ -944,6 +963,24 @@ export class CoreClient {
     return fromBinary(ReviewDecidedSchema, ack.result);
   }
 
+  /**
+   * Ask the agent to fix one finding of the isolated reviewer's latest result (REQ-PX-214). `resultDigest` is the digest of the result the
+   * person was looking at; the Core refuses (RESULT_CHANGED) when the latest result is another. The Core queues one input that names this
+   * finding only, and refuses an unknown or dismissed finding (UNKNOWN_FINDING, FINDING_DISMISSED) and an unreadable result (RESULT_UNREADABLE).
+   */
+  async fixReviewFinding(sessionId: string, taskId: string, findingId: string, resultDigest: string): Promise<ReviewFindingFixQueued> {
+    const payload = toBinary(FixReviewFindingSchema, create(FixReviewFindingSchema, { taskId: { value: unhex(taskId) }, findingId, resultDigest }));
+    const ack = await this.command("FixReviewFinding", payload, undefined, this.leases.get(sessionId), sessionId);
+    return fromBinary(ReviewFindingFixQueuedSchema, ack.result);
+  }
+
+  /** Set one finding of the reviewer's latest result aside, recording who and why on the task's log (REQ-PX-214). The reason is required. */
+  async dismissReviewFinding(sessionId: string, taskId: string, findingId: string, resultDigest: string, reason: string): Promise<ReviewFindingDismissal> {
+    const payload = toBinary(DismissReviewFindingSchema, create(DismissReviewFindingSchema, { taskId: { value: unhex(taskId) }, findingId, resultDigest, reason }));
+    const ack = await this.command("DismissReviewFinding", payload, undefined, this.leases.get(sessionId), sessionId);
+    return fromBinary(ReviewFindingDismissalSchema, ack.result);
+  }
+
   /** PX-005: a one-hunk direct edit through the Core's ChangeTransaction; the renderer keeps no buffer. */
   async applyUserPatch(sessionId: string, taskId: string, p: { path: string; old: string; new: string; expectedWorkspaceRevision: bigint; expectedFileRevision: string }): Promise<UserPatchAppliedAck> {
     const payload = toBinary(ApplyUserPatchSchema, create(ApplyUserPatchSchema, { taskId: { value: unhex(taskId) }, path: p.path, old: p.old, new: p.new, expectedWorkspaceRevision: p.expectedWorkspaceRevision, expectedFileRevision: p.expectedFileRevision, source: "review" }));
@@ -991,6 +1028,56 @@ export class CoreClient {
     const payload = toBinary(IngestCiResultsSchema, create(IngestCiResultsSchema, { taskId: { value: unhex(taskId) } }));
     const ack = await this.command("IngestCiResults", payload, undefined, this.leases.get(sessionId), sessionId);
     return fromBinary(CiResultsIngestedSchema, ack.result);
+  }
+
+  /**
+   * PX-211: ask the Core to read the task's pull request again (state and
+   * checks) through the forge adapter and record what it said. The client
+   * makes no forge call. With the session's archive-after-merge preference
+   * on, the read that first finds the request merged archives the task.
+   */
+  async refreshPullRequest(sessionId: string, taskId: string): Promise<PullRequestRefreshed> {
+    const payload = toBinary(RefreshPullRequestSchema, create(RefreshPullRequestSchema, { taskId: { value: unhex(taskId) } }));
+    const ack = await this.command("RefreshPullRequest", payload, undefined, this.leases.get(sessionId), sessionId);
+    return fromBinary(PullRequestRefreshedSchema, ack.result);
+  }
+
+  /**
+   * PX-212: turn auto-fix on or off for one task. With it on, a failing check
+   * the Core reads or a review comment its ingestion accepts queues one repair
+   * input and asks for the task's turn through the ordinary start; the task's
+   * run mode decides as for any turn. The same value again records nothing.
+   */
+  async setAutoFix(sessionId: string, taskId: string, enabled: boolean): Promise<AutoFixState> {
+    const payload = toBinary(SetAutoFixSchema, create(SetAutoFixSchema, { taskId: { value: unhex(taskId) }, enabled }));
+    const ack = await this.command("SetAutoFix", payload, undefined, this.leases.get(sessionId), sessionId);
+    return fromBinary(AutoFixStateSchema, ack.result);
+  }
+
+  /**
+   * PX-213: ask for (or withdraw) merge when ready on a task's pull request.
+   * Once a read finds its checks passed, the Core raises the approval of
+   * `forge.pr.merge` bound to that head and method; only a person's decision
+   * on that approval merges. The same request again records nothing.
+   */
+  async setMergeWhenReady(sessionId: string, taskId: string, enabled: boolean, method: string): Promise<MergeWhenReadyState> {
+    const payload = toBinary(SetMergeWhenReadySchema, create(SetMergeWhenReadySchema, { taskId: { value: unhex(taskId) }, enabled, method }));
+    const ack = await this.command("SetMergeWhenReady", payload, undefined, this.leases.get(sessionId), sessionId);
+    return fromBinary(MergeWhenReadyStateSchema, ack.result);
+  }
+
+  /** PX-211: the session's archive-after-merge preference (off until set). */
+  async pullRequestPreferences(sessionId: string): Promise<PullRequestPreferences> {
+    const payload = toBinary(GetPullRequestPreferencesSchema, create(GetPullRequestPreferencesSchema, { sessionId: { value: unhex(sessionId) } }));
+    const ack = await this.command("GetPullRequestPreferences", payload);
+    return fromBinary(PullRequestPreferencesSchema, ack.result);
+  }
+
+  /** PX-211: set the session's archive-after-merge preference; the same value again records nothing. */
+  async setPullRequestPreferences(sessionId: string, archiveAfterMerge: boolean): Promise<PullRequestPreferences> {
+    const payload = toBinary(SetPullRequestPreferencesSchema, create(SetPullRequestPreferencesSchema, { sessionId: { value: unhex(sessionId) }, archiveAfterMerge }));
+    const ack = await this.command("SetPullRequestPreferences", payload, undefined, this.leases.get(sessionId), sessionId);
+    return fromBinary(PullRequestPreferencesSchema, ack.result);
   }
 
   /** PX-127: ask the Core to read the pull request's comments; allowed authors' comments addressed to Modbit become untrusted steering. */

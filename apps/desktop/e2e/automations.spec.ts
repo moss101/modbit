@@ -124,7 +124,9 @@ test("PX-086: the editor shows the Core's typed issues with path and code, will 
     await page.getByTestId("automation-editor-close").click();
     await expect(row(page, "report-writer")).toHaveAttribute("data-state", "NEEDS_APPROVAL");
     await select(page, "report-writer");
-    await expect(page.getByTestId("detail-hash")).toHaveText(validatedHash);
+    // PX-207: the rail shows a 12-character hash; the full one is the element's data and title.
+    await expect(page.getByTestId("detail-hash")).toHaveAttribute("data-hash", validatedHash);
+    await expect(page.getByTestId("detail-hash")).toHaveText(validatedHash.slice(0, 12));
     const id = (await row(page, "report-writer").getAttribute("data-automation-id"))!;
 
     // The approval shows the exact version, the full hash, the ceiling and the lists; enabling needs the explicit reading.
@@ -267,7 +269,7 @@ test("PX-086: a repository definition is data until its exact bytes are approved
     await page.getByTestId("automation-editor-close").click();
 
     // The approval names the file, the revision, and that the bytes are the ones approved.
-    const firstHash = (await page.getByTestId("detail-hash").textContent())!;
+    const firstHash = (await page.getByTestId("detail-hash").getAttribute("data-hash"))!;
     await page.getByTestId("detail-enable").click();
     await expect(page.getByTestId("enable-source")).toHaveAttribute("data-path", ".modbit/automations/nightly.json");
     await expect(page.getByTestId("enable-source")).toHaveAttribute("data-revision", revision);
@@ -301,7 +303,9 @@ test("PX-086: a repository definition is data until its exact bytes are approved
     await expect(refusedRun).toHaveAttribute("data-status", "skipped");
     await expect(refusedRun).toHaveAttribute("data-reason", "SOURCE_CHANGED");
     await expect(refusedRun).toHaveAttribute("data-task-id", "");
-    await expect(refusedRun.getByTestId("run-reason")).toHaveText("SOURCE_CHANGED");
+    // PX-207: the Core's code is data on the reason; the words say it plainly.
+    await expect(refusedRun.getByTestId("run-reason")).toHaveAttribute("data-code", "SOURCE_CHANGED");
+    await expect(refusedRun.getByTestId("run-reason")).toHaveText("The repository file no longer matches the bytes that were approved.");
     // Approving the bytes that were read is refused: they are no longer the bytes on disk.
     await page.getByTestId("detail-enable").click();
     await page.getByTestId("enable-confirm").click();
@@ -311,7 +315,7 @@ test("PX-086: a repository definition is data until its exact bytes are approved
     // Reading the file again records version 2 with the new bytes, which need their own approval.
     await page.getByTestId("detail-reload").click();
     await expect(page.getByTestId("automation-detail")).toHaveAttribute("data-version", "2");
-    await expect(page.getByTestId("detail-hash")).not.toHaveText(firstHash);
+    await expect(page.getByTestId("detail-hash")).not.toHaveAttribute("data-hash", firstHash);
     await expect(page.getByTestId("content-changed")).toHaveCount(0);
     await expect(row(page, "nightly-check")).toHaveAttribute("data-state", "NEEDS_APPROVAL");
     // The attention item's action is the review and approval of the new bytes.
@@ -437,7 +441,8 @@ test("PX-086: a manual run, a dry test run and a schedule slot on a controlled c
     writeFileSync(clock, String(next + 1000));
     const slot = page.getByTestId("run-row").first();
     await expect(slot).toHaveAttribute("data-trigger-kind", "schedule", { timeout: 60_000 });
-    await expect(slot).toContainText(`tick@${next}`);
+    // PX-207: the slot's event id is the run's data and its time's title, not visible text.
+    await expect(slot).toHaveAttribute("data-event-id", `tick@${next}`);
     await expect(slot).toHaveAttribute("data-status", "succeeded", { timeout: 120_000 });
     await expect(page.getByTestId("automation-runs")).toHaveAttribute("data-count", "1");
     await accessible(page, "the run history");

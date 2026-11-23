@@ -24,7 +24,8 @@ import { indexDom, mergeAx, type AxNode, type DomIndex, type DomNode, type RawNo
 import { CertHold, CertTrustStore, type CertInfo, type Trust } from "./browser-cert.ts";
 import { PageFeedback } from "./browser-feedback.ts";
 import { bringsBackReclaimed, NoticeBatcher, OBSERVER_BINDING, OBSERVER_SOURCE, OBSERVER_WORLD, type Notice } from "./browser-observer.ts";
-import { CdpDenied, PolicyStore, checkOrigin, checkUrlLiteral, describeClass, guardCdp, type AddressClass, type BrowserPolicy } from "./browser-policy.ts";
+import { CdpDenied, PolicyStore, checkOrigin, checkUrlLiteral, describeClass, guardCdp, listFromEnv, type AddressClass, type BrowserPolicy } from "./browser-policy.ts";
+import { ALLOW_ONCE_MS, SiteStore, type SiteEntry } from "./browser-sites.ts";
 import { admitsAgentInput, isHumanInput } from "./lease.ts";
 import { StopRegistry } from "./stop.ts";
 import { TargetProxy, resolverWithOverrides, type Denial, type Resolver } from "./target-proxy.ts";
@@ -45,6 +46,16 @@ interface ChildTarget {
   type: string;
   url: string;
   parentFrameId?: string;
+}
+
+/** The question the pane shows when the agent navigates to an origin nobody has decided (PX-216). */
+export interface SiteAsk {
+  id: string;
+  /** The origin the card shows and the decision belongs to. */
+  origin: string;
+  /** The address the agent asked for. */
+  url: string;
+  atMs: number;
 }
 
 export interface HostedSession {
@@ -98,6 +109,10 @@ export interface HostedSession {
   pendingReset: string | null;
   /** A revive in flight: a request that arrives meanwhile waits for the reset note to be set (PX-073). */
   reviving: Promise<void> | null;
+  /** PX-216: a navigation the agent asked for to an origin nobody has decided, waiting for the person. */
+  siteAsk: SiteAsk | null;
+  /** PX-216: an Allow once the person gave, by origin; the next navigation to that origin uses it up. */
+  siteOnce: Map<string, number>;
   /** A certificate error waiting for the person. */
   certHold: CertHold | null;
   certCallbacks: ((trusted: boolean) => void)[];
@@ -188,6 +203,8 @@ export class BrowserHost {
   readonly policy: PolicyStore;
   /** Certificates the person trusted, per workspace (PX-073). */
   readonly trusts: CertTrustStore;
+  /** PX-216: the origins the person allowed or denied for the agent's navigation. */
+  readonly sites: SiteStore;
   private readonly window: () => BrowserWindow | null;
   private readonly client: () => CoreClient | null;
   private readonly notify: (channel: string, payload: unknown) => void;
@@ -215,6 +232,7 @@ export class BrowserHost {
     const dir = options.dataDir;
     this.policy = new PolicyStore(dir ? join(dir, "browser-policy.json") : null, { targets: options.env.MODBIT_BROWSER_ALLOW_TARGETS, origins: options.env.MODBIT_BROWSER_ALLOW_ORIGINS });
     this.trusts = new CertTrustStore(dir ? join(dir, "browser-trusted-certs.json") : null);
+    this.sites = new SiteStore(dir ? join(dir, "browser-sites.json") : null, listFromEnv(options.env.MODBIT_BROWSER_ALLOW_SITES));
   }
 
   /** Open (or reuse) the task's session on the Core and attach a fresh view to it. */
@@ -265,6 +283,8 @@ export class BrowserHost {
       reclaimed: null,
       pendingReset: null,
       reviving: null,
+      siteAsk: null,
+      siteOnce: new Map(),
       certHold: null,
       certCallbacks: [],
       onCertHold: null,
@@ -761,7 +781,7 @@ export class BrowserHost {
   }
 
   /** What this host holds (for the renderer and the E2E). */
-  describe(browserSessionId: string, taskId?: string): { browserSessionId: string; taskId: string; partition: string; attached: boolean; shown: boolean; url: string; title: string; stateVersion: number; leaseGeneration: number; controller: "AGENT" | "USER"; webContentsId: number; osProcessId: number; humanInputAt: number; stopped: string | null; reclaimed: boolean; certPending: CertInfo | null; changeSeq: number; refusals: number; useSeq: number } | null {
+  describe(browserSessionId: string, taskId?: string): { browserSessionId: string; taskId: string; partition: string; attached: boolean; shown: boolean; url: string; title: string; stateVersion: number; leaseGeneration: number; controller: "AGENT" | "USER"; webContentsId: number; osProcessId: number; humanInputAt: number; stopped: string | null; reclaimed: boolean; certPending: CertInfo | null; siteAsk: SiteAsk | null; changeSeq: number; refusals: number; useSeq: number } | null {
     const h = this.sessions.get(browserSessionId);
     if (!h) return null;
     // A task sees only the views it owns (PX-073).
@@ -769,7 +789,7 @@ export class BrowserHost {
     const destroyed = this.gone(h);
     if (destroyed && !h.reclaimed) return null;
     const s = this.state(h);
-    return { browserSessionId: h.browserSessionId, taskId: h.taskId, partition: h.partition, attached: h.attached, shown: h.shown, url: s.url, title: s.title, stateVersion: h.stateVersion, leaseGeneration: h.leaseGeneration, controller: h.controller, webContentsId: h.webContentsId, osProcessId: destroyed ? 0 : h.view.webContents.getOSProcessId(), humanInputAt: h.humanInputAt, stopped: this.stops.reason(h.sessionId), reclaimed: h.reclaimed !== null, certPending: h.certHold && !h.certHold.isSettled ? h.certHold.info : null, changeSeq: h.batcher.changeSeq, refusals: h.refusals.length, useSeq: h.lastUsedAt };
+    return { browserSessionId: h.browserSessionId, taskId: h.taskId, partition: h.partition, attached: h.attached, shown: h.shown, url: s.url, title: s.title, stateVersion: h.stateVersion, leaseGeneration: h.leaseGeneration, controller: h.controller, webContentsId: h.webContentsId, osProcessId: destroyed ? 0 : h.view.webContents.getOSProcessId(), humanInputAt: h.humanInputAt, stopped: this.stops.reason(h.sessionId), reclaimed: h.reclaimed !== null, certPending: h.certHold && !h.certHold.isSettled ? h.certHold.info : null, siteAsk: h.siteAsk, changeSeq: h.batcher.changeSeq, refusals: h.refusals.length, useSeq: h.lastUsedAt };
   }
 
   /** The views a task owns, and nobody else's (PX-073). */
@@ -1029,6 +1049,9 @@ export class BrowserHost {
     const u = new URL(url);
     const pinned = await h.proxy.pin(u.hostname, Number(u.port) || (u.protocol === "https:" ? 443 : 80));
     if (!pinned.ok && pinned.denial) return refuse(pinned.denial.reason, describeClass(pinned.denial.class));
+    // PX-216: the destination policy has passed; now the origin must be one the person has decided, or the person is asked.
+    const asked = this.siteGate(h, u.origin, url);
+    if (asked !== null) return asked;
     const wc = h.view.webContents;
     const started = Date.now();
     h.docRequests.push({ atMs: started, host: u.hostname, port: Number(u.port) || (u.protocol === "https:" ? 443 : 80), url, type: "mainFrame" });
@@ -1093,6 +1116,62 @@ export class BrowserHost {
       return { kind: "error", code: "NAVIGATION_FAILED", message: `${first.message.slice(0, 300)}${/ERR_PROXY_CONNECTION_FAILED/.test(first.message) ? ` (the proxy: ${h.proxy.describe()})` : ""}` };
     }
     return { kind: "state", state: this.state(h) };
+  }
+
+  /**
+   * PX-216: whether the agent may navigate to this origin. Null = it may (decided Allow, an Allow once used up now, or named by the
+   * person's own origin policy); otherwise the error the agent is given. An undecided origin raises the ask in the pane and is
+   * refused with SITE_PENDING until the person answers; a denied one is refused again on every retry and never asks twice.
+   */
+  private siteGate(h: HostedSession, origin: string, url: string): { kind: "error"; code: string; message: string } | null {
+    const now = Date.now();
+    for (const [o, until] of h.siteOnce) if (until <= now) h.siteOnce.delete(o);
+    const decided = this.sites.get(origin);
+    if (decided?.decision === "deny") {
+      this.log.push({ browserSessionId: h.browserSessionId, kind: "site-denied", ok: false, code: origin, generation: h.leaseGeneration, atMs: now });
+      return { kind: "error", code: "SITE_DENIED", message: `the person denied ${origin}; the agent may not open it, and asking again changes nothing (the person can remove the entry in Settings); nothing was loaded` };
+    }
+    if (decided?.decision === "allow") return null;
+    if (h.siteOnce.delete(origin)) {
+      this.log.push({ browserSessionId: h.browserSessionId, kind: "site-allowed-once", ok: true, code: origin, generation: h.leaseGeneration, atMs: now });
+      return null;
+    }
+    // An origin the person's own policy names is theirs already: the pattern list that limits where tools act.
+    const named = this.policy.originRules().length > 0 && checkOrigin(this.policy.originRules(), this.policy.get().allowOrigins, url).ok;
+    if (named) return null;
+    if (!h.siteAsk || h.siteAsk.origin !== origin) {
+      h.siteAsk = { id: `${h.browserSessionId.slice(0, 8)}-${now.toString(36)}`, origin, url, atMs: now };
+      this.log.push({ browserSessionId: h.browserSessionId, kind: "site-asked", ok: false, code: origin, generation: h.leaseGeneration, atMs: now });
+      this.notify("browser:state", { browserSessionId: h.browserSessionId, ...this.state(h), siteAsk: h.siteAsk });
+    }
+    return { kind: "error", code: "SITE_PENDING", message: `the person has not decided whether the agent may open ${origin}; the browser pane is asking them (Allow once, Always allow or Deny); try again after they answer; nothing was loaded` };
+  }
+
+  // ---- the person's decisions about sites (PX-216) ----
+
+  /** The person answers the ask the pane shows. The decision belongs to the origin on the card; any other is refused. */
+  siteDecide(browserSessionId: string, id: string, origin: string, decision: "allow_once" | "allow_always" | "deny"): boolean {
+    const h = this.sessions.get(browserSessionId);
+    const ask = h?.siteAsk;
+    if (!h || !ask || ask.id !== id || ask.origin !== origin) return false;
+    const now = Date.now();
+    if (decision === "allow_once") h.siteOnce.set(ask.origin, now + ALLOW_ONCE_MS);
+    else this.sites.set(ask.origin, decision === "allow_always" ? "allow" : "deny", now);
+    h.siteAsk = null;
+    this.log.push({ browserSessionId: h.browserSessionId, kind: `site-${decision.replace("_", "-")}`, ok: decision !== "deny", code: ask.origin, generation: h.leaseGeneration, atMs: now });
+    this.notify("browser:state", { browserSessionId: h.browserSessionId, ...this.state(h), siteAsk: null, siteDecision: decision });
+    return true;
+  }
+
+  siteList(): SiteEntry[] {
+    return this.sites.list();
+  }
+
+  /** Forget a decision: the origin asks again. A grant for it that was already given once is withdrawn too. */
+  siteRemove(origin: string): boolean {
+    const removed = this.sites.remove(origin);
+    for (const h of this.sessions.values()) h.siteOnce.delete(origin);
+    return removed;
   }
 
   /** The funnel every DevTools-protocol command passes through (PX-073): the deny list is applied before anything is sent. */

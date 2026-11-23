@@ -1,0 +1,4 @@
+  ✓  1 e2e/px-214-reviewer-findings.spec.ts:225:1 › QUAL-PX-214: the reviewer's three findings on Review, walked through, one set aside with a reason, one sent to the agent, the next review re-evaluating what is open (42.1s)
+  ✓  2 e2e/px-214-reviewer-findings.spec.ts:225:1 › QUAL-PX-214: the reviewer's three findings on Review, walked through, one set aside with a reason, one sent to the agent, the next review re-evaluating what is open (42.3s)
+  ✓  3 e2e/px-214-reviewer-findings.spec.ts:225:1 › QUAL-PX-214: the reviewer's three findings on Review, walked through, one set aside with a reason, one sent to the agent, the next review re-evaluating what is open (42.0s)
+  3 passed (2.1m)

@@ -31,7 +31,64 @@ const PINS = {
   // (a task id each, validated by main), which forward the Core's existing reads GetWorkGraph and GetPlan and return the
   // steps with their state and the plan version in force as plain data. Reads only: nothing is leased, written or sent,
   // and no path, command name or free text crosses the bridge for them.
-  preloadSha256: "77809483595ce6c91861bdf0303f8767beb0c49882405d7cff1cf1a39c73a251",
+  // PX-203 (2026-11-15, for review with its pull request): ten pane-window methods. The app's window: `pane:popOut` (a session
+  // id, a task id, one of four pane kinds, a view state of a terminal id, a relative path and a scroll offset, all validated by
+  // main and dropped where malformed, a title and a size), `pane:windows`, `pane:focus`, and three events it hears. A pane
+  // window: `pane:context` (main says which pane of which task it shows; the window cannot choose), `pane:state`, `pane:show`
+  // (asks the app's window to show the task's review, a call or the waiting approval; nothing is decided by it) and
+  // `pane:return`. Main answers a pane window only on the channels its pane needs, for its own task and session
+  // (pane-windows.ts PANE_CHANNELS, an allow list); no channel that decides an approval is on it. The window is made by the one
+  // factory with the same webPreferences, preload and page (the pins below are unchanged; `windowFactoryDrift` checks the rest).
+  // PX-206 (2026-11-16, for review with its pull request): Inbox's record of updates. Four request channels without free
+  // text: `inbox:updates` (no argument), `inbox:markRead` (an update id of 32 hex characters, validated by main, which moves
+  // the Core's own read marker for that update's task through the existing MarkRead), `inbox:markAllRead` and `inbox:clear`
+  // (no argument). Two events it hears: `inbox:changed` (no payload) and `notify:open` (a task id the preload re-validates as
+  // 32 hex characters, or null), sent by main's click handler on a notification the OS showed. No renderer call can add an
+  // entry to the record: main notes entries from the Core's headers only.
+  // PX-207 (2026-11-18, for review with its pull request): no new channel and no new method. Two type changes: the context
+  // inspector's answer gains `instructions`, the instruction layers the Core already returns (ContextInspectorView field 180,
+  // REQ-PX-107), passed through as plain data; and `customizeOpenSource` accepts the kind `rule`, for which main shows a file
+  // only if the Core recorded that source as loaded for the task, a relative source resolved inside the task's folder as the
+  // Core holds it (customize-ipc.ts `rulePath`). The renderer still names no path of its own.
+  // PX-214 (2026-11-19, for review with its pull request): one channel pair and no other change. `review:fixFinding` (a session id, a
+  // task id, a finding id of at most 48 plain characters and the 64-hex digest of the reviewer's result the person was looking at,
+  // all validated by main) forwards the one typed Core command FixReviewFinding, which queues one input naming that finding; and
+  // `review:dismissFinding` (the same four and a reason of 1..500 characters) forwards DismissReviewFinding, which records who and
+  // why. Both take the session's lease and return plain data. The findings themselves ride the existing `review:bundle` channel
+  // (a type-only addition of the reviewer's fields). No path, command name or free text beyond that reason crosses the bridge;
+  // neither channel is on a pane window's allow list (pane-windows.ts), so only the app's window may fix or dismiss a finding.
+  // PX-215 (2026-11-20, for review with its pull request): two channels and no other change. `computer:access` takes no argument and reads
+  // the Core's standing level per application (GetComputerAccess); `computer:setAccess` (an application identifier of 1..200 characters with
+  // no space and no pattern, an optional name of at most 200 plain characters, and a level that is one of never, view_only, click, full or
+  // empty) forwards the one typed Core command SetComputerAccess, a Core-wide setting that needs no session or lease; the Core records the
+  // change and applies it from the agent's next action. Main validates all three (computer-args.ts) and the Core checks again; no path,
+  // command name or free text beyond that name crosses the bridge, and neither channel is on a pane window's allow list (pane-windows.ts).
+  // PX-216 landed first (fe049bae); this re-pin is of the merge of both rows' bridge methods, both notes kept.
+  // PX-216 (2026-11-20, for review with its pull request): three channels and no other change. `browser:siteDecide` (a browser session
+  // id, the ask's id, the origin the card showed and one of allow_once, allow_always or deny, all validated by main, which refuses any
+  // origin other than the one asked about) answers the pane's question about a site the agent wants to open; `browser:sites` lists
+  // the decisions (plain data); `browser:siteRemove` (one origin of at most 300 characters) forgets one so it asks again. None
+  // reaches the Core or the page; the store is the desktop's own file. `browser:siteDecide` and `browser:siteRemove` are deciding
+  // channels a pane window is refused (pane-windows.test.ts), so only the app's window answers or removes.
+  // PX-211 (2026-11-21, for review with its pull request): three channels and a type-only addition. `review:refreshPullRequest` (a session
+  // id and a task id, both validated by main) forwards the one typed Core command RefreshPullRequest, which reads the task's pull request
+  // through the forge adapter under the task's lease and records it, and returns the Core's record as plain data; `prefs:pullRequests`
+  // (a session id) reads the session's archive-after-merge preference (GetPullRequestPreferences); `prefs:setPullRequests` (a session id
+  // and a boolean, validated by main) forwards SetPullRequestPreferences under the session's lease. The header's pull request rides the
+  // existing headers channel (`AgentHeaderView.pullRequest`). No path, command name or free text crosses the bridge for them, the
+  // renderer makes no forge call, and none is on a pane window's allow list (pane-windows.ts).
+  // PX-212 (2026-11-21, for review with its pull request): one channel and a type-only addition. `review:setAutoFix` (a session id,
+  // a task id and a boolean, all validated by main) forwards the one typed Core command SetAutoFix under the session's lease; the Core
+  // holds the switch and asks for any repair turn itself, through the ordinary start under the task's own run mode. The answer of
+  // `review:refreshPullRequest` gains two booleans (autoFixQueued, autoFixStopped). No path, command name or free text crosses the
+  // bridge for it, the renderer starts nothing, and it is on no pane window's allow list (pane-windows.ts).
+  // PX-213 (2026-11-22, for review with its pull request): one channel and a type-only addition. `review:setMergeWhenReady` (a session
+  // id, a task id, a boolean and a method that main checks is one of merge, squash or rebase) forwards the one typed Core command
+  // SetMergeWhenReady under the session's lease. The Core raises the merge's approval itself once the checks pass, and the merge
+  // happens only on a person's decision on that approval through the existing approval channel; the renderer merges nothing and
+  // makes no forge call. The answer of `review:refreshPullRequest` gains one string (mergePhase). It is on no pane window's allow
+  // list (pane-windows.ts).
+  preloadSha256: "822184ac0ab9a7f11595b554c592398fd3ba067c37313fb96cb0f8903eb84da1",
   cspSha256: "e8c3fcc4286ba170b02ea95b02189f132b16228341d2002412facfec6eb929d1",
   webPreferencesSha256: "28515878dc43e119f2360de779e5a3733283d120b31a113837f7f7a6cf2356ee",
   windowOptionKeys: ["width", "height", "minWidth", "minHeight", "show", "webPreferences"],
@@ -75,4 +132,72 @@ test("PX-049: the window constructor takes the size options and nothing else bes
     PINS.windowOptionKeys,
     "an option other than the window size, visibility and webPreferences was added to the constructor",
   );
+});
+
+/**
+ * REQ-PX-203 / QUAL-PX-203: a pane window is made by the same factory as the app's window. Read from main.ts: one constructor,
+ * one webPreferences block, one page; the navigation and new-window refusals are registered for every window before the factory
+ * tells the roles apart; the constructor's spreads are the known ones (a spread could otherwise carry any option past the key
+ * pin above); and every window, the app's and each pane's, comes from that factory. Empty when it holds.
+ */
+const KNOWN_SPREADS = ["...(bounds ?? WINDOW_DEFAULT)", '...(process.platform === "darwin" && role.kind === "app" ? { titleBarStyle: "hiddenInset" as const, trafficLightPosition: { x: 14, y: 13 } } : {})', '...(role.kind === "pane" ? { title: role.title } : {})'];
+export function windowFactoryDrift(source: string): string[] {
+  // A Windows checkout may carry CRLF; the guard reads the LF form, as the pins above do.
+  const src = source.replace(/\r\n/g, "\n");
+  const bad: string[] = [];
+  const count = (re: RegExp) => [...src.matchAll(re)].length;
+  if (count(/new BrowserWindow\(/g) !== 1) bad.push(`main.ts constructs a window in ${count(/new BrowserWindow\(/g)} places, not one`);
+  if (count(/webPreferences\s*:/g) !== 1) bad.push(`main.ts has ${count(/webPreferences\s*:/g)} webPreferences blocks, not one`);
+  const start = src.indexOf("function createAppWindow(");
+  if (start < 0) return [...bad, "main.ts has no window factory"];
+  const end = src.indexOf("\n}\n", start);
+  const body = src.slice(start, end);
+  if (!body.includes("new BrowserWindow(")) bad.push("the window is not constructed in the factory");
+  const branch = body.indexOf('if (role.kind === "pane")');
+  for (const [what, needle] of [
+    ["navigation is refused", 'w.webContents.on("will-navigate", (e) => e.preventDefault());'],
+    ["new windows are refused", 'w.webContents.setWindowOpenHandler(() => ({ action: "deny" }));'],
+  ] as const) {
+    const at = body.indexOf(needle);
+    if (at < 0) bad.push(`${what}: not in the factory`);
+    else if (branch >= 0 && at > branch) bad.push(`${what}: only for some windows (after the roles are told apart)`);
+  }
+  const ctor = body.slice(body.indexOf("new BrowserWindow({"), body.indexOf("\n  });", body.indexOf("new BrowserWindow({")));
+  const spreads = [...ctor.matchAll(/^ {4}(\.\.\..*?),?$/gm)].map((m) => m[1]!.replace(/,$/, ""));
+  for (const sp of spreads) if (!KNOWN_SPREADS.includes(sp)) bad.push(`an unknown spread in the window's options: ${sp}`);
+  const pages = [...body.matchAll(/w\.load(File|URL)\(([^;]*)\);/g)].map((m) => `${m[1]}:${m[2]!.replace(/, \{ hash: "pane" \}/, "")}`);
+  if (pages.length === 0 || new Set(pages).size !== 1 || !pages[0]!.startsWith('File:join(__dirname, "..", "renderer", "index.html")')) bad.push(`the windows do not all load the app's own page: ${pages.join(" | ")}`);
+  if (!/createAppWindow\(\{ kind: "pane",/.test(src)) bad.push("a pane window is not made by the factory");
+  if (count(/createAppWindow\(\{ kind: "app" \}/g) < 2) bad.push("the app's window (and its replacement after a crash) is not made by the factory");
+  if (/partition\s*:|session\s*:\s*session\./.test(ctor)) bad.push("a window names its own session or partition (the policy is the default session's)");
+  if (!/session\.defaultSession\.webRequest\.onHeadersReceived\(/.test(src)) bad.push("the Content-Security-Policy is not set on the default session");
+  return bad;
+}
+
+test("PX-203: every window, the app's and each pane's, comes from the one factory with the one set of web preferences", () => {
+  assert.deepEqual(windowFactoryDrift(mainSource), []);
+});
+
+test("PX-203: the factory guard fails on a looser window (retained mutations)", () => {
+  const lf = mainSource.replace(/\r\n/g, "\n");
+  const mutate = (from: string, to: string): string => {
+    assert.ok(lf.includes(from), `the mutation's anchor is in main.ts: ${from.slice(0, 60)}`);
+    return lf.replace(from, to);
+  };
+  // A second constructor for pane windows with Node in the page.
+  const second = mutate('    void w.loadFile(join(__dirname, "..", "renderer", "index.html"), { hash: "pane" });', '    const loose = new BrowserWindow({ webPreferences: { nodeIntegration: true, contextIsolation: false } });\n    void loose.loadFile(join(__dirname, "..", "renderer", "index.html"), { hash: "pane" });');
+  assert.ok(windowFactoryDrift(second).some((d) => d.includes("constructs a window in 2 places")));
+  assert.ok(windowFactoryDrift(second).some((d) => d.includes("webPreferences blocks")));
+  // Options for pane windows only, carried by a spread past the key pin.
+  const spread = mutate('    ...(role.kind === "pane" ? { title: role.title } : {}),', '    ...(role.kind === "pane" ? { title: role.title, webPreferences: { sandbox: false } } : {}),');
+  assert.ok(windowFactoryDrift(spread).some((d) => d.includes("unknown spread")));
+  // Navigation refused for the app's window only.
+  const nav = mutate('  w.webContents.on("will-navigate", (e) => e.preventDefault());\n', "").replace("  win = w;\n", '  win = w;\n  w.webContents.on("will-navigate", (e) => e.preventDefault());\n');
+  assert.ok(windowFactoryDrift(nav).some((d) => d.startsWith("navigation is refused: only for some windows")));
+  // A pane window that loads some other page.
+  const page = mutate('void w.loadFile(join(__dirname, "..", "renderer", "index.html"), { hash: "pane" });', 'void w.loadURL("https://example.invalid/pane");');
+  assert.ok(windowFactoryDrift(page).some((d) => d.includes("do not all load the app's own page")));
+  // A pane window in a session of its own, where the policy header is not set.
+  const part = mutate("    show: true,\n    webPreferences: {", "    show: true,\n    webPreferences: {\n      partition: \"pane\",");
+  assert.ok(windowFactoryDrift(part).some((d) => d.includes("its own session or partition")));
 });

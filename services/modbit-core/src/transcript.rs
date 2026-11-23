@@ -415,6 +415,13 @@ fn fold(store: &EventStore, task: &Task, until: u64) -> Result<Folded, Refusal> 
                 }
             }
             // ---- tool calls
+            // PX-211: the Core's scheduled read of a task's pull request is
+            // housekeeping, not a step of the conversation: it stays on the
+            // log (and in the pane), and draws no card here. A read a person
+            // asked for does.
+            "ToolCallProposed"
+                if matches!(&env.actor, modbit_domain::event::Actor::Core(a)
+                    if a == crate::pull_request_state::SCHEDULE_ACTOR) => {}
             "ToolCallProposed" => {
                 let tid = modbit_domain::ToolCallId::from_bytes(env.aggregate_id).to_string();
                 let name = p["tool_name"].as_str().unwrap_or_default().to_owned();
@@ -557,7 +564,16 @@ fn fold(store: &EventStore, task: &Task, until: u64) -> Result<Folded, Refusal> 
                     } else {
                         ApprovalState::Denied
                     };
-                    let label = format!("{state:?}").to_uppercase();
+                    // PX-213: an ask the Core closed because its intent no
+                    // longer stands (a merge whose head moved) is withdrawn,
+                    // not expired: nobody was too late.
+                    let withdrawn = env.event_type == "ApprovalExpired"
+                        && matches!(&env.actor, modbit_domain::event::Actor::Core(n) if n == crate::merge_when_ready::ACTOR);
+                    let label = if withdrawn {
+                        "WITHDRAWN".to_owned()
+                    } else {
+                        format!("{state:?}").to_uppercase()
+                    };
                     let r = &mut atoms[i];
                     r.last_offset = e.offset;
                     hints(r).status = label.clone();
@@ -1718,6 +1734,12 @@ pub(crate) fn headers(
                 .and_then(checkout_of)
                 .unwrap_or_default(),
             last_line: last_line_of(store, d),
+            pull_request: d.pull_request.as_ref().map(|p| {
+                let mut v = crate::pull_request_state::view(p);
+                crate::auto_fix::decorate(&mut v, store, d.task_id);
+                crate::merge_when_ready::decorate(&mut v, store, d.task_id);
+                v
+            }),
         });
     }
     out.sort_by(|a, b| {

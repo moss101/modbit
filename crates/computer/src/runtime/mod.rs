@@ -32,6 +32,7 @@ use modbit_domain::{SessionId, TaskId};
 use modbit_protocol::v1 as wire;
 use serde_json::{Value, json};
 
+use crate::access::{self, Level, Need, StandingAccess};
 use crate::actuator::{Actuator, ActuatorConfig, ActuatorInfo, CallError, Reply};
 use crate::frame::{Encoded, FrameMemo};
 use crate::model::{AppIdentity, Node, Rect, Scope, Window};
@@ -360,6 +361,9 @@ pub(crate) struct Shared {
     /// connection epoch they belong to, then permission -> granted. A new
     /// connection starts from its own welcome.
     pub perms: Mutex<(u64, BTreeMap<String, bool>)>,
+    /// The person's standing level per application (PX-215), read at every
+    /// call: a change applies from the next action.
+    pub standing: Arc<StandingAccess>,
     /// Test seam: runs right after an input's call returns, before its outcome
     /// is recorded, so a test can land the actuator's death notice exactly there.
     #[cfg(test)]
@@ -447,8 +451,65 @@ impl ComputerRuntime {
                 backoff: Mutex::new(Duration::from_millis(250)),
                 last_ping: Mutex::new(Instant::now()),
                 perms: Mutex::new((0, BTreeMap::new())),
+                standing: Arc::new(StandingAccess::default()),
             }),
         }
+    }
+
+    /// The standing levels in force (PX-215). The Core changes them only
+    /// through a recorded event; the runtime only reads them.
+    #[must_use]
+    pub fn standing(&self) -> Arc<StandingAccess> {
+        Arc::clone(&self.shared.standing)
+    }
+
+    /// Refuse a call the application's standing level does not allow, and
+    /// put the refusal on the task's log. `None` level = nothing is set and
+    /// the grant alone decides. Never widens: it only ever returns an error.
+    ///
+    /// # Errors
+    /// The typed refusal.
+    pub(crate) fn check_access(
+        &self,
+        ctx: &CallCtx,
+        control_id: &str,
+        app: &AppIdentity,
+        need: Need,
+    ) -> Result<(), Refusal> {
+        let Some(level) = self.shared.standing.level_of(app) else {
+            return Ok(());
+        };
+        if level.allows(need) {
+            return Ok(());
+        }
+        Err(self.note_access_refused(ctx, control_id, app, level, need))
+    }
+
+    /// Record that `level` refused a call, and build the refusal.
+    pub(crate) fn note_access_refused(
+        &self,
+        ctx: &CallCtx,
+        control_id: &str,
+        app: &AppIdentity,
+        level: Level,
+        need: Need,
+    ) -> Refusal {
+        let r = access::refusal(app, level, need);
+        self.emit(
+            ctx.task_id,
+            ctx.session_id,
+            &ctx.run_id,
+            TaskEvent::ComputerAccessRefused {
+                control_id: control_id.to_owned(),
+                tool_call_id: ctx.tool_call_id.clone(),
+                bundle_id: access::key_of(app),
+                application: (ctx.redact)(&app.name),
+                level: level.as_str().to_owned(),
+                needed: need.as_str().to_owned(),
+                reason: r.message.clone(),
+            },
+        );
+        r
     }
 
     /// The configuration in force.

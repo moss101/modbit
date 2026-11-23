@@ -1,0 +1,33 @@
+   Compiling modbit-core v0.0.0 (/Users/mohsin/projects/modbit/services/modbit-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.11s
+     Running tests/px_211_pull_request_state.rs (target/debug/deps/px_211_pull_request_state-5c5f6f4fb02bcf90)
+
+running 1 test
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: recovery complete: boot_generation=2 events_verified=334 aggregates=63 projections_rebuilt=false sessions=1 tasks=2 in 13ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: emergency stop on session 10101010-1010-1010-1010-101010101010: 2 lease(s) revoked, 0 live run(s) cancelled, 0 control session(s) stopped (qual)
+test qual_px_211_the_core_records_reads_and_carries_a_tasks_pull_request_state ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 14.00s
+
+   Compiling modbit-core v0.0.0 (/Users/mohsin/projects/modbit/services/modbit-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.90s
+     Running tests/px_214_reviewer_findings.rs (target/debug/deps/px_214_reviewer_findings-6cf26917c716bf71)
+
+running 1 test
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+test px_214_the_reviewers_findings_one_by_one_with_fix_and_dismiss ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.75s
+
+   Compiling modbit-core v0.0.0 (/Users/mohsin/projects/modbit/services/modbit-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 11.71s
+     Running tests/surface_protocol.rs (target/debug/deps/surface_protocol-1404355db54e4332)
+
+running 1 test
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+test qual_px_008_allowed_review_comments_steer_as_untrusted_input_and_grant_nothing ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 207 filtered out; finished in 5.23s
+

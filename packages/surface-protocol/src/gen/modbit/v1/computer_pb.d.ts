@@ -2041,6 +2041,290 @@ export declare type ComputerStopped = Message<"modbit.v1.ComputerStopped"> & {
 export declare const ComputerStoppedSchema: GenMessage<ComputerStopped>;
 
 /**
+ * Read the levels in force, the applications the actuator reports as running
+ * that could be driven (to pick from), and the levels a person may choose.
+ *
+ * @generated from message modbit.v1.GetComputerAccess
+ */
+export declare type GetComputerAccess = Message<"modbit.v1.GetComputerAccess"> & {
+};
+
+/**
+ * Describes the message modbit.v1.GetComputerAccess.
+ * Use `create(GetComputerAccessSchema)` to create a new message.
+ */
+export declare const GetComputerAccessSchema: GenMessage<GetComputerAccess>;
+
+/**
+ * @generated from message modbit.v1.ComputerAccessView
+ */
+export declare type ComputerAccessView = Message<"modbit.v1.ComputerAccessView"> & {
+  /**
+   * Every level that is set, by application key.
+   *
+   * @generated from field: repeated modbit.v1.ComputerAccessEntry entries = 1;
+   */
+  entries: ComputerAccessEntry[];
+
+  /**
+   * The names a level may take, narrowest first: never, view_only, click, full.
+   *
+   * @generated from field: repeated string levels = 2;
+   */
+  levels: string[];
+
+  /**
+   * Applications the attached actuator reports as running and drivable. Empty
+   * when no actuator is attached; a level can still be set by identifier.
+   *
+   * @generated from field: repeated modbit.v1.ComputerAccessApplication running = 3;
+   */
+  running: ComputerAccessApplication[];
+
+  /**
+   * @generated from field: bool attached = 4;
+   */
+  attached: boolean;
+
+  /**
+   * The version of the list of applications no approval can lift: a level
+   * cannot be set above never for one of them.
+   *
+   * @generated from field: string non_drivable_version = 5;
+   */
+  nonDrivableVersion: string;
+
+  /**
+   * The log's offset at the last change (0 when none was ever made).
+   *
+   * @generated from field: uint64 last_change_offset = 6;
+   */
+  lastChangeOffset: bigint;
+
+  /**
+   * The changes themselves, oldest first, newest 100 at most: the audit trail
+   * read back from the log, one per event.
+   *
+   * @generated from field: repeated modbit.v1.ComputerAccessChange changes = 7;
+   */
+  changes: ComputerAccessChange[];
+};
+
+/**
+ * Describes the message modbit.v1.ComputerAccessView.
+ * Use `create(ComputerAccessViewSchema)` to create a new message.
+ */
+export declare const ComputerAccessViewSchema: GenMessage<ComputerAccessView>;
+
+/**
+ * One recorded change of a standing level.
+ *
+ * @generated from message modbit.v1.ComputerAccessChange
+ */
+export declare type ComputerAccessChange = Message<"modbit.v1.ComputerAccessChange"> & {
+  /**
+   * @generated from field: uint64 offset = 1;
+   */
+  offset: bigint;
+
+  /**
+   * @generated from field: int64 at_ms = 2;
+   */
+  atMs: bigint;
+
+  /**
+   * @generated from field: string bundle_id = 3;
+   */
+  bundleId: string;
+
+  /**
+   * @generated from field: string application = 4;
+   */
+  application: string;
+
+  /**
+   * after the change, "" when cleared
+   *
+   * @generated from field: string level = 5;
+   */
+  level: string;
+
+  /**
+   * before it, "" when none was set
+   *
+   * @generated from field: string previous = 6;
+   */
+  previous: string;
+
+  /**
+   * the actor on the log, as "user:<id>"
+   *
+   * @generated from field: string by = 7;
+   */
+  by: string;
+};
+
+/**
+ * Describes the message modbit.v1.ComputerAccessChange.
+ * Use `create(ComputerAccessChangeSchema)` to create a new message.
+ */
+export declare const ComputerAccessChangeSchema: GenMessage<ComputerAccessChange>;
+
+/**
+ * @generated from message modbit.v1.ComputerAccessEntry
+ */
+export declare type ComputerAccessEntry = Message<"modbit.v1.ComputerAccessEntry"> & {
+  /**
+   * the key: a bundle identifier, else exe:<file name>
+   *
+   * @generated from field: string bundle_id = 1;
+   */
+  bundleId: string;
+
+  /**
+   * the name when it was set (an untrusted label)
+   *
+   * @generated from field: string application = 2;
+   */
+  application: string;
+
+  /**
+   * never | view_only | click | full
+   *
+   * @generated from field: string level = 3;
+   */
+  level: string;
+
+  /**
+   * @generated from field: int64 set_at_ms = 4;
+   */
+  setAtMs: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.ComputerAccessEntry.
+ * Use `create(ComputerAccessEntrySchema)` to create a new message.
+ */
+export declare const ComputerAccessEntrySchema: GenMessage<ComputerAccessEntry>;
+
+/**
+ * @generated from message modbit.v1.ComputerAccessApplication
+ */
+export declare type ComputerAccessApplication = Message<"modbit.v1.ComputerAccessApplication"> & {
+  /**
+   * the key
+   *
+   * @generated from field: string bundle_id = 1;
+   */
+  bundleId: string;
+
+  /**
+   * an untrusted label
+   *
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * its level, "" when none is set
+   *
+   * @generated from field: string level = 3;
+   */
+  level: string;
+};
+
+/**
+ * Describes the message modbit.v1.ComputerAccessApplication.
+ * Use `create(ComputerAccessApplicationSchema)` to create a new message.
+ */
+export declare const ComputerAccessApplicationSchema: GenMessage<ComputerAccessApplication>;
+
+/**
+ * Set or clear one application's level. `level` is never | view_only | click
+ * | full, or "" to clear it (the grant alone decides again). A Core-wide
+ * setting, like configuring the provider: it names no session and needs no
+ * lease, only the capability that decides approvals; the event lands on the
+ * Core's own ledger with the person as the actor. Refused: BAD_PAYLOAD,
+ * BAD_LEVEL, BAD_APPLICATION (an empty, over-long or pattern identifier) and
+ * NOT_DRIVABLE (a level above never for an application no approval can
+ * lift). Setting the level an application already has changes nothing and
+ * records nothing (`changed` is false).
+ *
+ * @generated from message modbit.v1.SetComputerAccess
+ */
+export declare type SetComputerAccess = Message<"modbit.v1.SetComputerAccess"> & {
+  /**
+   * @generated from field: string bundle_id = 1;
+   */
+  bundleId: string;
+
+  /**
+   * a display label for the record, optional
+   *
+   * @generated from field: string application = 2;
+   */
+  application: string;
+
+  /**
+   * @generated from field: string level = 3;
+   */
+  level: string;
+};
+
+/**
+ * Describes the message modbit.v1.SetComputerAccess.
+ * Use `create(SetComputerAccessSchema)` to create a new message.
+ */
+export declare const SetComputerAccessSchema: GenMessage<SetComputerAccess>;
+
+/**
+ * @generated from message modbit.v1.ComputerAccessChanged
+ */
+export declare type ComputerAccessChanged = Message<"modbit.v1.ComputerAccessChanged"> & {
+  /**
+   * @generated from field: string bundle_id = 1;
+   */
+  bundleId: string;
+
+  /**
+   * @generated from field: string application = 2;
+   */
+  application: string;
+
+  /**
+   * now in force, "" when cleared
+   *
+   * @generated from field: string level = 3;
+   */
+  level: string;
+
+  /**
+   * before the command, "" when none was set
+   *
+   * @generated from field: string previous = 4;
+   */
+  previous: string;
+
+  /**
+   * @generated from field: bool changed = 5;
+   */
+  changed: boolean;
+
+  /**
+   * the log offset of the event, 0 when unchanged
+   *
+   * @generated from field: uint64 offset = 6;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.ComputerAccessChanged.
+ * Use `create(ComputerAccessChangedSchema)` to create a new message.
+ */
+export declare const ComputerAccessChangedSchema: GenMessage<ComputerAccessChanged>;
+
+/**
  * What every window shows: whether the machine is controlled and by which
  * task, the operating-system permissions the actuator reports, and the
  * actuator itself. Not task-scoped: the permission window and the presence
@@ -2274,7 +2558,7 @@ export declare type ComputerActivityEntry = Message<"modbit.v1.ComputerActivityE
 
   /**
    * SESSION_STARTED | OBSERVED | ACTION | LATCHED | LATCH_RESOLVED |
-   * SESSION_CLOSED | USER_ABORTED
+   * SESSION_CLOSED | USER_ABORTED | ACCESS_REFUSED
    *
    * @generated from field: string kind = 3;
    */
@@ -2409,6 +2693,22 @@ export declare type ComputerActivityEntry = Message<"modbit.v1.ComputerActivityE
    * @generated from field: bool verified = 24;
    */
   verified: boolean;
+
+  /**
+   * PX-215. ACCESS_REFUSED: a call the person's standing access for the
+   * application did not allow (nothing was actuated). `detail` is "", `reason`
+   * the refusal's words, `access_level` the level that refused it (never |
+   * view_only | click) and `access_needed` what the call needed (observe |
+   * click | keyboard).
+   *
+   * @generated from field: string access_level = 25;
+   */
+  accessLevel: string;
+
+  /**
+   * @generated from field: string access_needed = 26;
+   */
+  accessNeeded: string;
 };
 
 /**

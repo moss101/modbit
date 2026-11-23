@@ -12,7 +12,7 @@ import { join } from "node:path";
 import { accessible, closeApp, git, launch, makeRepo, MOD, setContentSize } from "./support/ui-harness.ts";
 import { Gate, streamingModel } from "./support/stream-model.ts";
 import { openConversation, startAndOpen } from "./support/conversation-harness.ts";
-import { openTaskDetails } from "./support/new-task.ts";
+import { openTaskMore } from "./support/new-task.ts";
 
 const FIRST = "The streamed answer begins here and keeps going for a while, ";
 const SECOND = "then it finishes with this closing sentence.";
@@ -251,14 +251,14 @@ test("PX-047: tool steps fold by density without changing the rows; a question i
     // Densities: the same rows, grouped differently. Detailed shows every tool card; Compact folds them under a work group.
     const conv = page.getByTestId("conversation");
     await expect(conv).toBeVisible();
-    await (await openTaskDetails(page)).getByTestId("conv-density").selectOption("DETAILED");
+    await (await openTaskMore(page)).getByTestId("conv-density").selectOption("DETAILED");
     await expect(conv).toHaveAttribute("data-density", "DETAILED");
     await expect(page.getByTestId("conv-group")).toHaveCount(0);
     await expect(page.getByTestId("conv-tool").first()).toBeVisible();
     const detailed = await page.getByTestId("conv-tool").count();
     expect(detailed).toBeGreaterThanOrEqual(3);
     await expect(page.getByTestId("conv-approval").first()).toBeVisible();
-    await (await openTaskDetails(page)).getByTestId("conv-density").selectOption("COMPACT");
+    await (await openTaskMore(page)).getByTestId("conv-density").selectOption("COMPACT");
     await expect(page.getByTestId("conv-group").first()).toBeVisible();
     await expect(page.getByTestId("conv-approval").first()).toBeVisible();
     // Folding changed presentation only: opening every group shows the same tool cards.
@@ -270,7 +270,7 @@ test("PX-047: tool steps fold by density without changing the rows; a question i
     expect(await page.getByTestId("conv-tool").count()).toBe(detailed);
     await expect(page.getByTestId("conv-footer").first()).toBeVisible();
     await accessible(page, "a finished conversation in Compact");
-    await (await openTaskDetails(page)).getByTestId("conv-density").selectOption("BALANCED");
+    await (await openTaskMore(page)).getByTestId("conv-density").selectOption("BALANCED");
     await accessible(page, "a finished conversation in Balanced");
   } finally {
     await closeApp(app);

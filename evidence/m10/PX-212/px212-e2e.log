@@ -1,0 +1,14 @@
+
+Running 1 test using 1 worker
+
+[electron] Debugger ending on ws://127.0.0.1:51403/29ee4274-b4d0-4611-8a3d-323812fc284b
+For help, see: https://nodejs.org/learn/getting-started/debugging
+[electron] Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown
+    at requireClient (/Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11784:17)
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11984:19
+    at /Users/mohsin/projects/modbit/apps/desktop/dist/main/main.cjs:11834:12
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+  ✓  1 e2e/px-212-auto-fix.spec.ts:133:1 › PX-212: auto-fix is the task's switch, off by default; on, a failing read starts one repair turn whose push asks on the approval card; the pane counts turns against the cap and says when it stopped (14.4s)
+
+  1 passed (14.7s)

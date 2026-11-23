@@ -251,6 +251,36 @@ fn env_nonempty(name: &str) -> Option<String> {
     std::env::var(name).ok().filter(|v| !v.trim().is_empty())
 }
 
+/// Held while a child is started, so the harness starts one at a time.
+///
+/// Trials run on several threads (`--jobs`), and a GUI trial's approver starts
+/// its first `approval list` at the same moment its trial starts `task run
+/// --wait`. Starting a child with captured output creates the pipes and then
+/// the child, and where the platform cannot create a pipe already
+/// close-on-exec (macOS: `pipe`, then `fcntl`), a child another thread starts
+/// in between inherits those pipes. Their reader then sees no end of file
+/// until that other child exits: with `task run --wait` holding the approver's
+/// pipe, the approver waited on the run and the run on the approver, until the
+/// trial timed out with no approval answered (PX-179, macOS CI). Every child
+/// of this process is therefore started through [`spawn`].
+static SPAWN: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+/// Start `cmd`, one child at a time across the harness's threads ([`SPAWN`]).
+fn spawn(cmd: &mut Command) -> std::io::Result<std::process::Child> {
+    let _one_at_a_time = SPAWN
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    cmd.spawn()
+}
+
+/// `Command::output` through [`spawn`]: no input, both outputs captured.
+fn output(cmd: &mut Command) -> std::io::Result<std::process::Output> {
+    cmd.stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    spawn(cmd)?.wait_with_output()
+}
+
 /// Output of one command.
 struct Run {
     code: i32,
@@ -264,7 +294,7 @@ fn run(cmd: &mut Command, timeout: Duration) -> Run {
     cmd.stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    let mut child = match cmd.spawn() {
+    let mut child = match spawn(cmd) {
         Ok(c) => c,
         Err(e) => {
             return Run {
@@ -324,20 +354,14 @@ fn run(cmd: &mut Command, timeout: Duration) -> Run {
 }
 
 fn cmd_output(program: &str, args: &[&str]) -> String {
-    Command::new(program)
-        .args(args)
-        .output()
+    output(Command::new(program).args(args))
         .ok()
         .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_owned())
         .unwrap_or_default()
 }
 
 fn git(dir: &Path, args: &[&str]) -> Result<String, String> {
-    let o = Command::new("git")
-        .arg("-C")
-        .arg(dir)
-        .args(args)
-        .output()
+    let o = output(Command::new("git").arg("-C").arg(dir).args(args))
         .map_err(|e| format!("git {}: {e}", args.join(" ")))?;
     if !o.status.success() {
         return Err(format!(
@@ -901,9 +925,9 @@ fn stop_profile_core(data_dir: &Path) {
     #[cfg(unix)]
     {
         let needle = format!("--data-dir {}", data_dir.display());
-        if let Ok(o) = Command::new("pgrep").args(["-f", &needle]).output() {
+        if let Ok(o) = output(Command::new("pgrep").args(["-f", &needle])) {
             for pid in String::from_utf8_lossy(&o.stdout).split_whitespace() {
-                let _ = Command::new("kill").args(["-TERM", pid]).status();
+                let _ = spawn(Command::new("kill").args(["-TERM", pid])).and_then(|mut c| c.wait());
             }
         }
     }
@@ -916,13 +940,9 @@ fn diagnostics() {
     #[cfg(unix)]
     {
         let ps = if cfg!(target_os = "linux") {
-            Command::new("ps")
-                .args(["-eo", "pid,rss,etimes,comm", "--sort=-rss"])
-                .output()
+            output(Command::new("ps").args(["-eo", "pid,rss,etimes,comm", "--sort=-rss"]))
         } else {
-            Command::new("ps")
-                .args(["-axo", "pid,rss,etime,comm", "-r"])
-                .output()
+            output(Command::new("ps").args(["-axo", "pid,rss,etime,comm", "-r"]))
         };
         if let Ok(o) = ps {
             let text = String::from_utf8_lossy(&o.stdout);
@@ -1837,4 +1857,74 @@ fn render_summary(bundle: &Bundle, digest: &str) -> String {
         ));
     }
     summary
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::{Command, Duration, Instant, Stdio, output, spawn};
+
+    /// PX-179: a child never holds the pipes of one started while it was being
+    /// started. The long-lived child stands for a trial's `task run --wait`
+    /// and the short one for its approver's first `approval list`: the short
+    /// child's output ends when it exits, not when the long one does. (Where
+    /// a pipe cannot be created close-on-exec in one step, unserialized
+    /// `Command::spawn`s leak it in some of these rounds.)
+    #[test]
+    fn a_child_never_holds_the_pipes_of_one_started_at_the_same_moment() {
+        fn spin_until(at: Instant) {
+            while Instant::now() < at {
+                std::hint::spin_loop();
+            }
+        }
+        // By full path, as the harness starts the CLI: a name looked up on
+        // PATH is started well after its pipes are made, and hardly overlaps.
+        let bin = |name: &str| {
+            ["/bin", "/usr/bin"]
+                .iter()
+                .map(|dir| std::path::Path::new(dir).join(name))
+                .find(|p| p.is_file())
+                .expect("sleep and true are installed")
+        };
+        let (sleep, true_) = (bin("sleep"), bin("true"));
+        for round in 0..600u32 {
+            // The two are started within a few tens of microseconds of each
+            // other, the short one first or second: the approver's first call
+            // and its trial's `task run`.
+            let go = Instant::now() + Duration::from_millis(2);
+            let apart = Duration::from_micros(u64::from(round % 3) * 10);
+            let (long_at, short_at) = if round % 2 == 0 {
+                (go, go + apart)
+            } else {
+                (go + apart, go)
+            };
+            let sleep = sleep.clone();
+            let long = std::thread::spawn(move || {
+                let mut c = Command::new(sleep);
+                c.arg("600")
+                    .stdin(Stdio::null())
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped());
+                spin_until(long_at);
+                spawn(&mut c).expect("sleep starts")
+            });
+            let true_ = true_.clone();
+            let (done, short) = std::sync::mpsc::channel();
+            std::thread::spawn(move || {
+                let mut c = Command::new(true_);
+                spin_until(short_at);
+                let _ = done.send(output(&mut c).map(|o| o.status.success()));
+            });
+            // The short child's output is read to its end, or given up on: a
+            // pipe the long child holds stays open for as long as it lives.
+            let ended = short.recv_timeout(Duration::from_secs(60));
+            let mut long = long.join().expect("the long child's thread");
+            let _ = long.kill();
+            let _ = long.wait();
+            assert_eq!(
+                ended.map(Result::ok),
+                Ok(Some(true)),
+                "round {round}: the short child's output did not end while the long child lived"
+            );
+        }
+    }
 }

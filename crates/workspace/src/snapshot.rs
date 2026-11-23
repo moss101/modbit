@@ -563,19 +563,31 @@ fn restore_one(before: &Snapshot, d: &FileDelta, real: &Path) -> Result<(), Stri
         }
         Some(Entry::Symlink { target }) => {
             remove_any(real)?;
-            #[cfg(unix)]
-            {
-                if let Some(parent) = real.parent() {
-                    let _ = std::fs::create_dir_all(parent);
-                }
-                std::os::unix::fs::symlink(target, real).map_err(|e| e.to_string())?;
-                Ok(())
+            if let Some(parent) = real.parent() {
+                let _ = std::fs::create_dir_all(parent);
             }
-            #[cfg(not(unix))]
+            #[cfg(unix)]
+            std::os::unix::fs::symlink(target, real).map_err(|e| e.to_string())?;
+            #[cfg(windows)]
+            {
+                // Windows knows a file link from a directory link; probe the
+                // target the same way the conformance tests do, and restore a
+                // dangling target as a file link (PX-030: the restore works on
+                // every platform).
+                let dir_link = std::fs::metadata(target).is_ok_and(|m| m.is_dir());
+                let made = if dir_link {
+                    std::os::windows::fs::symlink_dir(target, real)
+                } else {
+                    std::os::windows::fs::symlink_file(target, real)
+                };
+                made.map_err(|e| e.to_string())?;
+            }
+            #[cfg(not(any(unix, windows)))]
             {
                 let _ = target;
-                Err("symbolic links cannot be recreated on this platform".into())
+                return Err("symbolic links cannot be recreated on this platform".into());
             }
+            Ok(())
         }
         Some(Entry::File {
             fingerprint, exact, ..

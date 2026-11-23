@@ -318,6 +318,9 @@ class DossierTests(unittest.TestCase):
             self.assertIn(required, out)
         card = (ROOT / "docs" / "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md").read_text(encoding="utf-8")
         self.assertIn("crates/core-runtime/src/trajectory.rs", card.split("## PX-189 ")[1].split("## Real-system scenarios")[0])
+        out = self.run_tool("graph", "show", "DOC-GOV-009")
+        for required in ("DOC-GOV-008", "DR-GOV-2026-11-11-009", "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md", "97_DOSSIER_MAINTENANCE_LOG.md", "governance"):
+            self.assertIn(required, out)
         out = self.run_tool("graph", "show", "DOC-GOV-001")
         for required in ("DOC-EPR-002", "DR-GOV-2026-09-05", "96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md", "governance"):
             self.assertIn(required, out)
@@ -326,11 +329,15 @@ class DossierTests(unittest.TestCase):
             for ref in node.get("evidence") or []:
                 self.assertRegex(ref, r"^(run|test|commit|revision|build|env|artifact|event|effect|checkpoint):\S+$", node["id"])
 
-    PARITY_RECORDS = [("DR-PX-2026-10-03-007", "DOC-PX-007", 41, 68, True), ("DR-PX-2026-10-03-008", "DOC-PX-008", 69, 76, True),
-                      ("DR-PX-2026-10-03-009", "DOC-PX-009", 77, 81, False), ("DR-PX-2026-10-03-010", "DOC-PX-010", 82, 86, True),
-                      ("DR-PX-2026-10-03-011", "DOC-PX-011", 87, 93, False), ("DR-PX-2026-10-03-012", "DOC-PX-012", 94, 98, False),
-                      ("DR-PX-2026-10-05-013", "DOC-PX-013", 99, 139, True)]
+    # The fifth field is the record's status: "accepted", "proposed", or "rejected" (009, DR-GOV-2026-11-11-009: its rows PX-077..081 are
+    # withdrawn DEFERRED rows with no task, so the row-by-row checks below skip them).
+    PARITY_RECORDS = [("DR-PX-2026-10-03-007", "DOC-PX-007", 41, 68, "accepted"), ("DR-PX-2026-10-03-008", "DOC-PX-008", 69, 76, "accepted"),
+                      ("DR-PX-2026-10-03-009", "DOC-PX-009", 77, 81, "rejected"), ("DR-PX-2026-10-03-010", "DOC-PX-010", 82, 86, "accepted"),
+                      ("DR-PX-2026-10-03-011", "DOC-PX-011", 87, 93, "proposed"), ("DR-PX-2026-10-03-012", "DOC-PX-012", 94, 98, "proposed"),
+                      ("DR-PX-2026-10-05-013", "DOC-PX-013", 99, 139, "accepted")]
+    GRAPH_STATUS = {"accepted": "APPROVED", "proposed": "PROPOSED", "rejected": "REJECTED"}
 
+    WITHDRAWN_EDITOR_ROWS = [77, 78, 79, 80, 81]
     DR_018_DEFERRED = [151, 154, 160, 163, 164, 165, 166, 169, 170, 172, 173, 175, 180, 181, 185, 187, 190, 191]
     DR_018_ADOPT = [147, 148, 149, 150, 152, 153, 155, 156, 157, 158, 159, 161, 162, 167, 168, 171, 174, 176, 177, 178, 179, 182, 183, 184, 186, 188, 189]
 
@@ -362,21 +369,29 @@ class DossierTests(unittest.TestCase):
         # DOC-PX-007..012: six Decision Records (2026-10-03) add PX-041..098. Each row is authorized by its record,
         # scheduled in M10, in no release but RELEASE_ZERO, NOT_STARTED, and gated (directly or through an earlier PX row)
         # by its record's dossier task, so none can start before the record is accepted and the task is COMPLETE.
-        # 007, 008 and 010 were accepted by the owner on 2026-10-05; 009, 011 and 012 stay proposed.
+        # 007, 008 and 010 were accepted by the owner on 2026-10-05; 009 was rejected on 2026-11-11 (its rows are withdrawn and carry no task); 011 and 012 stay proposed.
         self.rebuild()
         g = self.graph()
         nodes = {n["id"]: n for n in g["nodes"]}
         after, auth, includes = self.edges(g)
-        for dr, task, lo, hi, accepted in self.PARITY_RECORDS:
+        for dr, task, lo, hi, state in self.PARITY_RECORDS:
+            accepted = state == "accepted"
             self.assertEqual(nodes[dr]["type"], "change_record")
-            self.assertEqual(nodes[dr]["status"], "APPROVED" if accepted else "PROPOSED", dr)
+            self.assertEqual(nodes[dr]["status"], self.GRAPH_STATUS[state], dr)
             self.assertEqual(nodes[task]["type"], "dossier_task")
             self.assertIn("DOC-GOV-007", after[task])
             self.assertIn((task, dr), auth)
-            if not accepted:
+            if state == "proposed":
                 self.assertNotIn(nodes[task].get("status"), ("E2E_PROVEN", "COMPLETE"), task)
             for n in range(lo, hi + 1):
                 pid = "PX-%03d" % n
+                if state == "rejected":
+                    # a rejected record's rows are withdrawn: the ledger row stays (numbers are contiguous), the task, card and scenario do not
+                    self.assertNotIn(pid, nodes, pid)
+                    self.assertEqual(nodes["REQ-" + pid]["disposition"], "DEFERRED", pid)
+                    self.assertEqual(nodes["REQ-" + pid]["release"], "POST_ZERO", pid)
+                    self.assertIn((("REQ-" + pid), dr), auth, pid)
+                    continue
                 self.assertEqual(nodes[pid]["milestone"], "M10", pid)
                 self.assertEqual(nodes[pid]["release"], "RELEASE_ZERO", pid)
                 # A row behind a record the owner has NOT accepted cannot have started. A row behind an ACCEPTED record may
@@ -406,11 +421,11 @@ class DossierTests(unittest.TestCase):
         nodes = {n["id"]: n for n in g["nodes"]}
         after, auth, _ = self.edges(g)
         blocked_tasks, blocked_rows = set(), set()
-        for dr, task, lo, hi, accepted in self.PARITY_RECORDS:
-            if not accepted:
+        for dr, task, lo, hi, state in self.PARITY_RECORDS:
+            if state == "proposed":
                 blocked_tasks.add(task)
                 blocked_rows.update("PX-%03d" % n for n in range(lo, hi + 1))
-        self.assertEqual(blocked_tasks, {"DOC-PX-009", "DOC-PX-011", "DOC-PX-012"})
+        self.assertEqual(blocked_tasks, {"DOC-PX-011", "DOC-PX-012"})
 
         def closure(pid):
             seen, todo = set(), [pid]
@@ -430,23 +445,23 @@ class DossierTests(unittest.TestCase):
         for task in sorted(blocked_tasks):
             self.assertNotIn(nodes[task].get("status"), ("E2E_PROVEN", "COMPLETE"), task)
         # graph.py refuses the ratification-by-status shortcut: REAL_TESTING is allowed, E2E_PROVEN is refused
-        self.run_tool("graph", "set", "DOC-PX-009", "E2E_PROVEN", "--evidence", "artifact:evidence/dossier-px-007/validation.json",
+        self.run_tool("graph", "set", "DOC-PX-011", "E2E_PROVEN", "--evidence", "artifact:evidence/dossier-px-007/validation.json",
                       ok=False, contains="still PROPOSED")
-        self.assertEqual({n["id"]: n for n in self.graph()["nodes"]}["DOC-PX-009"]["status"], nodes["DOC-PX-009"]["status"])
+        self.assertEqual({n["id"]: n for n in self.graph()["nodes"]}["DOC-PX-011"]["status"], nodes["DOC-PX-011"]["status"])
 
     def test_parity_surface_counts_are_pinned_and_dr_013_is_traced(self):
         # The additive PX ledger pins nothing in tools/dossier_px.py (totals are computed); the parity-push surface is pinned here
-        # in the same reseal that adds a record: PX-000..219 (220 rows, 197 ADOPT tasks, 23 DEFERRED), eleven records of which
-        # 007, 008, 010 and 013 are accepted, and the 41 rows of DR-PX-2026-10-05-013 (39 release-critical, 2 iteration).
+        # in the same reseal that adds a record: PX-000..219 (220 rows, 192 ADOPT tasks, 28 DEFERRED, of which PX-077..081 are withdrawn by DR-GOV-2026-11-11-009), eleven records of which
+        # 007, 008, 010 and 013 are accepted and 009 is rejected, and the 41 rows of DR-PX-2026-10-05-013 (39 release-critical, 2 iteration).
         self.rebuild()
         g = self.graph()
         nodes = {n["id"]: n for n in g["nodes"]}
         reqs = [n for n in g["nodes"] if re.match(r"^REQ-PX-\d{3}$", n["id"])]
         tasks = [n for n in g["nodes"] if re.match(r"^PX-\d{3}$", n["id"]) and n["type"] == "imp_task"]
         self.assertEqual(len(reqs), 220)
-        self.assertEqual(len(tasks), 197)
-        self.assertEqual(sorted(n["id"] for n in reqs if n.get("disposition") == "DEFERRED"), ["REQ-PX-003", "REQ-PX-012", "REQ-PX-013", "REQ-PX-140"] + ["REQ-PX-%03d" % i for i in self.DR_018_DEFERRED] + ["REQ-PX-219"])
-        self.assertEqual(len([r for r in self.PARITY_RECORDS if r[4]]), 4)
+        self.assertEqual(len(tasks), 192)
+        self.assertEqual(sorted(n["id"] for n in reqs if n.get("disposition") == "DEFERRED"), sorted(["REQ-PX-003", "REQ-PX-012", "REQ-PX-013", "REQ-PX-140", "REQ-PX-219"] + ["REQ-PX-%03d" % i for i in self.WITHDRAWN_EDITOR_ROWS + self.DR_018_DEFERRED]))
+        self.assertEqual(len([r for r in self.PARITY_RECORDS if r[4] == "accepted"]), 4)
         self.assertEqual(len(self.PARITY_RECORDS), 7)
         text = (self.root / "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md").read_text()
         tiers = re.findall(r"\*\*Decision Record, phase and evidence tier:\*\* DR-PX-2026-10-05-013; audit group [A-J], [^;]+; (release-critical|iteration) \(", text)
@@ -707,6 +722,51 @@ class DossierTests(unittest.TestCase):
         spec = (self.root / "docs/65_AGENT_FIRST_WORKSPACE_SPECIFICATION.md").read_text()
         self.assertIn("Scoped supersession (DR-PX-2026-11-04-020", spec)
 
+    def test_dr_gov_009_withdraws_the_workspace_editor_and_keeps_the_no_ide_decisions(self):
+        # DR-GOV-2026-11-11-009 (accepted on the owner's chat instruction "drop IDE"): DR-PX-2026-10-03-009 is rejected, REQ-PX-077..081 stay
+        # as withdrawn DEFERRED rows (the ledger needs contiguous numbers) with no task, card or scenario, nothing depends on them, and the
+        # locked no-IDE decisions stand as written.
+        self.rebuild()
+        g = self.graph()
+        nodes = {n["id"]: n for n in g["nodes"]}
+        after, auth, includes = self.edges(g)
+        for n in self.WITHDRAWN_EDITOR_ROWS:
+            pid, rid = "PX-%03d" % n, "REQ-PX-%03d" % n
+            self.assertNotIn(pid, nodes, pid)
+            self.assertNotIn("PX-E2E-%03d" % n, nodes, pid)
+            self.assertEqual(nodes[rid]["disposition"], "DEFERRED", rid)
+            self.assertEqual(nodes[rid]["release"], "POST_ZERO", rid)
+            self.assertTrue(nodes[rid]["title"].startswith("Withdrawn (DR-GOV-2026-11-11-009): "), rid)
+            self.assertIn("QUAL-PX-%03d" % n, nodes, rid)
+            self.assertFalse([e for e in g["edges"] if e["from"] == rid and e["type"] == "implemented_by"], rid)
+            self.assertFalse([e for e in g["edges"] if e["to"] == pid], pid)
+        self.assertEqual(nodes["DR-PX-2026-10-03-009"]["status"], "REJECTED")
+        self.assertEqual(nodes["DR-GOV-2026-11-11-009"]["status"], "APPROVED")
+        self.assertIn("DOC-GOV-008", after["DOC-GOV-009"])
+        text = (self.root / "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md").read_text()
+        for n in self.WITHDRAWN_EDITOR_ROWS:
+            self.assertNotIn("## PX-%03d — " % n, text)
+            self.assertNotIn("### PX-E2E-%03d — " % n, text)
+        record = next((self.root / "docs/decisions").glob("DR-GOV-2026-11-11-009-*.md")).read_text()
+        head = record.split("---")[1]
+        self.assertIn("status: accepted", head)
+        self.assertIn('approved_by: owner, chat instruction of 2026-11-11 ("Drop the editor', head)
+        old = (self.root / "docs/decisions/DR-PX-2026-10-03-009-workspace-editor.md").read_text().split("---")[1]
+        self.assertIn("status: rejected", old)
+        d02 = (self.root / "docs/02_AUTHORITY_AND_DECISIONS.md").read_text()
+        self.assertRegex(d02, r"\| MOD-EDIT-001 \|[^\n]*\| \*\*REJECTED\*\* \|")
+        self.assertIn("| MOD-SURF-002 | No built-in full IDE / Monaco architecture | **LOCKED** |", d02)
+        self.assertIn("| MOD-IDE-002 | Build a new general-purpose code editor | **REJECTED** |", d02)
+        self.assertNotIn("SUPERSEDED IN SCOPE", "".join(l for l in d02.splitlines() if l.startswith("| `MOD-EDIT-001` |")))
+        d03 = (self.root / "docs/03_ARCHITECTURAL_CONFLICTS_AND_SUPERSESSIONS.md").read_text()
+        self.assertNotIn("SUPERSEDED IN SCOPE** (DR-PX-2026-10-03-009)", d03)
+        self.assertIn("**NOT SUPERSEDED** (DR-PX-2026-10-03-009 rejected by DR-GOV-2026-11-11-009)", d03)
+        self.assertIn("WITHDRAWN", (self.root / "docs/67_WORKSPACE_EDITOR_SPECIFICATION.md").read_text().split("## 1. Purpose")[0])
+        # a task card brought back for a withdrawn row is refused by the ledger parser
+        self.edit("docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md", '<a id="px-082"></a>',
+                  '<a id="px-077"></a>\n\n## PX-077 — back\n\n<a id="px-082"></a>')
+        self.run_tool("build_graph", ok=False, contains="PX-077")
+
     def test_dr_021_adopts_the_measured_workspace_inside_the_clean_room_posture(self):
         # DR-PX-2026-11-11-021 (accepted 2026-11-11 on the owner's chat instruction): rows PX-198..218 are scheduled in M10 for
         # RELEASE_ZERO only and gated by DOC-PX-020; PX-198 is iteration tier and the other twenty release-critical; every owner is an
@@ -758,19 +818,22 @@ class DossierTests(unittest.TestCase):
         # An accepted record names who approved it; a proposed one says it is pending; the graph change record follows the file.
         self.rebuild()
         nodes = {n["id"]: n for n in self.graph()["nodes"]}
-        for dr, _task, _lo, _hi, accepted in self.PARITY_RECORDS:
+        for dr, _task, _lo, _hi, state in self.PARITY_RECORDS:
             path = next((self.root / "docs/decisions").glob(dr + "-*.md"))
             head = path.read_text().split("---")[1]
-            self.assertIn("status: accepted" if accepted else "status: proposed", head, dr)
+            self.assertIn("status: " + state, head, dr)
             by = re.search(r"^approved_by: (.*)$", head, re.M).group(1)
-            if accepted:
+            if state == "accepted":
                 self.assertIn("owner instruction 2026-10-05", by, dr)
+                self.assertNotIn("pending", by.lower(), dr)
+            elif state == "rejected":
+                self.assertIn("rejected by the owner, chat instruction of 2026-11-11", by, dr)
                 self.assertNotIn("pending", by.lower(), dr)
             else:
                 self.assertTrue(by.startswith("pending owner ratification"), dr)
-            self.assertEqual(nodes[dr]["status"], "APPROVED" if accepted else "PROPOSED")
+            self.assertEqual(nodes[dr]["status"], self.GRAPH_STATUS[state])
         # flipping a record to accepted without recording the approval is refused by the graph builder
-        path = next((self.root / "docs/decisions").glob("DR-PX-2026-10-03-009-*.md"))
+        path = next((self.root / "docs/decisions").glob("DR-PX-2026-10-03-011-*.md"))
         text = path.read_text().replace("status: proposed", "status: accepted", 1)
         path.write_text(text)
         self.run_tool("build_graph", ok=False, contains="approved_by does not record an approval")

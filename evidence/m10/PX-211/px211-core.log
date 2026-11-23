@@ -1,0 +1,12 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.52s
+     Running tests/px_211_pull_request_state.rs (target/debug/deps/px_211_pull_request_state-5c5f6f4fb02bcf90)
+
+running 1 test
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: recovery complete: boot_generation=2 events_verified=334 aggregates=63 projections_rebuilt=false sessions=1 tasks=2 in 15ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: emergency stop on session 10101010-1010-1010-1010-101010101010: 2 lease(s) revoked, 0 live run(s) cancelled, 0 control session(s) stopped (qual)
+test qual_px_211_the_core_records_reads_and_carries_a_tasks_pull_request_state ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 15.95s
+

@@ -18,8 +18,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use modbit_bench_agent_engineering::axes::{self, TrialUsage, recorded_usage};
 use modbit_bench_agent_engineering::verifier::desktop_value;
@@ -809,11 +810,58 @@ fn bin() -> &'static str {
     env!("CARGO_BIN_EXE_competence-baseline")
 }
 
+/// One full suite pass on the real Core: minutes on every OS, and even a worst legitimate pass
+/// (waves of 4 trials, each ended by `--trial-timeout-secs` at 300 s) stays under an hour on a
+/// loaded Windows runner. Past the limit the runner itself is hung — the per-trial caps would have
+/// ended any stuck trial — and it is killed and named instead of eating the CI job's whole budget
+/// (the Windows rust job of run 43073138525 ran 1 h 29 m before failing in an unrelated test).
+const SUITE_PASS_LIMIT: Duration = Duration::from_secs(60 * 60);
+
+/// `Command::output` with a deadline: a hung child is killed and reported with the tail of its output.
+fn output_bounded(cmd: &mut Command, limit: Duration) -> std::process::Output {
+    cmd.stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut child = cmd.spawn().expect("spawn competence-baseline");
+    let start = Instant::now();
+    while child
+        .try_wait()
+        .expect("wait competence-baseline")
+        .is_none()
+    {
+        if start.elapsed() > limit {
+            let _ = child.kill();
+            let out = child.wait_with_output().expect("collect after kill");
+            let text = format!(
+                "{}{}",
+                String::from_utf8_lossy(&out.stdout),
+                String::from_utf8_lossy(&out.stderr)
+            );
+            let tail: String = text
+                .chars()
+                .rev()
+                .take(3000)
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+                .collect();
+            panic!(
+                "competence-baseline was still running after {} min and was killed; its per-trial cap ends any stuck trial, so this is a hang in the runner, not a slow suite. Tail of its output:\n{tail}",
+                limit.as_secs() / 60
+            );
+        }
+        std::thread::sleep(Duration::from_millis(500));
+    }
+    child
+        .wait_with_output()
+        .expect("competence-baseline output")
+}
+
 /// Run the whole suite once; the binary's exit code and output.
 fn run_suite(base: &str, out: &Path) -> (i32, String) {
     let (cli, core, actuator) = product_binaries();
-    let o = Command::new(bin())
-        .current_dir(root())
+    let mut cmd = Command::new(bin());
+    cmd.current_dir(root())
         .args([
             "--suite",
             suite_dir().join("tasks.json").to_str().unwrap(),
@@ -842,9 +890,8 @@ fn run_suite(base: &str, out: &Path) -> (i32, String) {
         .env("OPENAI_API_KEY", "")
         .env("ANTHROPIC_API_KEY", "")
         .env_remove("MODBIT_OPENAI_MODELS")
-        .env_remove("MODBIT_LIVE_MODEL")
-        .output()
-        .unwrap();
+        .env_remove("MODBIT_LIVE_MODEL");
+    let o = output_bounded(&mut cmd, SUITE_PASS_LIMIT);
     (
         o.status.code().unwrap_or(-1),
         format!(
@@ -900,8 +947,11 @@ fn failures(dir: &Path, bundle: &Bundle) -> String {
         let cli = std::fs::read_to_string(dir.join(format!("trials/{slug}-1/cli.log")))
             .unwrap_or_default();
         let tail: Vec<&str> = cli.lines().rev().take(20).collect();
+        let approvals = std::fs::read_to_string(dir.join(format!("trials/{slug}-1/approvals.log")))
+            .map(|log| approver_summary(&log))
+            .unwrap_or_default();
         s.push_str(&format!(
-            "--- {} state={} core_verified={} notes={:?}\n{acc}\n{}\n",
+            "--- {} state={} core_verified={} notes={:?}\n{acc}\n{}\n{approvals}",
             t.task,
             t.state,
             t.core_verified,
@@ -910,6 +960,97 @@ fn failures(dir: &Path, bundle: &Bundle) -> String {
         ));
     }
     s
+}
+
+/// What the harness's approver (the person at the fixture desktop) did in a
+/// trial, read from its `approvals.log`: how many times it listed and how many
+/// of those calls failed, every approval it saw open, every decision it sent
+/// with the Core's answer, and its last listing. The log holds one block per
+/// CLI call, polled every 150 ms, so it is summarised rather than tailed: an
+/// approval that was never answered shows here as seen-but-never-resolved,
+/// resolved-but-refused (with the refusal) or never seen at all.
+fn approver_summary(log: &str) -> String {
+    let mut blocks: Vec<(&str, Vec<&str>)> = Vec::new();
+    for line in log.lines() {
+        if let Some(cmd) = line.strip_prefix("$ modbit-cli ") {
+            blocks.push((cmd, Vec::new()));
+        } else if let Some((_, body)) = blocks.last_mut() {
+            body.push(line);
+        }
+    }
+    let exit_of = |body: &[&str]| -> String {
+        body.first()
+            .and_then(|l| l.strip_prefix("[exit "))
+            .map(|l| l.trim_end_matches(']').to_owned())
+            .unwrap_or_else(|| "?".into())
+    };
+    let lists: Vec<&(&str, Vec<&str>)> = blocks
+        .iter()
+        .filter(|(c, _)| c.starts_with("approval list"))
+        .collect();
+    let failed_lists = lists.iter().filter(|(_, b)| exit_of(b) != "0").count();
+    let mut open = BTreeSet::new();
+    for (_, body) in &lists {
+        for l in body.iter().filter(|l| l.starts_with("approval ")) {
+            if l.contains("status=REQUESTED") || l.contains("status=PENDING") {
+                open.insert(l.split_whitespace().nth(1).unwrap_or_default().to_owned());
+            }
+        }
+    }
+    let mut s = format!(
+        "approver: {} list call(s), {failed_lists} failed; open approvals seen: {open:?}\n",
+        lists.len()
+    );
+    let first_failed = lists.iter().find(|(_, b)| exit_of(b) != "0");
+    if let Some((cmd, body)) = first_failed {
+        s.push_str(&format!(
+            "approver first failed list: {cmd}\n{}\n",
+            body.join("\n")
+        ));
+    }
+    for (cmd, body) in blocks
+        .iter()
+        .filter(|(c, _)| c.starts_with("approval resolve"))
+    {
+        s.push_str(&format!("approver sent: {cmd}\n{}\n", body.join("\n")));
+    }
+    if let Some((cmd, body)) = lists.last() {
+        s.push_str(&format!("approver last list: {cmd}\n{}\n", body.join("\n")));
+    }
+    s
+}
+
+/// The summary names an approval that was seen open, the refusals of the
+/// decisions sent for it, and failed listings: what a trial that times out
+/// waiting on an approval needs to say.
+#[test]
+fn approver_summary_names_open_approvals_refused_decisions_and_failed_lists() {
+    let log = "\
+$ modbit-cli approval list --session s1
+[exit 0]
+$ modbit-cli approval list --session s1
+[exit 1]
+[stderr]
+CORE_UNAVAILABLE: connect refused
+$ modbit-cli approval list --session s1
+[exit 0]
+approval ab12 status=REQUESTED tool=computer.start effect=GUI task=t1 call=c1 intent=i1
+$ modbit-cli approval resolve --session s1 --approval ab12 --intent i1 approve benchmark protocol
+[exit 1]
+[stderr]
+LEASE_FENCED: the session lease moved
+";
+    let s = approver_summary(log);
+    assert!(s.contains("3 list call(s), 1 failed"), "{s}");
+    assert!(s.contains("open approvals seen: {\"ab12\"}"), "{s}");
+    assert!(s.contains("CORE_UNAVAILABLE: connect refused"), "{s}");
+    assert!(
+        s.contains("approver sent: approval resolve --session s1 --approval ab12"),
+        "{s}"
+    );
+    assert!(s.contains("LEASE_FENCED: the session lease moved"), "{s}");
+    assert!(s.contains("approver last list"), "{s}");
+    assert!(approver_summary("").contains("0 list call(s), 0 failed"));
 }
 
 /// The tasks the injected regression hits: two element tasks and one input task.

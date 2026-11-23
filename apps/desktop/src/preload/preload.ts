@@ -3,17 +3,38 @@
  * renderer needs, over Electron's validated IPC. No Node, no fs, no shell.
  */
 import { contextBridge, ipcRenderer, webUtils } from "electron";
-import type { AgentHeaderView, AgentHeadersView, ConversationSearchView, OpenStreamView, PendingApprovalView, PlanInfo, SearchOptions, TranscriptOptions, TranscriptPageView, WorkGraphInfo } from "../shared/conversation-types.ts";
+import type { AgentHeaderView, AgentHeadersView, ConversationSearchView, OpenStreamView, PendingApprovalView, PlanInfo, PullRequestStateView, SearchOptions, TranscriptOptions, TranscriptPageView, WorkGraphInfo } from "../shared/conversation-types.ts";
 import type { TerminalFrameJson, TerminalViewJson } from "../main/terminal-host.ts";
 import type { AttachmentResult, InterruptView, ModeChangedView, ModelCatalogView, PostureView, PreferencePatch, PreferenceSetView, QueuedChangeView, QueueView, SendBehaviorState, SideAnswerView, SlashInventoryView, SuggestionView, TaskModeId, InputModeId } from "../shared/composer-types.ts";
 import type { AutoDetail, AutoEnableInput, AutoKillReport, AutoList, AutoRepoLoad, AutoRun, AutoRunInput, AutoRunStarted, AutoValidation, AutoView } from "../shared/automation-types.ts";
 import type { ApplyAckInfo, ApplyInputArgs, CleanupReportInfo, ProjectChangedInfo, ProjectInput, ProjectListInfo, ProjectPatch, WorktreeListInfo, WorktreeRemovalInfo } from "../shared/project-types.ts";
 import type { CustomizeHooksView, HookEnabledInfo, MemoryForgetInfo, MemoryPromoteInfo, MemoryRememberInfo, MemoryShareInfo, MemoryView, ImportReportInfo, SkillsView, SkillTrustInfo } from "../shared/customize-types.ts";
 import type { ChangesStateInfo, CommitPushAckInfo, CommitPushInput, DecideHunkAckInfo, DecideHunkInput, RevertAckInfo, RevertInput, StageAckInfo } from "../shared/changes-types.ts";
-import type { ComputerCardsInfo, ComputerFrameInfo, ComputerPresenceInfo, ComputerStopInfo, OpenSettingsInfo, PermissionName } from "../shared/computer-types.ts";
+import type { ComputerAccessChangedInfo, ComputerAccessInfo, ComputerCardsInfo, ComputerFrameInfo, ComputerPresenceInfo, ComputerStopInfo, OpenSettingsInfo, PermissionName } from "../shared/computer-types.ts";
 import type { AccountingInfo, AddRuleInput, AllowRuleInfo, CheckpointListInfo, CheckpointTargetInput, DockApprovalView, ExpiredApprovalView, ForkOutcome, ModeProposalDecisionInfo, ModeProposalListInfo, RestoreOutcome, RewindPreviewInfo, RunModeInfo, TaskBudgetsInfo } from "../shared/control-types.ts";
+import type { UpdatesView } from "../shared/inbox-types.ts";
+import type { DismissFindingAnswer, FixFindingAnswer, ReviewerResultView } from "../shared/review-findings-types.ts";
 
 export type { TerminalFrameJson, TerminalViewJson };
+
+/** REQ-PX-203: the panes that can stand in a window of their own, and what one shows (main's types, pane-windows.ts). */
+export type PaneWindowKind = "terminal" | "changes" | "files" | "evidence";
+export interface PaneWindowRef {
+  taskId: string;
+  kind: PaneWindowKind;
+}
+export interface PaneViewStateDto {
+  terminalId?: string;
+  path?: string;
+  scrollTop?: number;
+}
+export interface PaneContextDto {
+  sessionId: string;
+  taskId: string;
+  kind: PaneWindowKind;
+  title: string;
+  state: PaneViewStateDto;
+}
 
 export interface UpdateViewDto {
   enabled: boolean;
@@ -72,7 +93,8 @@ export interface ReviewBundleView {
   /** The Core's repair attempts for the task (PX-018), in the order recorded; outcome is empty while open, ESCALATED for the entry the loop wrote when it refused another attempt. */
   repairAttempts: { ordinal: number; failureSignature: string; hypothesis: string; intendedFix: string; outcome: string; reverted: boolean; escalation: string }[];
   /** PX-127: the pull request's comments the task has seen — untrusted text, what became of each. */
-  reviewComments: { commentId: string; kind: string; author: string; url: string; path: string; line: string; body: string; trust: string; disposition: string; reason: string; inputId: string; answered: boolean; reportedBack: boolean; createdAt: string }[];
+  reviewComments: { commentId: string; kind: string; author: string; url: string; path: string; line: string; body: string; trust: string; disposition: string; reason: string; inputId: string; answered: boolean; reportedBack: boolean; createdAt: string }[];  /** PX-214: the isolated reviewer's latest recorded result, finding by finding. */
+  reviewer: ReviewerResultView;
 }
 export interface TaskStatusView {
   state: string;
@@ -152,6 +174,27 @@ export interface ContextInspectorEntry {
   stub: boolean;
 }
 
+/**
+ * REQ-PX-107 / REQ-PX-207: one instruction layer the Core recorded for the task's last turn (its newest `RulesSelected`): a
+ * layer in force (`loaded`), or a file that exists and is not, with the Core's reason. Text in these files is project
+ * instruction data; the desktop only lists them and opens their source.
+ */
+export interface InstructionLayer {
+  /** project | repo-instructions | extension:<id> | user (empty for a file that is not loaded). */
+  layer: string;
+  id: string;
+  /** The file as the Core names it: relative to the task's folder for AGENTS.md / CLAUDE.md, absolute otherwise. */
+  source: string;
+  contentHash: string;
+  /** GLOBAL, or `PATH:<active path> matched <glob>`. */
+  reason: string;
+  loaded: boolean;
+  notLoadedReason: string;
+  bytes: string;
+  truncated: boolean;
+  scannerFindings: string[];
+}
+
 export interface ContextInspectorSummary {
   packId: string;
   workspaceRevision: string;
@@ -173,6 +216,8 @@ export interface ContextInspectorSummary {
   manifestRef: string;
   prefixCacheHits: number;
   prefixCacheMisses: number;
+  /** REQ-PX-207: the instruction layers the Core recorded for the task, as it recorded them. */
+  instructions: InstructionLayer[];
 }
 
 /** M10.1: one session's operations picture, from the Core's log. Counts
@@ -250,6 +295,8 @@ export interface BrowserViewDescription {
   osProcessId: number;
   reclaimed: boolean;
   certPending: { id: string; hostPort: string; url: string; error: string; issuer: string; subject: string; validStart: number; validExpiry: number; fingerprint: string } | null;
+  /** PX-216: the agent asked to open an origin nobody has decided; the pane shows the question. */
+  siteAsk: { id: string; origin: string; url: string; atMs: number } | null;
   changeSeq: number;
   refusals: number;
   useSeq: number;
@@ -339,8 +386,8 @@ export interface ModbitBridge {
   customizeExtensionUnload(sessionId: string, extensionId: string): Promise<{ extensionId: string; name: string; removed: string[] }>;
   /** Import another agent's configuration through the Core's importer; the person picks the folder in the OS dialog. It arrives quarantined. Null when they cancel. */
   customizeImport(sessionId: string, name: string): Promise<ImportReportInfo | null>;
-  /** Show a skill's or an extension's source folder (the path is the Core's listing, not the renderer's). */
-  customizeOpenSource(kind: "skill" | "extension", key: string, sessionId?: string, taskId?: string): Promise<{ opened: string }>;
+  /** Show a row's source in the file manager: a skill or an extension by the key the Core listed, or (REQ-PX-207) a rule by the source the Core recorded as loaded for the task (session and task required). */
+  customizeOpenSource(kind: "skill" | "extension" | "rule", key: string, sessionId?: string, taskId?: string): Promise<{ opened: string }>;
   coreStatus(): Promise<unknown>;
   /** M10.2: the updater's state and the three things a person can ask of it. */
   updateView(): Promise<UpdateViewDto>;
@@ -381,6 +428,10 @@ export interface ModbitBridge {
   computerFrame(taskId: string, artifactRef: string, full?: boolean): Promise<ComputerFrameInfo | null>;
   /** Opens a pane of System Settings. It never changes a setting. */
   computerOpenSettings(pane: PermissionName): Promise<OpenSettingsInfo>;
+  /** PX-215: the person's standing level per application, as the Core holds it; null while the Core is not answering. */
+  computerAccess(): Promise<ComputerAccessInfo | null>;
+  /** PX-215: set one application's standing level (`never` | `view_only` | `click` | `full`), or clear it with an empty level. The Core records the change and applies it from the agent's next action. */
+  computerSetAccess(application: string, name: string, level: string): Promise<ComputerAccessChangedInfo>;
   debugOpenedSettings(): Promise<{ pane: PermissionName; url: string; atMs: number }[]>;
   dockApprovals(sessionId: string, taskId?: string): Promise<DockApprovalView[]>;
   /** REQ-PX-058: the task's approvals the Core closed as expired (nobody answered before the recorded expiry). They can no longer be approved. */
@@ -460,6 +511,10 @@ export interface ModbitBridge {
   composerSideQuestion(taskId: string, text: string): Promise<SideAnswerView>;
   /** REQ-PX-210: one suggested next message for a task whose turn has ended with nothing queued, or the Core's refusal code. The Core charges the task; nothing is sent for the person. */
   composerSuggest(sessionId: string, taskId: string): Promise<SuggestionView>;
+  /** PX-214: ask the agent to fix one finding of the reviewer's latest result; `resultDigest` is the digest of the result on the screen. */
+  fixReviewFinding(sessionId: string, taskId: string, findingId: string, resultDigest: string): Promise<FixFindingAnswer>;
+  /** PX-214: set one finding aside; the Core records who and why. */
+  dismissReviewFinding(sessionId: string, taskId: string, findingId: string, resultDigest: string, reason: string): Promise<DismissFindingAnswer>;
   reviewBundle(taskId: string): Promise<ReviewBundleView>;
   codeView(taskId: string, path: string, expectedFileRevision?: string): Promise<CodeView>;
   decideReview(sessionId: string, taskId: string, decision: "ACCEPT" | "RETURN", rejected: { path: string; index: number }[], note: string, expectedWorkspaceRevision: string): Promise<{ taskState: string; commit: string; reverted: string[]; workspaceRevision: string }>;
@@ -469,6 +524,26 @@ export interface ModbitBridge {
   openPullRequest(sessionId: string, taskId: string, expectedCandidateRevision: string, update: boolean): Promise<PullRequestAckView>;
   /** PX-127: the Core reads the forge's check runs for the task's pull request and records them as `ci` evidence. */
   ingestCiResults(sessionId: string, taskId: string): Promise<{ commit: string; checks: number; refused: number; evidenceClass: string; offset: string }>;
+  /**
+   * PX-211: the Core reads the task's pull request again (state and checks) through the forge adapter and records it. With the
+   * session's archive-after-merge preference on, the read that first finds it merged archives the task (`archived`).
+   */
+  refreshPullRequest(sessionId: string, taskId: string): Promise<{ pullRequest: PullRequestStateView | null; offset: string; archived: boolean; archiveOffset: string; autoFixQueued: boolean; autoFixStopped: boolean; mergePhase: string }>;
+  /**
+   * PX-212: turn auto-fix on or off for the task. With it on, a failing check the Core reads or a comment its ingestion accepts
+   * queues one repair turn under the task's own run mode (its pushes still ask); at most `cap` from the time it is turned on.
+   */
+  setAutoFix(sessionId: string, taskId: string, enabled: boolean): Promise<{ enabled: boolean; attempts: number; cap: number; stopped: boolean; offset: string }>;
+  /** PX-213: ask for (or withdraw) merge when ready; the merge itself waits for a person's decision on its approval. */
+  setMergeWhenReady(
+    sessionId: string,
+    taskId: string,
+    enabled: boolean,
+    method: "merge" | "squash" | "rebase",
+  ): Promise<{ enabled: boolean; method: string; phase: string; detail: string; approvalId: string; headSha: string; mergeSha: string; offset: string }>;
+  /** PX-211: the session's archive-after-merge preference (off until set); `offset` 0 = never set. */
+  pullRequestPreferences(sessionId: string): Promise<{ archiveAfterMerge: boolean; offset: string }>;
+  setPullRequestPreferences(sessionId: string, archiveAfterMerge: boolean): Promise<{ archiveAfterMerge: boolean; offset: string }>;
   /** PX-127: the Core reads the pull request's comments; allowed authors' comments addressed to Modbit steer as untrusted input. */
   ingestReviewComments(sessionId: string, taskId: string): Promise<{ steered: number; ignored: number; alreadyTaken: number; offset: string }>;
   /** PX-001: decide a protected effect, naming the intent hash shown. */
@@ -496,6 +571,11 @@ export interface ModbitBridge {
   decideBrowserCertificate(browserSessionId: string, id: string, decision: "trust" | "reject"): Promise<boolean>;
   browserCertificateTrusts(): Promise<{ workspace: string; hostPort: string; fingerprint: string; issuer: string; subject: string; validExpiry: number; trustedAtMs: number }[]>;
   clearBrowserCertificateTrusts(): Promise<number>;
+  /** PX-216: answer the pane's question about a site: Allow once (one navigation), Always allow or Deny (remembered). Refused unless it is for the origin the question showed. */
+  decideBrowserSite(browserSessionId: string, id: string, origin: string, decision: "allow_once" | "allow_always" | "deny"): Promise<boolean>;
+  /** PX-216: the sites the person decided for (and the startup allows), and forgetting one so it asks again. */
+  browserSites(): Promise<{ origin: string; decision: "allow" | "deny"; decidedAtMs: number; source: "person" | "startup" }[]>;
+  removeBrowserSite(origin: string): Promise<boolean>;
   /** PX-073: sign out of the sites a session visited (cookies, storage, service workers, caches). */
   clearBrowserData(browserSessionId?: string): Promise<{ cleared: string[] }>;
   /** M7.6: take (USER) or return (AGENT) control of the session; the lease generation moves on every hand-over. */
@@ -515,6 +595,17 @@ export interface ModbitBridge {
   /** PX-023: hand one notification to the OS (main keeps a delivery log). */
   deliverNotification(id: string, title: string, body: string): Promise<{ shown: boolean }>;
   notificationLog(): Promise<{ id: string; title: string; body: string; atMs: number; shown: boolean }[]>;
+  /** REQ-PX-206: a click on a delivered notification; the task it names opens (null: Inbox). */
+  onNotificationOpen(cb: (target: { taskId: string | null }) => void): () => void;
+  /** REQ-PX-206: Inbox's record of updates, kept by main from the Core's headers; each read state is the Core's. */
+  inboxUpdates(): Promise<UpdatesView>;
+  /** Marks one update read: the Core's read marker for its task moves to the update's offset. */
+  markUpdateRead(updateId: string): Promise<UpdatesView>;
+  markAllUpdatesRead(): Promise<UpdatesView>;
+  /** The person clears the record. */
+  clearUpdates(): Promise<UpdatesView>;
+  /** The record gained an update. */
+  onInboxChanged(cb: () => void): () => void;
   subscribe(sessionId: string, afterOffset: string): Promise<void>;
   onEvent(cb: (e: unknown) => void): () => void;
   onCoreStatus(cb: (s: unknown) => void): () => void;
@@ -524,6 +615,20 @@ export interface ModbitBridge {
   debugIpcRefusals(): Promise<{ channel: string; senderId: number; frameUrl: string; reason: string; atMs: number }[]>;
   /** REQ-EV-0076: the renderer's own process endings and whether main loaded it again. */
   debugRendererLog(): Promise<{ reason: string; exitCode: number; reloaded: boolean; atMs: number }[]>;
+  // REQ-PX-203: pane windows. The app's window pops a pane of a task out, lists and brings forward the pane windows, and hears
+  // when one closes (with what it was showing) and when one asks it to show something. A pane window asks who it is, says what
+  // it shows, asks the app's window to show the task's review, a call or the waiting approval, and goes back to the dock. Main
+  // decides who may ask which; a pane window may ask nothing that decides an approval.
+  popOutPane(sessionId: string, taskId: string, kind: PaneWindowKind, state: PaneViewStateDto, title: string, size?: { width: number; height: number }): Promise<PaneWindowRef[]>;
+  paneWindows(): Promise<PaneWindowRef[]>;
+  focusPaneWindow(taskId: string, kind: PaneWindowKind): Promise<boolean>;
+  onPaneWindows(cb: (list: PaneWindowRef[]) => void): () => void;
+  onPaneReturned(cb: (r: PaneWindowRef & { state: PaneViewStateDto }) => void): () => void;
+  onPaneShow(cb: (r: { taskId: string; what: "review" | "approval" | "call"; toolCallId?: string }) => void): () => void;
+  paneContext(): Promise<PaneContextDto>;
+  reportPaneState(state: PaneViewStateDto): Promise<void>;
+  paneShow(request: { what: "review" } | { what: "approval" } | { what: "call"; toolCallId: string }): Promise<boolean>;
+  returnPane(state?: PaneViewStateDto): Promise<void>;
   // Onboarding (REQ-PX-022). The key goes to main and never comes back.
   setupProvider(provider: "openai" | "anthropic", apiKey: string, baseUrl?: string): Promise<{ endpoint: string; model: string; ok: boolean; errorCode: string; errorMessage: string; persisted: boolean; keychainAvailable: boolean }>;
   providerStatus(): Promise<{ configured: boolean; endpoints: string[]; stored: boolean; provider: string; keychainAvailable: boolean; keychainBackend: string }>;
@@ -605,6 +710,8 @@ const bridge: ModbitBridge = {
   computerCards: (sessionId, taskId) => ipcRenderer.invoke("computer:cards", sessionId, taskId),
   computerFrame: (taskId, artifactRef, full) => ipcRenderer.invoke("computer:frame", taskId, artifactRef, full ?? false),
   computerOpenSettings: (pane) => ipcRenderer.invoke("computer:openSettings", pane),
+  computerAccess: () => ipcRenderer.invoke("computer:access"),
+  computerSetAccess: (application, name, level) => ipcRenderer.invoke("computer:setAccess", application, name, level),
   debugOpenedSettings: () => ipcRenderer.invoke("debug:openedSettings"),
   dockApprovals: (sessionId, taskId) => ipcRenderer.invoke("approvals:dock", sessionId, taskId ?? ""),
   expiredApprovals: (sessionId, taskId) => ipcRenderer.invoke("approvals:expired", sessionId, taskId),
@@ -672,12 +779,19 @@ const bridge: ModbitBridge = {
   composerSetSendBehavior: (sessionId, taskId, whileRunning, sendNow) => ipcRenderer.invoke("composer:setSendBehavior", sessionId, taskId, whileRunning, sendNow),
   composerSideQuestion: (taskId, text) => ipcRenderer.invoke("composer:sideQuestion", taskId, text),
   composerSuggest: (sessionId, taskId) => ipcRenderer.invoke("composer:suggest", sessionId, taskId),
+  fixReviewFinding: (sessionId, taskId, findingId, resultDigest) => ipcRenderer.invoke("review:fixFinding", sessionId, taskId, findingId, resultDigest),
+  dismissReviewFinding: (sessionId, taskId, findingId, resultDigest, reason) => ipcRenderer.invoke("review:dismissFinding", sessionId, taskId, findingId, resultDigest, reason),
   reviewBundle: (taskId) => ipcRenderer.invoke("review:bundle", taskId),
   codeView: (taskId, path, expectedFileRevision) => ipcRenderer.invoke("review:codeView", taskId, path, expectedFileRevision ?? ""),
   decideReview: (sessionId, taskId, decision, rejected, note, expectedWorkspaceRevision) => ipcRenderer.invoke("review:decide", sessionId, taskId, decision, rejected, note, expectedWorkspaceRevision),
   applyUserPatch: (sessionId, taskId, patch) => ipcRenderer.invoke("review:patch", sessionId, taskId, patch),
   openPullRequest: (sessionId, taskId, expectedCandidateRevision, update) => ipcRenderer.invoke("review:pullRequest", sessionId, taskId, expectedCandidateRevision, update),
   ingestCiResults: (sessionId, taskId) => ipcRenderer.invoke("review:ingestCi", sessionId, taskId),
+  refreshPullRequest: (sessionId, taskId) => ipcRenderer.invoke("review:refreshPullRequest", sessionId, taskId),
+  setAutoFix: (sessionId, taskId, enabled) => ipcRenderer.invoke("review:setAutoFix", sessionId, taskId, enabled),
+  setMergeWhenReady: (sessionId, taskId, enabled, method) => ipcRenderer.invoke("review:setMergeWhenReady", sessionId, taskId, enabled, method),
+  pullRequestPreferences: (sessionId) => ipcRenderer.invoke("prefs:pullRequests", sessionId),
+  setPullRequestPreferences: (sessionId, archiveAfterMerge) => ipcRenderer.invoke("prefs:setPullRequests", sessionId, archiveAfterMerge),
   ingestReviewComments: (sessionId, taskId) => ipcRenderer.invoke("review:ingestComments", sessionId, taskId),
   resolveApproval: (sessionId, approvalId, approve, reason, intentHash) => ipcRenderer.invoke("approval:resolve", sessionId, approvalId, approve, reason, intentHash),
   respondToQuestion: (sessionId, taskId, questionId, optionId, text) => ipcRenderer.invoke("question:respond", sessionId, taskId, questionId, optionId, text),
@@ -696,6 +810,9 @@ const bridge: ModbitBridge = {
   decideBrowserCertificate: (browserSessionId, id, decision) => ipcRenderer.invoke("browser:certDecide", browserSessionId, id, decision),
   browserCertificateTrusts: () => ipcRenderer.invoke("browser:certTrusts"),
   clearBrowserCertificateTrusts: () => ipcRenderer.invoke("browser:certClear"),
+  decideBrowserSite: (browserSessionId, id, origin, decision) => ipcRenderer.invoke("browser:siteDecide", browserSessionId, id, origin, decision),
+  browserSites: () => ipcRenderer.invoke("browser:sites"),
+  removeBrowserSite: (origin) => ipcRenderer.invoke("browser:siteRemove", origin),
   clearBrowserData: (browserSessionId) => ipcRenderer.invoke("browser:clearData", browserSessionId),
   browserSession: (browserSessionId, taskId) => ipcRenderer.invoke("browser:session", browserSessionId, taskId),
   browserLog: () => ipcRenderer.invoke("browser:log"),
@@ -713,6 +830,23 @@ const bridge: ModbitBridge = {
   },
   deliverNotification: (id, title, body) => ipcRenderer.invoke("notify:deliver", id, title, body),
   notificationLog: () => ipcRenderer.invoke("notify:log"),
+  onNotificationOpen: (cb) => {
+    const listener = (_: unknown, t: unknown) => {
+      const taskId = (t as { taskId?: unknown } | null)?.taskId;
+      cb({ taskId: typeof taskId === "string" && /^[0-9a-f]{32}$/.test(taskId) ? taskId : null });
+    };
+    ipcRenderer.on("notify:open", listener);
+    return () => ipcRenderer.removeListener("notify:open", listener);
+  },
+  inboxUpdates: () => ipcRenderer.invoke("inbox:updates"),
+  markUpdateRead: (updateId) => ipcRenderer.invoke("inbox:markRead", updateId),
+  markAllUpdatesRead: () => ipcRenderer.invoke("inbox:markAllRead"),
+  clearUpdates: () => ipcRenderer.invoke("inbox:clear"),
+  onInboxChanged: (cb) => {
+    const listener = () => cb();
+    ipcRenderer.on("inbox:changed", listener);
+    return () => ipcRenderer.removeListener("inbox:changed", listener);
+  },
   subscribe: (sessionId, afterOffset) => ipcRenderer.invoke("events:subscribe", sessionId, afterOffset),
   onEvent: (cb) => {
     const listener = (_: unknown, e: unknown) => cb(e);
@@ -732,6 +866,28 @@ const bridge: ModbitBridge = {
   debugCoreInfo: () => ipcRenderer.invoke("debug:coreInfo"),
   debugIpcRefusals: () => ipcRenderer.invoke("debug:ipcRefusals"),
   debugRendererLog: () => ipcRenderer.invoke("debug:rendererLog"),
+  popOutPane: (sessionId, taskId, kind, state, title, size) => ipcRenderer.invoke("pane:popOut", sessionId, taskId, kind, state, title, size ?? null),
+  paneWindows: () => ipcRenderer.invoke("pane:windows"),
+  focusPaneWindow: (taskId, kind) => ipcRenderer.invoke("pane:focus", taskId, kind),
+  onPaneWindows: (cb) => {
+    const listener = (_: unknown, l: unknown) => cb(l as PaneWindowRef[]);
+    ipcRenderer.on("pane:windows", listener);
+    return () => ipcRenderer.removeListener("pane:windows", listener);
+  },
+  onPaneReturned: (cb) => {
+    const listener = (_: unknown, r: unknown) => cb(r as PaneWindowRef & { state: PaneViewStateDto });
+    ipcRenderer.on("pane:returned", listener);
+    return () => ipcRenderer.removeListener("pane:returned", listener);
+  },
+  onPaneShow: (cb) => {
+    const listener = (_: unknown, r: unknown) => cb(r as { taskId: string; what: "review" | "approval" | "call"; toolCallId?: string });
+    ipcRenderer.on("pane:show", listener);
+    return () => ipcRenderer.removeListener("pane:show", listener);
+  },
+  paneContext: () => ipcRenderer.invoke("pane:context"),
+  reportPaneState: (state) => ipcRenderer.invoke("pane:state", state),
+  paneShow: (request) => ipcRenderer.invoke("pane:show", request),
+  returnPane: (state) => ipcRenderer.invoke("pane:return", state),
   setupProvider: (provider, apiKey, baseUrl) => ipcRenderer.invoke("onboarding:provider", provider, apiKey, baseUrl ?? ""),
   providerStatus: () => ipcRenderer.invoke("onboarding:providerStatus"),
   trustRepository: (sessionId, workspaceRoot) => ipcRenderer.invoke("onboarding:trust", sessionId, workspaceRoot),

@@ -1,0 +1,11 @@
+{
+  "expected": {
+    "application": "Form App",
+    "bundleId": "org.example.fixture.form",
+    "changed": true,
+    "level": "click",
+    "offset": "9007199254740995",
+    "previous": "view_only"
+  },
+  "type": "modbit.v1.ComputerAccessChanged"
+}

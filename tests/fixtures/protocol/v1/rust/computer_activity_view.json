@@ -2,6 +2,8 @@
   "expected": {
     "entries": [
       {
+        "accessLevel": "",
+        "accessNeeded": "",
         "application": "Form App",
         "approvalId": "01a08f33-0d97-7d40-b299-f8a7bc5cda61",
         "artifactDigest": "",

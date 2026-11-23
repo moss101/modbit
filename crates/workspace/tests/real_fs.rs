@@ -345,27 +345,66 @@ fn stale_preconditions_are_rejected_and_nothing_is_written() {
     );
 }
 
-#[cfg(unix)]
 #[test]
+// The Windows arm clears the read-only attribute it set on the target; the
+// lint guards against world-writable files on Unix, where this code is
+// compiled out.
+#[allow(clippy::permissions_set_readonly_false)]
 fn replacement_is_atomic_when_the_rename_fails() {
-    use std::os::unix::fs::PermissionsExt;
     let (root, state) = setup();
     let mut ws = WorkspaceService::open(root.path(), state.path(), &[]).unwrap();
-    // Make the directory read-only so the rename (and temp create) fails mid-operation.
-    std::fs::set_permissions(
-        root.path().join("src"),
-        std::fs::Permissions::from_mode(0o555),
-    )
-    .unwrap();
+    // Make the replacement fail mid-operation. Unix: a read-only directory
+    // blocks the temp create/rename. Windows ignores the directory read-only
+    // attribute for writes, so the lever is the read-only attribute on the
+    // target itself: the temp file is written, then the rename over the
+    // read-only target fails with access denied (the same failed-rename
+    // point, original left intact).
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(
+            root.path().join("src"),
+            std::fs::Permissions::from_mode(0o555),
+        )
+        .unwrap();
+    }
+    #[cfg(windows)]
+    {
+        let target = root.path().join("src/main.rs");
+        let mut perm = std::fs::metadata(&target).unwrap().permissions();
+        perm.set_readonly(true);
+        std::fs::set_permissions(&target, perm).unwrap();
+    }
     let err = ws
         .atomic_replace("src/main.rs", b"partial", WritePrecondition::default())
         .unwrap_err();
     assert!(matches!(err, Error::Io { .. }), "{err}");
-    std::fs::set_permissions(
-        root.path().join("src"),
-        std::fs::Permissions::from_mode(0o755),
-    )
-    .unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(
+            root.path().join("src"),
+            std::fs::Permissions::from_mode(0o755),
+        )
+        .unwrap();
+    }
+    #[cfg(windows)]
+    {
+        let target = root.path().join("src/main.rs");
+        let mut perm = std::fs::metadata(&target).unwrap().permissions();
+        perm.set_readonly(false);
+        std::fs::set_permissions(&target, perm).unwrap();
+    }
+    assert!(
+        std::fs::read_dir(root.path().join("src"))
+            .unwrap()
+            .all(|e| !e
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .starts_with(".modbit-tmp")),
+        "no temp files leak after the failed rename"
+    );
     assert_eq!(
         std::fs::read_to_string(root.path().join("src/main.rs")).unwrap(),
         "fn main() {}\n",

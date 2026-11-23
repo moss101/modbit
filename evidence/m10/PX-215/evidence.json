@@ -1,0 +1,73 @@
+{
+  "task": "PX-215",
+  "requirements": [
+    "REQ-PX-215",
+    "QUAL-PX-215",
+    "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-215"
+  ],
+  "scenarios": [
+    "QUAL-PX-215 / PX-E2E-215"
+  ],
+  "decision_record": "DR-PX-2026-11-11-021 (MWS-19)",
+  "tier": "release-critical",
+  "branch": "claude/pensive-bardeen-38b766",
+  "status": "built and proven locally on macOS arm64; status E2E_PROVEN; not COMPLETE (the owner seals after CI)",
+  "audit": {
+    "computer_runtime": "PRODUCTION-WORKING (grant, approval, administrative policy, never-driven list, typed refusals)",
+    "standing_level": "NOT-FOUND",
+    "refusal_reason_on_the_card": "NOT-FOUND (a refusal made in prepare left no record and prepare had no tool call id)",
+    "first_missing_link": "no record of the person's standing choice and no check against it"
+  },
+  "protocol": {
+    "added": [
+      "GetComputerAccess / ComputerAccessView / ComputerAccessEntry / ComputerAccessApplication / ComputerAccessChange",
+      "SetComputerAccess / ComputerAccessChanged",
+      "ComputerActivityEntry.access_level = 25, access_needed = 26 (kind ACCESS_REFUSED)",
+      "command types GetComputerAccess (events.subscribe), SetComputerAccess (approval.resolve)"
+    ],
+    "canonical_log": [
+      "AggregateType::ComputerAccess 'computer_access': ComputerAccessSet / ComputerAccessCleared on the Core's ledger session, actor user:<id>",
+      "TaskEvent::ComputerAccessRefused { control_id, tool_call_id, bundle_id, application, level, needed, reason } on the task's aggregate"
+    ],
+    "no_new_refusal_code": "the refusal is ACTION_UNSAFE with standing_access facts; docs/66's 25 codes are unchanged",
+    "fixtures": [
+      "tests/fixtures/protocol/v1/{rust,ts}/computer_access_view",
+      "get_computer_access",
+      "set_computer_access",
+      "computer_access_changed",
+      "computer_activity_access_refused"
+    ]
+  },
+  "tests": [
+    "crates/computer/src/access.rs (unit)",
+    "crates/computer/src/runtime/tests.rs (PX-215 section)",
+    "services/modbit-core/tests/px_computer.rs (qual_px_215_*)",
+    "apps/desktop/e2e/px-215-standing-access.spec.ts",
+    "apps/desktop/src/main/computer-access-ipc.test.ts",
+    "apps/desktop/src/renderer/computer/model.test.ts"
+  ],
+  "results": {
+    "core_px_215": "7 passed against the real Core binary and the real fixture actuator process",
+    "runtime_unit": "access.rs 5, runtime 7",
+    "playwright_px_215": "2 of 2; 6 of 6 with --repeat-each 3; neighbours computer-surface (8), gallery-computer, px-208, workers (3): 16 passed in one run",
+    "mutations": "4 of 4 caught in the Core tests, M2 also in the real app",
+    "desktop_unit": "476 passed",
+    "surface_protocol_roundtrip": "63 passed",
+    "core_suite": "697 passed, 0 failed, 8 ignored, 48 binaries (cargo test -p modbit-core --locked --no-fail-fast)",
+    "other_suites": "195 passed, 0 failed (modbit-computer, modbit-domain, modbit-tools, modbit-event-store, protocol-fixtures)",
+    "lint": "cargo fmt --check, cargo clippy --workspace --all-targets --locked (0 warnings), tools/lint_policy.sh, architecture-lint deps, spawns, credentials, modules (0 violations), protocol-fixtures --check, pnpm -r typecheck: all exit 0"
+  },
+  "files": [
+    "TASK_CARD.md",
+    "core-suite.log",
+    "other-suites.log",
+    "px215-core.log",
+    "px215-runtime-unit.log",
+    "px215-e2e.log",
+    "px215-e2e-repeat3.log",
+    "mutation-checks-2026-11-20.txt",
+    "after/*.png"
+  ],
+  "remaining_gaps": "CI on all platforms; owner review and sealing; the signed macOS helper (PX-071) was not used; PX-216 preload pin conflict expected at merge",
+  "limitations": "see TASK_CARD.md"
+}

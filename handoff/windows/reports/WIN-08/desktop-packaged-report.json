@@ -1,0 +1,1979 @@
+{
+  "config": {
+    "argv": [
+      "D:\\tools\\node\\node.exe",
+      "D:\\modbit-setup\\work\\apps\\desktop\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "-c",
+      "e2e/playwright.packaged.config.ts"
+    ],
+    "configFile": "D:\\modbit-setup\\work\\apps\\desktop\\e2e\\playwright.packaged.config.ts",
+    "rootDir": "D:/modbit-setup/work/apps/desktop/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "D:/modbit-setup/work/apps/desktop/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "D:/modbit-setup/work/apps/desktop/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "/packaged.*\\.spec\\.ts/",
+          "/(^|[\\\\/])conversation\\.spec\\.ts$/",
+          "/(^|[\\\\/])approvals\\.spec\\.ts$/",
+          "/(^|[\\\\/])supervision\\.spec\\.ts$/",
+          "/(^|[\\\\/])perf-budgets\\.spec\\.ts$/"
+        ],
+        "timeout": 180000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "../../target/desktop-packaged-report.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "approvals.spec.ts",
+      "file": "approvals.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "PX-058: a pending effect docks a card with the exact intent and the Core's reason; a stale hash is refused; it survives a reload and a Core kill; Run executes it once",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 240000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 11206,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "text": "[electron] modbit-core: hardening: process hardening is not implemented on this platform (no core-dump limit, no attach denial, no loader-variable removal)\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 4ms\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'approval:resolve': RejectedError: INTENT_MISMATCH: the approval binds intent c04f2abb0bb2a956cd98f16358300adeae6c7208c2081ed23eb6373c3e16a6bf and the decision names 0000000000000000000000000000000000000000000000000000000000000000; reload the approval before deciding\n    at _CoreClient.dispatch (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3890:61)\n    at Socket.<anonymous> (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3866:16)\n\u001b[90m    at Socket.emit (node:events:514:28)\u001b[39m\n\u001b[90m    at addChunk (node:internal/streams/readable:567:12)\u001b[39m\n\u001b[90m    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)\u001b[39m\n\u001b[90m    at Readable.push (node:internal/streams/readable:398:5)\u001b[39m\n\u001b[90m    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)\u001b[39m {\n  code: \u001b[32m'INTENT_MISMATCH'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] modbit-desktop: core restart scheduled: connection lost: connection closed\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'conversation:workGraph': ProtocolError: DISCONNECTED: connection closed\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at Socket.<anonymous> (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3848:42)\n\u001b[90m    at Socket.emit (node:events:514:28)\u001b[39m\n\u001b[90m    at Pipe.<anonymous> (node:net:362:12)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'conversation:plan': ProtocolError: DISCONNECTED: connection closed\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at Socket.<anonymous> (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3848:42)\n\u001b[90m    at Socket.emit (node:events:514:28)\u001b[39m\n\u001b[90m    at Pipe.<anonymous> (node:net:362:12)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9553:41\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9548:28\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'checkpoints:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9644:51\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'conversation:markRead': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:7995:17\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'accounting:get': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9628:56\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'task:economics': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at requireClient (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11252:19\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: hardening: process hardening is not implemented on this platform (no core-dump limit, no attach denial, no loader-variable removal)\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: recovery complete: boot_generation=2 events_verified=46 aggregates=11 projections_rebuilt=false sessions=1 tasks=1 in 20ms\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: suspended 1 running task(s) after restart\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: reattached to the terminal broker a previous Core left alive\n"
+                    },
+                    {
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:58411/489fe551-0331-4e18-8360-856888624d25\r\nFor help, see: https://nodejs.org/learn/getting-started/debugging\r\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9165:49\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'composer:queue': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8214:23\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11667:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\nError occurred in handler for 'terminal:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at requireClient (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at TerminalHost.client (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11134:9)\n    at TerminalHost.list (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10377:26)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11721:54\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'conversation:approvals': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:7975:27\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:7955:37\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:49:18.883Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "972180bc72c2792ab3fa-0ce467d33260c9ce53f2",
+          "file": "approvals.spec.ts",
+          "line": 42,
+          "column": 1
+        },
+        {
+          "title": "PX-058: three pending approvals form a deck, oldest first, each decided on its own; a bare key never decides another agent's card; Skip is a typed user decision",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 300000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 15559,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "text": "[electron] modbit-core: hardening: process hardening is not implemented on this platform (no core-dump limit, no attach denial, no loader-variable removal)\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 2ms\n"
+                    },
+                    {
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:51182/a2000c38-b354-4622-a74b-09e77095f8ab\r\nFor help, see: https://nodejs.org/learn/getting-started/debugging\r\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:7955:37\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9165:49\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at requireClient (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11328:19\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'checkpoints:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9644:51\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9548:28\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:49:30.138Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "972180bc72c2792ab3fa-6d559503182a68830a0c",
+          "file": "approvals.spec.ts",
+          "line": 104,
+          "column": 1
+        },
+        {
+          "title": "PX-058: an effect that cannot be undone asks twice, and a key typed into a text field never decides; Always is not offered for it; the file is only deleted after the second confirmation",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 240000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 8143,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "text": "[electron] modbit-core: hardening: process hardening is not implemented on this platform (no core-dump limit, no attach denial, no loader-variable removal)\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 2ms\n"
+                    },
+                    {
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:61399/6cfe26f4-0fa6-486e-b8a5-268ddb6ddfce\r\nFor help, see: https://nodejs.org/learn/getting-started/debugging\r\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'terminal:list': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'computer:presence': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'automations:taskHeaders': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'conversation:transcript': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'approvals:dock': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: connection ended: io: The pipe is being closed. (os error 232)\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'automations:taskHeaders': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10195:17\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'composer:queue': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8214:23\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11667:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'conversation:workGraph': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:7967:39\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'conversation:plan': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:7971:34\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'changes:state': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8638:46\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'composer:suggest': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8310:17\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11667:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9165:49\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:7962:26\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:7955:37\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:49:45.711Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "972180bc72c2792ab3fa-9e84c2ea1af25720cb27",
+          "file": "approvals.spec.ts",
+          "line": 201,
+          "column": 1
+        },
+        {
+          "title": "PX-057/058: Allowlist plus Always on a card makes a durable rule through the Core; the same kind of command then runs silently and its receipt names the rule; the rule can be revoked",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 300000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 10119,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "text": "[electron] modbit-core: hardening: process hardening is not implemented on this platform (no core-dump limit, no attach denial, no loader-variable removal)\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 3ms\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'rules:add': RejectedError: PATTERN_WRAPPER: `sh` runs whatever it is given, so a rule that names it covers everything; allow the program it would run instead\n    at _CoreClient.dispatch (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3890:61)\n    at Socket.<anonymous> (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3866:16)\n\u001b[90m    at Socket.emit (node:events:514:28)\u001b[39m\n\u001b[90m    at addChunk (node:internal/streams/readable:567:12)\u001b[39m\n\u001b[90m    at readableAddChunkPushByteMode (node:internal/streams/readable:518:3)\u001b[39m\n\u001b[90m    at Readable.push (node:internal/streams/readable:398:5)\u001b[39m\n\u001b[90m    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)\u001b[39m {\n  code: \u001b[32m'PATTERN_WRAPPER'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:61413/085e6f56-c326-4cac-ac69-d247d8623da9\r\nFor help, see: https://nodejs.org/learn/getting-started/debugging\r\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9553:41\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9548:28\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:49:53.882Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "972180bc72c2792ab3fa-55dc6526bbf66a85bb5e",
+          "file": "approvals.spec.ts",
+          "line": 246,
+          "column": 1
+        },
+        {
+          "title": "PX-057: the widest preset needs its warning and still asks for the always-ask classes; everything else in the envelope runs without asking",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 300000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 8371,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "text": "[electron] modbit-core: hardening: process hardening is not implemented on this platform (no core-dump limit, no attach denial, no loader-variable removal)\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 2ms\n"
+                    },
+                    {
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:52609/75729478-b686-415e-912a-54677abee425\r\nFor help, see: https://nodejs.org/learn/getting-started/debugging\r\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'conversation:markRead': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'checkpoints:list': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'attention:list': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'composer:queue': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'terminal:list': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'conversation:approvals': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:7975:27\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:7955:37\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9165:49\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'approvals:expired': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9550:68\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:50:04.021Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "972180bc72c2792ab3fa-218dfe070da10f8239f3",
+          "file": "approvals.spec.ts",
+          "line": 325,
+          "column": 1
+        },
+        {
+          "title": "PX-057/058: the main process rejects invalid arguments before the Core sees them",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1682,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "text": "[electron] modbit-core: hardening: process hardening is not implemented on this platform (no core-dump limit, no attach denial, no loader-variable removal)\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 2ms\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'runmode:set': Error: BAD_ARGUMENT: mode must be one of ASK, ALLOWLIST, ALLOWLIST_SANDBOX, RUN_EVERYTHING, AUTONOMOUS\n    at bad3 (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8355:9)\n    at validRunMode (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8361:63)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9596:18\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'runmode:set': Error: BAD_ARGUMENT: task id must be 32 hex chars\n    at Object.requireTaskId [as taskId] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11152:55)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9595:19\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'runmode:set': Error: BAD_ARGUMENT: acknowledgeRisk must be a boolean\n    at bad3 (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8355:9)\n    at validBool (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8365:38)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9597:17\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'rules:add': Error: BAD_ARGUMENT: pattern must be 1..16 tokens\n    at bad3 (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8355:9)\n    at validPattern (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8383:68)\n    at validRuleInput (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8396:19)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9611:18\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'rules:add': Error: BAD_ARGUMENT: scope must be TASK, REPO or USER\n    at bad3 (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8355:9)\n    at validRuleInput (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8397:78)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9611:18\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'rules:add': Error: BAD_ARGUMENT: expiresAtMs must be a future time or 0\n    at bad3 (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8355:9)\n    at validRuleInput (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8400:153)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9611:18\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'rules:revoke': Error: BAD_ARGUMENT: ruleId must be a rule id\n    at bad3 (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8355:9)\n    at validRuleId (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8390:92)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9619:20\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'approval:allowAlways': Error: BAD_ARGUMENT: approvalId must be an approval id\n    at bad3 (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8355:9)\n    at validApprovalId (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8370:30)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9569:24\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'approval:allowAlways': Error: BAD_ARGUMENT: intentHash must be the 64-hex-digit intent the card showed\n    at bad3 (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8355:9)\n    at validIntentHash (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8374:66)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9570:18\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'checkpoints:restore': Error: BAD_ARGUMENT: checkpointId must be a checkpoint id\n    at bad3 (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8355:9)\n    at validTarget (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8413:82)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9671:20\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'checkpoints:restore': Error: BAD_ARGUMENT: a kept path must be a path inside the workspace\n    at bad3 (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8355:9)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8440:175\n    at Array.map (<anonymous>)\n    at validKeepPaths (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8439:12)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9679:23\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'checkpoints:restore': Error: BAD_ARGUMENT: an expected entry needs a sha256 or an empty hash\n    at bad3 (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8355:9)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8450:118\n    at Array.map (<anonymous>)\n    at validExpected (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8447:12)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9678:22\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'checkpoints:restore': Error: BAD_ARGUMENT: name the checkpoint by one of checkpointId, turnId, turnOrdinal or name\n    at bad3 (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8355:9)\n    at validTarget (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8433:25)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9671:20\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'checkpoints:fork': Error: BAD_ARGUMENT: a fork names a checkpoint, a turn or a turn number\n    at bad3 (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8355:9)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9704:33\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'checkpoints:preview': Error: BAD_ARGUMENT: task id must be 32 hex chars\n    at Object.requireTaskId [as taskId] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11152:55)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9647:19\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'budgets:set': Error: BAD_ARGUMENT: maxWallMs must be a decimal count\n    at bad3 (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8355:9)\n    at validCount (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:8461:62)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9636:23\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'accounting:get': Error: BAD_ARGUMENT: task id must be 32 hex chars\n    at Object.requireTaskId [as taskId] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11152:55)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9627:19\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:52632/666b16f9-a3a8-4474-9b0b-5ea0668f5624\r\nFor help, see: https://nodejs.org/learn/getting-started/debugging\r\n"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:50:12.408Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "972180bc72c2792ab3fa-40e2552367a9c2d21e62",
+          "file": "approvals.spec.ts",
+          "line": 375,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "conversation.spec.ts",
+      "file": "conversation.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "PX-047: a streamed answer appears incrementally, is never shown as final while open, only grows, and is final when the stream completes",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4515,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "text": "[electron] modbit-core: hardening: process hardening is not implemented on this platform (no core-dump limit, no attach denial, no loader-variable removal)\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 2ms\n"
+                    },
+                    {
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:52637/8928f8e3-8689-40d1-b7d4-b464069fd262\r\nFor help, see: https://nodejs.org/learn/getting-started/debugging\r\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'checkpoints:list': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'projects:list': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'conversation:approvals': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:7975:27\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'automations:taskHeaders': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10195:17\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:50:14.143Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e7085d83df82ab600126-9ae52b138d3fd481340d",
+          "file": "conversation.spec.ts",
+          "line": 24,
+          "column": 1
+        },
+        {
+          "title": "PX-047: a reload in the middle of a stream resumes it: the partial text comes back and the rest follows",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5871,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "text": "[electron] modbit-core: hardening: process hardening is not implemented on this platform (no core-dump limit, no attach denial, no loader-variable removal)\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 3ms\n"
+                    },
+                    {
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:52653/4c3fa646-6405-42f4-a08f-d0af41bccda3\r\nFor help, see: https://nodejs.org/learn/getting-started/debugging\r\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:7955:37\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9165:49\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'terminal:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at requireClient (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at TerminalHost.client (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11134:9)\n    at TerminalHost.list (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10377:26)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11721:54\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:50:18.676Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e7085d83df82ab600126-206d84a03735b854b048",
+          "file": "conversation.spec.ts",
+          "line": 71,
+          "column": 1
+        },
+        {
+          "title": "PX-047: killing the Core mid-stream shows the response as stopped, with its cause, never as an answer",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5571,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "text": "[electron] modbit-core: hardening: process hardening is not implemented on this platform (no core-dump limit, no attach denial, no loader-variable removal)\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 6ms\n"
+                    },
+                    {
+                      "text": "[electron] modbit-desktop: core restart scheduled: connection lost: connection closed\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'changes:state': ProtocolError: DISCONNECTED: connection closed\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at Socket.<anonymous> (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3848:42)\n\u001b[90m    at Socket.emit (node:events:514:28)\u001b[39m\n\u001b[90m    at Pipe.<anonymous> (node:net:362:12)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'conversation:workGraph': ProtocolError: DISCONNECTED: connection closed\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at Socket.<anonymous> (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3848:42)\n\u001b[90m    at Socket.emit (node:events:514:28)\u001b[39m\n\u001b[90m    at Pipe.<anonymous> (node:net:362:12)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'conversation:plan': ProtocolError: DISCONNECTED: connection closed\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at Socket.<anonymous> (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3848:42)\n\u001b[90m    at Socket.emit (node:events:514:28)\u001b[39m\n\u001b[90m    at Pipe.<anonymous> (node:net:362:12)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'modeproposals:list': ProtocolError: DISCONNECTED: connection closed\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at Socket.<anonymous> (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3848:42)\n\u001b[90m    at Socket.emit (node:events:514:28)\u001b[39m\n\u001b[90m    at Pipe.<anonymous> (node:net:362:12)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'automations:taskHeaders': ProtocolError: DISCONNECTED: connection closed\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at Socket.<anonymous> (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3848:42)\n\u001b[90m    at Socket.emit (node:events:514:28)\u001b[39m\n\u001b[90m    at Pipe.<anonymous> (node:net:362:12)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'conversation:transcript': ProtocolError: DISCONNECTED: connection closed\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at Socket.<anonymous> (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3848:42)\n\u001b[90m    at Socket.emit (node:events:514:28)\u001b[39m\n\u001b[90m    at Pipe.<anonymous> (node:net:362:12)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'attention:list': ProtocolError: DISCONNECTED: connection closed\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at Socket.<anonymous> (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3848:42)\n\u001b[90m    at Socket.emit (node:events:514:28)\u001b[39m\n\u001b[90m    at Pipe.<anonymous> (node:net:362:12)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'checkpoints:list': ProtocolError: DISCONNECTED: connection closed\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at Socket.<anonymous> (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3848:42)\n\u001b[90m    at Socket.emit (node:events:514:28)\u001b[39m\n\u001b[90m    at Pipe.<anonymous> (node:net:362:12)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'approvals:dock': ProtocolError: DISCONNECTED: connection closed\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at Socket.<anonymous> (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3848:42)\n\u001b[90m    at Socket.emit (node:events:514:28)\u001b[39m\n\u001b[90m    at Pipe.<anonymous> (node:net:362:12)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'conversation:workGraph': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:7967:39\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'conversation:plan': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:7971:34\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:7955:37\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'accounting:get': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9628:56\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'task:economics': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at requireClient (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11252:19\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'conversation:markRead': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:7995:17\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'terminal:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at requireClient (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at TerminalHost.client (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11134:9)\n    at TerminalHost.list (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10377:26)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11721:54\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: hardening: process hardening is not implemented on this platform (no core-dump limit, no attach denial, no loader-variable removal)\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: recovery complete: boot_generation=2 events_verified=32 aggregates=9 projections_rebuilt=false sessions=1 tasks=1 in 11ms\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: suspended 1 running task(s) after restart\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: closed 1 open assistant stream(s) as aborted by recovery\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: reattached to the terminal broker a previous Core left alive\n"
+                    },
+                    {
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:55361/9198b0ea-062c-465a-86cf-cbbec5be1bc2\r\nFor help, see: https://nodejs.org/learn/getting-started/debugging\r\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'computer:presence': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'attention:list': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\nError occurred in handler for 'modeproposals:list': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\nError occurred in handler for 'composer:queue': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\nError occurred in handler for 'conversation:transcript': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'checkpoints:list': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\nError occurred in handler for 'accounting:get': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\nError occurred in handler for 'task:economics': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'projects:list': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\nError occurred in handler for 'approvals:dock': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'automations:taskHeaders': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10195:17\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:50:24.554Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e7085d83df82ab600126-7002736c232ee16c4864",
+          "file": "conversation.spec.ts",
+          "line": 103,
+          "column": 1
+        },
+        {
+          "title": "PX-047: scrolling up freezes follow, the pill counts later messages, the jump returns to the tail; planted markup and instructions render as inert text",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5421,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "text": "[electron] modbit-core: hardening: process hardening is not implemented on this platform (no core-dump limit, no attach denial, no loader-variable removal)\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 5ms\n"
+                    },
+                    {
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:55377/1eb939f1-8cea-42ab-ba9d-6ad975185157\r\nFor help, see: https://nodejs.org/learn/getting-started/debugging\r\n"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:50:30.140Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e7085d83df82ab600126-480a32750b4a5bf0ef02",
+          "file": "conversation.spec.ts",
+          "line": 132,
+          "column": 1
+        },
+        {
+          "title": "PX-047: tool steps fold by density without changing the rows; a question is answered inline and an approval on the docked card with the exact intent, neither folded away; both survive a reload and a Core restart",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 14101,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "text": "[electron] modbit-core: hardening: process hardening is not implemented on this platform (no core-dump limit, no attach denial, no loader-variable removal)\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 4ms\n"
+                    },
+                    {
+                      "text": "[electron] modbit-desktop: core restart scheduled: connection lost: connection closed\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'attention:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at requireClient (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11328:19\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: hardening: process hardening is not implemented on this platform (no core-dump limit, no attach denial, no loader-variable removal)\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: recovery complete: boot_generation=2 events_verified=129 aggregates=25 projections_rebuilt=false sessions=1 tasks=1 in 7ms\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: suspended 1 running task(s) after restart\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: reattached to the terminal broker a previous Core left alive\n"
+                    },
+                    {
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:55387/5c8e9210-f07f-480d-adf2-b5f29ac34cd8\r\nFor help, see: https://nodejs.org/learn/getting-started/debugging\r\n"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:50:35.573Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e7085d83df82ab600126-4c886dd55a7c24f5edf3",
+          "file": "conversation.spec.ts",
+          "line": 190,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "packaged-update.spec.ts",
+      "file": "packaged-update.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "a build with no pinned key verifies nothing and offers no update",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 600000,
+              "annotations": [
+                {
+                  "type": "serial",
+                  "location": {
+                    "file": "D:\\modbit-setup\\work\\apps\\desktop\\e2e\\packaged-update.spec.ts",
+                    "line": 0,
+                    "column": 0
+                  }
+                },
+                {
+                  "type": "skip",
+                  "description": "the packaged update suite runs on macOS until the NSIS and AppImage helper paths have their own CI proof",
+                  "location": {
+                    "file": "D:\\modbit-setup\\work\\apps\\desktop\\e2e\\packaged-update.spec.ts",
+                    "line": 17,
+                    "column": 6
+                  }
+                }
+              ],
+              "expectedStatus": "skipped",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": -1,
+                  "parallelIndex": -1,
+                  "status": "skipped",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:50:49.691Z",
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "D:\\modbit-setup\\work\\apps\\desktop\\e2e\\packaged-update.spec.ts",
+                        "line": 0,
+                        "column": 0
+                      }
+                    },
+                    {
+                      "type": "skip",
+                      "description": "the packaged update suite runs on macOS until the NSIS and AppImage helper paths have their own CI proof",
+                      "location": {
+                        "file": "D:\\modbit-setup\\work\\apps\\desktop\\e2e\\packaged-update.spec.ts",
+                        "line": 17,
+                        "column": 6
+                      }
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "0b4c10b7666e73647a7d-d4df3a101f325bd858b1",
+          "file": "packaged-update.spec.ts",
+          "line": 90,
+          "column": 1
+        },
+        {
+          "title": "hostile feeds are refused with their own reason and nothing is staged",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 600000,
+              "annotations": [
+                {
+                  "type": "serial",
+                  "location": {
+                    "file": "D:\\modbit-setup\\work\\apps\\desktop\\e2e\\packaged-update.spec.ts",
+                    "line": 0,
+                    "column": 0
+                  }
+                },
+                {
+                  "type": "skip",
+                  "description": "the packaged update suite runs on macOS until the NSIS and AppImage helper paths have their own CI proof",
+                  "location": {
+                    "file": "D:\\modbit-setup\\work\\apps\\desktop\\e2e\\packaged-update.spec.ts",
+                    "line": 17,
+                    "column": 6
+                  }
+                }
+              ],
+              "expectedStatus": "skipped",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": -1,
+                  "parallelIndex": -1,
+                  "status": "skipped",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:50:49.691Z",
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "D:\\modbit-setup\\work\\apps\\desktop\\e2e\\packaged-update.spec.ts",
+                        "line": 0,
+                        "column": 0
+                      }
+                    },
+                    {
+                      "type": "skip",
+                      "description": "the packaged update suite runs on macOS until the NSIS and AppImage helper paths have their own CI proof",
+                      "location": {
+                        "file": "D:\\modbit-setup\\work\\apps\\desktop\\e2e\\packaged-update.spec.ts",
+                        "line": 17,
+                        "column": 6
+                      }
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "0b4c10b7666e73647a7d-353702eb58dc5f49e516",
+          "file": "packaged-update.spec.ts",
+          "line": 108,
+          "column": 1
+        },
+        {
+          "title": "the device policy's minimum_version is honored from the Core's own policy reader",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 600000,
+              "annotations": [
+                {
+                  "type": "serial",
+                  "location": {
+                    "file": "D:\\modbit-setup\\work\\apps\\desktop\\e2e\\packaged-update.spec.ts",
+                    "line": 0,
+                    "column": 0
+                  }
+                },
+                {
+                  "type": "skip",
+                  "description": "the packaged update suite runs on macOS until the NSIS and AppImage helper paths have their own CI proof",
+                  "location": {
+                    "file": "D:\\modbit-setup\\work\\apps\\desktop\\e2e\\packaged-update.spec.ts",
+                    "line": 17,
+                    "column": 6
+                  }
+                }
+              ],
+              "expectedStatus": "skipped",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": -1,
+                  "parallelIndex": -1,
+                  "status": "skipped",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:50:49.691Z",
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "D:\\modbit-setup\\work\\apps\\desktop\\e2e\\packaged-update.spec.ts",
+                        "line": 0,
+                        "column": 0
+                      }
+                    },
+                    {
+                      "type": "skip",
+                      "description": "the packaged update suite runs on macOS until the NSIS and AppImage helper paths have their own CI proof",
+                      "location": {
+                        "file": "D:\\modbit-setup\\work\\apps\\desktop\\e2e\\packaged-update.spec.ts",
+                        "line": 17,
+                        "column": 6
+                      }
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "0b4c10b7666e73647a7d-02be2246a54baa41d714",
+          "file": "packaged-update.spec.ts",
+          "line": 160,
+          "column": 1
+        },
+        {
+          "title": "a SIGKILL during the download leaves nothing that looks verified, and the next check succeeds",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 600000,
+              "annotations": [
+                {
+                  "type": "serial",
+                  "location": {
+                    "file": "D:\\modbit-setup\\work\\apps\\desktop\\e2e\\packaged-update.spec.ts",
+                    "line": 0,
+                    "column": 0
+                  }
+                },
+                {
+                  "type": "skip",
+                  "description": "the packaged update suite runs on macOS until the NSIS and AppImage helper paths have their own CI proof",
+                  "location": {
+                    "file": "D:\\modbit-setup\\work\\apps\\desktop\\e2e\\packaged-update.spec.ts",
+                    "line": 17,
+                    "column": 6
+                  }
+                }
+              ],
+              "expectedStatus": "skipped",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": -1,
+                  "parallelIndex": -1,
+                  "status": "skipped",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:50:49.691Z",
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "D:\\modbit-setup\\work\\apps\\desktop\\e2e\\packaged-update.spec.ts",
+                        "line": 0,
+                        "column": 0
+                      }
+                    },
+                    {
+                      "type": "skip",
+                      "description": "the packaged update suite runs on macOS until the NSIS and AppImage helper paths have their own CI proof",
+                      "location": {
+                        "file": "D:\\modbit-setup\\work\\apps\\desktop\\e2e\\packaged-update.spec.ts",
+                        "line": 17,
+                        "column": 6
+                      }
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "0b4c10b7666e73647a7d-112c34a5574e5014b310",
+          "file": "packaged-update.spec.ts",
+          "line": 175,
+          "column": 1
+        },
+        {
+          "title": "an install that cannot complete leaves the previous app in place and says why",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 600000,
+              "annotations": [
+                {
+                  "type": "serial",
+                  "location": {
+                    "file": "D:\\modbit-setup\\work\\apps\\desktop\\e2e\\packaged-update.spec.ts",
+                    "line": 0,
+                    "column": 0
+                  }
+                },
+                {
+                  "type": "skip",
+                  "description": "the packaged update suite runs on macOS until the NSIS and AppImage helper paths have their own CI proof",
+                  "location": {
+                    "file": "D:\\modbit-setup\\work\\apps\\desktop\\e2e\\packaged-update.spec.ts",
+                    "line": 17,
+                    "column": 6
+                  }
+                }
+              ],
+              "expectedStatus": "skipped",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": -1,
+                  "parallelIndex": -1,
+                  "status": "skipped",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:50:49.691Z",
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "D:\\modbit-setup\\work\\apps\\desktop\\e2e\\packaged-update.spec.ts",
+                        "line": 0,
+                        "column": 0
+                      }
+                    },
+                    {
+                      "type": "skip",
+                      "description": "the packaged update suite runs on macOS until the NSIS and AppImage helper paths have their own CI proof",
+                      "location": {
+                        "file": "D:\\modbit-setup\\work\\apps\\desktop\\e2e\\packaged-update.spec.ts",
+                        "line": 17,
+                        "column": 6
+                      }
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "0b4c10b7666e73647a7d-e411ac47cbe67067467c",
+          "file": "packaged-update.spec.ts",
+          "line": 198,
+          "column": 1
+        },
+        {
+          "title": "a signed update installs, the new version runs, and a rollback restores the old one",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 600000,
+              "annotations": [
+                {
+                  "type": "serial",
+                  "location": {
+                    "file": "D:\\modbit-setup\\work\\apps\\desktop\\e2e\\packaged-update.spec.ts",
+                    "line": 0,
+                    "column": 0
+                  }
+                },
+                {
+                  "type": "skip",
+                  "description": "the packaged update suite runs on macOS until the NSIS and AppImage helper paths have their own CI proof",
+                  "location": {
+                    "file": "D:\\modbit-setup\\work\\apps\\desktop\\e2e\\packaged-update.spec.ts",
+                    "line": 17,
+                    "column": 6
+                  }
+                }
+              ],
+              "expectedStatus": "skipped",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": -1,
+                  "parallelIndex": -1,
+                  "status": "skipped",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:50:49.692Z",
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "D:\\modbit-setup\\work\\apps\\desktop\\e2e\\packaged-update.spec.ts",
+                        "line": 0,
+                        "column": 0
+                      }
+                    },
+                    {
+                      "type": "skip",
+                      "description": "the packaged update suite runs on macOS until the NSIS and AppImage helper paths have their own CI proof",
+                      "location": {
+                        "file": "D:\\modbit-setup\\work\\apps\\desktop\\e2e\\packaged-update.spec.ts",
+                        "line": 17,
+                        "column": 6
+                      }
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "0b4c10b7666e73647a7d-5ebda1cb92df5adc0a18",
+          "file": "packaged-update.spec.ts",
+          "line": 223,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "packaged.spec.ts",
+      "file": "packaged.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "the packaged app starts the Core it carries and reports it connected",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1320,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:50:49.705Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "799fbeebfe2b1a80fa58-457c8acd7aa115447f7a",
+          "file": "packaged.spec.ts",
+          "line": 14,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "perf-budgets.spec.ts",
+      "file": "perf-budgets.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "PERF PX-041/PX-047: a streamed delta renders within 100 ms of its event timestamp at p95, every delta and the first of each message",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 900000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 126383,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "[perf] px041-px047-stream-render {\"run\":\"2026-11-13T02-52-57-078Z\",\"distributions\":{\"event timestamp to rendered frame, every delta\":{\"n\":806,\"min\":7.4,\"p50\":59.7,\"p95\":533.8,\"p99\":1340,\"max\":1555,\"mean\":120.24},\"event timestamp to rendered frame, first delta of a message\":{\"n\":204,\"min\":7.6,\"p50\":80.3,\"p95\":207.9,\"p99\":1190,\"max\":1532.8,\"mean\":127.07},\"event timestamp to main-process receipt (Core append, its connection, socket)\":{\"n\":806,\"min\":-12,\"p50\":-1,\"p95\":176,\"p99\":513,\"max\":676,\"mean\":25.29},\"main-process receipt to renderer receipt (main thread, IPC)\":{\"n\":806,\"min\":2.1,\"p50\":23.9,\"p95\":93.7,\"p99\":134.5,\"max\":180.7,\"mean\":34.46},\"event timestamp to rendered frame, 2nd delta of a message\":{\"n\":204,\"min\":7.4,\"p50\":52.3,\"p95\":454.2,\"p99\":1127,\"max\":1480.8,\"mean\":110.72},\"event timestamp to rendered frame, 3rd delta of a message\":{\"n\":204,\"min\":8.9,\"p50\":50.7,\"p95\":591.5,\"p99\":1279,\"max\":1416.8,\"mean\":116.82},\"event timestamp to rendered frame, 4th delta of a message\":{\"n\":194,\"min\":7.8,\"p50\":48.1,\"p95\":657.5,\"p99\":1347.8,\"max\":1555,\"mean\":126.68},\"diagnostic: one transcript read of the last task, IPC round trip\":{\"n\":20,\"min\":57.8,\"p50\":60.9,\"p95\":70.8,\"p99\":990.5,\"max\":990.5,\"mean\":108.63},\"diagnostic: one agent-headers read, IPC round trip\":{\"n\":20,\"min\":44.1,\"p50\":47,\"p95\":51,\"p99\":104,\"max\":104,\"mean\":49.74},\"diagnostic: renderer long tasks (>50 ms main-thread work)\":{\"n\":186,\"min\":50,\"p50\":63,\"p95\":90,\"p99\":103,\"max\":106,\"mean\":65.38},\"renderer receipt to DOM showing it\":{\"n\":806,\"min\":2.5,\"p50\":20.7,\"p95\":156.6,\"p99\":1055.6,\"max\":1060.4,\"mean\":56.2},\"DOM showing it to the next frame\":{\"n\":806,\"min\":0.9,\"p50\":2.5,\"p95\":14.5,\"p99\":30,\"max\":49.3,\"mean\":4.3}},\"verdict\":{\"met\":false,\"text\":\"recorded on the \\\"ci\\\" profile; asserted only on the reference profile\"}}\n"
+                    }
+                  ],
+                  "stderr": [
+                    {
+                      "text": "[electron] modbit-core: hardening: process hardening is not implemented on this platform (no core-dump limit, no attach denial, no loader-variable removal)\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 3ms\n"
+                    },
+                    {
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:53524/634b56ea-261a-488a-810d-04d342f52182\r\nFor help, see: https://nodejs.org/learn/getting-started/debugging\r\n"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:50:51.071Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "3584b53fc4861204c46b-8148c1a475aa44658eaa",
+          "file": "perf-budgets.spec.ts",
+          "line": 55,
+          "column": 1
+        },
+        {
+          "title": "PERF PX-046: the agent list reflects a Core event within 150 ms at p95 with a 200-task list",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 900000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 77524,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "[perf] px046-agent-list {\"run\":\"2026-11-13T02-54-14-577Z\",\"distributions\":{\"event timestamp to rendered frame, a task appears\":{\"n\":220,\"min\":62.6,\"p50\":83.3,\"p95\":154.7,\"p99\":174.9,\"max\":181.9,\"mean\":92.99},\"event timestamp to rendered frame, a task is archived\":{\"n\":220,\"min\":1.9,\"p50\":13.4,\"p95\":186.8,\"p99\":238.1,\"max\":270.7,\"mean\":35.1},\"event timestamp to rendered frame, both\":{\"n\":440,\"min\":1.9,\"p50\":71,\"p95\":167.5,\"p99\":216.2,\"max\":270.7,\"mean\":64.04},\"event timestamp to main-process receipt (Core append, its connection, socket)\":{\"n\":440,\"min\":-2,\"p50\":0,\"p95\":1,\"p99\":4,\"max\":7,\"mean\":-0.37},\"main-process receipt to renderer receipt (main thread, IPC)\":{\"n\":440,\"min\":0.9,\"p50\":4.1,\"p95\":33.3,\"p99\":50.2,\"max\":61,\"mean\":8.29},\"renderer receipt to the row present or gone\":{\"n\":440,\"min\":0,\"p50\":63.4,\"p95\":158.7,\"p99\":212.9,\"max\":266.5,\"mean\":50.26},\"that to the next frame\":{\"n\":440,\"min\":0.2,\"p50\":2,\"p95\":32,\"p99\":48.9,\"max\":52.3,\"mean\":5.87}},\"verdict\":{\"met\":false,\"text\":\"recorded on the \\\"ci\\\" profile; asserted only on the reference profile\"}}\n"
+                    }
+                  ],
+                  "stderr": [
+                    {
+                      "text": "[electron] modbit-core: hardening: process hardening is not implemented on this platform (no core-dump limit, no attach denial, no loader-variable removal)\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 2ms\n"
+                    },
+                    {
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:50503/2ea32ae9-5a10-4821-af93-78923a06bfc2\r\nFor help, see: https://nodejs.org/learn/getting-started/debugging\r\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'agents:headers': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'projects:list': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:52:57.468Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "3584b53fc4861204c46b-039fe8ea66461616d890",
+          "file": "perf-budgets.spec.ts",
+          "line": 199,
+          "column": 1
+        },
+        {
+          "title": "PERF PX-047: a long transcript scrolls; the frame distribution is recorded (the dossier names no frame budget; 1,000 rows need MODBIT_PERF_STEERS)",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 900000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 248657,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "[perf] queued 40 inputs after 920 ms\n"
+                    },
+                    {
+                      "text": "[perf] waiting for the run to use its turns: Running/ loopAlive=true  \n"
+                    },
+                    {
+                      "text": "[perf] waiting for the run to use its turns: Running/ loopAlive=true  \n"
+                    },
+                    {
+                      "text": "[perf] waiting for the run to use its turns: Running/ loopAlive=true  \n"
+                    },
+                    {
+                      "text": "[perf] waiting for the run to use its turns: Running/ loopAlive=true  \n"
+                    },
+                    {
+                      "text": "[perf] waiting for the run to use its turns: Running/ loopAlive=true  \n"
+                    },
+                    {
+                      "text": "[perf] px047-scroll-frames {\"run\":\"2026-11-13T02-58-23-381Z\",\"distributions\":{\"frame interval while scrolling (ms)\":{\"n\":8336,\"min\":14.8,\"p50\":16.7,\"p95\":16.8,\"p99\":17,\"max\":300,\"mean\":17.32}},\"verdict\":{\"met\":null,\"text\":\"1225 rows; 42 of 8336 frames over 33.3 ms (0.5 %); no numeric budget exists to judge them against\"}}\n"
+                    }
+                  ],
+                  "stderr": [
+                    {
+                      "text": "[electron] modbit-core: hardening: process hardening is not implemented on this platform (no core-dump limit, no attach denial, no loader-variable removal)\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 2ms\n"
+                    },
+                    {
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:62789/b8a36cc4-69d9-4e5e-aac0-b4f23e4016d8\r\nFor help, see: https://nodejs.org/learn/getting-started/debugging\r\n"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:54:15.013Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "3584b53fc4861204c46b-453e14f1a6e16a786b40",
+          "file": "perf-budgets.spec.ts",
+          "line": 293,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "supervision.spec.ts",
+      "file": "supervision.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "home: the mode and the pin reach the Core before the first model call; a blocked model is not held; the next task starts from the defaults",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 6292,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "text": "[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 8ms\n"
+                    },
+                    {
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:62605/225d7d6c-2cf9-4b22-aef5-08a42f0ed74e\r\nFor help, see: https://nodejs.org/learn/getting-started/debugging\r\n"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:58:23.723Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "110d4a3a863d22d0b819-1e7c01c346c3580079a5",
+          "file": "supervision.spec.ts",
+          "line": 33,
+          "column": 1
+        },
+        {
+          "title": "home: a mode the Core refuses leaves the task created, unstarted and saying why; no model call is made",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2536,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "text": "[electron] modbit-core: hardening: process hardening is not implemented on this platform (no core-dump limit, no attach denial, no loader-variable removal)\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 4ms\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'composer:setMode': Error: PLAN_MODE_FORBIDDEN: refused for this test\n    at eval (eval at evaluate (:311:30), <anonymous>:6:15)\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:62621/dfd30229-1092-4dbc-a0ed-2232d0532769\r\nFor help, see: https://nodejs.org/learn/getting-started/debugging\r\n"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:58:30.038Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "110d4a3a863d22d0b819-49f763a4e610451c3433",
+          "file": "supervision.spec.ts",
+          "line": 102,
+          "column": 1
+        },
+        {
+          "title": "home: the location is a selector that names this machine and says why cloud cannot be chosen; the shortcut help names no board",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2268,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "text": "[electron] modbit-core: hardening: process hardening is not implemented on this platform (no core-dump limit, no attach denial, no loader-variable removal)\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 3ms\n"
+                    },
+                    {
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:62625/d30937be-6bf2-4675-9e0a-1b00ec56842e\r\nFor help, see: https://nodejs.org/learn/getting-started/debugging\r\n"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:58:32.590Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "110d4a3a863d22d0b819-ca80bca1810d02684f5b",
+          "file": "supervision.spec.ts",
+          "line": 135,
+          "column": 1
+        },
+        {
+          "title": "a stopped task says what is wrong and what to do on its row and in its conversation, with nothing opened",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 14493,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "text": "[electron] modbit-core: hardening: process hardening is not implemented on this platform (no core-dump limit, no attach denial, no loader-variable removal)\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 4ms\n"
+                    },
+                    {
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:53289/14c90c27-d510-430c-bc0d-81836d37ee11\r\nFor help, see: https://nodejs.org/learn/getting-started/debugging\r\n"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:58:34.871Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "110d4a3a863d22d0b819-b71109cf99785469983a",
+          "file": "supervision.spec.ts",
+          "line": 171,
+          "column": 1
+        },
+        {
+          "title": "a state nothing else on the screen says stands above the composer: a Core that dies while a task is open",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3273,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "text": "[electron] modbit-core: hardening: process hardening is not implemented on this platform (no core-dump limit, no attach denial, no loader-variable removal)\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 3ms\n"
+                    },
+                    {
+                      "text": "[electron] modbit-desktop: core restart scheduled: connection lost: connection closed\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'terminal:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at requireClient (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at TerminalHost.client (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11134:9)\n    at TerminalHost.list (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10377:26)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11721:54\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'conversation:markRead': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:7995:17\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: hardening: process hardening is not implemented on this platform (no core-dump limit, no attach denial, no loader-variable removal)\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: recovery complete: boot_generation=2 events_verified=6 aggregates=3 projections_rebuilt=false sessions=1 tasks=1 in 22ms\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: reattached to the terminal broker a previous Core left alive\n"
+                    },
+                    {
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:53307/c8183ccb-32e1-4b7d-974e-93caae9e452e\r\nFor help, see: https://nodejs.org/learn/getting-started/debugging\r\n"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:58:49.375Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "110d4a3a863d22d0b819-1b4fa8f8c1f09c7c19ab",
+          "file": "supervision.spec.ts",
+          "line": 205,
+          "column": 1
+        },
+        {
+          "title": "MOD-UX-001: each state a task can be in is a first-class view, holding the Core's class, one click away",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 240000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 10794,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "text": "[electron] modbit-core: hardening: process hardening is not implemented on this platform (no core-dump limit, no attach denial, no loader-variable removal)\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 2ms\n"
+                    },
+                    {
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:53315/d9b35160-794d-4e0a-8fa2-cb34aa1ae6c5\r\nFor help, see: https://nodejs.org/learn/getting-started/debugging\r\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'conversation:markRead': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:58:52.661Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "110d4a3a863d22d0b819-f330e394204682826a48",
+          "file": "supervision.spec.ts",
+          "line": 236,
+          "column": 1
+        },
+        {
+          "title": "PX-196/197: Escape with the details open closes them, not the card; a confirmation keeps its keys from a card docking after it; a denied call is never told as run",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4898,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "text": "[electron] modbit-core: hardening: process hardening is not implemented on this platform (no core-dump limit, no attach denial, no loader-variable removal)\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 3ms\n"
+                    },
+                    {
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:53336/13bd2cfa-908f-408c-93c3-bfe228689c88\r\nFor help, see: https://nodejs.org/learn/getting-started/debugging\r\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'checkpoints:list': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'changes:state': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'projects:list': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'conversation:markRead': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'automations:taskHeaders': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'accounting:get': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'task:economics': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'conversation:approvals': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'approvals:expired': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'modeproposals:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9553:41\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'projects:list': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9165:49\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'agents:headers': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:7955:37\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'conversation:transcript': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:7962:26\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'approvals:dock': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:9548:28\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:59:03.472Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "110d4a3a863d22d0b819-0b4f1866c7c477b5febe",
+          "file": "supervision.spec.ts",
+          "line": 304,
+          "column": 1
+        },
+        {
+          "title": "PX-196: after a reload the details show the facts the Core folded from the log, not defaults; failed calls are told as failed",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 240000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 7192,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "text": "[electron] modbit-core: hardening: process hardening is not implemented on this platform (no core-dump limit, no attach denial, no loader-variable removal)\n"
+                    },
+                    {
+                      "text": "[electron] modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 2ms\n"
+                    },
+                    {
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:53352/d5478b7a-d578-4823-8036-39df5336e138\r\nFor help, see: https://nodejs.org/learn/getting-started/debugging\r\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'automations:taskHeaders': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3935:54)\n    at _CoreClient.close (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:3940:10)\n    at CoreSupervisor.stop (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:5085:18)\n    at Object.run (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11919:43)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10277:15\n    at Array.map (<anonymous>)\n    at runShutdown (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:10275:22)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11922:24\n\u001b[90m    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\u001b[39m {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                    },
+                    {
+                      "text": "[electron] Error occurred in handler for 'conversation:approvals': Error: CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown\n    at Object.requireClient [as client] (C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11140:17)\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:7975:27\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11648:61\n    at C:\\Users\\Mohsin\\AppData\\Local\\Programs\\modbit\\resources\\app.asar\\dist\\main\\main.cjs:11180:12\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-11-13T02:59:08.384Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "110d4a3a863d22d0b819-7c9eb05652f868fb9070",
+          "file": "supervision.spec.ts",
+          "line": 354,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-11-13T02:49:17.452Z",
+    "duration": 598176.6529999999,
+    "expected": 23,
+    "skipped": 6,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

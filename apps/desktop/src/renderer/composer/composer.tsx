@@ -18,7 +18,7 @@
  * sent without the person pressing send.
  */
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Button, Icon, IconButton, Kbd, Menu, trays, useLayer, type IconName, type MenuItem } from "@modbit/ui";
+import { Button, Icon, IconButton, Kbd, Menu, useLayer, useTrayStore, type IconName, type MenuItem } from "@modbit/ui";
 import type { AttachmentResult, TaskModeId } from "../../shared/composer-types.ts";
 import { MAX_ATTACHMENTS_PER_MESSAGE, MAX_ATTACHMENT_BYTES } from "../../shared/attachments.ts";
 import type { TaskCard } from "../model.ts";
@@ -64,13 +64,12 @@ import {
 import { useCatalog, useComposerCore, useSlashInventory } from "./use-composer-core.ts";
 import { MentionMenu, SlashMenuView, useMentionSources, useSlashItems, type MentionOption } from "./menus.tsx";
 import { ModelPicker, type PickerChoice } from "./model-picker.tsx";
+import { useLandmarkName } from "../landmark.ts";
 import { EducationTray, PolicyTray, QueueTray, SendBehaviorPanel, SideQuestionPanel, StoppedTray, TerminalsChip, TerminalsTray } from "./trays.tsx";
 
 export const MODE_ICON: Record<TaskModeId, IconName> = { AGENT: "infinity", PLAN: "list-tree", DEBUG: "bug", MULTITASK: "layers", ASK: "circle-question-mark" };
 
 export interface ComposerProps {
-  /** Under the box, at the left: where the task runs. */
-  foot?: ReactNode | undefined;
   /** Under the box, at the right, after the mode and the model: the run-mode control and the context ring. */
   runMode?: ReactNode | undefined;
   ring?: ReactNode | undefined;
@@ -115,6 +114,9 @@ interface PolicyState {
 export function Composer(props: ComposerProps) {
   const { taskId, sessionId, connected, card, approvalPending, lastUserText, hasMessages, onResume, onNewTask, onOpenTerminal } = props;
   const core = useComposerCore(taskId, connected);
+  // The tray store of this task's conversation (REQ-PX-204): in split view each composer's queue docks above its own box.
+  const trays = useTrayStore();
+  const named = useLandmarkName();
   const [store, setStore] = useState<ComposerStore>(() => loadStore(storage()));
   const initial = store.drafts[taskId];
   const [text, setText] = useState(initial?.text ?? "");
@@ -490,7 +492,7 @@ export function Composer(props: ComposerProps) {
       // Nothing of the composer's is open: leave the message box for the conversation, so the keyboard is never trapped.
       e.preventDefault();
       e.nativeEvent.stopPropagation();
-      document.querySelector<HTMLElement>('[data-testid="conv-scroll"]')?.focus();
+      (e.currentTarget.closest('[data-testid="conversation"]') ?? document).querySelector<HTMLElement>('[data-testid="conv-scroll"]')?.focus();
       return;
     }
     const act = enterAction(e.nativeEvent, isMac());
@@ -632,12 +634,12 @@ export function Composer(props: ComposerProps) {
     () => () => {
       for (const id of [TRAY_QUEUE, TRAY_POLICY]) trays.dismiss(id);
     },
-    [],
+    [trays],
   );
 
   if (ended) {
     return (
-      <section className="conv-composer cmp" aria-label="Composer" data-testid="composer-region" data-state="ended">
+      <section className="conv-composer cmp" aria-label={named("Composer")} data-testid="composer-region" data-state="ended">
         <p className="meta" data-testid="composer-ended">
           This task has {state === "Completed" ? "completed" : state === "Failed" ? "failed" : "been cancelled"}, so it takes no more messages.
         </p>
@@ -651,7 +653,7 @@ export function Composer(props: ComposerProps) {
   return (
     <section
       className="conv-composer cmp"
-      aria-label="Composer"
+      aria-label={named("Composer")}
       data-testid="composer-region"
       data-mode={shownMode}
       data-running={running}
@@ -842,9 +844,8 @@ export function Composer(props: ComposerProps) {
           </p>
         )}
       </div>
-      {/* Under the box: where the task runs at the left; at the right the mode, the model, the run mode and the context ring. */}
+      {/* Under the box, at the right: the mode, the model, the run mode and the context ring. Where the task runs is in the details rail (MWS-09). */}
       <div className="cmp-foot cmp-under" data-testid="composer-foot">
-        {props.foot}
         <span className="cmp-spacer" />
         <span className="cmp-mode" data-testid="mode-chip" data-mode={shownMode}>
           <Menu label={`Mode: ${MODE_DEFS[shownMode].label}. Choose another`} placement="up" align="end" triggerTestId="mode-chip-button" triggerClassName="cmp-chip cmp-mode-btn" trigger={<><Icon name={MODE_ICON[shownMode]} size={14} /> <span data-testid="mode-label">{MODE_DEFS[shownMode].label}</span>{status === "unconfirmed" && <span className="cmp-dim" data-testid="mode-unconfirmed"> unconfirmed</span>}<Icon name="chevron-down" size={10} /></>} items={modeItems} />

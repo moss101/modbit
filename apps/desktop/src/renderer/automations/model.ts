@@ -241,10 +241,55 @@ export function runKinds(v: AutoView): { manual: AutoTrigger | null; payload: Au
   };
 }
 
-/** Rows of a run's one-line summary for the history table. */
+/** What fired a run, in words (the Core's trigger kind). */
+export function triggerKindWords(kind: string): string {
+  if (kind === "manual") return "By hand";
+  if (kind === "schedule") return "On its schedule";
+  if (kind === "event") return "On a repository event";
+  if (kind === "webhook") return "On a signed webhook";
+  return kind ? kind.replace(/_/g, " ") : "A trigger";
+}
+
+/** A run's one-line summary for its history row. */
 export function runSummary(r: AutoRun): string {
-  const parts = [r.triggerKind || "trigger"];
-  if (r.test) parts.push("test");
+  const parts = [triggerKindWords(r.triggerKind)];
+  if (r.test) parts.push("test run");
   if (r.catchUp) parts.push(`catch-up (${r.missed} missed)`);
   return parts.join(" · ");
+}
+
+/** A trigger as the Core summarised it, in plain words: "manual / test run" is "By hand", "every 60 min" is "Every 60 min". */
+export function triggerWords(t: Pick<AutoTrigger, "kind" | "summary">): string {
+  if (t.kind === "manual") return "By hand";
+  const s = t.summary.trim();
+  if (t.kind === "event") {
+    const m = /^(\S+) (\S+)(?: \((.*)\))?$/.exec(s);
+    if (m) return `On ${m[2]!.replace(/_/g, " ")}${m[3] ? ` (${m[3].split(/,\s*/).join(", ")})` : ""} from ${m[1]}`;
+  }
+  if (t.kind === "webhook") return s.replace(/^signed webhook `([^`]*)`$/, "Signed webhook $1");
+  if (t.kind === "schedule" && s.startsWith("cron ")) return `On a schedule: ${s.slice(5)}`;
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : triggerKindWords(t.kind);
+}
+
+/** Who a definition runs as, in words (the Core's principal). */
+export function principalWords(principal: string): string {
+  if (principal === "creator") return "whoever saved it";
+  return personWords(principal, new Set());
+}
+
+/**
+ * A person the Core names by id (`user:<uuid>`), in words: "you" when the id is one the Core recorded for this app's own acts
+ * (`mine`), otherwise a short form. The raw id is never the visible text; callers keep it in a title.
+ */
+export function personWords(id: string, mine: ReadonlySet<string>): string {
+  if (!id) return "the owner";
+  if (mine.has(id)) return "you";
+  const m = /^user:([0-9a-f]{4,})/i.exec(id);
+  if (m) return `another person (${m[1]!.slice(0, 8)})`;
+  return id.replace(/^user:/, "");
+}
+
+/** The person ids the Core recorded as saving or loading this definition's versions through the app: the person at this machine. */
+export function myIds(versions: readonly { createdBy: string }[]): Set<string> {
+  return new Set(versions.map((v) => v.createdBy).filter((id) => id.startsWith("user:")));
 }

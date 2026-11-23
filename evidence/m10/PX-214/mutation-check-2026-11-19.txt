@@ -1,0 +1,71 @@
+ 1. a finding that failed the tree check is shown as verified
+    file: services/modbit-core/src/review_findings.rs
+    command: cargo test -p modbit-core --test px_214_reviewer_findings...
+    result: CAUGHT (the check failed) in 11s
+    first failure: thread 'px_214_the_reviewers_findings_one_by_one_with_fix_and_dismiss' (11852291) panicked at services/modbit-core/tests/px_214_reviewer_findings.rs:453:5:
+
+ 2. an unknown finding is not refused (the first one is used)
+    file: services/modbit-core/src/review_findings.rs
+    command: cargo test -p modbit-core --test px_214_reviewer_findings...
+    result: CAUGHT (the check failed) in 10s
+    first failure: thread 'px_214_the_reviewers_findings_one_by_one_with_fix_and_dismiss' (11855167) panicked at services/modbit-core/tests/px_214_reviewer_findings.rs:468:64:
+
+ 3. a dismissed finding can still be fixed
+    file: services/modbit-core/src/review_findings.rs
+    command: cargo test -p modbit-core --test px_214_reviewer_findings...
+    result: CAUGHT (the check failed) in 13s
+    first failure: thread 'px_214_the_reviewers_findings_one_by_one_with_fix_and_dismiss' (11858080) panicked at services/modbit-core/tests/px_214_reviewer_findings.rs:554:10:
+
+ 4. a result other than the one the person saw is acted on
+    file: services/modbit-core/src/review_findings.rs
+    command: cargo test -p modbit-core --test px_214_reviewer_findings...
+    result: CAUGHT (the check failed) in 11s
+    first failure: thread 'px_214_the_reviewers_findings_one_by_one_with_fix_and_dismiss' (11861334) panicked at services/modbit-core/tests/px_214_reviewer_findings.rs:472:10:
+
+ 5. a dismissal without a reason is accepted
+    file: services/modbit-core/src/review_findings.rs
+    command: cargo test -p modbit-core --test px_214_reviewer_findings...
+    result: CAUGHT (the check failed) in 12s
+    first failure: thread 'px_214_the_reviewers_findings_one_by_one_with_fix_and_dismiss' (11864774) panicked at services/modbit-core/tests/px_214_reviewer_findings.rs:483:10:
+
+ 6. the fix input names every finding
+    file: services/modbit-core/src/review_findings.rs
+    command: cargo test -p modbit-core --test px_214_reviewer_findings...
+    result: CAUGHT (the check failed) in 15s
+    first failure: thread 'px_214_the_reviewers_findings_one_by_one_with_fix_and_dismiss' (11867628) panicked at services/modbit-core/tests/px_214_reviewer_findings.rs:611:9:
+
+ 7. the next brief lists a dismissed finding too
+    file: services/modbit-core/src/review_findings.rs
+    command: cargo test -p modbit-core --test px_214_reviewer_findings...
+    result: CAUGHT (the check failed) in 18s
+    first failure: thread 'px_214_the_reviewers_findings_one_by_one_with_fix_and_dismiss' (11871558) panicked at services/modbit-core/tests/px_214_reviewer_findings.rs:665:5:
+
+ 8. a result that does not read back intact is treated as no result
+    file: services/modbit-core/src/review_findings.rs
+    command: cargo test -p modbit-core --test px_214_reviewer_findings...
+    result: CAUGHT (the check failed) in 13s
+    first failure: thread 'px_214_the_reviewers_findings_one_by_one_with_fix_and_dismiss' (11877606) panicked at services/modbit-core/tests/px_214_reviewer_findings.rs:571:5: | assertion `left == right` failed: ReviewBundle { task_id: Some(Id { value: [114, 114, 114, 114, 114, 114, 114, 114, 114, 114, 114, 114, 114, 114, 114, 114] }), 
+
+ 9. a dismissal does not record who
+    file: services/modbit-core/src/review_findings.rs
+    command: cargo test -p modbit-core --test px_214_reviewer_findings...
+    result: CAUGHT (the check failed) in 13s
+    first failure: thread 'px_214_the_reviewers_findings_one_by_one_with_fix_and_dismiss' (11880992) panicked at services/modbit-core/tests/px_214_reviewer_findings.rs:520:5:
+
+10. the page words an unconfirmed finding as found
+    file: apps/desktop/src/renderer/review/review-model.ts
+    command: pnpm --filter @modbit/desktop test...
+    result: CAUGHT (the check failed) in 3s
+    first failure: AssertionError [ERR_ASSERTION]: The input did not match the regular expression /^The Core could not confirm this: `src\/ghost\.ts` is not in the tree/. Input: | code: 'ERR_ASSERTION',
+
+11. the page words an unconfirmed finding as found (end to end)
+    file: apps/desktop/src/renderer/review/review-model.ts
+    command: bash -c cd apps/desktop && node build.mjs >/dev/null && pnpm exec playwright test -c e2e/playwright.config.ts px-214...
+    result: CAUGHT (the check failed) in 54s
+    first failure: ✘  1 e2e/px-214-reviewer-findings.spec.ts:225:1 › QUAL-PX-214: the reviewer's three findings on Review, walked through, one set aside with a reason, one sent to
+
+12. the bridge accepts a blank reason
+    file: apps/desktop/src/main/review-findings-ipc.ts
+    command: pnpm --filter @modbit/desktop test...
+    result: CAUGHT (the check failed) in 3s
+    first failure: AssertionError [ERR_ASSERTION]: Missing expected rejection: a dismissal with a blank reason | code: 'ERR_ASSERTION',

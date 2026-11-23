@@ -394,8 +394,13 @@ impl SandboxBackend for MicrovmBackend {
                 .kill_on_drop(true)
                 .spawn()
                 .map_err(|e| SandboxError::Substrate(format!("spawning firecracker: {e}")))?;
+            // Ready means the socket ACCEPTS, not that its file exists:
+            // Firecracker binds the path (the file appears) and only then
+            // listens, and a connect in between is refused. CI run 44428117651
+            // lost a task to exactly that ("firecracker api socket: Connection
+            // refused"), so the wait is for a connection, inside the same bound.
             let started = Instant::now();
-            while !api_sock.exists() {
+            while !(api_sock.exists() && UnixStream::connect(&api_sock).await.is_ok()) {
                 if started.elapsed() > Duration::from_secs(10) {
                     let _ = child.start_kill();
                     return Err(SandboxError::Substrate(

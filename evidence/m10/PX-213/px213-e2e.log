@@ -1,0 +1,8 @@
+
+Running 1 test using 1 worker
+
+[electron] Debugger ending on ws://127.0.0.1:53770/defba617-18b7-4888-ac40-dd14a47332e9
+For help, see: https://nodejs.org/learn/getting-started/debugging
+  ✓  1 e2e/px-213-merge-when-ready.spec.ts:142:1 › PX-213: merge when ready waits for the checks, asks on the approval card once they pass, asks again when the head moves, and merges only the approved head (10.5s)
+
+  1 passed (10.7s)

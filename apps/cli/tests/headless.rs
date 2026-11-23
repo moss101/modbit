@@ -940,6 +940,14 @@ fn qual_ev_0111_0268_context_show_reports_compaction_epochs_and_the_cached_prefi
     ]);
     assert_eq!(code, 0, "{err}");
     let tid = out.trim().strip_prefix("task ").unwrap().to_owned();
+    // The scripted model picks its reply by the tool results the request
+    // carries, and from the third turn on every turn compacts them away: the
+    // model reads the file again each turn and the run only ends when its
+    // turn budget does. Left at the default of 200 turns that is 40 s on a
+    // developer machine and past the 180 s call bound on a hosted Windows
+    // runner (CI run 43911995343: killed at turn 200, about twenty events
+    // from the end). A dozen turns compact on all but the first two, which is
+    // all this test reads; the run still ends the same way, on its turn budget.
     let (code, out, err) = cli.run(&[
         "task",
         "run",
@@ -951,6 +959,8 @@ fn qual_ev_0111_0268_context_show_reports_compaction_epochs_and_the_cached_prefi
         "openai",
         "--model",
         "gpt-5",
+        "--max-turns",
+        "12",
         "--wait",
     ]);
     // 0 = finished, 2 = the run stopped for input; either way it compacted.

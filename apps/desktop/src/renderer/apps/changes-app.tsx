@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Badge, Button, Icon, IconButton } from "@modbit/ui";
 import type { CodeView, ReviewBundleView, ReviewFileView } from "../../preload/preload.ts";
 import type { ChangeEffectInfo, ChangesStateInfo, CommitPushAckInfo, DecideHunkAckInfo, RevertAckInfo } from "../../shared/changes-types.ts";
 import { parseRefusal } from "../projects/project-model.ts";
 import { callRowId, canCommitPush, canDecide, changeSummary, chipText, commitLabel, commitMode, decisionWords, effectWords, isReviewable, lineKind, newCommandId, rangesContain, refusalWords, stageState } from "./changes-model.ts";
+import { PaneActions } from "../shell/pane.tsx";
+import { notePaneView, paneView } from "../shell/pane-view.ts";
+import { useDelivered } from "./delivered.ts";
+import { approvalOutcome } from "./pull-request-model.ts";
 
 /**
  * The Changes app (REQ-PX-048, PX-104's reachability half): the task's live,
@@ -28,11 +32,36 @@ import { callRowId, canCommitPush, canDecide, changeSummary, chipText, commitLab
  * hunk and the run goes on; the notice the agent will get is shown. Nothing is
  * computed here: eligibility, staleness and attribution are the Core's.
  */
-export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenReview, onOpenCall, onBranch }: { sessionId: string; taskId: string; taskState: string; refreshKey: string; onOpenReview: () => void; onOpenCall?: (toolCallId: string) => void; onBranch?: ((branch: string) => void) | undefined }) {
+export interface ChangesAppProps {
+  sessionId: string;
+  taskId: string;
+  /** The task's state as the caller knows it; "" where it does not (a pane window), and the review bundle's is used. */
+  taskState: string;
+  refreshKey: string;
+  onOpenReview: () => void;
+  onOpenCall?: (toolCallId: string) => void;
+  /**
+   * REQ-PX-203: where the pane stands in a window of its own, an approval is not decided here (main refuses it from that window
+   * too): the card says so and `onShowApproval` brings the app's window and its approval card forward. Once the approval is
+   * answered there, the commit goes on here as it would after an answer on this card.
+   */
+  approvalElsewhere?: { onShowApproval: () => void } | undefined;
+}
+
+export function ChangesApp({ sessionId, taskId, taskState: givenState, refreshKey, onOpenReview, onOpenCall, approvalElsewhere }: ChangesAppProps) {
   const [bundle, setBundle] = useState<ReviewBundleView | null>(null);
   const [state, setState] = useState<ChangesStateInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [path, setPath] = useState<string | null>(null);
+  // REQ-PX-203: the file chosen and the list's scroll travel with the pane between the dock and its window.
+  const [path, setPathState] = useState<string | null>(() => paneView.get(taskId, "changes").path ?? null);
+  const setPath = (p: string | null) => {
+    setPathState(p);
+    notePaneView(taskId, "changes", p === null ? { path: "" } : { path: p });
+  };
+  const scroller = useRef<HTMLDivElement>(null);
+  const restored = useRef(false);
+  // A pane window is given no task state: the review bundle's is the Core's word for it.
+  const taskState = givenState || bundle?.taskState || "";
   const [full, setFull] = useState<CodeView | null>(null);
   const [fullError, setFullError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -42,12 +71,6 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
   const [commit, setCommit] = useState<CommitPushAckInfo | null>(null);
   const [decided, setDecided] = useState<DecideHunkAckInfo | null>(null);
   const [reason, setReason] = useState("");
-  const branchNow = state?.branch;
-  useEffect(() => {
-    if (branchNow) onBranch?.(branchNow);
-    // The callback changes identity with the panel's render; the branch is what matters.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [branchNow]);
   const seq = useRef(0);
   /** The load that last set `state`, and the sequence number the current approval card was raised at: a state read before the card existed says nothing about it. */
   const loaded = useRef(0);
@@ -70,8 +93,13 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
   useEffect(() => {
     void load();
   }, [load, refreshKey]);
+  const shownTask = useRef(taskId);
   useEffect(() => {
-    setPath(null);
+    // The first task shown keeps the view it was handed; another task starts clean.
+    if (shownTask.current === taskId) return;
+    shownTask.current = taskId;
+    restored.current = false;
+    setPathState(paneView.get(taskId, "changes").path || null);
     setFull(null);
     setRefusal(null);
     setUndo(null);
@@ -169,10 +197,53 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
       await load();
     }
   };
+  // REQ-PX-203: in a pane window the approval is answered on the app window's card; what became of it arrives as its event.
+  const given = useDelivered(taskId);
+  const outcome = approvalElsewhere && commit?.status === "APPROVAL_PENDING" ? approvalOutcome(given.events, commit.approvalId) : null;
+  useEffect(() => {
+    if (!outcome || !commit || commit.status !== "APPROVAL_PENDING" || busy) return;
+    const ack = commit;
+    if (outcome !== "approved") {
+      setCommit({ ...ack, status: "DENIED", detail: outcome === "expired" ? "The approval expired; nothing was committed or pushed." : "The approval was denied; nothing was committed or pushed." });
+      return;
+    }
+    setBusy(true);
+    void window.modbit
+      .commitAndPush(sessionId, taskId, { message: ack.message, expectedHead: ack.headBefore, expectedStagedDigest: ack.stagedDigest })
+      .then((r) => {
+        setCommit(r);
+        if (ack.pushOnly === false) setMessage("");
+      })
+      .catch((e) => {
+        setRefusal(parseRefusal(e));
+        setCommit(null);
+      })
+      .finally(() => {
+        setBusy(false);
+        void load();
+      });
+  }, [outcome, commit, busy, sessionId, taskId, load]);
   // An approval card is shown only while the Core still holds that approval as pending: after a restart or a decision made elsewhere it goes, and the list below says how the attempt stands.
   useEffect(() => {
+    if (approvalElsewhere && outcome) return;
     if (state && commit?.status === "APPROVAL_PENDING" && loaded.current > raisedAt.current && !state.effects.some((e) => e.approvalId === commit.approvalId && e.state === "APPROVAL_PENDING")) setCommit(null);
-  }, [state, commit]);
+  }, [state, commit, approvalElsewhere, outcome]);
+
+  // The list's scroll is put back once, when the change set it scrolled is on screen again.
+  useLayoutEffect(() => {
+    if (restored.current || !bundle || !state || !scroller.current) return;
+    restored.current = true;
+    const top = paneView.get(taskId, "changes").scrollTop;
+    if (top) scroller.current.scrollTop = top;
+  });
+  const scrollFrame = useRef(0);
+  const onScroll = () => {
+    if (scrollFrame.current) return;
+    scrollFrame.current = requestAnimationFrame(() => {
+      scrollFrame.current = 0;
+      if (scroller.current) notePaneView(taskId, "changes", { scrollTop: scroller.current.scrollTop });
+    });
+  };
 
   // A Core that is restarting answers nothing for a moment: the view reads it again by itself until it can, and offers the retry meanwhile.
   useEffect(() => {
@@ -208,7 +279,8 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
   };
   return (
     <div className="changes-app" data-testid="app-changes" data-task-state={taskState} data-workspace-revision={bundle.workspaceRevision} data-staged-digest={state.stagedDigest}>
-      <div className="changes-head">
+      {/* MWS-10: in the dock the pane's own actions stand in its head, after its name. */}
+      <PaneActions className="changes-head">
         <span className="changes-summary" data-testid="changes-summary">{changeSummary(bundle.files)}</span>
         <span className="mb-sr-only">
           <Badge tone={isReviewable(taskState) ? "ok" : "info"}>{taskState}</Badge>
@@ -221,7 +293,7 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
         <Button size="sm" variant="outline" disabled={locked || unstaged.length === 0} onClick={() => void stageAll()} data-testid="changes-stage-all">
           Stage all
         </Button>
-      </div>
+      </PaneActions>
       <p className="mb-sr-only" data-testid="changes-note">
         {isReviewable(taskState)
           ? "This task is ready for review: accept or return it, hunk by hunk, in the review."
@@ -237,7 +309,7 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
           The task is running and owns its files; whole-file revert, stage and commit wait until it stops. Accepting or rejecting one hunk does not wait.
         </p>
       )}
-      <div className="changes-scroll">
+      <div className="changes-scroll" ref={scroller} onScroll={onScroll} data-testid="changes-scroll">
       {refusal && (
         <div className="changes-refusal" role="alert" data-testid="changes-refusal" data-code={refusal.code}>
           <p>
@@ -397,7 +469,7 @@ export function ChangesApp({ sessionId, taskId, taskState, refreshKey, onOpenRev
       <section className="changes-commit" aria-label="Commit and push" data-testid="changes-commit" data-mode={mode}>
         <h2 className="mb-sr-only">Commit and push</h2>
         {commit?.status === "APPROVAL_PENDING" ? (
-          <ApprovalCard ack={commit} busy={busy} onDecide={(ok) => void decide(commit, ok)} />
+          <ApprovalCard ack={commit} busy={busy} onDecide={(ok) => void decide(commit, ok)} elsewhere={approvalElsewhere} />
         ) : (
           <>
             <div className="changes-commit-actions">
@@ -452,7 +524,7 @@ function numberedLines(header: string, lines: readonly string[]): { old: string;
   });
 }
 
-function ApprovalCard({ ack, busy, onDecide }: { ack: CommitPushAckInfo; busy: boolean; onDecide: (ok: boolean) => void }) {
+function ApprovalCard({ ack, busy, onDecide, elsewhere }: { ack: CommitPushAckInfo; busy: boolean; onDecide: (ok: boolean) => void; elsewhere?: { onShowApproval: () => void } | undefined }) {
   const deny = useRef<HTMLButtonElement>(null);
   useEffect(() => deny.current?.focus(), []);
   return (
@@ -502,14 +574,24 @@ function ApprovalCard({ ack, busy, onDecide }: { ack: CommitPushAckInfo; busy: b
           </dd>
         </div>
       </dl>
-      <div className="dialog-actions">
-        <Button ref={deny} onClick={() => onDecide(false)} disabled={busy} data-testid="changes-deny">
-          Deny
-        </Button>
-        <Button variant="primary" onClick={() => onDecide(true)} disabled={busy} data-testid="changes-approve">
-          {ack.pushOnly ? "Approve push" : "Approve commit and push"}
-        </Button>
-      </div>
+      {elsewhere ? (
+        // REQ-PX-203: no approval is decided from a pane window; the person answers it on the Modbit window's approval card.
+        <div className="dialog-actions" data-testid="changes-approval-elsewhere">
+          <p className="meta">Answer it on the approval card in the Modbit window. The commit goes on here once you allow it.</p>
+          <Button ref={deny} onClick={elsewhere.onShowApproval} data-testid="changes-show-approval">
+            Show the approval
+          </Button>
+        </div>
+      ) : (
+        <div className="dialog-actions">
+          <Button ref={deny} onClick={() => onDecide(false)} disabled={busy} data-testid="changes-deny">
+            Deny
+          </Button>
+          <Button variant="primary" onClick={() => onDecide(true)} disabled={busy} data-testid="changes-approve">
+            {ack.pushOnly ? "Approve push" : "Approve commit and push"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

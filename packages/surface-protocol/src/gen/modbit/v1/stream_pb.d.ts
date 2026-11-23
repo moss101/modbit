@@ -353,7 +353,7 @@ export declare type ApprovalFacts = Message<"modbit.v1.ApprovalFacts"> & {
   effectClass: string;
 
   /**
-   * REQUESTED | APPROVED | DENIED | EXPIRED | ANSWERED
+   * REQUESTED | APPROVED | DENIED | EXPIRED | WITHDRAWN (PX-213: the Core closed it because its intent no longer stands) | ANSWERED
    *
    * @generated from field: string state = 6;
    */
@@ -1042,6 +1042,16 @@ export declare type AgentHeader = Message<"modbit.v1.AgentHeader"> & {
    * @generated from field: string last_line = 460;
    */
   lastLine: string;
+
+  /**
+   * PX-211 (DR-PX-2026-11-11-021 MWS-17; field numbers 470-479 are the block
+   * PX-211 uses for additions to existing messages): the pull request the
+   * task opened and what the Core last read of it. Absent when the task has
+   * opened none.
+   *
+   * @generated from field: modbit.v1.TaskPullRequest pull_request = 470;
+   */
+  pullRequest?: TaskPullRequest | undefined;
 };
 
 /**
@@ -1190,6 +1200,561 @@ export declare type TaskArchived = Message<"modbit.v1.TaskArchived"> & {
  * Use `create(TaskArchivedSchema)` to create a new message.
  */
 export declare const TaskArchivedSchema: GenMessage<TaskArchived>;
+
+/**
+ * PX-211 (REQ-PX-211, DR-PX-2026-11-11-021 MWS-17): the pull request a task
+ * opened and its state as the Core last read it through the forge adapter.
+ * Everything after `url` is what a read found: before the first read `state`
+ * is "" and `read_at` is unset, and a client says the state was not read; it
+ * never assumes one. A later read that failed leaves the last one standing,
+ * and `read_at` says how old it is.
+ *
+ * @generated from message modbit.v1.TaskPullRequest
+ */
+export declare type TaskPullRequest = Message<"modbit.v1.TaskPullRequest"> & {
+  /**
+   * @generated from field: string owner = 1;
+   */
+  owner: string;
+
+  /**
+   * @generated from field: string repo = 2;
+   */
+  repo: string;
+
+  /**
+   * @generated from field: uint64 number = 3;
+   */
+  number: bigint;
+
+  /**
+   * @generated from field: string url = 4;
+   */
+  url: string;
+
+  /**
+   * the ForgePullRequestOpened record
+   *
+   * @generated from field: uint64 opened_offset = 5;
+   */
+  openedOffset: bigint;
+
+  /**
+   * "" (not read) | OPEN | CLOSED | MERGED
+   *
+   * @generated from field: string state = 6;
+   */
+  state: string;
+
+  /**
+   * @generated from field: bool draft = 7;
+   */
+  draft: boolean;
+
+  /**
+   * "" (not read) | NONE (no check run) | PENDING | FAILING | PASSING |
+   * UNAVAILABLE (the forge's check runs could not be read)
+   *
+   * @generated from field: string checks = 8;
+   */
+  checks: string;
+
+  /**
+   * @generated from field: uint32 checks_total = 9;
+   */
+  checksTotal: number;
+
+  /**
+   * @generated from field: uint32 checks_passing = 10;
+   */
+  checksPassing: number;
+
+  /**
+   * @generated from field: uint32 checks_failing = 11;
+   */
+  checksFailing: number;
+
+  /**
+   * @generated from field: uint32 checks_pending = 12;
+   */
+  checksPending: number;
+
+  /**
+   * untrusted labels, at most 20
+   *
+   * @generated from field: repeated string failing_checks = 13;
+   */
+  failingChecks: string[];
+
+  /**
+   * the head the forge reported
+   *
+   * @generated from field: string head_sha = 14;
+   */
+  headSha: string;
+
+  /**
+   * the commit this Core pushed ("" when unknown)
+   *
+   * @generated from field: string pushed_sha = 15;
+   */
+  pushedSha: string;
+
+  /**
+   * unset = never read
+   *
+   * @generated from field: google.protobuf.Timestamp read_at = 16;
+   */
+  readAt?: Timestamp | undefined;
+
+  /**
+   * the ForgePullRequestStateRead record; 0 = never read
+   *
+   * @generated from field: uint64 read_offset = 17;
+   */
+  readOffset: bigint;
+
+  /**
+   * REQUEST | SCHEDULE; "" = never read
+   *
+   * @generated from field: string trigger = 18;
+   */
+  trigger: string;
+
+  /**
+   * PX-212 (DR-PX-2026-11-11-021 MWS-17): auto-fix for this task. Off until a
+   * person turns it on (SetAutoFix); attempts count from the latest time it
+   * was turned on.
+   *
+   * @generated from field: bool auto_fix = 19;
+   */
+  autoFix: boolean;
+
+  /**
+   * @generated from field: uint32 auto_fix_attempts = 20;
+   */
+  autoFixAttempts: number;
+
+  /**
+   * @generated from field: uint32 auto_fix_cap = 21;
+   */
+  autoFixCap: number;
+
+  /**
+   * The cap was reached and a further cause was not acted on (AutoFixStopped
+   * after the latest AutoFixSet); nothing is queued until it is turned on again.
+   *
+   * @generated from field: bool auto_fix_stopped = 22;
+   */
+  autoFixStopped: boolean;
+
+  /**
+   * CHECKS_FAILING | REVIEW_COMMENT | "" (none yet)
+   *
+   * @generated from field: string auto_fix_last_cause = 23;
+   */
+  autoFixLastCause: string;
+
+  /**
+   * the latest AutoFixQueued or AutoFixStopped; 0 = none
+   *
+   * @generated from field: uint64 auto_fix_last_offset = 24;
+   */
+  autoFixLastOffset: bigint;
+
+  /**
+   * PX-213 (DR-PX-2026-11-11-021 MWS-17): merge when ready, as the task's log
+   * and the latest read say. Off until a person asks (SetMergeWhenReady).
+   *
+   * @generated from field: bool merge_when_ready = 25;
+   */
+  mergeWhenReady: boolean;
+
+  /**
+   * merge | squash | rebase ("" = never asked)
+   *
+   * @generated from field: string merge_method = 26;
+   */
+  mergeMethod: string;
+
+  /**
+   * OFF | WAITING (checks pending, failing, unavailable, a draft or not read
+   * yet; `merge_detail` says which) | ASKED (the approval waits) | MERGED |
+   * CLEARED (the Core turned it off; `merge_detail` says why)
+   *
+   * @generated from field: string merge_phase = 27;
+   */
+  mergePhase: string;
+
+  /**
+   * @generated from field: string merge_detail = 28;
+   */
+  mergeDetail: string;
+
+  /**
+   * the standing ask's approval ("" = none)
+   *
+   * @generated from field: string merge_approval_id = 29;
+   */
+  mergeApprovalId: string;
+
+  /**
+   * the head the standing ask (or the merge) binds
+   *
+   * @generated from field: string merge_head_sha = 30;
+   */
+  mergeHeadSha: string;
+
+  /**
+   * the forge's merge commit once merged
+   *
+   * @generated from field: string merge_sha = 31;
+   */
+  mergeSha: string;
+
+  /**
+   * the latest merge-when-ready record; 0 = none
+   *
+   * @generated from field: uint64 merge_offset = 32;
+   */
+  mergeOffset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.TaskPullRequest.
+ * Use `create(TaskPullRequestSchema)` to create a new message.
+ */
+export declare const TaskPullRequestSchema: GenMessage<TaskPullRequest>;
+
+/**
+ * Read the task's pull request through the forge adapter now (`forge.pr.read`
+ * under the task's lease; the kernel and the egress policy decide as for any
+ * forge read) and record what it said. Refused NO_PULL_REQUEST when the task
+ * opened none; a refused or failed read records nothing.
+ *
+ * @generated from message modbit.v1.RefreshPullRequest
+ */
+export declare type RefreshPullRequest = Message<"modbit.v1.RefreshPullRequest"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.RefreshPullRequest.
+ * Use `create(RefreshPullRequestSchema)` to create a new message.
+ */
+export declare const RefreshPullRequestSchema: GenMessage<RefreshPullRequest>;
+
+/**
+ * @generated from message modbit.v1.PullRequestRefreshed
+ */
+export declare type PullRequestRefreshed = Message<"modbit.v1.PullRequestRefreshed"> & {
+  /**
+   * @generated from field: modbit.v1.TaskPullRequest pull_request = 1;
+   */
+  pullRequest?: TaskPullRequest | undefined;
+
+  /**
+   * the read's record
+   *
+   * @generated from field: uint64 offset = 2;
+   */
+  offset: bigint;
+
+  /**
+   * The read found the request merged for the first time and the session's
+   * archive-after-merge preference is on: the task was archived at
+   * `archive_offset` (ArchiveTask with archived = false is the undo).
+   *
+   * @generated from field: bool archived = 3;
+   */
+  archived: boolean;
+
+  /**
+   * @generated from field: uint64 archive_offset = 4;
+   */
+  archiveOffset: bigint;
+
+  /**
+   * PX-212: this read found failing checks, auto-fix is on and a repair turn
+   * was queued (`auto_fix_input_id`) and asked for; or the cap stopped it.
+   *
+   * @generated from field: bool auto_fix_queued = 5;
+   */
+  autoFixQueued: boolean;
+
+  /**
+   * @generated from field: string auto_fix_input_id = 6;
+   */
+  autoFixInputId: string;
+
+  /**
+   * @generated from field: bool auto_fix_stopped = 7;
+   */
+  autoFixStopped: boolean;
+
+  /**
+   * PX-213: merge when ready after this read (TaskPullRequest.merge_phase)
+   * and the approval it raised, if it raised one now.
+   *
+   * @generated from field: string merge_phase = 8;
+   */
+  mergePhase: string;
+
+  /**
+   * @generated from field: string merge_approval_id = 9;
+   */
+  mergeApprovalId: string;
+};
+
+/**
+ * Describes the message modbit.v1.PullRequestRefreshed.
+ * Use `create(PullRequestRefreshedSchema)` to create a new message.
+ */
+export declare const PullRequestRefreshedSchema: GenMessage<PullRequestRefreshed>;
+
+/**
+ * PX-212 (REQ-PX-212, DR-PX-2026-11-11-021 MWS-17): turn auto-fix on or off
+ * for one task. With it on, a failing check the Core reads (RefreshPullRequest
+ * or the schedule) or a review comment the existing ingestion accepts queues
+ * one repair input naming its cause, and the task's turn is asked for through
+ * the ordinary StartTask: the task's run mode, lease, policy and budgets
+ * decide as for any start, and its pushes ask as a person's would. At most
+ * `cap` attempts from the time it is turned on; then AutoFixStopped. Off is
+ * the default. The same value again records nothing.
+ *
+ * @generated from message modbit.v1.SetAutoFix
+ */
+export declare type SetAutoFix = Message<"modbit.v1.SetAutoFix"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: bool enabled = 2;
+   */
+  enabled: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.SetAutoFix.
+ * Use `create(SetAutoFixSchema)` to create a new message.
+ */
+export declare const SetAutoFixSchema: GenMessage<SetAutoFix>;
+
+/**
+ * @generated from message modbit.v1.AutoFixState
+ */
+export declare type AutoFixState = Message<"modbit.v1.AutoFixState"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: bool enabled = 2;
+   */
+  enabled: boolean;
+
+  /**
+   * @generated from field: uint32 attempts = 3;
+   */
+  attempts: number;
+
+  /**
+   * @generated from field: uint32 cap = 4;
+   */
+  cap: number;
+
+  /**
+   * @generated from field: bool stopped = 5;
+   */
+  stopped: boolean;
+
+  /**
+   * the AutoFixSet record; 0 = never set
+   *
+   * @generated from field: uint64 offset = 6;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.AutoFixState.
+ * Use `create(AutoFixStateSchema)` to create a new message.
+ */
+export declare const AutoFixStateSchema: GenMessage<AutoFixState>;
+
+/**
+ * PX-213 (REQ-PX-213, DR-PX-2026-11-11-021 MWS-17): ask for (or withdraw)
+ * merge when ready on the task's pull request. With it on, a read
+ * (RefreshPullRequest, the schedule, or this command's own read) that finds
+ * the request open, not a draft and its checks passed raises the approval of
+ * `forge.pr.merge` with the exact intent: repository, number, head sha and
+ * method. Approval merges that head only; a head that moves, or checks that
+ * stop passing, void the ask and it is asked again when they pass. Nothing
+ * approves the merge but a person's decision: no run mode and no allow rule
+ * covers it. Refused NO_PULL_REQUEST before a request is recorded and
+ * PR_NOT_OPEN once it is merged or closed. The same value again records
+ * nothing.
+ *
+ * @generated from message modbit.v1.SetMergeWhenReady
+ */
+export declare type SetMergeWhenReady = Message<"modbit.v1.SetMergeWhenReady"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: bool enabled = 2;
+   */
+  enabled: boolean;
+
+  /**
+   * merge | squash | rebase; "" = merge
+   *
+   * @generated from field: string method = 3;
+   */
+  method: string;
+};
+
+/**
+ * Describes the message modbit.v1.SetMergeWhenReady.
+ * Use `create(SetMergeWhenReadySchema)` to create a new message.
+ */
+export declare const SetMergeWhenReadySchema: GenMessage<SetMergeWhenReady>;
+
+/**
+ * @generated from message modbit.v1.MergeWhenReadyState
+ */
+export declare type MergeWhenReadyState = Message<"modbit.v1.MergeWhenReadyState"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: bool enabled = 2;
+   */
+  enabled: boolean;
+
+  /**
+   * @generated from field: string method = 3;
+   */
+  method: string;
+
+  /**
+   * as TaskPullRequest.merge_phase
+   *
+   * @generated from field: string phase = 4;
+   */
+  phase: string;
+
+  /**
+   * @generated from field: string detail = 5;
+   */
+  detail: string;
+
+  /**
+   * @generated from field: string approval_id = 6;
+   */
+  approvalId: string;
+
+  /**
+   * @generated from field: string head_sha = 7;
+   */
+  headSha: string;
+
+  /**
+   * @generated from field: string merge_sha = 8;
+   */
+  mergeSha: string;
+
+  /**
+   * the latest merge-when-ready record; 0 = none
+   *
+   * @generated from field: uint64 offset = 9;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.MergeWhenReadyState.
+ * Use `create(MergeWhenReadyStateSchema)` to create a new message.
+ */
+export declare const MergeWhenReadyStateSchema: GenMessage<MergeWhenReadyState>;
+
+/**
+ * The session's pull-request preferences. Archive after merge is off until a
+ * person turns it on.
+ *
+ * @generated from message modbit.v1.GetPullRequestPreferences
+ */
+export declare type GetPullRequestPreferences = Message<"modbit.v1.GetPullRequestPreferences"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.GetPullRequestPreferences.
+ * Use `create(GetPullRequestPreferencesSchema)` to create a new message.
+ */
+export declare const GetPullRequestPreferencesSchema: GenMessage<GetPullRequestPreferences>;
+
+/**
+ * @generated from message modbit.v1.SetPullRequestPreferences
+ */
+export declare type SetPullRequestPreferences = Message<"modbit.v1.SetPullRequestPreferences"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+
+  /**
+   * @generated from field: bool archive_after_merge = 2;
+   */
+  archiveAfterMerge: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.SetPullRequestPreferences.
+ * Use `create(SetPullRequestPreferencesSchema)` to create a new message.
+ */
+export declare const SetPullRequestPreferencesSchema: GenMessage<SetPullRequestPreferences>;
+
+/**
+ * @generated from message modbit.v1.PullRequestPreferences
+ */
+export declare type PullRequestPreferences = Message<"modbit.v1.PullRequestPreferences"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+
+  /**
+   * @generated from field: bool archive_after_merge = 2;
+   */
+  archiveAfterMerge: boolean;
+
+  /**
+   * the record that set it; 0 = never set (the default)
+   *
+   * @generated from field: uint64 offset = 3;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.PullRequestPreferences.
+ * Use `create(PullRequestPreferencesSchema)` to create a new message.
+ */
+export declare const PullRequestPreferencesSchema: GenMessage<PullRequestPreferences>;
 
 /**
  * The three densities of AFW-C05. They are projections of the same log and

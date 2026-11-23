@@ -12,7 +12,7 @@ import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { openTaskDetails, queueTask } from "./new-task.ts";
+import { openTaskMore, queueTask } from "./new-task.ts";
 
 export const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const coreBin = process.env.MODBIT_CORE_BIN ?? resolve(appDir, "..", "..", "target", "debug", process.platform === "win32" ? "modbit-core.exe" : "modbit-core");
@@ -71,7 +71,7 @@ export { closeApp } from "./close-app.ts";
 export async function launch(dataDir: string, extraEnv: Record<string, string>): Promise<{ app: ElectronApplication; page: Page }> {
   const app = await electron.launch({
     args: [join(appDir, "dist", "main", "main.cjs")],
-    env: { ...process.env, MODBIT_DATA_DIR: dataDir, MODBIT_CORE_BIN: coreBin, OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "", MODBIT_SUPPRESS_OS_NOTIFICATIONS: "1", MODBIT_BROWSER_ALLOW_TARGETS: "", MODBIT_BROWSER_ALLOW_ORIGINS: "", MODBIT_BROWSER_HOSTS: "", ...extraEnv },
+    env: { ...process.env, MODBIT_DATA_DIR: dataDir, MODBIT_CORE_BIN: coreBin, OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "", MODBIT_SUPPRESS_OS_NOTIFICATIONS: "1", MODBIT_BROWSER_ALLOW_TARGETS: "", MODBIT_BROWSER_ALLOW_SITES: "http://127.0.0.1:*,http://localhost:*,https://127.0.0.1:*,https://localhost:*", MODBIT_BROWSER_ALLOW_ORIGINS: "", MODBIT_BROWSER_HOSTS: "", ...extraEnv },
   });
   const page = await app.firstWindow();
   app.process().stderr?.on("data", (d: Buffer) => process.stderr.write(`[electron] ${d}`));
@@ -97,7 +97,7 @@ export async function readyForReview(page: Page, model: { toolTexts: string[] },
 /** Create the task, open its browser session and start the run, with the panel closed (the host serves the agent). */
 export async function startBrowserTask(page: Page, repo: string, goal: string): Promise<{ taskId: string; bsid: string }> {
   const taskId = await queueTask(page, goal, repo);
-  await openTaskDetails(page);
+  await openTaskMore(page);
   await page.getByTestId("task-browser").click();
   const panel = page.getByTestId("browser");
   await expect(panel).toHaveAttribute("data-browser-session-id", /^[0-9a-f]{32}$/, { timeout: 30_000 });

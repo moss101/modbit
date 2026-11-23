@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-11-12",
+ "generated_on": "2026-11-22",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -645,7 +645,7 @@
   {
    "id": "67_WORKSPACE_EDITOR_SPECIFICATION.md",
    "type": "doc",
-   "title": "Workspace Editor specification (clean-room)",
+   "title": "Workspace Editor specification (clean-room) — WITHDRAWN",
    "path": "docs/67_WORKSPACE_EDITOR_SPECIFICATION.md",
    "number": 67,
    "section": "verification"
@@ -27724,8 +27724,8 @@
    "id": "MOD-EDIT-001",
    "type": "decision",
    "title": "A scoped Workspace Editor is admitted as a secondary, transactional surface; no Monaco, no Code-OSS, no IDE",
-   "status": "PROVISIONAL",
-   "consequence": "**Proposed, no effect until accepted.** DR-PX-2026-10-03-009, doc 67; edits are a revision-pinned draft overlay saved only through ChangeTransaction; language intelligence is served by the Core.",
+   "status": "REJECTED",
+   "consequence": "**Rejected 2026-11-11, never in force.** DR-PX-2026-10-03-009 (doc 67, withdrawn) was rejected by DR-GOV-2026-11-11-009; Modbit builds no editor, and MOD-SURF-002 and MOD-IDE-002 stand as written.",
    "source": "docs/02"
   },
   {
@@ -30167,8 +30167,8 @@
   {
    "id": "DR-PX-2026-10-03-009",
    "type": "change_record",
-   "title": "Proposed: PX-077..081, doc 67; transactional editor with scoped supersession of MOD-IDE-002 and MOD-SURF-002",
-   "status": "PROPOSED",
+   "title": "Rejected: PX-077..081, doc 67; transactional editor with scoped supersession of MOD-IDE-002 and MOD-SURF-002 (rejected 2026-11-11 by DR-GOV-2026-11-11-009; the rows are withdrawn DEFERRED rows)",
+   "status": "REJECTED",
    "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md"
   },
   {
@@ -31252,67 +31252,67 @@
   {
    "id": "REQ-PX-077",
    "type": "requirement",
-   "title": "Editor file service: open with revision and encoding facts, multi-file save as one ChangeTransaction, merge basis and file revision events",
-   "disposition": "ADOPT",
+   "title": "Withdrawn (DR-GOV-2026-11-11-009): editor file service: open with revision and encoding facts, multi-file save as one ChangeTransaction, merge basis and file revision events",
+   "disposition": "DEFERRED",
    "subsystem": "workspace-git",
    "owner_label": "workspace-git",
-   "imp": "PX-077",
+   "imp": null,
    "qual": "QUAL-PX-077",
-   "release": "RELEASE_ZERO",
+   "release": "POST_ZERO",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
-   "mandatory_behavior": "Real Core and a real worktree with fixtures in UTF-8, UTF-8 with a byte-order mark, UTF-16, CRLF and LF files and one with no trailing newline: open reports each fact; a save round trip keeps every one byte-for-byte except the edited range; a two-file save is atomic (a path-policy denial on the second file leaves the first unchanged); a save at a stale revision is refused with the new revision; replaying a save with the same command id applies once; `SIGKILL` between request and result leaves one applied-or-not state confirmed by the ledger; an agent task's write to an open path emits `FileRevisionAdvanced` with the cause; a symlink to a protected file and a path outside the workspace are refused; the checkout and worktree paths are both honoured."
+   "mandatory_behavior": "Withdrawn, no proof is owed: DR-GOV-2026-11-11-009 rejected the Workspace Editor (DR-PX-2026-10-03-009); the row exists only so REQ-PX numbers stay contiguous. Reactivating it needs a new accepted Decision Record that names its own proof."
   },
   {
    "id": "REQ-PX-078",
    "type": "requirement",
-   "title": "Editor language intelligence: draft analysis overlay, outline, definitions and references served by the Core",
-   "disposition": "ADOPT",
+   "title": "Withdrawn (DR-GOV-2026-11-11-009): editor language intelligence: draft analysis overlay, outline, definitions and references served by the Core",
+   "disposition": "DEFERRED",
    "subsystem": "context-engine",
    "owner_label": "context-engine",
-   "imp": "PX-078",
+   "imp": null,
    "qual": "QUAL-PX-078",
-   "release": "RELEASE_ZERO",
+   "release": "POST_ZERO",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
-   "mandatory_behavior": "Real Core with the real language services on the ts-webapp, python-service and rust-cli fixtures: a draft that introduces a type error returns that diagnostic against the draft hash while the file on disk is unchanged (hash compared before and after); a request above the rate limit is refused with the typed reason; outline, definition and references answer at the right revision and are marked stale after an agent edit; killing the language service returns an explicit degraded answer; a Tier C fixture returns text-level answers with its language state; resident memory after 1,000 analysis requests returns to its baseline."
+   "mandatory_behavior": "Withdrawn, no proof is owed: DR-GOV-2026-11-11-009 rejected the Workspace Editor (DR-PX-2026-10-03-009); the row exists only so REQ-PX numbers stay contiguous. Reactivating it needs a new accepted Decision Record that names its own proof."
   },
   {
    "id": "REQ-PX-079",
    "type": "requirement",
-   "title": "Workspace Editor surface: text engine, drafts, stale-draft merge, find and replace, tabs, accessibility and large-file behaviour",
-   "disposition": "ADOPT",
+   "title": "Withdrawn (DR-GOV-2026-11-11-009): Workspace Editor surface: text engine, drafts, stale-draft merge, find and replace, tabs, accessibility and large-file behaviour",
+   "disposition": "DEFERRED",
    "subsystem": "desktop",
    "owner_label": "desktop",
-   "imp": "PX-079",
+   "imp": null,
    "qual": "QUAL-PX-079",
-   "release": "RELEASE_ZERO",
+   "release": "POST_ZERO",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
-   "mandatory_behavior": "Playwright on the packaged app on a real Core: typing, undo and redo, find and replace with a pathological pattern (returns within the budget, no catastrophic backtracking), go to line, and a save that changes the file on disk exactly as expected (hash compared); an agent change to an open file marks the draft stale and a non-overlapping draft rebases while an overlapping one opens the three-way merge and cannot be saved until resolved; a renderer kill with a dirty draft restores it against the same base and shows it stale against a moved base; a 6 MB file opens read-only with the reason and a 60 MB file is refused; a binary file shows type and size; a screen-reader script reads text, cursor moves, diagnostics and save state; input-method composition inserts the composed text; first paint of a 1 MB file is within 150 ms and keystroke to paint within 16 ms at p95 in a 100,000-line file; axe reports no violations."
+   "mandatory_behavior": "Withdrawn, no proof is owed: DR-GOV-2026-11-11-009 rejected the Workspace Editor (DR-PX-2026-10-03-009); the row exists only so REQ-PX numbers stay contiguous. Reactivating it needs a new accepted Decision Record that names its own proof."
   },
   {
    "id": "REQ-PX-080",
    "type": "requirement",
-   "title": "Agent-aware editing: selection context, quick edit, inline per-hunk review and agent-write notices",
-   "disposition": "ADOPT",
+   "title": "Withdrawn (DR-GOV-2026-11-11-009): agent-aware editing: selection context, quick edit, inline per-hunk review and agent-write notices",
+   "disposition": "DEFERRED",
    "subsystem": "desktop",
    "owner_label": "desktop",
-   "imp": "PX-080",
+   "imp": null,
    "qual": "QUAL-PX-080",
-   "release": "RELEASE_ZERO",
+   "release": "POST_ZERO",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
-   "mandatory_behavior": "Playwright on the packaged app, real Core and live gateway: selecting a function and invoking quick edit starts a task whose context inspector shows that selection and range; the agent's change returns as a per-hunk review at the right revision, accepting one hunk applies only that hunk (file hash) and rejecting another leaves it; changing the file by hand between review and accept makes the decision refuse as stale; the selection bridge never changes a file; the notice appears for an agent change to a dirty file and opens the merge."
+   "mandatory_behavior": "Withdrawn, no proof is owed: DR-GOV-2026-11-11-009 rejected the Workspace Editor (DR-PX-2026-10-03-009); the row exists only so REQ-PX numbers stay contiguous. Reactivating it needs a new accepted Decision Record that names its own proof."
   },
   {
    "id": "REQ-PX-081",
    "type": "requirement",
-   "title": "Editor text-safety and conformance suite: encodings, round trips, fuzzed save path, input method and screen reader, latency",
-   "disposition": "ADOPT",
+   "title": "Withdrawn (DR-GOV-2026-11-11-009): editor text-safety and conformance suite: encodings, round trips, fuzzed save path, input method and screen reader, latency",
+   "disposition": "DEFERRED",
    "subsystem": "verification",
    "owner_label": "verification",
-   "imp": "PX-081",
+   "imp": null,
    "qual": "QUAL-PX-081",
-   "release": "RELEASE_ZERO",
+   "release": "POST_ZERO",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
-   "mandatory_behavior": "The suite runs on a real Core and the packaged app: 1,000 generated round trips and 100,000 fuzzed save requests leave every file either byte-identical outside the edit or unchanged with a typed refusal; the input-method and screen-reader sessions pass; the latency traces meet the budgets or fail the candidate; a seeded corruption (a mutation that rewrites line endings) is detected by the property test."
+   "mandatory_behavior": "Withdrawn, no proof is owed: DR-GOV-2026-11-11-009 rejected the Workspace Editor (DR-PX-2026-10-03-009); the row exists only so REQ-PX numbers stay contiguous. Reactivating it needs a new accepted Decision Record that names its own proof."
   },
   {
    "id": "REQ-PX-082",
@@ -37244,166 +37244,6 @@
    "evidence": []
   },
   {
-   "id": "PX-077",
-   "type": "imp_task",
-   "title": "Editor file service: open with revision and encoding facts, multi-file save as one ChangeTransaction, merge basis and file revision events",
-   "requirement": "REQ-PX-077",
-   "qual": "QUAL-PX-077",
-   "subsystem": "workspace-git",
-   "owner_label": "workspace-git",
-   "milestone": "M10",
-   "release": "RELEASE_ZERO",
-   "disposition": "ADOPT",
-   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
-   "acceptance": "Real Core and a real worktree with fixtures in UTF-8, UTF-8 with a byte-order mark, UTF-16, CRLF and LF files and one with no trailing newline: open reports each fact; a save round trip keeps every one byte-for-byte except the edited range; a two-file save is atomic (a path-policy denial on the second file leaves the first unchanged); a save at a stale revision is refused with the new revision; replaying a save with the same command id applies once; `SIGKILL` between request and result leaves one applied-or-not state confirmed by the ledger; an agent task's write to an open path emits `FileRevisionAdvanced` with the cause; a symlink to a protected file and a path outside the workspace are refused; the checkout and worktree paths are both honoured.",
-   "prerequisites": [
-    "PX-005",
-    "M2.1",
-    "M2.9",
-    "DOC-PX-009"
-   ],
-   "related_requirements": [
-    "REQ-EV-0015",
-    "REQ-EV-0141",
-    "REQ-EV-0160"
-   ],
-   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-077",
-   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
-  },
-  {
-   "id": "PX-078",
-   "type": "imp_task",
-   "title": "Editor language intelligence: draft analysis overlay, outline, definitions and references served by the Core",
-   "requirement": "REQ-PX-078",
-   "qual": "QUAL-PX-078",
-   "subsystem": "context-engine",
-   "owner_label": "context-engine",
-   "milestone": "M10",
-   "release": "RELEASE_ZERO",
-   "disposition": "ADOPT",
-   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
-   "acceptance": "Real Core with the real language services on the ts-webapp, python-service and rust-cli fixtures: a draft that introduces a type error returns that diagnostic against the draft hash while the file on disk is unchanged (hash compared before and after); a request above the rate limit is refused with the typed reason; outline, definition and references answer at the right revision and are marked stale after an agent edit; killing the language service returns an explicit degraded answer; a Tier C fixture returns text-level answers with its language state; resident memory after 1,000 analysis requests returns to its baseline.",
-   "prerequisites": [
-    "M3.3",
-    "M3.4",
-    "M3.6",
-    "PX-077",
-    "DOC-PX-009"
-   ],
-   "related_requirements": [
-    "REQ-EV-0020",
-    "REQ-EV-0141",
-    "REQ-EV-0160",
-    "REQ-EV-0170"
-   ],
-   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-078",
-   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
-  },
-  {
-   "id": "PX-079",
-   "type": "imp_task",
-   "title": "Workspace Editor surface: text engine, drafts, stale-draft merge, find and replace, tabs, accessibility and large-file behaviour",
-   "requirement": "REQ-PX-079",
-   "qual": "QUAL-PX-079",
-   "subsystem": "desktop",
-   "owner_label": "desktop",
-   "milestone": "M10",
-   "release": "RELEASE_ZERO",
-   "disposition": "ADOPT",
-   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
-   "acceptance": "Playwright on the packaged app on a real Core: typing, undo and redo, find and replace with a pathological pattern (returns within the budget, no catastrophic backtracking), go to line, and a save that changes the file on disk exactly as expected (hash compared); an agent change to an open file marks the draft stale and a non-overlapping draft rebases while an overlapping one opens the three-way merge and cannot be saved until resolved; a renderer kill with a dirty draft restores it against the same base and shows it stale against a moved base; a 6 MB file opens read-only with the reason and a 60 MB file is refused; a binary file shows type and size; a screen-reader script reads text, cursor moves, diagnostics and save state; input-method composition inserts the composed text; first paint of a 1 MB file is within 150 ms and keystroke to paint within 16 ms at p95 in a 100,000-line file; axe reports no violations.",
-   "prerequisites": [
-    "PX-044",
-    "PX-048",
-    "PX-077",
-    "PX-078"
-   ],
-   "related_requirements": [
-    "REQ-EV-0141",
-    "REQ-EV-0160"
-   ],
-   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-079",
-   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": [],
-   "notes": [
-    {
-     "at": "2026-11-07T08:07:30Z",
-     "from": "NOT_STARTED",
-     "to": "NOT_STARTED",
-     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: DOCUMENTED-ONLY (doc 67, DR-009 proposed; PX-077, PX-078 NOT_STARTED). renderer/apps/files-app.tsx is read-only; no SaveEdit in Core, proto or desktop; no text engine in apps/desktop/package.json. Missing link: no editing surface or save command. No draft, merge, find or large-file path."
-    }
-   ],
-   "status_changed_on": "2026-11-07T08:07:30Z"
-  },
-  {
-   "id": "PX-080",
-   "type": "imp_task",
-   "title": "Agent-aware editing: selection context, quick edit, inline per-hunk review and agent-write notices",
-   "requirement": "REQ-PX-080",
-   "qual": "QUAL-PX-080",
-   "subsystem": "desktop",
-   "owner_label": "desktop",
-   "milestone": "M10",
-   "release": "RELEASE_ZERO",
-   "disposition": "ADOPT",
-   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
-   "acceptance": "Playwright on the packaged app, real Core and live gateway: selecting a function and invoking quick edit starts a task whose context inspector shows that selection and range; the agent's change returns as a per-hunk review at the right revision, accepting one hunk applies only that hunk (file hash) and rejecting another leaves it; changing the file by hand between review and accept makes the decision refuse as stale; the selection bridge never changes a file; the notice appears for an agent change to a dirty file and opens the merge.",
-   "prerequisites": [
-    "PX-079",
-    "PX-055",
-    "M2.9",
-    "DOC-PX-009"
-   ],
-   "related_requirements": [
-    "REQ-EV-0141",
-    "REQ-EV-0160"
-   ],
-   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-080",
-   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": [],
-   "notes": [
-    {
-     "at": "2026-11-07T08:07:30Z",
-     "from": "NOT_STARTED",
-     "to": "NOT_STARTED",
-     "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: IMPLEMENTED-PARTIAL by reuse only. px-104-live-review.spec.ts:134,156 prove per-hunk reject and stale refusal; surface_protocol.rs:14465 selection reaches inspector; review.tsx:122 sends hunks only. Missing link: no editor selection or quick-edit command. No range check or agent-write notice; PX-079 absent."
-    }
-   ],
-   "status_changed_on": "2026-11-07T08:07:30Z"
-  },
-  {
-   "id": "PX-081",
-   "type": "imp_task",
-   "title": "Editor text-safety and conformance suite: encodings, round trips, fuzzed save path, input method and screen reader, latency",
-   "requirement": "REQ-PX-081",
-   "qual": "QUAL-PX-081",
-   "subsystem": "verification",
-   "owner_label": "verification",
-   "milestone": "M10",
-   "release": "RELEASE_ZERO",
-   "disposition": "ADOPT",
-   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
-   "acceptance": "The suite runs on a real Core and the packaged app: 1,000 generated round trips and 100,000 fuzzed save requests leave every file either byte-identical outside the edit or unchanged with a typed refusal; the input-method and screen-reader sessions pass; the latency traces meet the budgets or fail the candidate; a seeded corruption (a mutation that rewrites line endings) is detected by the property test.",
-   "prerequisites": [
-    "PX-077",
-    "PX-079",
-    "DOC-PX-009"
-   ],
-   "related_requirements": [
-    "REQ-EV-0015"
-   ],
-   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-081",
-   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
-  },
-  {
    "id": "PX-082",
    "type": "imp_task",
    "title": "Automation definitions: versions, principal, validation, enable approval and repository-supplied definitions",
@@ -39046,12 +38886,20 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-125",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "WIRED",
+   "status": "COMPLETE",
    "evidence": [
     "commit:d10d46d7",
     "run:38990216920",
     "test:services/modbit-core/tests/px_125_forge.rs::qual_px_125_the_forge_adapter_reads_a_pull_request_and_its_diff_and_posts_approved_redacted_comments",
-    "test:tests/support/github_fake.rs"
+    "test:tests/support/github_fake.rs",
+    "test:services/modbit-core/tests/px_125_live.rs",
+    "artifact:evidence/m10/PX-125/px125-live.log",
+    "commit:7ead72f38588862cffc81ed80680a4fa9062da0c",
+    "artifact:evidence/m10/PX-125/TASK_CARD.md",
+    "artifact:evidence/m10/PX-125/mutation-redaction-skipped.log",
+    "run:gha-44826858961",
+    "commit:cf2a5ebe846b3c0f2eb326066b48e49f7e1cd21a",
+    "artifact:evidence/m10/PX-125/ci-run-44826858961.json"
    ],
    "notes": [
     {
@@ -39059,10 +38907,28 @@
      "from": "IMPLEMENTING",
      "to": "WIRED",
      "note": "graph integration 2026-10-17 on main dbe83fc9: forge.pr.read/diff/comment are wired through the Kernel against a wire-faithful GitHub fake; QUAL-PX-125 requires real GitHub and says the fake does not close the row. Open: run against the owner's real GitHub test repository (token + repository)"
+    },
+    {
+     "at": "2026-11-20T22:06:57Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Real GitHub run on the owner's scratch repository moss101/modbit-forge-test with a scoped fine-grained token: read, diff paged by range, approved comment on the real pull request, planted credential redacted, missing token typed, profile without capability refused; redaction mutation fails it"
+    },
+    {
+     "at": "2026-11-20T22:06:57Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "Production-equivalent proof on macOS against real GitHub; 403 and rate limits stay on the fake as the acceptance says; fine-grained tokens cannot read check runs (typed FORGE_FORBIDDEN); CI has no secrets so no workflow runs it; sealing is the owner's"
+    },
+    {
+     "at": "2026-11-21T06:41:30Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Real-GitHub live leg merged as cf2a5ebe (PR 239; CI green after one retry of an unrelated flake); owner asked for the seal. Real-GitHub proof is local (CI has no secrets); fine-grained tokens cannot read check runs"
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:57Z"
+   "status_changed_on": "2026-11-21T06:41:30Z"
   },
   {
    "id": "PX-126",
@@ -41224,8 +41090,13 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-201",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:43268843557",
+    "commit:540711f0",
+    "artifact:evidence/m10/PX-201/evidence.json"
+   ],
+   "status_changed_on": "2026-11-12T20:42:11Z"
   },
   {
    "id": "PX-202",
@@ -41247,8 +41118,13 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-202",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:43691278961",
+    "commit:ff0b1ac9",
+    "artifact:evidence/m10/PX-202/evidence.json"
+   ],
+   "status_changed_on": "2026-11-15T09:07:11Z"
   },
   {
    "id": "PX-203",
@@ -41270,8 +41146,13 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-203",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:43709635767",
+    "commit:7ec3f2b8",
+    "artifact:evidence/m10/PX-203/evidence.json"
+   ],
+   "status_changed_on": "2026-11-15T13:16:24Z"
   },
   {
    "id": "PX-204",
@@ -41293,8 +41174,13 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-204",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:43762302238",
+    "commit:9da82128",
+    "artifact:evidence/m10/PX-204/evidence.json"
+   ],
+   "status_changed_on": "2026-11-16T04:19:09Z"
   },
   {
    "id": "PX-205",
@@ -41319,8 +41205,13 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-205",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:43821013355",
+    "commit:1a8298f5",
+    "artifact:evidence/m10/PX-205/evidence.json"
+   ],
+   "status_changed_on": "2026-11-16T13:11:41Z"
   },
   {
    "id": "PX-206",
@@ -41345,8 +41236,13 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-206",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:44107179468",
+    "commit:094d83f4",
+    "artifact:evidence/m10/PX-206/evidence.json"
+   ],
+   "status_changed_on": "2026-11-18T06:04:18Z"
   },
   {
    "id": "PX-207",
@@ -41368,8 +41264,13 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-207",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:44364563619",
+    "commit:a47a8928",
+    "artifact:evidence/m10/PX-207/evidence.json"
+   ],
+   "status_changed_on": "2026-11-18T20:59:06Z"
   },
   {
    "id": "PX-208",
@@ -41391,8 +41292,13 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-208",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:44397630544",
+    "commit:a5867e87",
+    "artifact:evidence/m10/PX-208/evidence.json"
+   ],
+   "status_changed_on": "2026-11-19T00:10:12Z"
   },
   {
    "id": "PX-209",
@@ -41414,8 +41320,13 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-209",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:43983243937",
+    "commit:e429d951",
+    "artifact:evidence/m10/PX-209/evidence.json"
+   ],
+   "status_changed_on": "2026-11-17T03:28:56Z"
   },
   {
    "id": "PX-210",
@@ -41476,8 +41387,30 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-211",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m10/PX-211/TASK_CARD.md",
+    "commit:46e6f7f2",
+    "test:services/modbit-core/tests/px_211_pull_request_state.rs",
+    "artifact:evidence/m10/PX-211/px211-core.log",
+    "artifact:evidence/m10/PX-211/mutation-checks-2026-11-21.txt",
+    "artifact:evidence/m10/PX-211/core-suite.log",
+    "test:apps/desktop/e2e/px-211-pull-request-state.spec.ts",
+    "artifact:evidence/m10/PX-211/px211-e2e-related.log",
+    "artifact:evidence/m10/PX-211/evidence.json",
+    "run:gha-44915377978",
+    "commit:ac3545539548aae161c314749c5a157b9aca5d00",
+    "artifact:evidence/m10/PX-211/ci-run-44915377978.json"
+   ],
+   "notes": [
+    {
+     "at": "2026-11-21T16:48:02Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "PR 244 merged green; owner asked to close open tasks"
+    }
+   ],
+   "status_changed_on": "2026-11-21T16:48:02Z"
   },
   {
    "id": "PX-212",
@@ -41499,8 +41432,31 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-212",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m10/PX-212/TASK_CARD.md",
+    "commit:ba9e0a03",
+    "test:services/modbit-core/tests/px_212_auto_fix.rs",
+    "artifact:evidence/m10/PX-212/px212-core.log",
+    "artifact:evidence/m10/PX-212/mutation-checks-2026-11-21.txt",
+    "artifact:evidence/m10/PX-212/core-suite.log",
+    "test:apps/desktop/e2e/px-212-auto-fix.spec.ts",
+    "artifact:evidence/m10/PX-212/px212-e2e.log",
+    "artifact:evidence/m10/PX-212/px212-e2e-related.log",
+    "artifact:evidence/m10/PX-212/evidence.json",
+    "run:gha-44931110437",
+    "commit:233cd647",
+    "artifact:evidence/m10/PX-212/ci-run-44931110437.json"
+   ],
+   "notes": [
+    {
+     "at": "2026-11-22T03:20:31Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "PR 245 merged green (run 44931110437, 19/19); owner asked to merge when green"
+    }
+   ],
+   "status_changed_on": "2026-11-22T03:20:31Z"
   },
   {
    "id": "PX-213",
@@ -41522,8 +41478,30 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-213",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:ad5af66c",
+    "test:qual_px_213_merge_when_ready_asks_once_checks_pass_and_merges_only_the_approved_head",
+    "artifact:evidence/m10/PX-213/px213-core.log",
+    "artifact:evidence/m10/PX-213/mutation-checks-2026-11-22.txt",
+    "test:PX-E2E-213",
+    "artifact:evidence/m10/PX-213/px213-e2e.log",
+    "artifact:evidence/m10/PX-213/px213-e2e-related.log",
+    "artifact:evidence/m10/PX-213/core-suite.log",
+    "artifact:evidence/m10/PX-213/TASK_CARD.md",
+    "run:gha-44994944832",
+    "commit:df72d23adfd1b352c6043cc54a226e35e09aa6c1",
+    "artifact:evidence/m10/PX-213/ci-run-44994944832.json"
+   ],
+   "notes": [
+    {
+     "at": "2026-11-22T18:03:21Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "PR 246 CI run 44994944832 all green; merged as df72d23a; owner asked to merge when green"
+    }
+   ],
+   "status_changed_on": "2026-11-22T18:03:21Z"
   },
   {
    "id": "PX-214",
@@ -41545,8 +41523,57 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-214",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:services/modbit-core/tests/px_214_reviewer_findings.rs",
+    "test:apps/desktop/e2e/px-214-reviewer-findings.spec.ts",
+    "commit:99b93b34",
+    "artifact:evidence/m10/PX-214/evidence.json",
+    "artifact:evidence/m10/PX-214/core-suite.log",
+    "artifact:evidence/m10/PX-214/mutation-check-2026-11-19.txt",
+    "run:gha-44629354029",
+    "commit:c73af3359fd55b7e4256a00a3966679bb95a2717",
+    "artifact:evidence/m10/PX-214/ci-run-44629354029.json"
+   ],
+   "notes": [
+    {
+     "at": "2026-11-19T07:04:04Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit at main 48e0d597: the reviewer's result is recorded (critique.rs, ReviewerResultRecorded) but the review bundle carries none of it; no fix or dismiss command; first missing link recorded in evidence/m10/PX-214/TASK_CARD.md"
+    },
+    {
+     "at": "2026-11-19T17:38:50Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "protocol, Core and desktop built on branch"
+    },
+    {
+     "at": "2026-11-19T17:38:51Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "bundle, commands, bridge and Review wired end to end"
+    },
+    {
+     "at": "2026-11-19T17:38:51Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real Core isolated review test passes"
+    },
+    {
+     "at": "2026-11-19T17:38:51Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "Core suite 690 passed 0 failed; Playwright 3 of 3; 12 of 12 mutations caught; local macOS run, CI and owner sealing pending"
+    },
+    {
+     "at": "2026-11-20T07:06:55Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "PR 236 CI green on 979a85dc (19 checks, Linux/macOS/Windows), merged as c73af335; owner reviewed the screenshots and asked for the seal"
+    }
+   ],
+   "status_changed_on": "2026-11-20T07:06:55Z"
   },
   {
    "id": "PX-215",
@@ -41569,8 +41596,46 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-215",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m10/PX-215/TASK_CARD.md",
+    "test:services/modbit-core/tests/px_computer.rs",
+    "commit:e916d888",
+    "test:apps/desktop/e2e/px-215-standing-access.spec.ts",
+    "artifact:evidence/m10/PX-215/evidence.json",
+    "artifact:evidence/m10/PX-215/core-suite.log",
+    "artifact:evidence/m10/PX-215/mutation-checks-2026-11-20.txt",
+    "run:gha-44755846351",
+    "commit:54908396",
+    "artifact:evidence/m10/PX-215/ci-run-44755846351.json"
+   ],
+   "notes": [
+    {
+     "at": "2026-11-20T08:02:48Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Plan in the task card: runtime standing level (crates/computer/access.rs), Core ledger and commands, additive protocol, Settings control and card wording"
+    },
+    {
+     "at": "2026-11-20T08:02:48Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "A production route reaches it: SetComputerAccess -> Core store -> runtime plan/start_checks/session_for -> ComputerAccessRefused -> activity -> action card"
+    },
+    {
+     "at": "2026-11-20T08:02:59Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "QUAL-PX-215 against the real Core and the fixture actuator process: 7 passed"
+    },
+    {
+     "at": "2026-11-20T17:35:45Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "PR 238 CI green on 0fa6cda0 (19 checks), merged as 54908396; owner reviewed the screenshots and asked for the seal"
+    }
+   ],
+   "status_changed_on": "2026-11-20T17:35:45Z"
   },
   {
    "id": "PX-216",
@@ -41592,8 +41657,28 @@
    "related_requirements": [],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-216",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m10/PX-216/TASK_CARD.md",
+    "commit:755baf72",
+    "test:apps/desktop/src/main/browser-sites.test.ts",
+    "test:apps/desktop/e2e/px-216-site-decisions.spec.ts",
+    "artifact:evidence/m10/PX-216/evidence.json",
+    "artifact:evidence/m10/PX-216/mutation-check-2026-11-20.txt",
+    "artifact:evidence/m10/PX-216/neighbours-e2e.log",
+    "run:gha-44703829557",
+    "commit:fe049bae",
+    "artifact:evidence/m10/PX-216/ci-run-44703829557.json"
+   ],
+   "notes": [
+    {
+     "at": "2026-11-20T17:35:45Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "PR 237 CI green on 02358388 (19 checks), merged as fe049bae; owner reviewed the screenshots and asked for the seal"
+    }
+   ],
+   "status_changed_on": "2026-11-20T17:35:45Z"
   },
   {
    "id": "PX-217",
@@ -42433,8 +42518,8 @@
    "type": "qual_test",
    "requirement": "REQ-PX-077",
    "owner_label": "workspace-git",
-   "title": "Real Core and a real worktree with fixtures in UTF-8, UTF-8 with a byte-order mark, UTF-16, CRLF and LF files and one with no trailing newline: open reports each fact; a save round trip keeps every one byte-for-byte except the edited range; a two-file save is atomic (a path-policy denial on the second file leaves the first unchanged); a save at a stale revision is refused with the new revision; replaying a save with the same command id applies once; `SIGKILL` between request and result leaves one applied-or-not state confirmed by the ledger; an agent task's write to an open path emits `FileRevisionAdvanced` with the cause; a symlink to a protected file and a path outside the workspace are refused; the checkout and worktree paths are both honoured.",
-   "failure_proof": "A client that writes through any path other than `SaveEdit` has none and the dependency scan of PX-001 proves it; a save that changes line endings the person did not touch fails the property test; a protected path accepting a write fails; a save without the session lease is rejected; a binary file returned as text fails; a revision event missed by a subscribed client that reconnects by cursor fails the replay check.",
+   "title": "Withdrawn, no proof is owed: DR-GOV-2026-11-11-009 rejected the Workspace Editor (DR-PX-2026-10-03-009); the row exists only so REQ-PX numbers stay contiguous. Reactivating it needs a new accepted Decision Record that names its own proof.",
+   "failure_proof": "None while withdrawn; an editing surface shipped without a new accepted record contradicts MOD-SURF-002 (LOCKED).",
    "evidence_class": "real-system or production-equivalent",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
@@ -42443,8 +42528,8 @@
    "type": "qual_test",
    "requirement": "REQ-PX-078",
    "owner_label": "context-engine",
-   "title": "Real Core with the real language services on the ts-webapp, python-service and rust-cli fixtures: a draft that introduces a type error returns that diagnostic against the draft hash while the file on disk is unchanged (hash compared before and after); a request above the rate limit is refused with the typed reason; outline, definition and references answer at the right revision and are marked stale after an agent edit; killing the language service returns an explicit degraded answer; a Tier C fixture returns text-level answers with its language state; resident memory after 1,000 analysis requests returns to its baseline.",
-   "failure_proof": "An analysis overlay that leaves a file or temp artifact behind fails; a result without a revision and draft hash fails; per-keystroke push traffic fails the pull-based check; a stale result shown as current fails; an unsupported language returning a structural answer fails (PX-029).",
+   "title": "Withdrawn, no proof is owed: DR-GOV-2026-11-11-009 rejected the Workspace Editor (DR-PX-2026-10-03-009); the row exists only so REQ-PX numbers stay contiguous. Reactivating it needs a new accepted Decision Record that names its own proof.",
+   "failure_proof": "None while withdrawn; an editing surface shipped without a new accepted record contradicts MOD-SURF-002 (LOCKED).",
    "evidence_class": "real-system or production-equivalent",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
@@ -42453,8 +42538,8 @@
    "type": "qual_test",
    "requirement": "REQ-PX-079",
    "owner_label": "desktop",
-   "title": "Playwright on the packaged app on a real Core: typing, undo and redo, find and replace with a pathological pattern (returns within the budget, no catastrophic backtracking), go to line, and a save that changes the file on disk exactly as expected (hash compared); an agent change to an open file marks the draft stale and a non-overlapping draft rebases while an overlapping one opens the three-way merge and cannot be saved until resolved; a renderer kill with a dirty draft restores it against the same base and shows it stale against a moved base; a 6 MB file opens read-only with the reason and a 60 MB file is refused; a binary file shows type and size; a screen-reader script reads text, cursor moves, diagnostics and save state; input-method composition inserts the composed text; first paint of a 1 MB file is within 150 ms and keystroke to paint within 16 ms at p95 in a 100,000-line file; axe reports no violations.",
-   "failure_proof": "A draft applied automatically fails; a save through anything but `SaveEdit` fails the dependency scan; a regular expression that backtracks catastrophically fails the engine test; HTML in a pasted payload executing fails; an engine with Monaco or Code-OSS code in its dependency closure fails the licence and provenance scan; Tab trapping focus without the setting fails; a dirty-close with no prompt fails.",
+   "title": "Withdrawn, no proof is owed: DR-GOV-2026-11-11-009 rejected the Workspace Editor (DR-PX-2026-10-03-009); the row exists only so REQ-PX numbers stay contiguous. Reactivating it needs a new accepted Decision Record that names its own proof.",
+   "failure_proof": "None while withdrawn; an editing surface shipped without a new accepted record contradicts MOD-SURF-002 (LOCKED).",
    "evidence_class": "real-system or production-equivalent",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
@@ -42463,8 +42548,8 @@
    "type": "qual_test",
    "requirement": "REQ-PX-080",
    "owner_label": "desktop",
-   "title": "Playwright on the packaged app, real Core and live gateway: selecting a function and invoking quick edit starts a task whose context inspector shows that selection and range; the agent's change returns as a per-hunk review at the right revision, accepting one hunk applies only that hunk (file hash) and rejecting another leaves it; changing the file by hand between review and accept makes the decision refuse as stale; the selection bridge never changes a file; the notice appears for an agent change to a dirty file and opens the merge.",
-   "failure_proof": "A quick edit that writes to the draft or the file without a review fails; a decision at a stale revision applying fails; a selection outside the stated range being edited fails the range check; an agent write silently overwriting a dirty draft fails; the bridge mutating source fails (QUAL-EV-0141).",
+   "title": "Withdrawn, no proof is owed: DR-GOV-2026-11-11-009 rejected the Workspace Editor (DR-PX-2026-10-03-009); the row exists only so REQ-PX numbers stay contiguous. Reactivating it needs a new accepted Decision Record that names its own proof.",
+   "failure_proof": "None while withdrawn; an editing surface shipped without a new accepted record contradicts MOD-SURF-002 (LOCKED).",
    "evidence_class": "real-system or production-equivalent",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
@@ -42473,8 +42558,8 @@
    "type": "qual_test",
    "requirement": "REQ-PX-081",
    "owner_label": "verification",
-   "title": "The suite runs on a real Core and the packaged app: 1,000 generated round trips and 100,000 fuzzed save requests leave every file either byte-identical outside the edit or unchanged with a typed refusal; the input-method and screen-reader sessions pass; the latency traces meet the budgets or fail the candidate; a seeded corruption (a mutation that rewrites line endings) is detected by the property test.",
-   "failure_proof": "A suite that passes with the line-ending mutation in place fails its own mutation check; a fuzzed request that corrupts a file fails; a budget miss fails the candidate; results taken from screenshots rather than traces are rejected; weakening an assertion to pass fails the evidence check (doc 82).",
+   "title": "Withdrawn, no proof is owed: DR-GOV-2026-11-11-009 rejected the Workspace Editor (DR-PX-2026-10-03-009); the row exists only so REQ-PX numbers stay contiguous. Reactivating it needs a new accepted Decision Record that names its own proof.",
+   "failure_proof": "None while withdrawn; an editing surface shipped without a new accepted record contradicts MOD-SURF-002 (LOCKED).",
    "evidence_class": "real-system or production-equivalent",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
@@ -44374,41 +44459,6 @@
    "type": "scenario",
    "kind": "px-e2e",
    "title": "Screenshot and accessibility artifacts: window capture, masking, content-aware codec, retention and audit",
-   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
-  },
-  {
-   "id": "PX-E2E-077",
-   "type": "scenario",
-   "kind": "px-e2e",
-   "title": "Editor file service: open with revision and encoding facts, multi-file save as one ChangeTransaction, merge basis and file revision events",
-   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
-  },
-  {
-   "id": "PX-E2E-078",
-   "type": "scenario",
-   "kind": "px-e2e",
-   "title": "Editor language intelligence: draft analysis overlay, outline, definitions and references served by the Core",
-   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
-  },
-  {
-   "id": "PX-E2E-079",
-   "type": "scenario",
-   "kind": "px-e2e",
-   "title": "Workspace Editor surface: text engine, drafts, stale-draft merge, find and replace, tabs, accessibility and large-file behaviour",
-   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
-  },
-  {
-   "id": "PX-E2E-080",
-   "type": "scenario",
-   "kind": "px-e2e",
-   "title": "Agent-aware editing: selection context, quick edit, inline per-hunk review and agent-write notices",
-   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
-  },
-  {
-   "id": "PX-E2E-081",
-   "type": "scenario",
-   "kind": "px-e2e",
-   "title": "Editor text-safety and conformance suite: encodings, round trips, fuzzed save path, input method and screen reader, latency",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
   {
@@ -46362,11 +46412,14 @@
    "title": "Product extension stage: Workspace Editor, PX-077..081",
    "subsystem": "governance",
    "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
-   "acceptance": "Decision Record, its rows, specification, supersession entries and change record added; implementation audit recorded; full integrity gate passes; the record is flagged for owner ratification and the task stays below COMPLETE until it is accepted; no product proof",
-   "status": "REAL_TESTING",
+   "acceptance": "Decision Record, its rows, specification, supersession entries and change record added; implementation audit recorded; full integrity gate passes; the record is rejected by the owner and its status and rejection are recorded; its rows are withdrawn and nothing is built; no product proof",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/dossier-px-007/validation.json",
-    "artifact:evidence/dossier-px-007/tests.log"
+    "artifact:evidence/dossier-px-007/tests.log",
+    "artifact:evidence/dossier-gov-009/validation.json",
+    "run:gha-44444969771",
+    "commit:cc64633b94d25c401106479c08ff11d0cc3cac02"
    ],
    "notes": [
     {
@@ -46392,9 +46445,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "check_dossier --manifest and the copied-package suite pass locally on the uncommitted worktree; E2E_PROVEN and COMPLETE need the owner's ratification of the record and the landing pull request"
+    },
+    {
+     "at": "2026-11-19T06:58:34Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "Withdrawn by DR-GOV-2026-11-11-009 (PR 193): rows removed, nothing built; integrity gate passes"
+    },
+    {
+     "at": "2026-11-19T06:58:37Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Withdrawn on main as cc64633b (PR 193)"
     }
    ],
-   "status_changed_on": "2026-10-03T10:47:28Z"
+   "status_changed_on": "2026-11-19T06:58:37Z"
   },
   {
    "id": "DOC-PX-010",
@@ -46709,6 +46774,67 @@
     "commit:0d8e2d7c0bc32c1e6df5ac3afc98978ba2973230"
    ],
    "status_changed_on": "2026-11-03T19:51:41Z"
+  },
+  {
+   "id": "DR-GOV-2026-11-11-009",
+   "type": "change_record",
+   "title": "Approved withdrawal of the Workspace Editor: DR-PX-2026-10-03-009 rejected, REQ-PX-077..081 withdrawn from Release Zero, MOD-SURF-002 and MOD-IDE-002 restored as written",
+   "status": "APPROVED",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md"
+  },
+  {
+   "id": "DOC-GOV-009",
+   "type": "dossier_task",
+   "title": "Withdraw the Workspace Editor (DR-PX-2026-10-03-009 rejected, PX-077..081 withdrawn)",
+   "subsystem": "governance",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
+   "acceptance": "DR-PX-2026-10-03-009 is rejected and DR-GOV-2026-11-11-009 accepted with the owner's instruction recorded; REQ-PX-077..081 are DEFERRED POST_ZERO rows with no task card or scenario and PX-077..081 are absent from the graph and from RELEASE_ZERO; MOD-EDIT-001 is REJECTED and the proposed supersession entries of docs 02, 03, 20, 29 and 32 say they never took effect; doc 67 is marked withdrawn; no sealed REQ-EV or EPR row, gate or product code changes; full integrity gate passes; no product proof",
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/dossier-gov-009/validation.json",
+    "artifact:evidence/dossier-gov-009/tests.log",
+    "run:gha-44444969771",
+    "commit:cc64633b94d25c401106479c08ff11d0cc3cac02"
+   ],
+   "notes": [
+    {
+     "at": "2026-11-19T06:58:33Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit of the Workspace Editor surface at main: nothing built; PX-077..081 rows, DR-PX-2026-10-03-009, docs 02/03/20/29/32/67 traced; baseline in evidence/dossier-gov-009/baseline.json"
+    },
+    {
+     "at": "2026-11-19T06:58:34Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "DR-GOV-2026-11-11-009 accepted; DR-PX-2026-10-03-009 rejected; PX-077..081 withdrawn from graph and Release Zero; MOD-SURF-002 restored"
+    },
+    {
+     "at": "2026-11-19T06:58:34Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Graph, manifest and doc 97 regenerated through the real CLIs; the withdrawn rows no longer reach the graph"
+    },
+    {
+     "at": "2026-11-19T06:58:34Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "check_dossier --manifest, test_dossier (91 tests) and example_runner pass on the PR branch"
+    },
+    {
+     "at": "2026-11-19T06:58:37Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "PR 193 CI green on 6a88cb16, all 19 checks"
+    },
+    {
+     "at": "2026-11-19T06:58:37Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Landed on main as cc64633b (PR 193)"
+    }
+   ],
+   "status_changed_on": "2026-11-19T06:58:37Z"
   },
   {
    "id": "ALPHA",
@@ -64637,11 +64763,6 @@
    "type": "authorized_by"
   },
   {
-   "from": "REQ-PX-077",
-   "to": "PX-077",
-   "type": "implemented_by"
-  },
-  {
    "from": "REQ-PX-078",
    "to": "context-engine",
    "type": "owned_by_req"
@@ -64665,11 +64786,6 @@
    "from": "REQ-PX-078",
    "to": "DR-PX-2026-10-03-009",
    "type": "authorized_by"
-  },
-  {
-   "from": "REQ-PX-078",
-   "to": "PX-078",
-   "type": "implemented_by"
   },
   {
    "from": "REQ-PX-079",
@@ -64697,11 +64813,6 @@
    "type": "authorized_by"
   },
   {
-   "from": "REQ-PX-079",
-   "to": "PX-079",
-   "type": "implemented_by"
-  },
-  {
    "from": "REQ-PX-080",
    "to": "desktop",
    "type": "owned_by_req"
@@ -64727,11 +64838,6 @@
    "type": "authorized_by"
   },
   {
-   "from": "REQ-PX-080",
-   "to": "PX-080",
-   "type": "implemented_by"
-  },
-  {
    "from": "REQ-PX-081",
    "to": "verification",
    "type": "owned_by_req"
@@ -64755,11 +64861,6 @@
    "from": "REQ-PX-081",
    "to": "DR-PX-2026-10-03-009",
    "type": "authorized_by"
-  },
-  {
-   "from": "REQ-PX-081",
-   "to": "PX-081",
-   "type": "implemented_by"
   },
   {
    "from": "REQ-PX-082",
@@ -73288,366 +73389,6 @@
   },
   {
    "from": "PX-E2E-076",
-   "to": "M10",
-   "type": "proves"
-  },
-  {
-   "from": "PX-077",
-   "to": "DR-PX-2026-09-05",
-   "type": "authorized_by"
-  },
-  {
-   "from": "PX-077",
-   "to": "DR-PX-2026-10-03-009",
-   "type": "authorized_by"
-  },
-  {
-   "from": "PX-077",
-   "to": "workspace-git",
-   "type": "owned_by"
-  },
-  {
-   "from": "PX-077",
-   "to": "M10",
-   "type": "scheduled_in"
-  },
-  {
-   "from": "PX-077",
-   "to": "QUAL-PX-077",
-   "type": "proven_by"
-  },
-  {
-   "from": "PX-077",
-   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
-   "type": "specified_by"
-  },
-  {
-   "from": "PX-077",
-   "to": "PX-005",
-   "type": "after"
-  },
-  {
-   "from": "PX-077",
-   "to": "M2.1",
-   "type": "after"
-  },
-  {
-   "from": "PX-077",
-   "to": "M2.9",
-   "type": "after"
-  },
-  {
-   "from": "PX-077",
-   "to": "DOC-PX-009",
-   "type": "after"
-  },
-  {
-   "from": "REQ-PX-077",
-   "to": "REQ-EV-0015",
-   "type": "extends"
-  },
-  {
-   "from": "REQ-PX-077",
-   "to": "REQ-EV-0141",
-   "type": "extends"
-  },
-  {
-   "from": "REQ-PX-077",
-   "to": "REQ-EV-0160",
-   "type": "extends"
-  },
-  {
-   "from": "PX-077",
-   "to": "PX-E2E-077",
-   "type": "proven_by"
-  },
-  {
-   "from": "PX-E2E-077",
-   "to": "M10",
-   "type": "proves"
-  },
-  {
-   "from": "PX-078",
-   "to": "DR-PX-2026-09-05",
-   "type": "authorized_by"
-  },
-  {
-   "from": "PX-078",
-   "to": "DR-PX-2026-10-03-009",
-   "type": "authorized_by"
-  },
-  {
-   "from": "PX-078",
-   "to": "context-engine",
-   "type": "owned_by"
-  },
-  {
-   "from": "PX-078",
-   "to": "M10",
-   "type": "scheduled_in"
-  },
-  {
-   "from": "PX-078",
-   "to": "QUAL-PX-078",
-   "type": "proven_by"
-  },
-  {
-   "from": "PX-078",
-   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
-   "type": "specified_by"
-  },
-  {
-   "from": "PX-078",
-   "to": "M3.3",
-   "type": "after"
-  },
-  {
-   "from": "PX-078",
-   "to": "M3.4",
-   "type": "after"
-  },
-  {
-   "from": "PX-078",
-   "to": "M3.6",
-   "type": "after"
-  },
-  {
-   "from": "PX-078",
-   "to": "PX-077",
-   "type": "after"
-  },
-  {
-   "from": "PX-078",
-   "to": "DOC-PX-009",
-   "type": "after"
-  },
-  {
-   "from": "REQ-PX-078",
-   "to": "REQ-EV-0020",
-   "type": "extends"
-  },
-  {
-   "from": "REQ-PX-078",
-   "to": "REQ-EV-0141",
-   "type": "extends"
-  },
-  {
-   "from": "REQ-PX-078",
-   "to": "REQ-EV-0160",
-   "type": "extends"
-  },
-  {
-   "from": "REQ-PX-078",
-   "to": "REQ-EV-0170",
-   "type": "extends"
-  },
-  {
-   "from": "PX-078",
-   "to": "PX-E2E-078",
-   "type": "proven_by"
-  },
-  {
-   "from": "PX-E2E-078",
-   "to": "M10",
-   "type": "proves"
-  },
-  {
-   "from": "PX-079",
-   "to": "DR-PX-2026-09-05",
-   "type": "authorized_by"
-  },
-  {
-   "from": "PX-079",
-   "to": "DR-PX-2026-10-03-009",
-   "type": "authorized_by"
-  },
-  {
-   "from": "PX-079",
-   "to": "desktop",
-   "type": "owned_by"
-  },
-  {
-   "from": "PX-079",
-   "to": "M10",
-   "type": "scheduled_in"
-  },
-  {
-   "from": "PX-079",
-   "to": "QUAL-PX-079",
-   "type": "proven_by"
-  },
-  {
-   "from": "PX-079",
-   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
-   "type": "specified_by"
-  },
-  {
-   "from": "PX-079",
-   "to": "PX-044",
-   "type": "after"
-  },
-  {
-   "from": "PX-079",
-   "to": "PX-048",
-   "type": "after"
-  },
-  {
-   "from": "PX-079",
-   "to": "PX-077",
-   "type": "after"
-  },
-  {
-   "from": "PX-079",
-   "to": "PX-078",
-   "type": "after"
-  },
-  {
-   "from": "REQ-PX-079",
-   "to": "REQ-EV-0141",
-   "type": "extends"
-  },
-  {
-   "from": "REQ-PX-079",
-   "to": "REQ-EV-0160",
-   "type": "extends"
-  },
-  {
-   "from": "PX-079",
-   "to": "PX-E2E-079",
-   "type": "proven_by"
-  },
-  {
-   "from": "PX-E2E-079",
-   "to": "M10",
-   "type": "proves"
-  },
-  {
-   "from": "PX-080",
-   "to": "DR-PX-2026-09-05",
-   "type": "authorized_by"
-  },
-  {
-   "from": "PX-080",
-   "to": "DR-PX-2026-10-03-009",
-   "type": "authorized_by"
-  },
-  {
-   "from": "PX-080",
-   "to": "desktop",
-   "type": "owned_by"
-  },
-  {
-   "from": "PX-080",
-   "to": "M10",
-   "type": "scheduled_in"
-  },
-  {
-   "from": "PX-080",
-   "to": "QUAL-PX-080",
-   "type": "proven_by"
-  },
-  {
-   "from": "PX-080",
-   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
-   "type": "specified_by"
-  },
-  {
-   "from": "PX-080",
-   "to": "PX-079",
-   "type": "after"
-  },
-  {
-   "from": "PX-080",
-   "to": "PX-055",
-   "type": "after"
-  },
-  {
-   "from": "PX-080",
-   "to": "M2.9",
-   "type": "after"
-  },
-  {
-   "from": "PX-080",
-   "to": "DOC-PX-009",
-   "type": "after"
-  },
-  {
-   "from": "REQ-PX-080",
-   "to": "REQ-EV-0141",
-   "type": "extends"
-  },
-  {
-   "from": "REQ-PX-080",
-   "to": "REQ-EV-0160",
-   "type": "extends"
-  },
-  {
-   "from": "PX-080",
-   "to": "PX-E2E-080",
-   "type": "proven_by"
-  },
-  {
-   "from": "PX-E2E-080",
-   "to": "M10",
-   "type": "proves"
-  },
-  {
-   "from": "PX-081",
-   "to": "DR-PX-2026-09-05",
-   "type": "authorized_by"
-  },
-  {
-   "from": "PX-081",
-   "to": "DR-PX-2026-10-03-009",
-   "type": "authorized_by"
-  },
-  {
-   "from": "PX-081",
-   "to": "verification",
-   "type": "owned_by"
-  },
-  {
-   "from": "PX-081",
-   "to": "M10",
-   "type": "scheduled_in"
-  },
-  {
-   "from": "PX-081",
-   "to": "QUAL-PX-081",
-   "type": "proven_by"
-  },
-  {
-   "from": "PX-081",
-   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
-   "type": "specified_by"
-  },
-  {
-   "from": "PX-081",
-   "to": "PX-077",
-   "type": "after"
-  },
-  {
-   "from": "PX-081",
-   "to": "PX-079",
-   "type": "after"
-  },
-  {
-   "from": "PX-081",
-   "to": "DOC-PX-009",
-   "type": "after"
-  },
-  {
-   "from": "REQ-PX-081",
-   "to": "REQ-EV-0015",
-   "type": "extends"
-  },
-  {
-   "from": "PX-081",
-   "to": "PX-E2E-081",
-   "type": "proven_by"
-  },
-  {
-   "from": "PX-E2E-081",
    "to": "M10",
    "type": "proves"
   },
@@ -82297,6 +82038,36 @@
    "type": "authorized_by"
   },
   {
+   "from": "DR-GOV-2026-11-11-009",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-GOV-009",
+   "to": "DOC-GOV-008",
+   "type": "after"
+  },
+  {
+   "from": "DOC-GOV-009",
+   "to": "governance",
+   "type": "owned_by"
+  },
+  {
+   "from": "DOC-GOV-009",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-GOV-009",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-GOV-009",
+   "to": "DR-GOV-2026-11-11-009",
+   "type": "authorized_by"
+  },
+  {
    "from": "ALPHA",
    "to": "M0.1",
    "type": "includes"
@@ -86639,31 +86410,6 @@
   {
    "from": "RELEASE_ZERO",
    "to": "PX-076",
-   "type": "includes"
-  },
-  {
-   "from": "RELEASE_ZERO",
-   "to": "PX-077",
-   "type": "includes"
-  },
-  {
-   "from": "RELEASE_ZERO",
-   "to": "PX-078",
-   "type": "includes"
-  },
-  {
-   "from": "RELEASE_ZERO",
-   "to": "PX-079",
-   "type": "includes"
-  },
-  {
-   "from": "RELEASE_ZERO",
-   "to": "PX-080",
-   "type": "includes"
-  },
-  {
-   "from": "RELEASE_ZERO",
-   "to": "PX-081",
    "type": "includes"
   },
   {

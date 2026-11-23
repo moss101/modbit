@@ -13,13 +13,23 @@ import { join } from "node:path";
 import { accessible, closeApp, launch, makeRepo, MOD, setContentSize } from "./support/ui-harness.ts";
 import { streamingModel } from "./support/stream-model.ts";
 import { Gate } from "./support/stream-model.ts";
-import { openTaskDetails } from "./support/new-task.ts";
+import { openTaskMore } from "./support/new-task.ts";
 import { openConversation, routedModel, sessionOf, sha256File, startAndOpen, type ModelPart } from "./support/conversation-harness.ts";
 
 const NAMES = ["a.txt", "b.txt", "c.txt", "notes.txt"] as const;
 type Snap = Record<"a" | "b" | "c" | "notes", string | null>;
 /** The SHA-256 of each file the task touches, null where it does not exist. */
-const snap = (repo: string): Snap => Object.fromEntries(NAMES.map((n) => [n.replace(".txt", ""), existsSync(join(repo, n)) ? sha256File(join(repo, n)) : null])) as Snap;
+const snap = (repo: string): Snap => Object.fromEntries(NAMES.map((n) => [n.replace(".txt", ""), hashOrNull(join(repo, n))])) as Snap;
+/** A file removed between the existence check and the read (Undo all deletes while the test polls) does not exist. */
+function hashOrNull(path: string): string | null {
+  if (!existsSync(path)) return null;
+  try {
+    return sha256File(path);
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw e;
+  }
+}
 
 const create = (f: string, content: string): ModelPart => ({ call: { name: "change.apply", args: { path: f, op: "create", content } } });
 const editNotes: ModelPart = { call: { name: "change.apply", args: { path: "notes.txt", op: "edit", text_edits: [{ old: "line 1", new: "agent edit" }] } } };
@@ -96,11 +106,13 @@ test("PX-062: Restore puts the bytes of a turn's checkpoint back (Cancel changes
     expect(snap(repo), "redo restores the pre-restore state exactly").toEqual(end);
 
     // Undo all needs a second click: the first one arms it and says what it will do; nothing changes until the second.
-    const details = await openTaskDetails(page);
+    const details = await openTaskMore(page);
     const undo = details.getByTestId("undo-all");
     await expect(undo).toHaveAttribute("data-armed", "false");
     await undo.click();
     await expect(undo).toHaveAttribute("data-armed", "true");
+    // The keyboard's place stays on the button the first click armed: the second press is one Enter away.
+    await expect(undo).toBeFocused();
     // The edit goes back to the commit; the agent's new files are untracked, so they are deleted.
     await expect(details.getByTestId("undo-all-armed")).toContainText("1 file is put back to the last commit (a file that is new since then is removed); 3 files are deleted.");
     expect(snap(repo)).toEqual(end);

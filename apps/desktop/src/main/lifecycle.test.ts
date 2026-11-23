@@ -31,10 +31,11 @@ test("PX-049: the quit question says what is running and what quitting really do
 
 test("PX-049: the recovery counts come from the Core's own states", () => {
   assert.equal(recoverySummary({ recovered: 0, resumed: 0, needAttention: 0 }), "No tasks to recover.");
-  assert.equal(recoverySummary({ recovered: 4, resumed: 3, needAttention: 1 }), "3 tasks resumed, 1 needs attention.");
-  assert.equal(recoverySummary({ recovered: 3, resumed: 1, needAttention: 2 }), "1 task resumed, 2 need attention.");
-  assert.equal(recoverySummary({ recovered: 5, resumed: 1, needAttention: 2 }), "1 task resumed, 2 need attention, 2 recovered idle.");
-  assert.equal(recoverySummary({ recovered: 3, resumed: 0, needAttention: 0 }), "3 recovered idle.");
+  assert.equal(recoverySummary({ recovered: 4, resumed: 3, needAttention: 1 }), "4 tasks were restored after the restart: 3 are running again, 1 needs you.");
+  assert.equal(recoverySummary({ recovered: 3, resumed: 1, needAttention: 2 }), "3 tasks were restored after the restart: 1 is running again, 2 need you.");
+  assert.equal(recoverySummary({ recovered: 5, resumed: 1, needAttention: 2 }), "5 tasks were restored after the restart: 1 is running again, 2 need you, 2 are waiting.");
+  assert.equal(recoverySummary({ recovered: 3, resumed: 0, needAttention: 0 }), "3 tasks were restored after the restart.");
+  assert.equal(recoverySummary({ recovered: 1, resumed: 0, needAttention: 0 }), "1 task was restored after the restart.");
 });
 
 test("PX-049: shutdown reports what failed or hung and never waits past its deadline", async () => {
@@ -94,4 +95,18 @@ test("PX-049: a session-end step that outlives the deadline is reported as timed
   assert.deepEqual(hung.timedOut, ["session-end"]);
   const failing = await runShutdown([{ name: "session-end", run: () => Promise.reject(new Error("1 session-end hook did not finish cleanly: h: failed")) }], 1000);
   assert.deepEqual(failing.failed, [{ name: "session-end", reason: "1 session-end hook did not finish cleanly: h: failed" }]);
+});
+
+test("PX-203: the quit question counts the work pane windows show and says the pane windows close", () => {
+  const p = quitPrompt({ runningTasks: 1, runningTerminals: 2, paneWindows: 2, tasksInPaneWindows: 1, terminalsInPaneWindows: 1 });
+  assert.equal(p.message, "1 task is running (shown in a pane window) and 2 background terminals are running (1 shown in a pane window). Quit anyway?");
+  assert.match(p.detail, /The 2 pane windows close with Modbit; their panes are back in the dock when you open Modbit again\./);
+  const one = quitPrompt({ runningTasks: 0, runningTerminals: 1, paneWindows: 1, tasksInPaneWindows: 0, terminalsInPaneWindows: 1 });
+  assert.equal(one.message, "1 background terminal is running (shown in a pane window). Quit anyway?");
+  assert.match(one.detail, /The pane window closes with Modbit; its pane is back in the dock/);
+  // Pane windows that show nothing running are not work: nothing running, nothing asked.
+  assert.equal(noWork({ runningTasks: 0, runningTerminals: 0, paneWindows: 3, tasksInPaneWindows: 0, terminalsInPaneWindows: 0 }), true);
+  // Without pane windows the question is the one it was.
+  assert.equal(quitPrompt({ runningTasks: 1, runningTerminals: 0 }).message, "1 task is running. Quit anyway?");
+  assert.doesNotMatch(quitPrompt({ runningTasks: 1, runningTerminals: 0 }).detail, /pane window/);
 });

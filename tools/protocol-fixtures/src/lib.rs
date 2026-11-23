@@ -207,6 +207,47 @@ pub fn samples() -> Vec<Sample> {
             project_id: id(0x63),
             checkout_root: "/repo".into(),
             last_line: "The check passes now: 2 files changed.".into(),
+            pull_request: Some(TaskPullRequest {
+                owner: "o".into(),
+                repo: "r".into(),
+                number: 7,
+                url: "https://github.test/o/r/pull/7".into(),
+                opened_offset: 60,
+                state: "OPEN".into(),
+                draft: false,
+                checks: "FAILING".into(),
+                checks_total: 2,
+                checks_passing: 1,
+                checks_failing: 1,
+                checks_pending: 0,
+                failing_checks: vec!["lint".into()],
+                head_sha: "f".repeat(40),
+                pushed_sha: "f".repeat(40),
+                read_at: Some(prost_types::Timestamp {
+                    seconds: 1_700_000_200,
+                    nanos: 0,
+                }),
+                read_offset: 88,
+                trigger: "REQUEST".into(),
+                // PX-212: auto-fix on, one repair turn asked for.
+                auto_fix: true,
+                auto_fix_attempts: 1,
+                auto_fix_cap: 3,
+                auto_fix_stopped: false,
+                auto_fix_last_cause: "CHECKS_FAILING".into(),
+                auto_fix_last_offset: 89,
+                // PX-213: merge when ready asked and waiting for the person.
+                merge_when_ready: true,
+                merge_method: "squash".into(),
+                merge_phase: "ASKED".into(),
+                merge_detail:
+                    "Checks passed at ffffffffffff. Approve the merge (squash) to merge that head."
+                        .into(),
+                merge_approval_id: "0193a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b".into(),
+                merge_head_sha: "f".repeat(40),
+                merge_sha: String::new(),
+                merge_offset: 91,
+            }),
         }],
         last_offset: 90,
         events_read: 0,
@@ -1435,7 +1476,22 @@ pub fn samples() -> Vec<Sample> {
                     "subagent": false, "archived": false, "executionLocation": "local",
                     "origin": "cli", "taskState": "ReadyForReview", "lastOffset": "90",
                     "readOffset": "40", "attentionItems": 0, "projectId": idhex(0x63), "checkoutRoot": "/repo",
-                    "lastLine": "The check passes now: 2 files changed."
+                    "lastLine": "The check passes now: 2 files changed.",
+                    "pullRequest": {
+                        "owner": "o", "repo": "r", "number": "7",
+                        "url": "https://github.test/o/r/pull/7", "openedOffset": "60",
+                        "state": "OPEN", "draft": false, "checks": "FAILING",
+                        "checksTotal": 2, "checksPassing": 1, "checksFailing": 1, "checksPending": 0,
+                        "failingChecks": ["lint"], "headSha": "f".repeat(40), "pushedSha": "f".repeat(40),
+                        "readAt": {"seconds": "1700000200", "nanos": 0},
+                        "readOffset": "88", "trigger": "REQUEST",
+                        "autoFix": true, "autoFixAttempts": 1, "autoFixCap": 3, "autoFixStopped": false,
+                        "autoFixLastCause": "CHECKS_FAILING", "autoFixLastOffset": "89",
+                        "mergeWhenReady": true, "mergeMethod": "squash", "mergePhase": "ASKED",
+                        "mergeDetail": "Checks passed at ffffffffffff. Approve the merge (squash) to merge that head.",
+                        "mergeApprovalId": "0193a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+                        "mergeHeadSha": "f".repeat(40), "mergeSha": "", "mergeOffset": "91"
+                    }
                 }],
                 "lastOffset": "90", "eventsRead": "0", "objectsRead": "0"
             }),
@@ -2115,11 +2171,149 @@ pub fn samples() -> Vec<Sample> {
                     "modality": "ax", "outcome": "SUCCEEDED", "code": "", "reason": "",
                     "artifactRef": "", "artifactDigest": "", "artifactExpired": false,
                     "elements": 0, "secureWithheld": 0, "maskedRegions": 0, "durationMs": "12",
-                    "verifiedKnown": true, "verified": true
+                    "verifiedKnown": true, "verified": true,
+                    "accessLevel": "", "accessNeeded": ""
                 }],
                 "truncated": false
             }),
             decode: reencode::<ComputerActivityView>,
+        },
+        // PX-215: a call the person's standing access for the application did not allow.
+        Sample {
+            name: "computer_activity_access_refused",
+            type_name: "modbit.v1.ComputerActivityView",
+            bytes: ComputerActivityView {
+                entries: vec![ComputerActivityEntry {
+                    offset: 43,
+                    at_ms: 1_791_626_001_000,
+                    kind: "ACCESS_REFUSED".into(),
+                    control_id: "c0123456789ab".into(),
+                    tool_call_id: "01a08f33-0d97-7d40-b299-f8a7bc5cda62".into(),
+                    bundle_id: "org.example.fixture.form".into(),
+                    application: "Form App".into(),
+                    reason: "your standing access for `org.example.fixture.form` is view only: clicking needs click or full".into(),
+                    code: "ACTION_UNSAFE".into(),
+                    access_level: "view_only".into(),
+                    access_needed: "click".into(),
+                    ..Default::default()
+                }],
+                truncated: false,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "entries": [{
+                    "offset": "43", "atMs": "1791626001000", "kind": "ACCESS_REFUSED",
+                    "controlId": "c0123456789ab",
+                    "toolCallId": "01a08f33-0d97-7d40-b299-f8a7bc5cda62",
+                    "approvalId": "", "intentHash": "", "bundleId": "org.example.fixture.form",
+                    "application": "Form App", "scope": "", "detail": "",
+                    "modality": "", "outcome": "", "code": "ACTION_UNSAFE",
+                    "reason": "your standing access for `org.example.fixture.form` is view only: clicking needs click or full",
+                    "artifactRef": "", "artifactDigest": "", "artifactExpired": false,
+                    "elements": 0, "secureWithheld": 0, "maskedRegions": 0, "durationMs": "0",
+                    "verifiedKnown": false, "verified": false,
+                    "accessLevel": "view_only", "accessNeeded": "click"
+                }],
+                "truncated": false
+            }),
+            decode: reencode::<ComputerActivityView>,
+        },
+        // PX-215: the standing levels, setting one, and what the Core answers.
+        Sample {
+            name: "computer_access_view",
+            type_name: "modbit.v1.ComputerAccessView",
+            bytes: ComputerAccessView {
+                entries: vec![
+                    ComputerAccessEntry {
+                        bundle_id: "org.example.fixture.form".into(),
+                        application: "Form App".into(),
+                        level: "view_only".into(),
+                        set_at_ms: 1_791_626_000_000,
+                    },
+                    ComputerAccessEntry {
+                        bundle_id: "exe:notepad.exe".into(),
+                        application: "Notepad".into(),
+                        level: "never".into(),
+                        set_at_ms: 1_791_626_000_500,
+                    },
+                ],
+                levels: vec!["never".into(), "view_only".into(), "click".into(), "full".into()],
+                running: vec![ComputerAccessApplication {
+                    bundle_id: "org.example.fixture.form".into(),
+                    name: "Form App".into(),
+                    level: "view_only".into(),
+                }],
+                attached: true,
+                non_drivable_version: "2026-10-10.1".into(),
+                last_change_offset: 9_007_199_254_740_993,
+                changes: vec![ComputerAccessChange {
+                    offset: 9_007_199_254_740_993,
+                    at_ms: 1_791_626_000_500,
+                    bundle_id: "exe:notepad.exe".into(),
+                    application: "Notepad".into(),
+                    level: "never".into(),
+                    previous: "click".into(),
+                    by: "user:0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a".into(),
+                }],
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "entries": [
+                    {"bundleId": "org.example.fixture.form", "application": "Form App", "level": "view_only", "setAtMs": "1791626000000"},
+                    {"bundleId": "exe:notepad.exe", "application": "Notepad", "level": "never", "setAtMs": "1791626000500"}
+                ],
+                "levels": ["never", "view_only", "click", "full"],
+                "running": [{"bundleId": "org.example.fixture.form", "name": "Form App", "level": "view_only"}],
+                "attached": true, "nonDrivableVersion": "2026-10-10.1",
+                "lastChangeOffset": "9007199254740993",
+                "changes": [{
+                    "offset": "9007199254740993", "atMs": "1791626000500", "bundleId": "exe:notepad.exe",
+                    "application": "Notepad", "level": "never", "previous": "click",
+                    "by": "user:0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a"
+                }]
+            }),
+            decode: reencode::<ComputerAccessView>,
+        },
+        Sample {
+            name: "get_computer_access",
+            type_name: "modbit.v1.GetComputerAccess",
+            bytes: GetComputerAccess {}.encode_to_vec(),
+            expected: json!({}),
+            decode: reencode::<GetComputerAccess>,
+        },
+        Sample {
+            name: "set_computer_access",
+            type_name: "modbit.v1.SetComputerAccess",
+            bytes: SetComputerAccess {
+                bundle_id: "org.example.fixture.form".into(),
+                application: "Form App".into(),
+                level: "click".into(),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "bundleId": "org.example.fixture.form",
+                "application": "Form App", "level": "click"
+            }),
+            decode: reencode::<SetComputerAccess>,
+        },
+        Sample {
+            name: "computer_access_changed",
+            type_name: "modbit.v1.ComputerAccessChanged",
+            bytes: ComputerAccessChanged {
+                bundle_id: "org.example.fixture.form".into(),
+                application: "Form App".into(),
+                level: "click".into(),
+                previous: "view_only".into(),
+                changed: true,
+                offset: 9_007_199_254_740_995,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "bundleId": "org.example.fixture.form", "application": "Form App",
+                "level": "click", "previous": "view_only", "changed": true,
+                "offset": "9007199254740995"
+            }),
+            decode: reencode::<ComputerAccessChanged>,
         },
         Sample {
             name: "resolve_computer_latch",
@@ -2451,6 +2645,334 @@ pub fn samples() -> Vec<Sample> {
                 "snapshotMessages": 8, "usageOffset": "9007199254740995"
             }),
             decode: reencode::<NextPromptSuggestion>,
+        },
+        // REQ-PX-211: reading a task's pull request again, and the
+        // session's archive-after-merge preference.
+        Sample {
+            name: "refresh_pull_request",
+            type_name: "modbit.v1.RefreshPullRequest",
+            bytes: RefreshPullRequest { task_id: id(0x21) }.encode_to_vec(),
+            expected: json!({ "taskId": idhex(0x21) }),
+            decode: reencode::<RefreshPullRequest>,
+        },
+        Sample {
+            name: "pull_request_refreshed",
+            type_name: "modbit.v1.PullRequestRefreshed",
+            bytes: PullRequestRefreshed {
+                pull_request: Some(TaskPullRequest {
+                    owner: "o".into(),
+                    repo: "r".into(),
+                    number: 7,
+                    url: "https://github.test/o/r/pull/7".into(),
+                    opened_offset: 60,
+                    state: "MERGED".into(),
+                    draft: false,
+                    checks: "PASSING".into(),
+                    checks_total: 2,
+                    checks_passing: 2,
+                    checks_failing: 0,
+                    checks_pending: 0,
+                    failing_checks: vec![],
+                    head_sha: "f".repeat(40),
+                    pushed_sha: "f".repeat(40),
+                    read_at: Some(prost_types::Timestamp {
+                        seconds: 1_700_000_300,
+                        nanos: 0,
+                    }),
+                    read_offset: 9_007_199_254_740_993,
+                    trigger: "SCHEDULE".into(),
+                    // PX-212: the cap stopped auto-fix.
+                    auto_fix: true,
+                    auto_fix_attempts: 3,
+                    auto_fix_cap: 3,
+                    auto_fix_stopped: true,
+                    auto_fix_last_cause: "REVIEW_COMMENT".into(),
+                    auto_fix_last_offset: 9_007_199_254_740_995,
+                    // PX-213: merged by merge when ready.
+                    merge_when_ready: false,
+                    merge_method: "merge".into(),
+                    merge_phase: "MERGED".into(),
+                    merge_detail: "Merged ffffffffffff as eeeeeeeeeeee.".into(),
+                    merge_approval_id: String::new(),
+                    merge_head_sha: "f".repeat(40),
+                    merge_sha: "e".repeat(40),
+                    merge_offset: 9_007_199_254_740_996,
+                }),
+                offset: 9_007_199_254_740_993,
+                archived: true,
+                archive_offset: 9_007_199_254_740_994,
+                auto_fix_queued: false,
+                auto_fix_input_id: String::new(),
+                auto_fix_stopped: true,
+                merge_phase: "MERGED".into(),
+                merge_approval_id: String::new(),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "pullRequest": {
+                    "owner": "o", "repo": "r", "number": "7",
+                    "url": "https://github.test/o/r/pull/7", "openedOffset": "60",
+                    "state": "MERGED", "draft": false, "checks": "PASSING",
+                    "checksTotal": 2, "checksPassing": 2, "checksFailing": 0, "checksPending": 0,
+                    "failingChecks": [], "headSha": "f".repeat(40), "pushedSha": "f".repeat(40),
+                    "readAt": {"seconds": "1700000300", "nanos": 0},
+                    "readOffset": "9007199254740993", "trigger": "SCHEDULE",
+                    "autoFix": true, "autoFixAttempts": 3, "autoFixCap": 3, "autoFixStopped": true,
+                    "autoFixLastCause": "REVIEW_COMMENT", "autoFixLastOffset": "9007199254740995",
+                    "mergeWhenReady": false, "mergeMethod": "merge", "mergePhase": "MERGED",
+                    "mergeDetail": "Merged ffffffffffff as eeeeeeeeeeee.", "mergeApprovalId": "",
+                    "mergeHeadSha": "f".repeat(40), "mergeSha": "e".repeat(40),
+                    "mergeOffset": "9007199254740996"
+                },
+                "offset": "9007199254740993", "archived": true, "archiveOffset": "9007199254740994",
+                "autoFixQueued": false, "autoFixInputId": "", "autoFixStopped": true,
+                "mergePhase": "MERGED", "mergeApprovalId": ""
+            }),
+            decode: reencode::<PullRequestRefreshed>,
+        },
+        Sample {
+            name: "get_pull_request_preferences",
+            type_name: "modbit.v1.GetPullRequestPreferences",
+            bytes: GetPullRequestPreferences { session_id: id(0x10) }.encode_to_vec(),
+            expected: json!({ "sessionId": idhex(0x10) }),
+            decode: reencode::<GetPullRequestPreferences>,
+        },
+        Sample {
+            name: "set_pull_request_preferences",
+            type_name: "modbit.v1.SetPullRequestPreferences",
+            bytes: SetPullRequestPreferences {
+                session_id: id(0x10),
+                archive_after_merge: true,
+            }
+            .encode_to_vec(),
+            expected: json!({ "sessionId": idhex(0x10), "archiveAfterMerge": true }),
+            decode: reencode::<SetPullRequestPreferences>,
+        },
+        Sample {
+            name: "pull_request_preferences",
+            type_name: "modbit.v1.PullRequestPreferences",
+            bytes: PullRequestPreferences {
+                session_id: id(0x10),
+                archive_after_merge: true,
+                offset: 41,
+            }
+            .encode_to_vec(),
+            expected: json!({ "sessionId": idhex(0x10), "archiveAfterMerge": true, "offset": "41" }),
+            decode: reencode::<PullRequestPreferences>,
+        },
+        // REQ-PX-212: the task's auto-fix switch and its state.
+        Sample {
+            name: "set_auto_fix",
+            type_name: "modbit.v1.SetAutoFix",
+            bytes: SetAutoFix {
+                task_id: id(0x21),
+                enabled: true,
+            }
+            .encode_to_vec(),
+            expected: json!({ "taskId": idhex(0x21), "enabled": true }),
+            decode: reencode::<SetAutoFix>,
+        },
+        Sample {
+            name: "auto_fix_state",
+            type_name: "modbit.v1.AutoFixState",
+            bytes: AutoFixState {
+                task_id: id(0x21),
+                enabled: true,
+                attempts: 2,
+                cap: 3,
+                stopped: false,
+                offset: 9_007_199_254_740_993,
+            }
+            .encode_to_vec(),
+            expected: json!({ "taskId": idhex(0x21), "enabled": true, "attempts": 2, "cap": 3, "stopped": false, "offset": "9007199254740993" }),
+            decode: reencode::<AutoFixState>,
+        },
+        // REQ-PX-213: merge when ready on a task's pull request.
+        Sample {
+            name: "set_merge_when_ready",
+            type_name: "modbit.v1.SetMergeWhenReady",
+            bytes: SetMergeWhenReady {
+                task_id: id(0x21),
+                enabled: true,
+                method: "squash".into(),
+            }
+            .encode_to_vec(),
+            expected: json!({ "taskId": idhex(0x21), "enabled": true, "method": "squash" }),
+            decode: reencode::<SetMergeWhenReady>,
+        },
+        Sample {
+            name: "merge_when_ready_state",
+            type_name: "modbit.v1.MergeWhenReadyState",
+            bytes: MergeWhenReadyState {
+                task_id: id(0x21),
+                enabled: true,
+                method: "squash".into(),
+                phase: "WAITING".into(),
+                detail: "Waiting for 1 check(s) to finish.".into(),
+                approval_id: String::new(),
+                head_sha: String::new(),
+                merge_sha: String::new(),
+                offset: 9_007_199_254_740_993,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x21), "enabled": true, "method": "squash", "phase": "WAITING",
+                "detail": "Waiting for 1 check(s) to finish.", "approvalId": "", "headSha": "",
+                "mergeSha": "", "offset": "9007199254740993"
+            }),
+            decode: reencode::<MergeWhenReadyState>,
+        },
+        // REQ-PX-214: the isolated reviewer's findings in the review bundle,
+        // and the commands that fix or set one aside.
+        Sample {
+            name: "review_bundle_reviewer_findings",
+            type_name: "modbit.v1.ReviewBundle",
+            bytes: ReviewBundle {
+                task_id: id(0x21),
+                task_state: "ReadyForReview".into(),
+                workspace_revision: 9_007_199_254_740_993,
+                base_commit: "b".repeat(40),
+                workspace_root: "/repo".into(),
+                reviewer_state: "CURRENT".into(),
+                reviewer_verdict: "REVISE".into(),
+                reviewer_confidence: 82,
+                reviewer_summary: "two real problems and one claim about a file that is not there"
+                    .into(),
+                reviewer_candidate_revision: 7,
+                reviewer_result_digest: "c".repeat(64),
+                reviewer_task_id: id(0x44),
+                reviewer_findings: vec![
+                    ReviewFindingView {
+                        finding_id: "F1".into(),
+                        severity: "HIGH".into(),
+                        category: "correctness".into(),
+                        path: "src/lib.rs".into(),
+                        line: 12,
+                        claim: "the empty slice panics".into(),
+                        suggested_action: "return None for an empty slice".into(),
+                        verified: true,
+                        fix_requests: 1,
+                        ..Default::default()
+                    },
+                    ReviewFindingView {
+                        finding_id: "F2".into(),
+                        severity: "LOW".into(),
+                        category: "style".into(),
+                        path: "src/ghost.rs".into(),
+                        claim: "the helper is duplicated".into(),
+                        unsupported_reason:
+                            "`src/ghost.rs` is not in the tree at the candidate revision".into(),
+                        dismissed: true,
+                        dismissed_by: "user:0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a".into(),
+                        dismissed_reason: "that file is not part of this change".into(),
+                        dismissed_offset: 9_007_199_254_740_995,
+                        ..Default::default()
+                    },
+                ],
+                reviewer_questions: vec!["is the empty slice reachable from the CLI?".into()],
+                reviewer_note: String::new(),
+                ..Default::default()
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x21), "taskState": "ReadyForReview",
+                "workspaceRevision": "9007199254740993", "baseCommit": "b".repeat(40),
+                "workspaceRoot": "/repo", "files": [], "planJson": "", "selfReviewJson": "",
+                "verificationRuns": [], "attributions": [], "quarantined": [],
+                "invariantFindings": [], "receipts": 0, "evidenceLinks": [], "ciEvidence": [],
+                "reviewComments": [], "ciRejected": [], "repairAttempts": [],
+                "reviewerState": "CURRENT", "reviewerVerdict": "REVISE", "reviewerConfidence": 82,
+                "reviewerSummary": "two real problems and one claim about a file that is not there",
+                "reviewerCandidateRevision": "7", "reviewerResultDigest": "c".repeat(64),
+                "reviewerTaskId": idhex(0x44),
+                "reviewerFindings": [
+                    {
+                        "findingId": "F1", "severity": "HIGH", "category": "correctness",
+                        "path": "src/lib.rs", "line": 12, "claim": "the empty slice panics",
+                        "suggestedAction": "return None for an empty slice", "verified": true,
+                        "unsupportedReason": "", "dismissed": false, "dismissedBy": "",
+                        "dismissedReason": "", "dismissedOffset": "0", "fixRequests": 1
+                    },
+                    {
+                        "findingId": "F2", "severity": "LOW", "category": "style",
+                        "path": "src/ghost.rs", "line": 0, "claim": "the helper is duplicated",
+                        "suggestedAction": "", "verified": false,
+                        "unsupportedReason": "`src/ghost.rs` is not in the tree at the candidate revision",
+                        "dismissed": true, "dismissedBy": "user:0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a",
+                        "dismissedReason": "that file is not part of this change",
+                        "dismissedOffset": "9007199254740995", "fixRequests": 0
+                    }
+                ],
+                "reviewerQuestions": ["is the empty slice reachable from the CLI?"],
+                "reviewerNote": ""
+            }),
+            decode: reencode::<ReviewBundle>,
+        },
+        Sample {
+            name: "fix_review_finding",
+            type_name: "modbit.v1.FixReviewFinding",
+            bytes: FixReviewFinding {
+                task_id: id(0x21),
+                finding_id: "F1".into(),
+                result_digest: "c".repeat(64),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x21), "findingId": "F1", "resultDigest": "c".repeat(64)
+            }),
+            decode: reencode::<FixReviewFinding>,
+        },
+        Sample {
+            name: "review_finding_fix_queued",
+            type_name: "modbit.v1.ReviewFindingFixQueued",
+            bytes: ReviewFindingFixQueued {
+                task_id: id(0x21),
+                finding_id: "F1".into(),
+                input_id: "review-finding-fix-cccccccccccc-F1-0102".into(),
+                offset: 9_007_199_254_740_993,
+                task_state: "Waiting".into(),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x21), "findingId": "F1",
+                "inputId": "review-finding-fix-cccccccccccc-F1-0102",
+                "offset": "9007199254740993", "taskState": "Waiting"
+            }),
+            decode: reencode::<ReviewFindingFixQueued>,
+        },
+        Sample {
+            name: "dismiss_review_finding",
+            type_name: "modbit.v1.DismissReviewFinding",
+            bytes: DismissReviewFinding {
+                task_id: id(0x21),
+                finding_id: "F2".into(),
+                result_digest: "c".repeat(64),
+                reason: "that file is not part of this change".into(),
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x21), "findingId": "F2", "resultDigest": "c".repeat(64),
+                "reason": "that file is not part of this change"
+            }),
+            decode: reencode::<DismissReviewFinding>,
+        },
+        Sample {
+            name: "review_finding_dismissal",
+            type_name: "modbit.v1.ReviewFindingDismissal",
+            bytes: ReviewFindingDismissal {
+                task_id: id(0x21),
+                finding_id: "F2".into(),
+                dismissed_by: "user:0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a".into(),
+                reason: "that file is not part of this change".into(),
+                offset: 9_007_199_254_740_995,
+            }
+            .encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x21), "findingId": "F2",
+                "dismissedBy": "user:0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a",
+                "reason": "that file is not part of this change", "offset": "9007199254740995"
+            }),
+            decode: reencode::<ReviewFindingDismissal>,
         },
     ]
 }

@@ -17,7 +17,7 @@ import { COMPACT, GEOMETRY, TYPE, densityMetrics, type Density } from "@modbit/d
 import { agentRow, openListMore, openListTools, queueTask, runTask, setDensity, toNewTask } from "./support/new-task.ts";
 import { accessible, box, closeApp, focusedTestId, launch, makeRepo, setContentSize } from "./support/ui-harness.ts";
 
-const NAV = ["agents-new-task", "open-inbox", "open-automations", "open-customize"];
+const NAV = ["agents-new-task", "open-inbox", "open-automations", "open-review", "open-customize"];
 /** What MWS-04 removed: the Repositories section and its rows, and the Projects heading (the Tasks head took its controls). */
 const REMOVED = ["agent-repositories", "agent-repository"];
 
@@ -248,7 +248,7 @@ async function orderDrift(page: Page): Promise<string[]> {
   const order = [await y("toggle-agent-list"), ...(await Promise.all(NAV.map(y))), await y("agents-head"), await y("agents-states"), await y("agents-scroll"), await y("agent-foot")];
   if (order.some((v, i) => v < 0 || (i > 0 && v <= order[i - 1]!))) bad.push(`the list's order is ${order.join(" ")}`);
   const nav = await page.getByTestId("agent-nav").locator("button").evaluateAll((els) => els.map((e) => `${e.getAttribute("data-testid")}:${(e.querySelector(".agent-nav-label")?.textContent ?? "").trim()}`));
-  if (nav.join(" | ") !== "agents-new-task:New task | open-inbox:Inbox | open-automations:Automations | open-customize:Customize") bad.push(`the navigation rows are ${nav.join(" | ")}`);
+  if (nav.join(" | ") !== "agents-new-task:New task | open-inbox:Inbox | open-automations:Automations | open-review:Review | open-customize:Customize") bad.push(`the navigation rows are ${nav.join(" | ")}`);
   const head = await page.getByTestId("agents-head").locator("button").evaluateAll((els) => els.map((e) => e.getAttribute("data-testid")));
   if (head.join(" ") !== "agents-search-open agents-tools-toggle agents-more") bad.push(`the Tasks head holds ${head.join(" ")}`);
   if ((await page.getByTestId("agents-head").locator("h2").textContent())?.trim() !== "Tasks") bad.push("the Tasks head does not say Tasks");
@@ -257,8 +257,8 @@ async function orderDrift(page: Page): Promise<string[]> {
   for (const id of REMOVED) if ((await page.getByTestId(id).count()) !== 0) bad.push(`removed surface ${id} is back`);
   if ((await page.locator('[data-testid="agents-section"][data-section="projects"]').count()) !== 0) bad.push("the Projects heading is back");
   if ((await page.getByRole("heading", { name: "Repositories" }).count()) !== 0) bad.push("a Repositories heading is back");
-  // Nothing is drawn that does nothing: no Review row until its page exists, and the state views sit above the groups.
-  if ((await page.getByTestId("agent-nav").getByText("Review", { exact: true }).count()) !== 0) bad.push("a Review navigation row is drawn");
+  // Nothing is drawn that does nothing: the Review row is drawn now that its page exists (REQ-PX-208), and it opens that page.
+  if ((await page.getByTestId("agent-nav").getByText("Review", { exact: true }).count()) !== 1) bad.push("the Review navigation row is not drawn once");
   const foot_ = await box(page, "agent-foot");
   if (Math.abs(foot_.y + foot_.height - (await page.evaluate(() => innerHeight))) > 1) bad.push("the person's row is not at the foot of the list");
   if ((await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)) === false) bad.push("the window scrolls sideways");
@@ -542,6 +542,9 @@ test("PX-199: the keyboard alone reaches every row, pins, archives with undo and
 
     // ---- e archives from the row, focus goes to the nearest remaining row, and the toast's Undo brings it back.
     await agentRow(page, ids.draft2).getByTestId("agent-open").focus();
+    // The press is aimed at this row and nothing else: wait until the keyboard is provably on it, not still on the
+    // row the unpin's follow-through is about to refocus on a slow machine.
+    await expectFocusedTask(page, ids.draft2, "the keyboard is on the row about to be archived");
     await page.keyboard.press("e");
     await expect(agentRow(page, ids.draft2)).toHaveCount(0, { timeout: 15_000 });
     await expectFocusedTask(page, ids.draft1, "focus moved to the nearest remaining row");
@@ -575,9 +578,9 @@ test("PX-199: the keyboard alone reaches every row, pins, archives with undo and
     const header = (await page.evaluate((s) => window.modbit.agentHeaders(s, false), sid)).headers.find((h) => h.taskId === ids.ready)!;
     await expect(card.getByTestId("agent-preview-changes")).toHaveText(`+${header.linesAdded} −${header.linesRemoved} · ${header.filesChanged} files`);
     await expect(card.getByTestId("agent-preview-open")).toHaveText("Open");
-    // The header's later fields and split view belong to later rows: none of them is drawn here.
-    await expect(card.getByRole("button")).toHaveCount(1);
-    await expect(card).not.toContainText(/pull request|split view/i);
+    // The pull request belongs to a later row and is not drawn; split view is PX-204's: Open and Open in split view are the card's only buttons.
+    await expect(card.getByRole("button")).toHaveText(["Open", "Open in split view"]);
+    await expect(card).not.toContainText(/pull request/i);
     // The card sits beside the list, level with its row.
     const rowBox = (await agentRow(page, ids.ready).boundingBox())!;
     const cardBox = (await card.boundingBox())!;
@@ -604,6 +607,9 @@ test("PX-199: the keyboard alone reaches every row, pins, archives with undo and
     // Space again closes it from the row as well; leaving the card with Tab closes it.
     await page.keyboard.press("Space");
     await expect(card).toBeVisible();
+    // Tab moves from Open to Open in split view (PX-204), still inside the card; the next Tab leaves it.
+    await page.keyboard.press("Tab");
+    await expect(card.getByTestId("agent-preview-split")).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(card).toHaveCount(0);
 

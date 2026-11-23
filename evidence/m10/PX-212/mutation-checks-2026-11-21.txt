@@ -1,0 +1,7 @@
+PX-212 mutation checks (services/modbit-core/src/auto_fix.rs), each run against tests/px_212_auto_fix.rs; source restored after.
+switch ignored: CAUGHT TaskPullRequest { owner: "o", repo: "a", number: 1, url: "https://github.test/o/a/pull/1", opened_offset: 148, state: "OPEN", draft: false, checks: "FAILING", checks_total: 2, checks_passing: 1, check
+no per-head dedupe: CAUGHT one attempt per head: PullRequestRefreshed { pull_request: Some(TaskPullRequest { owner: "o", repo: "a", number: 1, url: "https://github.test/o/a/pull/1", opened_offset: 148, state: "OPEN", draft: fal
+no attempt cap: CAUGHT PullRequestRefreshed { pull_request: Some(TaskPullRequest { owner: "o", repo: "a", number: 1, url: "https://github.test/o/a/pull/1", opened_offset: 148, state: "OPEN", draft: false, checks: "FAILING",
+busy task not left alone: CAUGHT PullRequestRefreshed { pull_request: Some(TaskPullRequest { owner: "o", repo: "a", number: 1, url: "https://github.test/o/a/pull/1", opened_offset: 148, state: "OPEN", draft: false, checks: "FAILING",
+stop said every time: CAUGHT assertion `left == right` failed: said once: [
+turn never asked for: CAUGHT the push never asked: ApprovalList { approvals: [ApprovalView { approval_id: Some(Id { value: [1, 161, 255, 24, 52, 154, 115, 145, 169, 101, 169, 219, 164, 94, 207, 139] }), task_id: Some(Id { value: 
