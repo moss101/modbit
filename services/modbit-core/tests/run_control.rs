@@ -4180,7 +4180,10 @@ async fn qual_px_153_the_count_survives_a_restart_because_it_is_folded_from_the_
     let core = spawn(dir.path(), &env);
     let mut c = core.client().await;
     let g = lease_again(&mut c, &session).await;
-    // The suspended task resumes at the same call, which is still asking.
+    // The suspended task resumes at the same call, which is still asking. The
+    // two refused before the restart are skipped here too: one listed a moment
+    // after its denial, then denied again, left the third call waiting and the
+    // run never parked (PR 96, run 45152031967, ubuntu).
     start(&mut c, &t, g, "gpt-5-mini", 10).await;
     let deadline = Instant::now() + Duration::from_secs(60);
     let asked = loop {
@@ -4188,6 +4191,14 @@ async fn qual_px_153_the_count_survives_a_restart_because_it_is_folded_from_the_
             .await
             .into_iter()
             .filter(|a| a.task_id.as_ref() == Some(&t))
+            .filter(|a| {
+                !decided.contains(
+                    &a.approval_id
+                        .as_ref()
+                        .map(|i| i.value.clone())
+                        .unwrap_or_default(),
+                )
+            })
             .collect();
         if !asked.is_empty() {
             break asked;
