@@ -160,8 +160,8 @@ test("the person's input lease: held while typing, the agent's shell.input is re
   await expect(page.getByTestId("approval-card")).toBeVisible({ timeout: 60_000 });
   await expect(terminalView()).toHaveAttribute("data-lease", "held");
   expect(await screen().textContent()).not.toContain("agent-typed");
-  // Leaving the terminal gives the lease back.
-  await page.getByTestId("terminal-leave").focus();
+  // Leaving the terminal gives the lease back: the button, clicked as a person clicks it.
+  await page.getByTestId("terminal-leave").click();
   await expect(terminalView()).toHaveAttribute("data-lease", "free");
   await expect.poll(async () => (await listTerminals()).find((t) => t.terminalId === echo)!.inputLeaseHolder).toBe("");
 

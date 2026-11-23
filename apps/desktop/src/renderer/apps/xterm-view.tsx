@@ -33,9 +33,11 @@ export interface XtermViewProps {
   onNotice: (text: string) => void;
   /** The person scrolled the view past its first line: output older than the replay window is what comes next. */
   onReachTop?: () => void;
+  /** Filled with this view's "give the input lease back" while it is mounted (the Leave terminal button calls it). */
+  releaser?: { current: (() => Promise<void>) | null };
 }
 
-export function XtermView({ sessionId, terminal, onLeave, onState, onNotice, onReachTop }: XtermViewProps) {
+export function XtermView({ sessionId, terminal, onLeave, onState, onNotice, onReachTop, releaser }: XtermViewProps) {
   const host = useRef<HTMLDivElement>(null);
   // The callbacks change every render; the terminal is created once per session and reads the latest.
   const cb = useRef({ onLeave, onState, onNotice, onReachTop });
@@ -73,6 +75,7 @@ export function XtermView({ sessionId, terminal, onLeave, onState, onNotice, onR
       }
       return true;
     });
+    if (releaser) releaser.current = () => controller.release();
     const onData = term.onData((d) => void controller.input(d));
     const onBin = term.onBinary((d) => void controller.input(Uint8Array.from(d, (c) => c.charCodeAt(0))));
     const refit = () => {
@@ -119,6 +122,7 @@ export function XtermView({ sessionId, terminal, onLeave, onState, onNotice, onR
     // The replay window starts at the oldest byte still held: a reattach or a reload shows the same output again.
     void controller.start(replayStart(terminal));
     return () => {
+      if (releaser) releaser.current = null;
       el.removeEventListener("focusin", onFocusIn);
       el.removeEventListener("focusout", onFocusOut);
       el.removeEventListener("keydown", stop);
