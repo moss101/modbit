@@ -4224,11 +4224,34 @@ async fn qual_px_153_the_count_survives_a_restart_because_it_is_folded_from_the_
         }
         tokio::time::sleep(Duration::from_millis(250)).await;
     };
-    assert_eq!(
-        attention_notices(&events, &t).len(),
-        1,
-        "two refusals before the restart and one after make three: parked"
-    );
+    if attention_notices(&events, &t).len() != 1 {
+        // A rare CI failure (twice in about 35 runs, Linux) that a decided-approval
+        // filter did not cure: say what the log and the approvals held.
+        let pending: Vec<String> = pending_approvals(&mut c, &session)
+            .await
+            .into_iter()
+            .map(|a| format!("{:?}", a.approval_id))
+            .collect();
+        let kinds: Vec<String> = events
+            .iter()
+            .filter_map(|e| e["event_type"].as_str().map(str::to_owned))
+            .filter(|k| {
+                k.contains("Approval")
+                    || k.contains("Run")
+                    || k.contains("Task")
+                    || k.contains("Denied")
+                    || k.contains("Refus")
+                    || k.contains("ToolCall")
+            })
+            .collect();
+        panic!(
+            "two refusals before the restart and one after make three: parked\n\
+             decided before the restart: {}\nasked after the restart: {:?}\n\
+             still pending: {pending:?}\nevents: {kinds:?}",
+            decided.len(),
+            asked.iter().map(|a| &a.approval_id).collect::<Vec<_>>(),
+        );
+    }
 }
 
 // =====================================================================
