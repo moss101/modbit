@@ -1,7 +1,7 @@
 # Modbit Dossier Manifest — V3.3 EPR v1.1
 
 > **Authority date:** 2026-09-05  
-> **Generated:** 2026-11-23 by `tools/build_manifest.py`  
+> **Generated:** 2026-11-24 by `tools/build_manifest.py`  
 > **Scope:** every specification file in `docs/` plus the root governing files and tooling. The previous `99_MANIFEST.md` covered only 39 Part 2 files; this manifest covers all 97 docs.
 > **Machine-readable twin:** `manifest.json` (same content, same hashes).
 
@@ -459,7 +459,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-069/real-mac-run-2026-11-09.txt` | retained evidence | 4902 | `428b29ed6c626369af1f475dd93421fb080249a51ad2c70ca48d7bd66adf49b3` |
 | `evidence/m10/PX-074/TASK_CARD.md` | retained evidence | 1652 | `e00fa4918ff2a625aebd5c75476f3195fc2dc1821724b6f2edc072a54460bad2` |
 | `evidence/m10/PX-074/mutation-check.txt` | retained evidence | 780 | `76fcb1d594ff7dcdceb8f6a03fa5ecaea5c049941aa980d8c81eb17691bafb9e` |
-| `evidence/m10/PX-076/TASK_CARD.md` | retained evidence | 5916 | `6616143081378fb73876ddd2a4d07082b1f9f15a551aaaf2e72b64bce8971c57` |
+| `evidence/m10/PX-076/TASK_CARD.md` | retained evidence | 6284 | `7c31f0df8677c5d3d5d9ae2373bbd9424a9e82b0405e7d1cc31097e67e159c4c` |
+| `evidence/m10/PX-076/ci-run-45226116588.json` | retained evidence | 65329 | `552f8cb65cb64a529ef117911fd68033a69eea49b803ccdd88f24f292437e51d` |
 | `evidence/m10/PX-076/clippy.log` | retained evidence | 0 | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
 | `evidence/m10/PX-076/evidence.json` | retained evidence | 2625 | `ef7f5911c9296edc8e5d175184e8d6ee8abb3456f6a5031249087a6702273712` |
 | `evidence/m10/PX-076/mutation-checks-2026-11-23.txt` | retained evidence | 1120 | `01b7948e662e236c77a0ef8fecd973d305e8e67ab6132d2e68c3aaffc4edbcfc` |
@@ -2625,8 +2626,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/zcode-ui/reference/zcode-colors-rgba.json` | retained evidence | 18690 | `76372c3edbcd50fe596d5e4b7fcd7991adab9686588ddc578a728afa24b4f028` |
 | `evidence/zcode-ui/reference/zcode-computed.json` | retained evidence | 718674 | `9ae8821ce72aa0fff3be44aacd0f4c9d995465c54bad7f17d1a81f92841d1c2d` |
 | `evidence/zcode-ui/reference/zcode-tokens-resolved.json` | retained evidence | 30635 | `066725c00059a05d073fbcdac9a8d965eab05f05c1f5df16e654854ff3e22b91` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 47980 | `d193c4e55b7768993972734f231bf4fb725ad59ac37bab7e65753ae5b1f65862` |
-| `graph/project-graph.json` | project driver graph with live status | 2645353 | `517682830b62fc8ee21fe847bc3127d516241c869e34a6fb005895aed41fad89` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 47980 | `b1fabaa8e015597b50db1c227f4a476e11a8d6875254f8965c6b1def403e07b1` |
+| `graph/project-graph.json` | project driver graph with live status | 2645693 | `51213d647221ad84530d1de90b82f89e5f9f9e0bb2f72249e2a9f96b142768fa` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 69551 | `75bcc309c03df0b898705f3bf58a8c289431dc60cbaf52e1c38f4c5d41d06dd7` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |
