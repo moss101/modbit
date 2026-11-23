@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2500,
+    "root_and_tooling": 2503,
     "docs_bytes": 2398645
   },
   "sections": [
@@ -2487,6 +2487,21 @@
       "path": "evidence/m10/PX-053/evidence.json",
       "bytes": 1803,
       "sha256": "5a568ba66366852b73f322b0c5a8543bd5751c617536618cf5817c449c9031a9"
+    },
+    {
+      "path": "evidence/m10/PX-059/TASK_CARD.md",
+      "bytes": 1857,
+      "sha256": "6da8a69dd57a453cc0fe9b44c60ef54806189bdfa53d9c2642b1c225db886cf5"
+    },
+    {
+      "path": "evidence/m10/PX-059/clippy.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "evidence/m10/PX-059/tests.log",
+      "bytes": 21288,
+      "sha256": "ded2a971d625ee36c33dd75da7bba7e089473a2a1eab5ffb0246ee3620f72005"
     },
     {
       "path": "evidence/m10/PX-065/TASK_CARD.md",
