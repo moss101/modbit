@@ -2435,8 +2435,8 @@
     },
     {
       "path": "evidence/m10/PX-048/TASK_CARD.md",
-      "bytes": 5728,
-      "sha256": "00e6d9d8ad04f42b6295d9d84d253072c9ebc161a0cb1f2d99ea0c6f80e3d3e9"
+      "bytes": 6932,
+      "sha256": "68655d548c47d69cc19e9705da0c45fba7d6abb9adf1fba15f1fe958eb138a9d"
     },
     {
       "path": "evidence/m10/PX-048/read-leaves-index/mutations.log",
