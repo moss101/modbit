@@ -20,14 +20,28 @@ struct Raw {
     stdout: ChildStdout,
 }
 
+/// The token a raw launch is pinned to unless the test pins another.
+const TOKEN: [u8; 32] = [0xA5; 32];
+
+fn pin_of(token: &[u8]) -> String {
+    hex::encode(Sha256::digest(token))
+}
+
+/// The helper as the Core launches it: pinned to [`TOKEN`] unless `env` sets
+/// the pin itself (`MODBIT_ACTUATOR_TOKEN_SHA256`, empty to launch unpinned).
 fn spawn_raw(env: &[(&str, &str)]) -> Raw {
     let mut c = Command::new(helper_bin());
     c.stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .kill_on_drop(true);
+    c.env("MODBIT_ACTUATOR_TOKEN_SHA256", pin_of(&TOKEN));
     for (k, v) in env {
-        c.env(k, v);
+        if v.is_empty() {
+            c.env_remove(k);
+        } else {
+            c.env(k, v);
+        }
     }
     let mut child = c.spawn().expect("spawn the helper");
     let stdin = child.stdin.take();
@@ -94,7 +108,7 @@ fn me() -> u32 {
 #[tokio::test]
 async fn a_hello_with_this_launchs_token_is_welcomed_with_the_proof_the_pid_and_the_platform() {
     let mut h = spawn_raw(&[]);
-    let token = vec![0xA5; 32];
+    let token = TOKEN.to_vec();
     h.send(&hello(1, token.clone(), me())).await;
     let w = h.welcome().await.expect("a welcome");
     assert_eq!(w.refusal, "");
@@ -131,7 +145,7 @@ async fn a_hello_with_this_launchs_token_is_welcomed_with_the_proof_the_pid_and_
 #[tokio::test]
 async fn a_protocol_major_the_helper_does_not_speak_is_refused_with_the_typed_reason() {
     let mut h = spawn_raw(&[]);
-    h.send(&hello(2, vec![1; 32], me())).await;
+    h.send(&hello(2, TOKEN.to_vec(), me())).await;
     let w = h.welcome().await.expect("a welcome carrying the refusal");
     assert!(w.refusal.contains("protocol major 2"), "{}", w.refusal);
     assert_eq!(
@@ -154,7 +168,7 @@ async fn a_token_that_is_not_32_bytes_is_refused() {
 #[tokio::test]
 async fn a_hello_naming_another_parent_is_refused() {
     let mut h = spawn_raw(&[]);
-    h.send(&hello(1, vec![1; 32], me() + 1)).await;
+    h.send(&hello(1, TOKEN.to_vec(), me() + 1)).await;
     let w = h.welcome().await.expect("a welcome");
     assert!(w.refusal.contains("parent"), "{}", w.refusal);
     assert_eq!(w.token_proof, "");
@@ -198,16 +212,31 @@ async fn nothing_is_served_before_a_hello_and_a_second_hello_ends_the_connection
     assert_eq!(h.exit_code().await, Some(3));
     // A second hello after the welcome is a protocol violation.
     let mut h = spawn_raw(&[]);
-    h.send(&hello(1, vec![3; 32], me())).await;
+    h.send(&hello(1, TOKEN.to_vec(), me())).await;
     assert!(h.welcome().await.is_some());
     h.send(&hello(1, vec![4; 32], me())).await;
     assert_eq!(h.exit_code().await, Some(5));
 }
 
+/// QUAL-PX-071 (negative N1): a helper that accepts a connection without the
+/// token fails. Launched with no pin, the helper welcomes no one - not even a
+/// well-formed hello from its real parent - and exits.
+#[tokio::test]
+async fn an_unpinned_launch_welcomes_no_one() {
+    for token in [TOKEN.to_vec(), vec![0; 32]] {
+        let mut h = spawn_raw(&[("MODBIT_ACTUATOR_TOKEN_SHA256", "")]);
+        h.send(&hello(1, token, me())).await;
+        let w = h.welcome().await.expect("a welcome carrying the refusal");
+        assert!(w.refusal.contains("not pinned"), "{}", w.refusal);
+        assert!(w.token_proof.is_empty(), "no proof for a refused hello");
+        assert!(h.exit_code().await.is_some_and(|c| c != 0));
+    }
+}
+
 #[tokio::test]
 async fn the_core_closing_the_stream_stops_the_helper_at_once() {
     let mut h = spawn_raw(&[]);
-    h.send(&hello(1, vec![3; 32], me())).await;
+    h.send(&hello(1, TOKEN.to_vec(), me())).await;
     assert!(h.welcome().await.is_some());
     let t0 = Instant::now();
     h.stdin = None; // the Core is gone
@@ -465,7 +494,7 @@ async fn acquire_refuses_an_application_whose_identity_is_not_the_one_approved()
 #[tokio::test]
 async fn the_welcome_reports_the_permissions_the_helper_holds_and_never_a_guess() {
     let mut h = spawn_raw(&[("MODBIT_ACTUATOR_DENY", "accessibility,screen_recording")]);
-    h.send(&hello(1, vec![7; 32], me())).await;
+    h.send(&hello(1, TOKEN.to_vec(), me())).await;
     let w = h.welcome().await.expect("a welcome");
     if cfg!(target_os = "macos") {
         let get = |n: &str| {
