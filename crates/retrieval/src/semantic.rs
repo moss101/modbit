@@ -26,6 +26,16 @@ pub trait Embedder: Send + Sync {
     fn dimensions(&self) -> usize;
     /// Embed texts (same order).
     fn embed(&self, texts: &[&str]) -> Vec<Vec<f32>>;
+    /// Whether nearness in this space is evidence the lexical index does not
+    /// already have. A learned model's is: it relates words that share no
+    /// token. A space built from the query's own tokens is not: it scores the
+    /// same overlap BM25 scores, more coarsely, so the planner lets it add
+    /// candidates and break ties but never outvote a lexical ranking
+    /// (docs/18 "Fusion"; PX-137 found two such votes on one overlap pushing
+    /// the answer out of first place).
+    fn independent_of_lexical(&self) -> bool {
+        true
+    }
 }
 
 /// Deterministic feature-hashing embedder (`hashing-v1`): identifier and
@@ -87,6 +97,11 @@ impl Embedder for HashingEmbedder {
 
     fn dimensions(&self) -> usize {
         self.dims
+    }
+
+    /// Hashed tokens: the overlap BM25 already scores.
+    fn independent_of_lexical(&self) -> bool {
+        false
     }
 
     fn embed(&self, texts: &[&str]) -> Vec<Vec<f32>> {
@@ -297,6 +312,13 @@ impl SemanticIndex {
     #[must_use]
     pub fn embedder_id(&self) -> &str {
         self.embedder.id()
+    }
+
+    /// Whether the embedder's nearness is evidence independent of the lexical
+    /// index (`Embedder::independent_of_lexical`).
+    #[must_use]
+    pub fn independent_of_lexical(&self) -> bool {
+        self.embedder.independent_of_lexical()
     }
 
     /// Generation (workspace revision the embeddings were last updated for).

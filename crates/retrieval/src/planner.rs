@@ -337,6 +337,10 @@ struct Candidate {
     level: Level,
     /// Dependency distance from a seed (graph sources).
     distance: Option<u32>,
+    /// A method whose evidence the lexical index already holds (a token
+    /// embedder's nearest chunks): it adds the candidate and breaks ties, but
+    /// contributes nothing to the score.
+    corroborating: bool,
 }
 
 const RRF_K: f32 = 60.0;
@@ -353,6 +357,9 @@ const MAX_REGION_LINES: u32 = 120;
 struct Fused {
     hit: FusedHit,
     distance: Option<u32>,
+    /// Reciprocal rank of the corroborating methods: the tie-break below
+    /// the score.
+    corroboration: f32,
 }
 
 fn near(a: (u32, u32), b: (u32, u32)) -> bool {
@@ -382,6 +389,7 @@ impl Fused {
                 evidence: vec![],
             },
             distance: c.distance,
+            corroboration: 0.0,
         }
     }
 
@@ -401,7 +409,15 @@ impl Fused {
     /// lines of one function, two needles) is one voice, so reinforcement
     /// comes from different methods agreeing, not from one method repeating.
     fn absorb(&mut self, c: &Candidate) {
-        let rrf = 1.0 / (RRF_K + c.rank as f32 + 1.0);
+        let reciprocal = 1.0 / (RRF_K + c.rank as f32 + 1.0);
+        let rrf = if c.corroborating {
+            if reciprocal > self.corroboration {
+                self.corroboration = reciprocal;
+            }
+            0.0
+        } else {
+            reciprocal
+        };
         match self.hit.evidence.iter_mut().find(|e| e.source == c.source) {
             Some(e) if c.rank < e.rank => {
                 e.rank = c.rank;
@@ -498,7 +514,7 @@ fn fuse(
     let by_key = regions(candidates);
     let q_leaf = leaf(query.trim()).to_ascii_lowercase();
     let q_lower = query.trim().to_ascii_lowercase();
-    let mut out: Vec<FusedHit> = by_key
+    let mut out: Vec<(FusedHit, f32)> = by_key
         .into_iter()
         .map(|mut f| {
             let h = &mut f.hit;
@@ -559,7 +575,7 @@ fn fuse(
                 h.score += 0.004 / d.max(1) as f32;
                 h.reasons.push(format!("dependency_distance:{d}"));
             }
-            f.hit
+            (f.hit, f.corroboration)
         })
         .collect();
     // Two tiers, because a rank offset is not the same promise: a candidate the
@@ -568,7 +584,9 @@ fn fuse(
     // difference — expansion filling the top K and pushing the answer out
     // (REQ-EV-0254).
     let direct = |h: &FusedHit| h.sources.iter().any(|s| !s.starts_with("graph."));
-    out.sort_by(|a, b| {
+    // Below the score, a corroborating method breaks the tie; only then the
+    // path, so an order never rests on the alphabet while evidence differs.
+    out.sort_by(|(a, ca), (b, cb)| {
         direct(b)
             .cmp(&direct(a))
             .then_with(|| {
@@ -576,10 +594,11 @@ fn fuse(
                     .partial_cmp(&a.score)
                     .unwrap_or(std::cmp::Ordering::Equal)
             })
+            .then_with(|| cb.partial_cmp(ca).unwrap_or(std::cmp::Ordering::Equal))
             .then(a.path.cmp(&b.path))
             .then(a.span.cmp(&b.span))
     });
-    out
+    out.into_iter().map(|(h, _)| h).collect()
 }
 
 /// Cut the fused list to `max` without letting either kind of evidence crowd
@@ -734,6 +753,7 @@ fn run_level(
                                 rank: i,
                                 level,
                                 distance: None,
+                                corroborating: false,
                             });
                         }
                         push_step(res, level, "paths", &glob, n, None);
@@ -764,6 +784,7 @@ fn run_level(
                         rank: i,
                         level,
                         distance: None,
+                        corroborating: false,
                     });
                 }
                 push_step(res, level, "exact", &needle, n, None);
@@ -785,6 +806,7 @@ fn run_level(
                                 rank: i,
                                 level,
                                 distance: None,
+                                corroborating: false,
                             });
                         }
                         push_step(res, level, "symbols", &name, n, None);
@@ -807,12 +829,14 @@ fn run_level(
                             rank: i,
                             level,
                             distance: None,
+                            corroborating: false,
                         });
                     }
                     push_step(res, level, "lexical", q, n, None);
                 }
                 Err(e) => push_step(res, level, "lexical", q, 0, Some(e.to_string())),
             }
+            let corroborating = !src.semantic.independent_of_lexical();
             match src.semantic.search(q, max) {
                 Ok(hits) => {
                     res.embedding_generation = Some(src.semantic.generation());
@@ -827,6 +851,7 @@ fn run_level(
                             rank: i,
                             level,
                             distance: None,
+                            corroborating,
                         });
                     }
                     push_step(res, level, "semantic", q, n, None);
@@ -853,6 +878,7 @@ fn run_level(
                             rank: i,
                             level,
                             distance: None,
+                            corroborating: false,
                         });
                     }
                     push_step(res, level, "exact", &needle, n, None);
@@ -906,6 +932,7 @@ fn run_level(
                             rank: i + EXPANSION_RANK_OFFSET,
                             level,
                             distance: Some(d.max(1)),
+                            corroborating: false,
                         });
                     }
                     push_step(res, level, &format!("graph.{rel}"), seed, n, None);

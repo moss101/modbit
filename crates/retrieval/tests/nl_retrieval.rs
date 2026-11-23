@@ -7,9 +7,25 @@ use std::collections::BTreeMap;
 
 use modbit_retrieval::planner::retrieve;
 use modbit_retrieval::{
-    EvidenceGraph, HashingEmbedder, LexicalIndex, PlanRequest, RepositoryIndex, SemanticIndex,
-    Sources, SymbolIndex,
+    Embedder, EvidenceGraph, HashingEmbedder, LexicalIndex, PlanRequest, RepositoryIndex,
+    SemanticIndex, Sources, SymbolIndex,
 };
+
+/// The same vectors, declared independent of the lexical index: how a learned
+/// embedder presents itself to the planner.
+struct Independent(HashingEmbedder);
+
+impl Embedder for Independent {
+    fn id(&self) -> &str {
+        "independent-hashing-test-v1"
+    }
+    fn dimensions(&self) -> usize {
+        self.0.dimensions()
+    }
+    fn embed(&self, texts: &[&str]) -> Vec<Vec<f32>> {
+        self.0.embed(texts)
+    }
+}
 
 fn git(dir: &std::path::Path, args: &[&str]) {
     assert!(
@@ -95,6 +111,10 @@ struct Built {
 }
 
 fn build(dir: &std::path::Path) -> Built {
+    build_with(dir, Box::new(HashingEmbedder::default()))
+}
+
+fn build_with(dir: &std::path::Path, embedder: Box<dyn Embedder>) -> Built {
     let idx = RepositoryIndex::build(dir, 1).unwrap();
     let lx = LexicalIndex::build(idx.texts(), 1).unwrap();
     let sx = SymbolIndex::build(idx.texts_with_hash(), 1);
@@ -107,8 +127,7 @@ fn build(dir: &std::path::Path) -> Built {
     };
     let files: Vec<modbit_retrieval::FileSource> =
         idx.texts().map(|(p, t, _)| (p, t, spans(p))).collect();
-    let sem =
-        SemanticIndex::build(Box::new(HashingEmbedder::default()), files.into_iter(), 1).unwrap();
+    let sem = SemanticIndex::build(embedder, files.into_iter(), 1).unwrap();
     let graph = EvidenceGraph::build(idx.texts(), vec![], BTreeMap::new(), 1);
     Built {
         idx,
@@ -202,14 +221,9 @@ fn a_lexical_hit_names_the_region_that_matched() {
     assert!(z - a < 120, "the region is a chunk, not the file: {hit:?}");
 }
 
-/// N5: lexical, exact and semantic evidence for the same region are one hit
-/// whose score is their sum, and each method's evidence is kept.
-#[test]
-fn methods_that_found_one_region_reinforce_one_hit() {
-    let d = repo();
-    let b = build(d.path());
+fn cart_hit(b: &Built) -> modbit_retrieval::FusedHit {
     let r = plan(
-        &b,
+        b,
         "where do we compute the total of the cart with compute_total",
     );
     let for_cart: Vec<&modbit_retrieval::FusedHit> =
@@ -219,27 +233,93 @@ fn methods_that_found_one_region_reinforce_one_hit() {
         1,
         "one file, one region, one hit: {for_cart:?}"
     );
-    let hit = for_cart[0];
+    let hit = for_cart[0].clone();
+    // Per-method evidence stays for provenance, whatever each method counts.
     for source in ["lexical", "semantic", "exact"] {
+        assert!(
+            hit.evidence.iter().any(|e| e.source == source),
+            "no {source} evidence: {hit:?}"
+        );
         assert!(
             hit.sources.iter().any(|s| s == source),
             "{source} missing: {hit:?}"
         );
     }
-    // Per-method evidence stays for provenance.
-    for source in ["lexical", "semantic", "exact"] {
-        let e = hit
-            .evidence
-            .iter()
-            .find(|e| e.source == source)
-            .unwrap_or_else(|| panic!("no {source} evidence: {hit:?}"));
+    hit
+}
+
+/// N5: lexical, exact and semantic evidence for the same region are one hit
+/// whose score is their sum, and each method's evidence is kept — when the
+/// embedder's nearness is evidence of its own.
+#[test]
+fn methods_that_found_one_region_reinforce_one_hit() {
+    let d = repo();
+    let b = build_with(d.path(), Box::new(Independent(HashingEmbedder::default())));
+    let hit = cart_hit(&b);
+    for e in &hit.evidence {
         assert!(e.rrf > 0.0, "{e:?}");
     }
+    let sum: f32 = hit.evidence.iter().map(|e| e.rrf).sum();
+    assert!((hit.score - sum).abs() < 1e-6 || hit.score > sum, "{hit:?}");
     let best_single = hit.evidence.iter().map(|e| e.rrf).fold(0.0_f32, f32::max);
     assert!(
         hit.score > best_single,
         "reinforcement must beat any single method: {hit:?}"
     );
+}
+
+/// PX-137: a token embedder scores the overlap BM25 already scores, so its
+/// vote is kept as provenance (rank recorded) but adds nothing to the score;
+/// the independent methods still reinforce each other.
+#[test]
+fn a_token_embedder_corroborates_without_voting() {
+    let d = repo();
+    let b = build(d.path());
+    let hit = cart_hit(&b);
+    let sem = hit
+        .evidence
+        .iter()
+        .find(|e| e.source == "semantic")
+        .unwrap();
+    assert_eq!(sem.rrf, 0.0, "{sem:?}");
+    for source in ["lexical", "exact"] {
+        let e = hit.evidence.iter().find(|e| e.source == source).unwrap();
+        assert!(e.rrf > 0.0, "{e:?}");
+    }
+    let best_single = hit.evidence.iter().map(|e| e.rrf).fold(0.0_f32, f32::max);
+    assert!(hit.score > best_single, "{hit:?}");
+}
+
+/// PX-137: a hit only a token embedder found never ranks above a hit an
+/// independent method found — it fills the list after them, it does not
+/// take first place.
+#[test]
+fn a_corroborating_only_hit_never_outranks_scored_evidence() {
+    let d = repo();
+    let b = build(d.path());
+    for q in [
+        "where do we compute the total of the cart with compute_total",
+        "clamp a refund to the ceiling for returned orders",
+        "order total from quantity and unit price",
+        "logging setup for the service",
+    ] {
+        let r = plan(&b, q);
+        let corroborating_only =
+            |h: &modbit_retrieval::FusedHit| h.evidence.iter().all(|e| e.source == "semantic");
+        let mut seen_corroborating = false;
+        for h in &r.hits {
+            if corroborating_only(h) {
+                assert_eq!(h.score, 0.0, "{q}: {h:?}");
+                seen_corroborating = true;
+            } else if h.score > 0.0 {
+                assert!(
+                    !seen_corroborating,
+                    "{q}: scored hit after a corroborating-only one: {:?}",
+                    r.hits
+                );
+            }
+        }
+    }
 }
 
 /// Regions that are far apart in one file are different evidence: they stay
