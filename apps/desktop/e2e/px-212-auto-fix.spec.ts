@@ -229,9 +229,18 @@ test("PX-212: auto-fix is the task's switch, off by default; on, a failing read 
     await expectTaskState(page, taskId, "ReadyForReview", 90_000);
 
     // ---- A third: past the cap, nothing is started and the pane says the loop stopped.
+    // The Core acts on a read only once the second turn's runtime has let go (the task can show ReadyForReview a moment
+    // before), and a read it skips leaves the head unrecorded; so read again until it acts, as the periodic refresh would.
     gh.sha = "3".repeat(40);
-    await refresh();
-    await expect(fix).toHaveAttribute("data-tone", "stopped", { timeout: 30_000 });
+    await expect
+      .poll(
+        async () => {
+          await refresh();
+          return fix.getAttribute("data-tone");
+        },
+        { timeout: 60_000, intervals: [2_000] },
+      )
+      .toBe("stopped");
     await expect(pane.getByTestId("pr-pane-auto-fix-detail")).toHaveText("Stopped after 2 of 2 repair turns. Turn it off and on again to allow more.");
     await page.waitForTimeout(2_000);
     await expectTaskState(page, taskId, "ReadyForReview", 5_000);

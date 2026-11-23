@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-11-22",
+ "generated_on": "2026-11-23",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -38956,8 +38956,18 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-126",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "E2E_PROVEN",
+   "evidence": [
+    "artifact:evidence/m10/PX-126/TASK_CARD.md",
+    "commit:d10d46d7",
+    "test:apps/cloud-api/tests/px_126_webhooks.rs",
+    "artifact:evidence/m10/PX-126/cloud-suite.log",
+    "artifact:evidence/m10/PX-126/mutation-checks-2026-11-23.txt",
+    "artifact:evidence/m10/PX-126/px126-live.log",
+    "test:apps/cloud-worker/tests/px_126_live.rs",
+    "artifact:evidence/m10/PX-126/evidence.json"
+   ],
+   "status_changed_on": "2026-11-23T07:24:56Z"
   },
   {
    "id": "PX-127",

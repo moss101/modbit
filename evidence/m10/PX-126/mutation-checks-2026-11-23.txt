@@ -1,0 +1,16 @@
+M1 replay (nonce) check skipped: CAUGHT (exit 101)
+  thread 'qual_px_126_check_and_comment_deliveries_become_durable_ingestion_commands_for_the_owning_task_and_nothing_else' (773864) panicked at apps/cloud-api/tests/px_126_webhooks.rs:356:5:
+  test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.49s
+M2 signature check skipped: CAUGHT (exit 101)
+  thread 'qual_px_126_check_and_comment_deliveries_become_durable_ingestion_commands_for_the_owning_task_and_nothing_else' (774376) panicked at apps/cloud-api/tests/px_126_webhooks.rs:381:5:
+  test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.49s
+M3 event-time window skipped: CAUGHT (exit 101)
+  thread 'qual_px_126_check_and_comment_deliveries_become_durable_ingestion_commands_for_the_owning_task_and_nothing_else' (774906) panicked at apps/cloud-api/tests/px_126_webhooks.rs:391:5:
+  test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.47s
+M4 task lookup ignores the tenant: CAUGHT (exit 101)
+  thread 'qual_px_126_check_and_comment_deliveries_become_durable_ingestion_commands_for_the_owning_task_and_nothing_else' (775667) panicked at apps/cloud-api/tests/px_126_webhooks.rs:452:5:
+  test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.48s
+M5 worker sends Ingest:ci nowhere (no IngestCiResults): CAUGHT (exit 101)
+  thread 'qual_px_126_a_signed_check_or_comment_delivery_makes_the_owning_cores_ingestion_record_ci_evidence_and_untrusted_steering' (777047) panicked at apps/cloud-worker/tests/px_126_ingestion.rs:197:5:
+  thread 'qual_px_126_a_green_delivery_never_passes_the_tasks_failing_own_check' (777046) panicked at apps/cloud-worker/tests/px_126_ingestion.rs:553:5:
+  test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.52s

@@ -1,0 +1,27 @@
+{
+  "task": "PX-126",
+  "requirements": ["REQ-PX-126", "QUAL-PX-126", "REQ-EV-0147", "REQ-EV-0148", "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-126"],
+  "scenarios": ["QUAL-PX-126 / PX-E2E-126"],
+  "decision_record": "DR-PX-2026-10-05-013",
+  "tier": "release-critical",
+  "branch": "px-126-webhook-ingestion",
+  "base": "98180a4c",
+  "audit": {
+    "classification": "PRODUCTION-WORKING on the GitHub fake since d10d46d7 (#64); graph stale at NOT_STARTED",
+    "first_missing_link": "no proof through the webhook that green CI leaves a failing own check failed; refusal audit asserted for 2 of 7 refusals; no mutation evidence; no real-GitHub event"
+  },
+  "tests": [
+    "apps/cloud-api/tests/px_126_webhooks.rs::qual_px_126_check_and_comment_deliveries_become_durable_ingestion_commands_for_the_owning_task_and_nothing_else",
+    "apps/cloud-worker/tests/px_126_ingestion.rs::qual_px_126_a_signed_check_or_comment_delivery_makes_the_owning_cores_ingestion_record_ci_evidence_and_untrusted_steering",
+    "apps/cloud-worker/tests/px_126_ingestion.rs::qual_px_126_a_green_delivery_never_passes_the_tasks_failing_own_check",
+    "apps/cloud-worker/tests/px_126_live.rs::qual_px_126_live_a_real_review_comment_reaches_the_owning_core_through_the_signed_webhook_as_untrusted_steering"
+  ],
+  "logs": ["cloud-suite.log", "px126-live.log"],
+  "mutation_check": "mutation-checks-2026-11-23.txt (5 mutations, 5 caught)",
+  "environment": "macOS 27.0.1 arm64, rustc 1.97.1, Postgres 17; real cloud API, worker, modbit-core, git; real GitHub (moss101/modbit-forge-test) for the live leg; scripted model",
+  "limitations": [
+    "Live delivery transport is the test, signed with the app secret; GitHub's servers did not send it.",
+    "No real CI result through the webhook: the fine-grained token cannot read check runs.",
+    "Live test runs locally only; CI has no secrets for it."
+  ]
+}
