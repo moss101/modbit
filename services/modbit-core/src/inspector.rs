@@ -547,6 +547,10 @@ pub(crate) struct CompiledRequest<'a> {
     pub tools: &'a [modbit_providers::ToolProjection],
     pub injected_memory: &'a [String],
     pub request_estimate: u32,
+    /// What the provider's counts on this run's earlier requests taught the
+    /// estimator (REQ-PX-059: the estimate follows the real tokenizer once
+    /// the provider has reported; before that it is the bare heuristic).
+    pub calibration: &'a modbit_compaction::Calibration,
 }
 
 /// What a ContextCompile step keeps for the accounting: the estimator's count
@@ -563,8 +567,19 @@ pub(crate) fn compile_record(core: &Core, r: &CompiledRequest<'_>) -> serde_json
         tools,
         injected_memory,
         request_estimate,
+        calibration,
     } = *r;
-    let est = |t: &str| u64::from(modbit_compaction::estimate_tokens_v2(t));
+    // Calibrated once the provider has counted an earlier request of the run;
+    // the bare heuristic before that. The record says which.
+    let calibrated = calibration.samples() > 0;
+    let scale = |n: u32| -> u64 {
+        if calibrated {
+            u64::from(calibration.apply(n))
+        } else {
+            u64::from(n)
+        }
+    };
+    let est = |t: &str| scale(modbit_compaction::estimate_tokens_v2(t));
     let mut counts = [0u64; 9];
     for (i, c) in Category::ALL.iter().enumerate().take(8) {
         counts[i] = est(text.of(*c));
@@ -573,7 +588,7 @@ pub(crate) fn compile_record(core: &Core, r: &CompiledRequest<'_>) -> serde_json
     // and the run state. Defined as the remainder so the parts add up to the
     // estimator's count of the whole request.
     let others: u64 = counts[..8].iter().sum();
-    counts[8] = u64::from(request_estimate).saturating_sub(others);
+    counts[8] = scale(request_estimate).saturating_sub(others);
     let mut estimates = serde_json::Map::new();
     for (i, c) in Category::ALL.iter().enumerate() {
         estimates.insert(c.name().to_owned(), serde_json::json!(counts[i]));
@@ -589,6 +604,9 @@ pub(crate) fn compile_record(core: &Core, r: &CompiledRequest<'_>) -> serde_json
     serde_json::json!({
         "estimates": estimates,
         "request_estimate": request_estimate,
+        "estimator": if calibrated { "tokens-v2+calibration" } else { modbit_compaction::ESTIMATOR_V2 },
+        "calibration_ratio": calibration.ratio(),
+        "calibration_samples": calibration.samples(),
         "endpoint": endpoint,
         "model": model,
         "window": window,
