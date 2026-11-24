@@ -1,0 +1,80 @@
+{
+  "checks": [
+    {
+      "detail": "TRUSTED_BY_OWNER",
+      "name": "skill_trusted",
+      "ok": true
+    },
+    {
+      "detail": "MemoryPromoted { memory_id: \"8c80337319c23c3fbf3203ecb50bd147751a89e337e472eb983252d737d6ef74\", outcome: \"curated\", refusal_code: \"\", refusal_detail: \"\", superseded: [], offset: 8 }",
+      "name": "memory_curated",
+      "ok": true
+    },
+    {
+      "detail": "ContextAccountingView { available: false, total_tokens: 0, total_source: \"\", estimated_total: 0, provider_reported_input: 0, estimator_error_bp: 0, declared_error_bp: 2500, rounding_rule: \"LARGEST_REMAINDER\", window_tokens: 0, window_source: \"\", used_bp: 0, categories: [], endpoint: \"\", model: \"\", turn_id: \"\", turn_ordinal: 0, offset: 0, instruction_layers_in_force: 0, memory_items_injected: 0, compaction_epoch: 0, compaction_summaries: 0, budgets: Some(BudgetAccountingView { max_cost_minor: 0, spent_minor: 0, held_by_children_minor: 0, max_wall_ms: 0, wall_ms_used: 0, max_children: 3, live_children: 0, forbid_spawn: false, wall_ms_parked: 0 }), skill_configuration_id: \"\" }",
+      "name": "nothing_before_the_first_turn",
+      "ok": true
+    },
+    {
+      "detail": "TaskStatus { state: \"Waiting\", wait_reason: \"UserInput\", run_state: \"Suspended\", loop_alive: false, last_offset: 143, attention_reason: \"3 consecutive turns without progress\", failure_class: \"HARNESS\", failure_code: \"NO_PROGRESS\", retryable: false, user_action: \"steer the task or narrow the goal\", recovery_path: \"the run suspended after consecutive turns without progress; resume with StartTask\", evidence_refs: [], diagnostic_features: [\"class:harness\", \"code:no_progress\", \"not_retryable\", \"source:harness\"], user_explanation: \"A rule of the agent harness refused an action (NO_PROGRESS). Trying again as it is will not help. steer the task or narrow the goal.\", posture: Some(TaskPostureView { task_id: Some(Id { value: [156, 182, 244, 13, 134, 217, 155, 149, 73, 48, 17, 8, 80, 219, 235, 61] }), mode: Agent, mode_offset: 0, mode_in_force: Agent, posture: Some(ModePostureView { effect_ceiling: \"NONE\", allowed_capabilities: [], subagents: true, reproduction_first: false, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"DIRECT\", reason_code: \"NO_ACTIVE_REGISTRY\", detail: \"no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\", floor_mode: \"\", registry_generation: \"\" }) }) }",
+      "name": "run_ended",
+      "ok": true
+    },
+    {
+      "detail": "no accounting after a run",
+      "name": "available",
+      "ok": true
+    },
+    {
+      "detail": "PROVIDER_REPORTED / 9760",
+      "name": "provider_reported",
+      "ok": true
+    },
+    {
+      "detail": "9760 vs 9760",
+      "name": "total_is_the_providers_count",
+      "ok": true
+    },
+    {
+      "detail": "9",
+      "name": "nine_categories",
+      "ok": true
+    },
+    {
+      "detail": "9760 vs 9760",
+      "name": "categories_sum_exactly_to_the_total",
+      "ok": true
+    },
+    {
+      "detail": "Some(9760) vs 9760",
+      "name": "total_matches_the_usage_ledger_of_the_last_step",
+      "ok": true
+    },
+    {
+      "detail": "the estimator counted 12245 against the provider's 9760: 2546 bp off, 2500 bp declared",
+      "name": "estimator_within_declared_error",
+      "ok": false
+    }
+  ],
+  "cost_usd": 0.03453225,
+  "counts": {
+    "declared_error_bp": 2500,
+    "estimated_total": 12245,
+    "estimator_error_bp": 2546,
+    "provider_reported_input": 9760
+  },
+  "elapsed_s": 16.559040106,
+  "endpoint": "https://generativelanguage.googleapis.com/v1beta/openai",
+  "input_tokens": 45738,
+  "leg": "accounting",
+  "live": true,
+  "model": "gemini-3.8-flash",
+  "model_calls": 5,
+  "notes": [],
+  "output_tokens": 61,
+  "passed": false,
+  "row": "px059",
+  "run_id": "45221342126",
+  "started_at_ms": 1795454536892,
+  "stopped_by_cap": false
+}

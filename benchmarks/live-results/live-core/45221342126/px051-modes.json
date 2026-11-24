@@ -1,0 +1,106 @@
+{
+  "checks": [
+    {
+      "detail": "TaskStatus { state: \"Waiting\", wait_reason: \"UserInput\", run_state: \"Suspended\", loop_alive: false, last_offset: 93, attention_reason: \"question pending: q-call13041720497585279510\", failure_class: \"HARNESS\", failure_code: \"QUESTION_PENDING\", retryable: false, user_action: \"answer the question (RespondToQuestion); the run resumes from the answer\", recovery_path: \"the run waits at the question boundary\", evidence_refs: [], diagnostic_features: [\"class:harness\", \"code:question_pending\", \"not_retryable\", \"source:harness\"], user_explanation: \"A rule of the agent harness refused an action (QUESTION_PENDING). Trying again as it is will not help. answer the question (RespondToQuestion); the run resumes from the answer.\", posture: Some(TaskPostureView { task_id: Some(Id { value: [19, 231, 168, 183, 246, 108, 33, 127, 199, 186, 134, 26, 66, 252, 223, 128] }), mode: Ask, mode_offset: 5, mode_in_force: Ask, posture: Some(ModePostureView { effect_ceiling: \"READONLY\", allowed_capabilities: [\"fs.read\", \"git.read\", \"memory.query\", \"external.list\"], subagents: false, reproduction_first: false, writes: false }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"DIRECT\", reason_code: \"NO_ACTIVE_REGISTRY\", detail: \"no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\", floor_mode: \"\", registry_generation: \"\" }) }) }",
+      "name": "ask_run_ended",
+      "ok": true
+    },
+    {
+      "detail": "hello.txt exists or a FileChanged was logged",
+      "name": "ask_wrote_nothing",
+      "ok": true
+    },
+    {
+      "detail": "[]",
+      "name": "ask_denials_are_the_modes",
+      "ok": true
+    },
+    {
+      "detail": "ToolInvoked { tool_call_id: Some(Id { value: [209, 105, 207, 248, 168, 176, 125, 38, 54, 105, 200, 13, 196, 189, 46, 183] }), status: \"POLICY_DENIED\", structured_output_json: \"null\", stdout_ref: \"\", error_code: \"MODE_POSTURE\", error_message: \"the task is in ASK mode: ReversibleWrite exceeds the mode's ReadOnly ceiling; the user changes the mode, the agent does not\", workspace_revision_after: 0, result_ref: \"86463e697ad923df0558e2689948e3957ad9dac7698c5c58b847b20d7304c1a6\", approval_id: \"\", effect_receipt_ids: [] }",
+      "name": "ask_write_denied_by_the_kernel",
+      "ok": true
+    },
+    {
+      "detail": "ToolInvoked { tool_call_id: Some(Id { value: [117, 158, 184, 124, 114, 150, 245, 207, 10, 248, 134, 210, 17, 188, 189, 247] }), status: \"POLICY_DENIED\", structured_output_json: \"null\", stdout_ref: \"\", error_code: \"MODE_POSTURE\", error_message: \"the task is in ASK mode: ReversibleWrite exceeds the mode's ReadOnly ceiling; the user changes the mode, the agent does not\", workspace_revision_after: 0, result_ref: \"5d78141b95e3e979f32494194a74ef452f12a51cce1f7e8e9e1f1065e732dbdd\", approval_id: \"\", effect_receipt_ids: [] }",
+      "name": "ask_execution_denied",
+      "ok": true
+    },
+    {
+      "detail": "hello.txt exists",
+      "name": "ask_still_wrote_nothing",
+      "ok": true
+    },
+    {
+      "detail": "TaskStatus { state: \"Waiting\", wait_reason: \"UserInput\", run_state: \"Suspended\", loop_alive: false, last_offset: 208, attention_reason: \"3 consecutive turns without progress\", failure_class: \"HARNESS\", failure_code: \"NO_PROGRESS\", retryable: false, user_action: \"steer the task or narrow the goal\", recovery_path: \"the run suspended after consecutive turns without progress; resume with StartTask\", evidence_refs: [], diagnostic_features: [\"class:harness\", \"code:no_progress\", \"not_retryable\", \"source:harness\"], user_explanation: \"A rule of the agent harness refused an action (NO_PROGRESS). Trying again as it is will not help. steer the task or narrow the goal.\", posture: Some(TaskPostureView { task_id: Some(Id { value: [26, 54, 224, 225, 32, 177, 30, 201, 255, 109, 248, 141, 37, 46, 90, 118] }), mode: Plan, mode_offset: 102, mode_in_force: Plan, posture: Some(ModePostureView { effect_ceiling: \"READONLY\", allowed_capabilities: [\"fs.read\", \"git.read\", \"memory.query\", \"external.list\"], subagents: false, reproduction_first: false, writes: false }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"DIRECT\", reason_code: \"NO_ACTIVE_REGISTRY\", detail: \"no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\", floor_mode: \"\", registry_generation: \"\" }) }) }",
+      "name": "plan_run_ended",
+      "ok": true
+    },
+    {
+      "detail": "the agent recorded no plan",
+      "name": "plan_recorded",
+      "ok": true
+    },
+    {
+      "detail": "b.txt exists before acceptance",
+      "name": "plan_wrote_nothing",
+      "ok": true
+    },
+    {
+      "detail": "ToolInvoked { tool_call_id: Some(Id { value: [76, 10, 219, 109, 197, 37, 9, 142, 112, 196, 2, 15, 22, 151, 41, 59] }), status: \"POLICY_DENIED\", structured_output_json: \"null\", stdout_ref: \"\", error_code: \"MODE_POSTURE\", error_message: \"the task is in PLAN mode: ReversibleWrite exceeds the mode's ReadOnly ceiling; the user changes the mode, the agent does not\", workspace_revision_after: 0, result_ref: \"f2278a0723350c69a88880a733528122e87d7121340473d3914e2ca22fb77639\", approval_id: \"\", effect_receipt_ids: [] }",
+      "name": "plan_write_rejected_until_acceptance",
+      "ok": true
+    },
+    {
+      "detail": "TaskModeChanged { task_id: Some(Id { value: [26, 54, 224, 225, 32, 177, 30, 201, 255, 109, 248, 141, 37, 46, 90, 118] }), mode: Agent, previous_mode: Plan, effective: \"IMMEDIATE\", offset: 212, accepted_plan_version: 1 }",
+      "name": "acceptance_attaches_the_plan",
+      "ok": true
+    },
+    {
+      "detail": "TaskStatus { state: \"ReadyForReview\", wait_reason: \"\", run_state: \"Completed\", loop_alive: false, last_offset: 428, attention_reason: \"3 consecutive turns without progress\", failure_class: \"HARNESS\", failure_code: \"NO_PROGRESS\", retryable: false, user_action: \"steer the task or narrow the goal\", recovery_path: \"the run suspended after consecutive turns without progress; resume with StartTask\", evidence_refs: [], diagnostic_features: [\"class:harness\", \"code:no_progress\", \"not_retryable\", \"source:harness\"], user_explanation: \"A rule of the agent harness refused an action (NO_PROGRESS). Trying again as it is will not help. steer the task or narrow the goal.\", posture: Some(TaskPostureView { task_id: Some(Id { value: [26, 54, 224, 225, 32, 177, 30, 201, 255, 109, 248, 141, 37, 46, 90, 118] }), mode: Agent, mode_offset: 212, mode_in_force: Agent, posture: Some(ModePostureView { effect_ceiling: \"NONE\", allowed_capabilities: [], subagents: true, reproduction_first: false, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"DIRECT\", reason_code: \"NO_ACTIVE_REGISTRY\", detail: \"no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\", floor_mode: \"\", registry_generation: \"\" }) }) }",
+      "name": "agent_run_ended",
+      "ok": true
+    },
+    {
+      "detail": "b.txt was not written after the plan was accepted",
+      "name": "after_acceptance_the_write_lands",
+      "ok": true
+    },
+    {
+      "detail": "2",
+      "name": "mode_change_on_the_log",
+      "ok": true
+    },
+    {
+      "detail": "TaskStatus { state: \"ReadyForReview\", wait_reason: \"\", run_state: \"Completed\", loop_alive: false, last_offset: 991, attention_reason: \"\", failure_class: \"\", failure_code: \"\", retryable: false, user_action: \"\", recovery_path: \"\", evidence_refs: [], diagnostic_features: [], user_explanation: \"\", posture: Some(TaskPostureView { task_id: Some(Id { value: [44, 203, 115, 83, 254, 19, 189, 48, 179, 46, 195, 82, 83, 142, 20, 221] }), mode: Debug, mode_offset: 431, mode_in_force: Debug, posture: Some(ModePostureView { effect_ceiling: \"NONE\", allowed_capabilities: [], subagents: true, reproduction_first: true, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"DIRECT\", reason_code: \"NO_ACTIVE_REGISTRY\", detail: \"no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\", floor_mode: \"\", registry_generation: \"\" }) }) }",
+      "name": "debug_run_ended",
+      "ok": true
+    },
+    {
+      "detail": "reproduction at Some(34), first write at Some(116)",
+      "name": "debug_reproduces_before_a_fix_lands",
+      "ok": true
+    }
+  ],
+  "cost_usd": 0.30634725,
+  "counts": {
+    "ask_model_write_attempts_refused_by_the_kernel": 0,
+    "debug_fixed_calc": true,
+    "debug_fixes_refused_before_reproduction": 0
+  },
+  "elapsed_s": 270.217135334,
+  "endpoint": "https://generativelanguage.googleapis.com/v1beta/openai",
+  "input_tokens": 398768,
+  "leg": "modes",
+  "live": true,
+  "model": "gemini-3.8-flash",
+  "model_calls": 34,
+  "notes": [
+    "MULTITASK (a bounded child admitted with a ticket), the 15 s expiry of an unanswered mode proposal and consent surviving a restart are not model-dependent or need a second child run; they are proven in the scripted suite only"
+  ],
+  "output_tokens": 1939,
+  "passed": true,
+  "row": "px051",
+  "run_id": "45221342126",
+  "started_at_ms": 1795454085205,
+  "stopped_by_cap": false
+}

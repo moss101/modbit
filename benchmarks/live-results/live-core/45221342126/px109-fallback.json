@@ -1,0 +1,47 @@
+{
+  "checks": [
+    {
+      "detail": "TaskStatus { state: \"ReadyForReview\", wait_reason: \"\", run_state: \"Completed\", loop_alive: false, last_offset: 972, attention_reason: \"\", failure_class: \"\", failure_code: \"\", retryable: false, user_action: \"\", recovery_path: \"\", evidence_refs: [], diagnostic_features: [], user_explanation: \"\", posture: Some(TaskPostureView { task_id: Some(Id { value: [220, 54, 190, 130, 174, 78, 144, 208, 194, 92, 32, 183, 107, 155, 130, 3] }), mode: Agent, mode_offset: 0, mode_in_force: Agent, posture: Some(ModePostureView { effect_ceiling: \"NONE\", allowed_capabilities: [], subagents: true, reproduction_first: false, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"DIRECT\", reason_code: \"NO_ACTIVE_REGISTRY\", detail: \"no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\", floor_mode: \"\", registry_generation: \"\" }) }) }",
+      "name": "run_ended_despite_the_summarizer",
+      "ok": true
+    },
+    {
+      "detail": "no ContextEpochOpened",
+      "name": "the_run_compacted",
+      "ok": true
+    },
+    {
+      "detail": "\"EXTRACTIVE\" / \"SUMMARIZER_PROVIDER_REJECTED\"",
+      "name": "extractive_fallback_with_a_typed_reason",
+      "ok": true
+    },
+    {
+      "detail": "no CompactionCommitted",
+      "name": "extractive_epoch_installed",
+      "ok": true
+    },
+    {
+      "detail": "no task.complete on the log",
+      "name": "finished_with_task_complete",
+      "ok": true
+    }
+  ],
+  "cost_usd": 1.7459205,
+  "counts": {
+    "fallback_reason": "SUMMARIZER_PROVIDER_REJECTED"
+  },
+  "elapsed_s": 220.25611768,
+  "endpoint": "https://generativelanguage.googleapis.com/v1beta/openai",
+  "input_tokens": 2321109,
+  "leg": "fallback",
+  "live": true,
+  "model": "gemini-3.8-flash",
+  "model_calls": 35,
+  "notes": [],
+  "output_tokens": 1357,
+  "passed": true,
+  "row": "px109",
+  "run_id": "45221342126",
+  "started_at_ms": 1795455188630,
+  "stopped_by_cap": false
+}

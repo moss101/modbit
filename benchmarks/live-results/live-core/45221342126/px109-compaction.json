@@ -1,0 +1,25 @@
+{
+  "checks": [
+    {
+      "detail": "TaskStatus { state: \"Waiting\", wait_reason: \"Provider\", run_state: \"Suspended\", loop_alive: false, last_offset: 603, attention_reason: \"provider failure RATE_LIMITED: HTTP 429: [{\\n  \\\"error\\\": {\\n    \\\"code\\\": 429,\\n    \\\"message\\\": \\\"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://aistudio.google.com/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\\\n* Quota exceed (after 3 retries)\", failure_class: \"PROVIDER\", failure_code: \"RATE_LIMITED\", retryable: true, user_action: \"\", recovery_path: \"resume with StartTask after the provider's retry window\", evidence_refs: [], diagnostic_features: [\"class:provider\", \"code:rate_limited\", \"retryable\", \"source:provider\"], user_explanation: \"The model provider failed or refused the request (RATE_LIMITED). Trying again may succeed.\", posture: Some(TaskPostureView { task_id: Some(Id { value: [179, 9, 163, 120, 252, 202, 170, 138, 232, 31, 139, 254, 89, 56, 105, 31] }), mode: Agent, mode_offset: 0, mode_in_force: Agent, posture: Some(ModePostureView { effect_ceiling: \"NONE\", allowed_capabilities: [], subagents: true, reproduction_first: false, writes: true }), preference: Some(ExecutionPreferenceView { objective: Unspecified, effort: \"\", service_tier: \"\", pin_endpoint: \"\", pin_model: \"\", offset: 0, applied_offset: 0, effort_applied: \"\", service_tier_applied: \"\" }), routing: Some(RoutingOutcomeView { outcome: \"DIRECT\", reason_code: \"NO_ACTIVE_REGISTRY\", detail: \"no signed registry is active: the direct path dispatches the one binding the task starts with, so an objective cannot select a different one; the preference is recorded, and its effort and tier apply to that binding\", floor_mode: \"\", registry_generation: \"\" }) }) }",
+      "name": "run_ended",
+      "ok": false
+    }
+  ],
+  "cost_usd": 1.001634,
+  "counts": {},
+  "elapsed_s": 113.523557147,
+  "endpoint": "https://generativelanguage.googleapis.com/v1beta/openai",
+  "input_tokens": 1332072,
+  "leg": "compaction",
+  "live": true,
+  "model": "gemini-3.8-flash",
+  "model_calls": 21,
+  "notes": [],
+  "output_tokens": 688,
+  "passed": false,
+  "row": "px109",
+  "run_id": "45221342126",
+  "started_at_ms": 1795455075105,
+  "stopped_by_cap": false
+}
