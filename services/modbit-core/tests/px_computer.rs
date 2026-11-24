@@ -6088,3 +6088,79 @@ async fn qual_px_215_a_level_is_the_fold_of_the_log_and_survives_a_restart() {
         "the cleared level did not come back"
     );
 }
+
+/// QUAL-PX-071 (negative N6: "a lease that survives turn end fails"). The model reads the
+/// application and ends its turn without releasing the control session: the Core closes it with
+/// the run, `RUN_ENDED`, and the actuator holds nothing afterwards.
+#[tokio::test(flavor = "multi_thread")]
+async fn qual_px_071_a_control_session_does_not_survive_the_end_of_its_turn() {
+    let steps = vec![
+        start(FORM),
+        fx(call("computer.state", json!({}))),
+        // No release: the turn simply ends.
+        fx(json!({"text": "I have looked at the form."})),
+    ];
+    let mut rig = run(Opts::default(), steps, approve_all()).await;
+    rig.finish().await;
+    let o = rig.outs();
+    assert!(o[1].0.starts_with("status: SUCCESS"), "{}", o[1].0);
+    let mut closed = vec![];
+    let deadline = std::time::Instant::now() + Duration::from_secs(WAIT_SECS);
+    while closed.is_empty() && std::time::Instant::now() < deadline {
+        closed = of(&rig.events().await, "ComputerSessionClosed")
+            .into_iter()
+            .cloned()
+            .collect();
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    assert_eq!(closed.len(), 1, "{closed:?}");
+    assert_eq!(
+        closed[0]["payload"]["payload"]["reason"], "RUN_ENDED",
+        "{closed:?}"
+    );
+    let v = rig.view().await;
+    assert_eq!(
+        v.control_id, "",
+        "a control session outlived its turn: {v:?}"
+    );
+}
+
+/// QUAL-PX-071 clause: "killing the Core makes the helper release control and stop". The real Core
+/// holds a control session on a real application through the real helper; the Core process is
+/// killed (SIGKILL, no goodbye); the helper sees its stream end, releases control and exits.
+#[cfg(target_os = "macos")]
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "needs Accessibility + Screen Recording for this process and an unlocked screen: services/modbit-actuator-macos/scripts/ax-tests.sh"]
+async fn qual_px_071_the_real_helper_releases_control_and_exits_when_the_real_core_is_killed() {
+    let _app = fixture_app::Fixture::launch();
+    let steps = vec![
+        start(fixture_app::BUNDLE_ID),
+        fx(call("computer.state", json!({}))),
+        // Hold the turn (and the control session) while the test kills the Core.
+        st(|_| {
+            std::thread::sleep(Duration::from_secs(20));
+            json!({"text": "done"})
+        }),
+    ];
+    let mut rig = run(real(), steps, approve_all()).await;
+    rig.wait_model_shown(3).await;
+    let v = rig.view().await;
+    assert_ne!(v.control_id, "", "a control session is held: {v:?}");
+    let helper = v.actuator_pid;
+    assert!(helper > 0 && alive(helper), "the real helper runs: {v:?}");
+    let killed = std::time::Instant::now();
+    rig.core.kill();
+    assert!(
+        process_gone(helper, 10).await,
+        "the helper outlived the Core that launched it"
+    );
+    let took = killed.elapsed();
+    eprintln!(
+        "PX-071: helper {helper} exited {} ms after the Core was killed",
+        took.as_millis()
+    );
+    assert!(
+        took < Duration::from_secs(2),
+        "the helper took {took:?} to let go"
+    );
+}
