@@ -20,6 +20,16 @@ const URL1 = "https://example.invalid/one.git";
 const URL2 = "https://example.invalid/two.git";
 const remoteAdd = (name: string, url: string) => ({ call: { name: "shell.exec", args: { argv: ["git", "remote", "add", name, url] } } });
 const remotes = (repo: string): string[] => git(repo, "remote").split("\n").filter(Boolean);
+// While a poll waits, the agent's own `git remote add` may be rewriting the configuration (git writes config.lock and renames
+// it over .git/config). On Windows a read that meets the rename fails with "Permission denied" (hosted runner, PR 254), and a
+// throw inside expect.poll ends the poll at once. A read that fails while waiting is "not yet"; the expected value is unchanged.
+const remotesSoFar = (repo: string): string[] | string => {
+  try {
+    return remotes(repo);
+  } catch (e) {
+    return `configuration not readable yet: ${String(e).split("\n")[1] ?? e}`;
+  }
+};
 const newRepo = () => makeRepo(mkdtempSync(join(tmpdir(), "modbit-appr-repo-")));
 
 async function chooseMode(page: Page, mode: string, widest = false): Promise<void> {
@@ -88,7 +98,7 @@ test("PX-058: a pending effect docks a card with the exact intent and the Core's
     await expect(page.getByTestId("approval-last")).toContainText("Approved", { timeout: 30_000 });
     await expect(page.getByTestId("approval-card")).toHaveCount(0, { timeout: 30_000 });
     await page.getByTestId("conv-start").click();
-    await expect.poll(() => remotes(repo), { timeout: 90_000 }).toEqual(["origin1"]);
+    await expect.poll(() => remotesSoFar(repo), { timeout: 90_000 }).toEqual(["origin1"]);
     expect(git(repo, "remote", "get-url", "origin1").trim()).toBe(URL1);
     // The decision left its receipt: authorised by this approval.
     const receipts = await page.evaluate((t) => window.modbit.effectReceipts(t), taskId);
@@ -157,7 +167,7 @@ test("PX-058: three pending approvals form a deck, oldest first, each decided on
     expect(await taskOf(own), "the open task's own card").toBe(ids[0]);
     await page.getByTestId("approval-card").focus();
     await page.keyboard.press("Enter");
-    await expect.poll(() => remotes(repos[0]!), { timeout: 90_000 }).toEqual(["r1"]);
+    await expect.poll(() => remotesSoFar(repos[0]!), { timeout: 90_000 }).toEqual(["r1"]);
     await expect(page.getByTestId("approval-count")).toContainText("1 pending", { timeout: 30_000 });
     // The count falls before the deck shows the next card: a click now would land on the card that was just decided (the hosted Windows runner saw
     // "Run" do nothing). Wait for the card on screen to be the one that is left.
@@ -176,7 +186,7 @@ test("PX-058: three pending approvals form a deck, oldest first, each decided on
       }
       expect(await pendingIds(), "the Core recorded the decision on the third agent's approval").not.toContain(third);
     }).toPass({ timeout: 60_000, intervals: [1_000, 2_000, 5_000] });
-    await expect.poll(() => remotes(repos[2]!), { timeout: 90_000, message: "the approved effect ran in the third agent's repository" }).toEqual(["r3"]);
+    await expect.poll(() => remotesSoFar(repos[2]!), { timeout: 90_000, message: "the approved effect ran in the third agent's repository" }).toEqual(["r3"]);
     expect(remotes(repos[1]!)).toEqual([]);
     // Skip is a typed user decision: the approval is DENIED by the user, the call ends with the typed code APPROVAL_DENIED, and the agent went on to another turn.
     await expect
@@ -289,7 +299,7 @@ test("PX-057/058: Allowlist plus Always on a card makes a durable rule through t
     await page.keyboard.press("Shift+Enter");
     await expect(page.getByTestId("approval-last")).toContainText("Allowed “git remote add”", { timeout: 30_000 });
     // The second command is covered by the rule: it runs with no card, and nobody was asked.
-    await expect.poll(() => remotes(repo).sort(), { timeout: 120_000 }).toEqual(["one", "two"]);
+    await expect.poll(() => { const r = remotesSoFar(repo); return Array.isArray(r) ? r.sort() : r; }, { timeout: 120_000 }).toEqual(["one", "two"]);
     await expect(page.getByTestId("approval-card")).toHaveCount(0);
     const rules = await page.evaluate((t) => window.modbit.allowRules(t), taskId);
     expect(rules).toHaveLength(1);
@@ -348,7 +358,7 @@ test("PX-057: the widest preset needs its warning and still asks for the always-
     await chooseMode(page, "RUN_EVERYTHING", true);
     gate.open();
     // The in-envelope effect ran without a card; the deletion still asks, with the Core's reason.
-    await expect.poll(() => remotes(repo), { timeout: 120_000 }).toEqual(["quiet"]);
+    await expect.poll(() => remotesSoFar(repo), { timeout: 120_000 }).toEqual(["quiet"]);
     const card = page.getByTestId("approval-card");
     await expect(card).toBeVisible({ timeout: 120_000 });
     await expect(card).toHaveAttribute("data-ask-reason", "ALWAYS_ASK:DELETION");
