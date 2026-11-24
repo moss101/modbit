@@ -36653,13 +36653,18 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-061",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "commit:5774ec68",
     "run:38990216920",
     "test:services/modbit-core/tests/checkpoints_px.rs::px_061_every_turn_leaves_a_checkpoint_and_a_restore_is_exactly_reversible",
     "test:services/modbit-core/tests/checkpoints_px.rs::px_061_kill_during_capture_and_during_restore_recovers_consistently",
-    "test:services/modbit-core/tests/checkpoints_px.rs::px_061_a_fork_at_a_turn_has_that_turns_files_and_leaves_the_parent_alone"
+    "test:services/modbit-core/tests/checkpoints_px.rs::px_061_a_fork_at_a_turn_has_that_turns_files_and_leaves_the_parent_alone",
+    "run:gha-45221342126",
+    "artifact:benchmarks/live-results/live-core/45221342126/px061-checkpoints.json",
+    "run:gha-45265480804",
+    "commit:c45c62e5",
+    "artifact:evidence/m10/PX-061/SEAL.md"
    ],
    "notes": [
     {
@@ -36670,7 +36675,7 @@
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:55Z"
+   "status_changed_on": "2026-11-24T08:30:21Z"
   },
   {
    "id": "PX-062",
@@ -37978,13 +37983,18 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-101",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "commit:5774ec68",
     "run:38990216920",
     "test:services/modbit-core/tests/checkpoints_px.rs::px_101_pause_during_a_streaming_turn_parks_at_the_boundary_and_resume_completes",
     "test:services/modbit-core/tests/checkpoints_px.rs::px_101_a_pause_survives_a_killed_core_and_a_stale_resume_is_refused",
-    "test:services/modbit-core/tests/checkpoints_px.rs::px_101_pause_waits_for_a_running_command_and_leaves_an_approval_pending"
+    "test:services/modbit-core/tests/checkpoints_px.rs::px_101_pause_waits_for_a_running_command_and_leaves_an_approval_pending",
+    "run:gha-45221342126",
+    "artifact:benchmarks/live-results/live-core/45221342126/px101-pause.json",
+    "run:gha-45265480804",
+    "commit:c45c62e5",
+    "artifact:evidence/m10/PX-101/SEAL.md"
    ],
    "notes": [
     {
@@ -37995,7 +38005,7 @@
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:56Z"
+   "status_changed_on": "2026-11-24T08:30:21Z"
   },
   {
    "id": "PX-102",
@@ -38617,13 +38627,18 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-116",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "commit:5774ec68",
     "run:38990216920",
     "test:services/modbit-core/tests/surface_protocol.rs::qual_px_116_child_cost_budgets_are_clamped_reserved_exhaust_typed_and_roll_up",
     "test:services/modbit-core/tests/surface_protocol.rs::qual_px_116_max_children_refuses_the_extra_spawn_and_a_task_can_forbid_delegation",
-    "test:services/modbit-core/tests/surface_protocol.rs::qual_px_116_a_child_reads_only_its_read_scope_and_carries_the_parents_scoped_references"
+    "test:services/modbit-core/tests/surface_protocol.rs::qual_px_116_a_child_reads_only_its_read_scope_and_carries_the_parents_scoped_references",
+    "run:gha-45221342126",
+    "artifact:benchmarks/live-results/live-core/45221342126/px116-budgets.json",
+    "run:gha-45265480804",
+    "commit:c45c62e5",
+    "artifact:evidence/m10/PX-116/SEAL.md"
    ],
    "notes": [
     {
@@ -38634,7 +38649,7 @@
     }
    ],
    "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:57Z"
+   "status_changed_on": "2026-11-24T08:30:21Z"
   },
   {
    "id": "PX-117",
