@@ -1,0 +1,64 @@
+   Compiling modbit-core v0.0.0 (/Users/mohsin/projects/modbit/services/modbit-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.31s
+     Running tests/px_computer.rs (target/debug/deps/px_computer-d651222e56ce7b3e)
+
+running 3 tests
+test qual_px_071_the_real_helper_releases_control_and_exits_when_the_real_core_is_killed ... /var/folders/_1/1xvpd9n50m97rq8_c4ylpw940000gn/T/modbit-axfixture-61210/AxFixture.app: replacing existing signature
+/var/folders/_1/1xvpd9n50m97rq8_c4ylpw940000gn/T/modbit-axfixture-61210/AxFixtureDocument.app: replacing existing signature
+/var/folders/_1/1xvpd9n50m97rq8_c4ylpw940000gn/T/modbit-axfixture-61210/AxFixtureDialog.app: replacing existing signature
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+ok
+test qual_px_071_the_real_helper_serves_the_real_core_and_a_missing_permission_is_a_typed_refusal ... modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+ok
+test qual_px_072_the_core_launches_only_a_helper_the_signed_manifest_pins_and_rolls_back ... modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: no actuator attached: the actuator could not be verified: NO_VERIFIED_HELPER: no bundled helper could be used (0.2.0 -> DIGEST_MISMATCH: sha256 a1d9f6acfaf12fe1944d4d2928ecc3f7ca74ba8d622e0715c2dee7692f34d6b5, the manifest pins 432ecc39551e54257f25c7cfba393b3f4463c0fd08a2d9130ad52c5b236a2078; 0.1.0 -> DIGEST_MISMATCH: sha256 a1d9f6acfaf12fe1944d4d2928ecc3f7ca74ba8d622e0715c2dee7692f34d6b5, the manifest pins 432ecc39551e54257f25c7cfba393b3f4463c0fd08a2d9130ad52c5b236a2078)
+ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 56 filtered out; finished in 30.66s
+
+helper permissions: {"platform":"macos","accessibility":true,"screen_recording":true,"secure_desktop":false}
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.28s
+     Running tests/px_computer.rs (target/debug/deps/px_computer-d651222e56ce7b3e)
+
+running 1 test
+test qual_px_071_the_real_core_drives_a_real_application_through_the_real_helper ... /var/folders/_1/1xvpd9n50m97rq8_c4ylpw940000gn/T/modbit-axfixture-64747/AxFixture.app: replacing existing signature
+/var/folders/_1/1xvpd9n50m97rq8_c4ylpw940000gn/T/modbit-axfixture-64747/AxFixtureDocument.app: replacing existing signature
+/var/folders/_1/1xvpd9n50m97rq8_c4ylpw940000gn/T/modbit-axfixture-64747/AxFixtureDialog.app: replacing existing signature
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+FAILED
+
+failures:
+
+---- qual_px_071_the_real_core_drives_a_real_application_through_the_real_helper stdout ----
+
+thread 'tokio-rt-worker' (2250488) panicked at services/modbit-core/tests/px_computer.rs:225:32:
+no element Name in
+
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'tokio-rt-worker' (2250488) panicked at services/modbit-core/tests/px_computer.rs:225:32:
+no element Name in
+
+
+thread 'tokio-rt-worker' (2250488) panicked at services/modbit-core/tests/px_computer.rs:225:32:
+no element Name in
+
+
+thread 'tokio-rt-worker' (2250488) panicked at services/modbit-core/tests/px_computer.rs:225:32:
+no element Name in
+
+
+thread 'qual_px_071_the_real_core_drives_a_real_application_through_the_real_helper' (2250487) panicked at services/modbit-core/tests/px_computer.rs:3793:5:
+assertion `left == right` failed
+  left: Some("0")
+ right: Some("1")
+
+
+failures:
+    qual_px_071_the_real_core_drives_a_real_application_through_the_real_helper
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 58 filtered out; finished in 6.03s
+
+error: test failed, to rerun pass `-p modbit-core --test px_computer`

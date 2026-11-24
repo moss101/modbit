@@ -59,6 +59,83 @@ use crate::server::{Core, accept, id16, reject, require_lease};
 /// How long a stored frame is kept unless the environment says otherwise.
 const DEFAULT_RETENTION: Duration = Duration::from_secs(24 * 60 * 60);
 
+/// How a persisted tool output names an accessibility-tree artifact in place
+/// of its text (PX-076): `[[computer-tree:<sha256>]]`.
+const TREE_MARK_OPEN: &str = "[[computer-tree:";
+const TREE_MARK_CLOSE: &str = "]]";
+
+/// What a model request is told in place of a tree the retention sweep removed.
+pub(crate) const TREE_EXPIRED: &str = "(this accessibility tree was removed under the retention setting; read the state again if you need it)";
+
+/// The output as it is persisted (PX-076): an accessibility tree that went
+/// through the Media Pipeline is stored once, as its artifact, and every
+/// persisted copy of the output (the result object, the transcript entry, and
+/// what search and review read from them) names it by digest. The text comes
+/// back only into a model request, and only while the artifact exists.
+pub(crate) fn persisted_output(out: &Value) -> std::borrow::Cow<'_, Value> {
+    let Some(digest) = out["tree_artifact"]["digest"].as_str() else {
+        return std::borrow::Cow::Borrowed(out);
+    };
+    if out["tree"].as_str().is_none() || !is_digest(digest) {
+        return std::borrow::Cow::Borrowed(out);
+    }
+    let mut o = out.clone();
+    o["tree"] = Value::String(format!("{TREE_MARK_OPEN}{digest}{TREE_MARK_CLOSE}"));
+    std::borrow::Cow::Owned(o)
+}
+
+/// Whether a persisted text names a tree artifact.
+pub(crate) fn names_a_tree(text: &str) -> bool {
+    text.contains(TREE_MARK_OPEN)
+}
+
+fn is_digest(d: &str) -> bool {
+    d.len() == 64 && d.bytes().all(|b| b.is_ascii_hexdigit())
+}
+
+/// Replace each tree reference in `text` with the stored tree, escaped as the
+/// JSON string it stands in (the observation is the output's JSON), cut to
+/// `ceiling` bytes; a removed artifact is said, never invented.
+pub(crate) fn hydrate_tree_refs(
+    text: &str,
+    ceiling: usize,
+    mut load: impl FnMut(&str) -> Option<Vec<u8>>,
+) -> Option<String> {
+    if !text.contains(TREE_MARK_OPEN) {
+        return None;
+    }
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(at) = rest.find(TREE_MARK_OPEN) {
+        out.push_str(&rest[..at]);
+        let after = &rest[at + TREE_MARK_OPEN.len()..];
+        let digest = after.get(..64).filter(|d| is_digest(d));
+        match digest.filter(|_| after[64..].starts_with(TREE_MARK_CLOSE)) {
+            Some(d) => {
+                let tree = load(d).map(|b| String::from_utf8_lossy(&b).into_owned());
+                let mut t = tree.unwrap_or_else(|| TREE_EXPIRED.to_owned());
+                if t.len() > ceiling {
+                    let mut cut = ceiling;
+                    while cut > 0 && !t.is_char_boundary(cut) {
+                        cut -= 1;
+                    }
+                    t.truncate(cut);
+                    t.push_str("\n[... tree cut at the observation ceiling]");
+                }
+                let escaped = serde_json::to_string(&t).unwrap_or_default();
+                out.push_str(&escaped[1..escaped.len().saturating_sub(1)]);
+                rest = &after[64 + TREE_MARK_CLOSE.len()..];
+            }
+            None => {
+                out.push_str(TREE_MARK_OPEN);
+                rest = after;
+            }
+        }
+    }
+    out.push_str(rest);
+    Some(out)
+}
+
 /// Approvals for native control are short-lived: the person looks at one
 /// exact intent now (CUC-C01).
 pub(crate) const APPROVAL_TTL_MS: i64 = 5 * 60 * 1000;
@@ -503,7 +580,13 @@ impl ComputerHost {
                             screenshots += 1;
                         }
                         if let Some(r) = p["artifact_ref"].as_str().filter(|r| !r.is_empty()) {
-                            evidence.push(format!("computer_frame:{r}"));
+                            // PX-076: a state read's artifact is its tree.
+                            let kind = if p["kind"] == "state" {
+                                "computer_tree"
+                            } else {
+                                "computer_frame"
+                            };
+                            evidence.push(format!("{kind}:{r}"));
                         }
                     }
                     "ComputerLatched" => latched = true,
@@ -536,11 +619,22 @@ impl ComputerHost {
         self.runtime.offered()
     }
 
+    /// Whether `object` is a frame or a tree this Core captured and still
+    /// keeps (its retention index names it).
+    pub(crate) fn is_local_artifact(&self, object: &str) -> bool {
+        let _g = self.index.lock().unwrap_or_else(|e| e.into_inner());
+        std::fs::read_to_string(self.index_path()).is_ok_and(|text| {
+            text.lines().any(|line| {
+                serde_json::from_str::<ArtifactRow>(line).is_ok_and(|r| r.object == object)
+            })
+        })
+    }
+
     fn index_path(&self) -> PathBuf {
         self.data_dir.join("computer").join("artifacts.jsonl")
     }
 
-    fn note_artifact(&self, object: &str, at_ms: i64) {
+    pub(crate) fn note_artifact(&self, object: &str, at_ms: i64) {
         let _g = self.index.lock().unwrap_or_else(|e| e.into_inner());
         let path = self.index_path();
         if let Some(dir) = path.parent() {
@@ -1700,5 +1794,75 @@ pub(crate) async fn handle_access(
             )
         }
         other => reject(cid, "UNKNOWN_COMMAND", other),
+    }
+}
+
+#[cfg(test)]
+mod px_076_tree_tests {
+    use super::*;
+
+    const D: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
+    #[test]
+    fn a_tree_read_is_persisted_as_its_reference_and_other_outputs_are_untouched() {
+        let out =
+            serde_json::json!({"tree": "s1/1 button | \"Send\" |", "tree_artifact": {"digest": D}});
+        let p = persisted_output(&out);
+        assert_eq!(p["tree"], format!("[[computer-tree:{D}]]"));
+        assert_eq!(p["tree_artifact"]["digest"], D);
+        let plain = serde_json::json!({"tree": "x"});
+        assert!(matches!(
+            persisted_output(&plain),
+            std::borrow::Cow::Borrowed(_)
+        ));
+        let bad = serde_json::json!({"tree": "x", "tree_artifact": {"digest": "../etc"}});
+        assert!(matches!(
+            persisted_output(&bad),
+            std::borrow::Cow::Borrowed(_)
+        ));
+    }
+
+    #[test]
+    fn a_reference_is_filled_as_escaped_json_text_or_said_to_be_gone() {
+        let out = serde_json::json!({"tree": "s1/1 button | \"Send\" |\nline 2", "tree_artifact": {"digest": D}});
+        let text = persisted_output(&out).to_string();
+        let filled = hydrate_tree_refs(&text, 1 << 20, |d| {
+            (d == D).then(|| b"s1/1 button | \"Send\" |\nline 2".to_vec())
+        })
+        .unwrap();
+        // Still the output's JSON, with the text back in place.
+        let v: Value = serde_json::from_str(&filled).unwrap();
+        assert_eq!(v["tree"], "s1/1 button | \"Send\" |\nline 2");
+        let gone = hydrate_tree_refs(&text, 1 << 20, |_| None).unwrap();
+        let v: Value = serde_json::from_str(&gone).unwrap();
+        assert_eq!(v["tree"], TREE_EXPIRED);
+        // Cut at the ceiling, still valid JSON.
+        let cut = hydrate_tree_refs(&text, 8, |_| Some(vec![b'a'; 100])).unwrap();
+        let v: Value = serde_json::from_str(&cut).unwrap();
+        assert!(
+            v["tree"]
+                .as_str()
+                .unwrap()
+                .starts_with("aaaaaaaa\n[... tree cut")
+        );
+        // A text with no reference, or a malformed one, is left alone.
+        assert!(hydrate_tree_refs("plain", 10, |_| None).is_none());
+        assert_eq!(
+            hydrate_tree_refs("[[computer-tree:zz]]", 10, |_| None).unwrap(),
+            "[[computer-tree:zz]]"
+        );
+    }
+
+    #[test]
+    fn a_captured_artifact_is_known_as_local_until_it_expires() {
+        let dir = tempfile::tempdir().unwrap();
+        let host = ComputerHost::new(dir.path());
+        assert!(!host.is_local_artifact(D));
+        host.note_artifact(D, 0);
+        assert!(host.is_local_artifact(D));
+        let store = EventStore::open(&dir.path().join("store")).unwrap();
+        let gone = host.expire(&store, i64::MAX);
+        assert_eq!(gone.len(), 1);
+        assert!(!host.is_local_artifact(D));
     }
 }

@@ -324,6 +324,7 @@ impl ComputerRuntime {
                 "note": "names are the applications' own labels (untrusted); start a session with computer.start for one you need",
             }),
             frame: None,
+            tree: None,
         })
     }
 
@@ -432,6 +433,7 @@ impl ComputerRuntime {
                 "note": "resolved without activating the application; no window titles are shown until a session is open",
             }),
             frame: None,
+            tree: None,
         })
     }
 
@@ -776,6 +778,7 @@ impl ComputerRuntime {
                 "provenance": tree::PROVENANCE,
             }),
             frame: None,
+            tree: None,
         })
     }
 
@@ -810,6 +813,7 @@ impl ComputerRuntime {
                 "observations": observations,
             }),
             frame: None,
+            tree: None,
         })
     }
 
@@ -911,6 +915,10 @@ impl ComputerRuntime {
             .unwrap_or_default();
         let rendered = tree::render(&nodes, &snapshot_id, &*ctx.redact);
         let secure_withheld = u32::try_from(rendered.secure.len()).unwrap_or(u32::MAX);
+        // PX-076: the tree is an artifact of the Media Pipeline, as a frame is;
+        // the event names it by digest and the retention sweep removes it.
+        let tree_bytes = rendered.text.as_bytes().to_vec();
+        let tree_digest = hex::encode(Sha256::digest(&tree_bytes));
         let reconciled = {
             let mut st = self.lock();
             let Some(s) = st.sessions.get_mut(&found.control_id) else {
@@ -942,10 +950,10 @@ impl ComputerRuntime {
                 snapshot_id: snapshot_id.clone(),
                 elements: u32::try_from(rendered.count).unwrap_or(u32::MAX),
                 secure_withheld,
-                artifact_ref: String::new(),
-                artifact_digest: String::new(),
-                codec: String::new(),
-                content: String::new(),
+                artifact_ref: tree_digest.clone(),
+                artifact_digest: tree_digest.clone(),
+                codec: "text".into(),
+                content: "tree".into(),
                 reused: false,
                 masked_by_actuator: 0,
                 masked_by_core: 0,
@@ -990,9 +998,20 @@ impl ComputerRuntime {
                 "the window shows something that is the person's to do (a login, a passkey or second factor, a captcha, a permission prompt or a destructive confirmation): stop and report what you observed and what blocks you; do not enter credentials and do not work around it"
             );
         }
+        let source = format!(
+            "computer:{}#{}@{}",
+            app.bundle_id,
+            (ctx.redact)(&win.title),
+            win.id
+        );
         Ok(Answer {
             output: out,
             frame: None,
+            tree: Some(super::TreeArtifact {
+                bytes: tree_bytes,
+                object_digest: tree_digest,
+                source,
+            }),
         })
     }
 
@@ -1032,6 +1051,7 @@ impl ComputerRuntime {
         Ok(Answer {
             output: out,
             frame: answer.frame,
+            tree: None,
         })
     }
 
@@ -1199,6 +1219,7 @@ impl ComputerRuntime {
                     reused: prepared.reused,
                     source,
                 }),
+                tree: None,
             },
             reconciled,
         ))
@@ -1346,6 +1367,7 @@ impl ComputerRuntime {
                 },
             }),
             frame: None,
+            tree: None,
         })
     }
 }
