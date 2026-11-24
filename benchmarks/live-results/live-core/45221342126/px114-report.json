@@ -1,0 +1,2759 @@
+{
+  "report": {
+    "arms": [
+      {
+        "accuracy": {
+          "hi": 1.0,
+          "k": 30,
+          "lo": 0.8864829086095221,
+          "n": 30,
+          "p": 1.0
+        },
+        "arm": "direct",
+        "errored": 0,
+        "failed_runs": [],
+        "model_calls": {
+          "ci95": [
+            7.2,
+            8.633333333333333
+          ],
+          "mean": 7.9
+        },
+        "runs": 30,
+        "schema_bytes": {
+          "ci95": [
+            126063.4,
+            151512.5
+          ],
+          "mean": 138651.9
+        },
+        "tool_calls": {
+          "ci95": [
+            1.0,
+            1.0
+          ],
+          "mean": 1.0
+        },
+        "total_tokens": {
+          "ci95": [
+            68149.33333333333,
+            87535.63333333333
+          ],
+          "mean": 77383.66666666667
+        }
+      },
+      {
+        "accuracy": {
+          "hi": 1.0,
+          "k": 30,
+          "lo": 0.8864829086095221,
+          "n": 30,
+          "p": 1.0
+        },
+        "arm": "procedural",
+        "errored": 0,
+        "failed_runs": [],
+        "model_calls": {
+          "ci95": [
+            7.7,
+            9.366666666666667
+          ],
+          "mean": 8.466666666666667
+        },
+        "runs": 30,
+        "schema_bytes": {
+          "ci95": [
+            149693.56666666668,
+            181793.26666666666
+          ],
+          "mean": 164710.13333333333
+        },
+        "tool_calls": {
+          "ci95": [
+            1.0,
+            1.0
+          ],
+          "mean": 1.0
+        },
+        "total_tokens": {
+          "ci95": [
+            79222.63333333333,
+            108849.83333333333
+          ],
+          "mean": 91730.3
+        }
+      },
+      {
+        "accuracy": {
+          "hi": 0.40928672330324267,
+          "k": 7,
+          "lo": 0.11792239210501232,
+          "n": 30,
+          "p": 0.23333333333333334
+        },
+        "arm": "exec_only",
+        "errored": 23,
+        "failed_runs": [
+          "range-sum-inclusive#0",
+          "count-multiples-inclusive#0",
+          "last-n-items#0",
+          "implement-truncate-words#0",
+          "rename-get-user#0",
+          "rename-load-order#0",
+          "rename-find-item#0",
+          "validate-port#0",
+          "validate-percent#0",
+          "validate-age#0",
+          "mutable-default-append-item#0",
+          "mutable-default-add-tag#0",
+          "mutable-default-collect#0",
+          "config-retries-count#0",
+          "config-timeout-units#0",
+          "sort-top-scores#0",
+          "sort-oldest-first#0",
+          "parse-duration#0",
+          "dedupe-keep-order#0",
+          "merge-counts#0",
+          "flatten-nested#0",
+          "cart-discount-order#0",
+          "invoice-rounding#0"
+        ],
+        "model_calls": {
+          "ci95": [
+            0.5333333333333333,
+            2.6
+          ],
+          "mean": 1.5
+        },
+        "runs": 30,
+        "schema_bytes": {
+          "ci95": [
+            4502.2,
+            21849.4
+          ],
+          "mean": 12601.3
+        },
+        "tool_calls": {
+          "ci95": [
+            0.1,
+            0.4
+          ],
+          "mean": 0.23333333333333334
+        },
+        "total_tokens": {
+          "ci95": [
+            3490.0666666666666,
+            19521.666666666668
+          ],
+          "mean": 10750.033333333333
+        }
+      }
+    ],
+    "comparisons": [
+      {
+        "accuracy_delta": {
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean": 0.0
+        },
+        "against": "direct",
+        "arm": "procedural",
+        "direction": "WORSE",
+        "pairs": 30,
+        "schema_bytes_delta": {
+          "ci95": [
+            9577.133333333333,
+            42889.0
+          ],
+          "mean": 26058.233333333334
+        },
+        "tokens_delta": {
+          "ci95": [
+            2600.1666666666665,
+            27009.633333333335
+          ],
+          "mean": 14346.633333333333
+        },
+        "tool_calls_delta": {
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean": 0.0
+        }
+      },
+      {
+        "accuracy_delta": {
+          "ci95": [
+            -0.9,
+            -0.6
+          ],
+          "mean": -0.7666666666666667
+        },
+        "against": "direct",
+        "arm": "exec_only",
+        "direction": "WORSE",
+        "pairs": 30,
+        "schema_bytes_delta": {
+          "ci95": [
+            -143898.6,
+            -108287.3
+          ],
+          "mean": -126050.6
+        },
+        "tokens_delta": {
+          "ci95": [
+            -80451.9,
+            -52799.333333333336
+          ],
+          "mean": -66633.63333333333
+        },
+        "tool_calls_delta": {
+          "ci95": [
+            -0.9,
+            -0.6
+          ],
+          "mean": -0.7666666666666667
+        }
+      },
+      {
+        "accuracy_delta": {
+          "ci95": [
+            -0.9,
+            -0.6
+          ],
+          "mean": -0.7666666666666667
+        },
+        "against": "procedural",
+        "arm": "exec_only",
+        "direction": "WORSE",
+        "pairs": 30,
+        "schema_bytes_delta": {
+          "ci95": [
+            -171892.96666666667,
+            -133283.2
+          ],
+          "mean": -152108.83333333334
+        },
+        "tokens_delta": {
+          "ci95": [
+            -99835.56666666667,
+            -65121.333333333336
+          ],
+          "mean": -80980.26666666666
+        },
+        "tool_calls_delta": {
+          "ci95": [
+            -0.9,
+            -0.6
+          ],
+          "mean": -0.7666666666666667
+        }
+      }
+    ],
+    "live": true,
+    "method": "30 tasks x 1 repeats x 3 arms, each run a fresh repository and a fresh Core under the arm's projection mode, driven through modbit-cli; tokens, model calls and verification from the Core's economics view, tool calls and schema bytes from the event log. Arms are interleaved per task. Accuracy is the share of runs whose mandatory check passed at completion (Wilson interval); the paired differences use a deterministic bootstrap. The provider was live: the numbers are the model's, on this suite, and say nothing about other models or tasks.",
+    "model": "gemini-3.8-flash",
+    "recommendation": "exec_only is WORSE than today's default under the stated rule; the default stays as it is.",
+    "repeats": 1,
+    "rule": "An arm is BETTER than the arm it is compared with when, over at least 30 paired tasks, the 95% bootstrap interval of the accuracy difference has a lower bound of at least -0.05 (non-inferior) and the interval of the total-token difference lies entirely below zero; WORSE when the accuracy interval lies entirely below zero, or the token interval lies entirely above zero while the accuracy interval does not lie above zero; INCONCLUSIVE otherwise or with fewer pairs. A scripted provider decides nothing (NOT_EVALUATED). The recommendation follows exec_only against procedural (today's default): the default changes only on BETTER, and only by the owner's decision.",
+    "tasks": 30
+  },
+  "runs": [
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        16095,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 37916,
+        "cached_input_tokens": 39785,
+        "cold_ms": 0,
+        "input_tokens": 86929,
+        "model_calls": 9,
+        "normalized_tool_calls": 1,
+        "output_tokens": 1082,
+        "repeat": 0,
+        "task": "range-sum-inclusive",
+        "tool_calls": 1,
+        "tool_schema_bytes": 158736,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 35587,
+        "cached_input_tokens": 44890,
+        "cold_ms": 0,
+        "input_tokens": 86065,
+        "model_calls": 9,
+        "normalized_tool_calls": 1,
+        "output_tokens": 1146,
+        "repeat": 0,
+        "task": "range-sum-inclusive",
+        "tool_calls": 1,
+        "tool_schema_bytes": 178205,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": "modbit-cli [\"task\", \"run\", \"--session\", \"1cfa53f570d23c4d886d1d979a380c6a\", \"--task\", \"9e1997b9811db13dd7b196806fc4ac57\", \"--model\", \"gemini-3.8-flash\", \"--max-turns\", \"40\", \"--wait\"]: run 01a20958e7d9790381c9fbeeb9c99fa9 resumed=false endpoint=openai model=gemini-3.8-flash\ntask state=Waiting wait_reason=Approval run_state=Running\n\nVerificationRunRecorded: non-passing checks []\nVerificationRunRecorded: non-passing checks []\nAcceptanceGateEvaluated: {\"candidate_revision\":2,\"event_type\":\"AcceptanceGateEvaluated\",\"gate_ref\":\"46a88b32bc741eeb7565de2f56d5bc54b1596084fee0dde088cde3d6107c9836\",\"gate_version\":\"gate-1\",\"human_required\":false,\"independent_review_required\":true,\"missing_evidence\":[\"independent_review\"],\"realized_risk_ref\":\"494be9605a5c2d6d30d0cd8f8365748075435fda60dd3b8a28f64bacf835adcf\",\"reject_reasons\":[\"a DENY-class diff invariant stands\"],\"required_assurance\":\"GOVERNED\",\"trigger\":\"COMPLETION_RUN\",\"verdict\":\"REJECT\",\"verification_run_id\":\"vr-ac1be2c5ccd9dd1e\"}\nlast events:\n  TurnVerifying {\"event_type\":\"TurnVerifying\"}\n  TurnCompleted {\"event_type\":\"TurnCompleted\"}\n  CheckpointStarted {\"base_checkpoint_id\":\"01a20960-e49d-7e62-a042-98b67ea7ab00\",\"checkpoint_id\":\"01a20960-f0f4-73b0-a38a-132125038e16\",\"epoch\":36,\"event_type\":\"CheckpointStarted\",\"kind\":\"DELTA\",\"reason\":\"turn_boundary\"}\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a20960-e49d-7e62-a042-98b67ea7ab00\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":2,\"capture_ms\":11,\"checkpoint_id\":\"01a20960-f0f4-73b0-a38a-132125038e16\",\"epoch\":36,\"event\n  TurnPrepared {\"event_type\":\"TurnPrepared\",\"ordinal\":36,\"plan_version\":2,\"run_id\":\"01a20958-e7d9-7903-81c9-fbeeb9c99fa9\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":1,\"step_type\":{\"kind\":\"CONTEXT_COMPILE\"},\"turn_id\":\"01a20960-f107-70d2-8dc0-14c844a9b7e3\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"78f5888f1c4fc932f47a69c4b132865bf8bfa9e4d53c5667fe1e05bbd576002b\"}\n  ContextPackCompiled {\"context_pack_id\":\"3d6835baac2ae258b19e97ac00a12bddf0ac4b97c6b19f2f9a0fde86d07cacb7\",\"event_type\":\"ContextPackCompiled\"}\n  ToolProjectionSelected {\"dropped\":[],\"event_type\":\"ToolProjectionSelected\",\"leg_role\":\"solver\",\"max_projection_bytes\":32768,\"mode\":\"exec_only\",\"projected\":[\"plan.update\",\"proc.exec\",\"proc.wait\",\"task.complete\",\"tool.search\"\n  CapabilitySnapshotRecorded {\"event_type\":\"CapabilitySnapshotRecorded\",\"snapshot\":{\"config_generation\":\"d86df14f4a53374348f688d7\",\"config_ref\":\"d86df14f4a53374348f688d7e1ac7484bd50b68b2ae091f46f300a27c7cdefba\",\"epoch\":36,\"execut\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":\"78f5888f1c4fc932f47a69c4b132865bf8bfa9e4d53c5667fe1e05bbd576002b\",\"ordinal\":2,\"step_type\":{\"kind\":\"MODEL_INVOKE\"},\"turn_id\":\"01a20960-f107-70d2-8dc0-14c844a9\n  StepStarted {\"event_type\":\"StepStarted\"}\n  ModelInvocationStarted {\"event_type\":\"ModelInvocationStarted\",\"model_route\":{\"cache_key\":\"ad2f8899960bd89fdb2d872cd5005a82bfd016e2e108b80c3b1990b1faa5a7af\",\"endpoint\":\"openai\",\"max_output_tokens\":16384,\"model\":\"gemini-3.8-f\n  ToolCallSucceeded {\"event_type\":\"ToolCallSucceeded\",\"result_ref\":\"7454b9eb161092db5491f735977e128f893da09557cbf49025a41d611f096427\"}\n  ModelUsageRecorded {\"cached_input_tokens\":44898,\"event_type\":\"ModelUsageRecorded\",\"input_tokens\":47763,\"output_tokens\":116,\"reported\":true,\"route\":{\"endpoint\":\"openai\",\"kind\":\"open_ai\",\"provider_request_id\":null,\"reason\n  ModelInvocationCompleted {\"event_type\":\"ModelInvocationCompleted\",\"requested_actions\":true}\n  RoutingAttemptRecorded {\"attempt\":36,\"cache_write_tokens\":0,\"cached_input_tokens\":44898,\"cost_minor\":null,\"event_type\":\"RoutingAttemptRecorded\",\"input_tokens\":47763,\"latency_ms\":13865,\"outcome\":\"SUCCEEDED\",\"output_tokens\":1\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"6446f8a30352fdf1cde0bf33db5e9fc7a1f44cbf36da1efef23a7295a780efe6\"}\n  UserQuestionAsked {\"allow_free_text\":false,\"call_id\":\"call_10027586512242870238\",\"event_type\":\"UserQuestionAsked\",\"flags\":[],\"options\":[{\"id\":\"update_check\",\"label\":\"Add check.py to the plan and update it with tests\"},\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":3,\"step_type\":{\"kind\":\"USER_QUESTION\"},\"turn_id\":\"01a20960-f107-70d2-8dc0-14c844a9b7e3\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"a4abc8f842a377257b23b09648234a618ee9290e033d6cf93222faa36ce3c937\"}\n  AgentNodeTransitioned {\"agent_id\":\"01a20958-e7f8-7113-8d88-b79c73bef323\",\"event_type\":\"AgentNodeTransitioned\",\"from\":\"RUNNING\",\"reason\":\"question q-call10027586512242870238 pending\",\"run_id\":\"01a20958-e7d9-7903-81c9-fbeeb9\n  CapacityTicketReleased {\"event_type\":\"CapacityTicketReleased\",\"holder\":\"run:9e1997b9-811d-b13d-d7b1-96806fc4ac57\",\"reason\":\"RELEASED\",\"ticket_id\":\"t-1\"}",
+      "schema_bytes_per_request": [],
+      "state": "NotRun",
+      "trial": {
+        "agent_ms": 0,
+        "cached_input_tokens": 0,
+        "cold_ms": 0,
+        "input_tokens": 0,
+        "model_calls": 0,
+        "normalized_tool_calls": 0,
+        "output_tokens": 0,
+        "repeat": 0,
+        "task": "range-sum-inclusive",
+        "tool_calls": 0,
+        "tool_schema_bytes": 0,
+        "variant": "exec_only",
+        "verified": false
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 19906,
+        "cached_input_tokens": 18687,
+        "cold_ms": 0,
+        "input_tokens": 40157,
+        "model_calls": 5,
+        "normalized_tool_calls": 1,
+        "output_tokens": 587,
+        "repeat": 0,
+        "task": "count-multiples-inclusive",
+        "tool_calls": 1,
+        "tool_schema_bytes": 88407,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        18013,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 45973,
+        "cached_input_tokens": 43713,
+        "cold_ms": 0,
+        "input_tokens": 94370,
+        "model_calls": 9,
+        "normalized_tool_calls": 1,
+        "output_tokens": 1137,
+        "repeat": 0,
+        "task": "count-multiples-inclusive",
+        "tool_calls": 1,
+        "tool_schema_bytes": 176194,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": "modbit-cli [\"task\", \"run\", \"--session\", \"249f451a598aa300160a923447ea4fe7\", \"--task\", \"bcdcb600338d3861e03cbe6e9b48c7b4\", \"--model\", \"gemini-3.8-flash\", \"--max-turns\", \"40\", \"--wait\"]: run 01a2095974dc78d3af4ce1f4b5af1f72 resumed=false endpoint=openai model=gemini-3.8-flash\ntask state=Waiting wait_reason=Approval run_state=Running\n\nVerificationRunRecorded: non-passing checks []\nVerificationRunRecorded: non-passing checks []\nAcceptanceGateEvaluated: {\"candidate_revision\":2,\"event_type\":\"AcceptanceGateEvaluated\",\"gate_ref\":\"cbf7f29610437339eb3304e7545bdaeb4194efb1a3becd233bc86cd1b16cbccf\",\"gate_version\":\"gate-1\",\"human_required\":false,\"independent_review_required\":true,\"missing_evidence\":[\"independent_review\"],\"realized_risk_ref\":\"b3b937e411f00ec16e850d51221a019690d704eb7f3c3b68dd9c603508fdb1b5\",\"reject_reasons\":[\"a DENY-class diff invariant stands\"],\"required_assurance\":\"GOVERNED\",\"trigger\":\"COMPLETION_RUN\",\"verdict\":\"REJECT\",\"verification_run_id\":\"vr-a99938068b1b9a80\"}\nlast events:\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a2095a-1c17-7ed2-ad93-119e878bc505\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":2,\"capture_ms\":9,\"checkpoint_id\":\"01a2095a-50a5-7f30-84f2-28982b8c581d\",\"epoch\":11,\"event_\n  TurnPrepared {\"event_type\":\"TurnPrepared\",\"ordinal\":11,\"plan_version\":2,\"run_id\":\"01a20959-74dc-78d3-af4c-e1f4b5af1f72\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":1,\"step_type\":{\"kind\":\"CONTEXT_COMPILE\"},\"turn_id\":\"01a2095a-50b6-72e3-a25b-fbbea6b6715d\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"cf7ec3646cf8826fb5bee4aaf675fccdde6a3c769b7dcf486d640759cef0ad67\"}\n  ContextPackCompiled {\"context_pack_id\":\"ea71e099441646d1346eb76ca0fee6b0417f7dc264fb3a07c599292f0eb5fb66\",\"event_type\":\"ContextPackCompiled\"}\n  ToolProjectionSelected {\"dropped\":[],\"event_type\":\"ToolProjectionSelected\",\"leg_role\":\"solver\",\"max_projection_bytes\":32768,\"mode\":\"exec_only\",\"projected\":[\"plan.update\",\"proc.exec\",\"proc.wait\",\"task.complete\",\"tool.search\"\n  CapabilitySnapshotRecorded {\"event_type\":\"CapabilitySnapshotRecorded\",\"snapshot\":{\"config_generation\":\"d86df14f4a53374348f688d7\",\"config_ref\":\"d86df14f4a53374348f688d7e1ac7484bd50b68b2ae091f46f300a27c7cdefba\",\"epoch\":11,\"execut\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":\"cf7ec3646cf8826fb5bee4aaf675fccdde6a3c769b7dcf486d640759cef0ad67\",\"ordinal\":2,\"step_type\":{\"kind\":\"MODEL_INVOKE\"},\"turn_id\":\"01a2095a-50b6-72e3-a25b-fbbea6b6\n  StepStarted {\"event_type\":\"StepStarted\"}\n  ModelInvocationStarted {\"event_type\":\"ModelInvocationStarted\",\"model_route\":{\"cache_key\":\"36ec585a253413c72d9f3470f3f9d2883c45c46ae24c11c7876b7c47ec4055a3\",\"endpoint\":\"openai\",\"max_output_tokens\":16384,\"model\":\"gemini-3.8-f\n  ModelUsageRecorded {\"cached_input_tokens\":6715,\"event_type\":\"ModelUsageRecorded\",\"input_tokens\":11240,\"output_tokens\":41,\"reported\":true,\"route\":{\"endpoint\":\"openai\",\"kind\":\"open_ai\",\"provider_request_id\":null,\"reason\":\n  ModelInvocationCompleted {\"event_type\":\"ModelInvocationCompleted\",\"requested_actions\":true}\n  RoutingAttemptRecorded {\"attempt\":11,\"cache_write_tokens\":0,\"cached_input_tokens\":6715,\"cost_minor\":null,\"event_type\":\"RoutingAttemptRecorded\",\"input_tokens\":11240,\"latency_ms\":4250,\"outcome\":\"SUCCEEDED\",\"output_tokens\":41,\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"aba4d095bc4079b5c7269664050cce2077a9958732012a068f7d25ea5ecb1b0e\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":3,\"step_type\":{\"kind\":\"PROCEDURE_RUN\"},\"turn_id\":\"01a2095a-50b6-72e3-a25b-fbbea6b6715d\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"54606f5df4b84e375e5fc3b56649ca9e6a6337ef87236ec8d7634b54bc20e2f5\"}\n  TurnVerifying {\"event_type\":\"TurnVerifying\"}\n  TurnCompleted {\"event_type\":\"TurnCompleted\"}\n  CheckpointStarted {\"base_checkpoint_id\":\"01a2095a-50a5-7f30-84f2-28982b8c581d\",\"checkpoint_id\":\"01a2095a-74f2-7d01-a9a5-0cd6d9ffa432\",\"epoch\":12,\"event_type\":\"CheckpointStarted\",\"kind\":\"DELTA\",\"reason\":\"turn_boundary\"}\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a2095a-50a5-7f30-84f2-28982b8c581d\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":2,\"capture_ms\":9,\"checkpoint_id\":\"01a2095a-74f2-7d01-a9a5-0cd6d9ffa432\",\"epoch\":12,\"event_\n  RouteReevaluated {\"boundary\":\"QUALITY\",\"cache_state\":null,\"chosen\":\"openai/gemini-3.8-flash\",\"current\":\"openai/gemini-3.8-flash\",\"decision\":\"STAY\",\"economics_version\":\"economics-1\",\"event_type\":\"RouteReevaluated\",\"pla\n  AgentNodeTransitioned {\"agent_id\":\"01a20959-74e9-7b02-9ab9-cd447fc853e6\",\"event_type\":\"AgentNodeTransitioned\",\"from\":\"RUNNING\",\"reason\":\"3 turns without progress\",\"run_id\":\"01a20959-74dc-78d3-af4c-e1f4b5af1f72\",\"to\":\"WAITI\n  CapacityTicketReleased {\"event_type\":\"CapacityTicketReleased\",\"holder\":\"run:bcdcb600-338d-3861-e03c-be6e9b48c7b4\",\"reason\":\"RELEASED\",\"ticket_id\":\"t-1\"}",
+      "schema_bytes_per_request": [],
+      "state": "NotRun",
+      "trial": {
+        "agent_ms": 0,
+        "cached_input_tokens": 0,
+        "cold_ms": 0,
+        "input_tokens": 0,
+        "model_calls": 0,
+        "normalized_tool_calls": 0,
+        "output_tokens": 0,
+        "repeat": 0,
+        "task": "count-multiples-inclusive",
+        "tool_calls": 0,
+        "tool_schema_bytes": 0,
+        "variant": "exec_only",
+        "verified": false
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        16095,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 49945,
+        "cached_input_tokens": 53544,
+        "cold_ms": 0,
+        "input_tokens": 93177,
+        "model_calls": 9,
+        "normalized_tool_calls": 1,
+        "output_tokens": 960,
+        "repeat": 0,
+        "task": "last-n-items",
+        "tool_calls": 1,
+        "tool_schema_bytes": 158736,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        18013,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 47126,
+        "cached_input_tokens": 36254,
+        "cold_ms": 0,
+        "input_tokens": 86957,
+        "model_calls": 8,
+        "normalized_tool_calls": 1,
+        "output_tokens": 1250,
+        "repeat": 0,
+        "task": "last-n-items",
+        "tool_calls": 1,
+        "tool_schema_bytes": 156170,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": "modbit-cli [\"task\", \"run\", \"--session\", \"05294aaa251ff017f08d53550f950713\", \"--task\", \"b1920c8371baf80825e0da66741be871\", \"--model\", \"gemini-3.8-flash\", \"--max-turns\", \"40\", \"--wait\"]: run 01a2095a43477170903cdec3f5977dac resumed=false endpoint=openai model=gemini-3.8-flash\ntask state=Waiting wait_reason=Approval run_state=Running\n\nVerificationRunRecorded: non-passing checks []\nVerificationRunRecorded: non-passing checks []\nAcceptanceGateEvaluated: {\"candidate_revision\":2,\"event_type\":\"AcceptanceGateEvaluated\",\"gate_ref\":\"25d7dfe138bc12c7d583373d3716c55807b9552ca4dddc73ee563683974d99c0\",\"gate_version\":\"gate-1\",\"human_required\":false,\"independent_review_required\":true,\"missing_evidence\":[\"independent_review\"],\"realized_risk_ref\":\"18224828a33bc2a591ec0a11c0dff33d845308b259a38d0f37d387887927e185\",\"reject_reasons\":[\"a DENY-class diff invariant stands\"],\"required_assurance\":\"GOVERNED\",\"trigger\":\"COMPLETION_RUN\",\"verdict\":\"REJECT\",\"verification_run_id\":\"vr-ea03e39b30ea7d20\"}\nVerificationRunRecorded: non-passing checks []\nlast events:\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a2095e-6315-7843-8fe1-23aea7cb3705\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":3,\"capture_ms\":11,\"checkpoint_id\":\"01a2095f-581c-7483-a94e-76ee66472c15\",\"epoch\":25,\"event\n  TurnPrepared {\"event_type\":\"TurnPrepared\",\"ordinal\":25,\"plan_version\":4,\"run_id\":\"01a2095a-4347-7170-903c-dec3f5977dac\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":1,\"step_type\":{\"kind\":\"CONTEXT_COMPILE\"},\"turn_id\":\"01a2095f-5830-73d3-8e27-514024e81fd5\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"6e5761c9408db1f4279033b314159528d5cbe2905295d9c9e95094e69444a6fc\"}\n  ContextPackCompiled {\"context_pack_id\":\"4b493d4e0683e4d459c1737822ad6a1348f4531cd11775f1c7292f953c651396\",\"event_type\":\"ContextPackCompiled\"}\n  ToolProjectionSelected {\"dropped\":[],\"event_type\":\"ToolProjectionSelected\",\"leg_role\":\"solver\",\"max_projection_bytes\":32768,\"mode\":\"exec_only\",\"projected\":[\"plan.update\",\"proc.exec\",\"proc.wait\",\"task.complete\",\"tool.search\"\n  CapabilitySnapshotRecorded {\"event_type\":\"CapabilitySnapshotRecorded\",\"snapshot\":{\"config_generation\":\"d86df14f4a53374348f688d7\",\"config_ref\":\"d86df14f4a53374348f688d7e1ac7484bd50b68b2ae091f46f300a27c7cdefba\",\"epoch\":25,\"execut\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":\"6e5761c9408db1f4279033b314159528d5cbe2905295d9c9e95094e69444a6fc\",\"ordinal\":2,\"step_type\":{\"kind\":\"MODEL_INVOKE\"},\"turn_id\":\"01a2095f-5830-73d3-8e27-514024e8\n  StepStarted {\"event_type\":\"StepStarted\"}\n  ModelInvocationStarted {\"event_type\":\"ModelInvocationStarted\",\"model_route\":{\"cache_key\":\"640e414e02fdef0718b27a48824d31a9427042b2da91dd4e9b49eec40b23d288\",\"endpoint\":\"openai\",\"max_output_tokens\":16384,\"model\":\"gemini-3.8-f\n  ModelUsageRecorded {\"cached_input_tokens\":27616,\"event_type\":\"ModelUsageRecorded\",\"input_tokens\":30590,\"output_tokens\":43,\"reported\":true,\"route\":{\"endpoint\":\"openai\",\"kind\":\"open_ai\",\"provider_request_id\":null,\"reason\"\n  ModelInvocationCompleted {\"event_type\":\"ModelInvocationCompleted\",\"requested_actions\":true}\n  RoutingAttemptRecorded {\"attempt\":25,\"cache_write_tokens\":0,\"cached_input_tokens\":27616,\"cost_minor\":null,\"event_type\":\"RoutingAttemptRecorded\",\"input_tokens\":30590,\"latency_ms\":6415,\"outcome\":\"SUCCEEDED\",\"output_tokens\":43\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"93ac98c39f5ce1a38bfef472551f90c8e53efd73a2c711559fa5ec52bae59591\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":3,\"step_type\":{\"kind\":\"PROCEDURE_RUN\"},\"turn_id\":\"01a2095f-5830-73d3-8e27-514024e81fd5\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"731e293378215b6c64a4370fad93201c6b4e5338a1aaae8368dd97b5c5c5e7b7\"}\n  TurnVerifying {\"event_type\":\"TurnVerifying\"}\n  TurnCompleted {\"event_type\":\"TurnCompleted\"}\n  CheckpointStarted {\"base_checkpoint_id\":\"01a2095f-581c-7483-a94e-76ee66472c15\",\"checkpoint_id\":\"01a20960-5bbf-71d1-a60a-b1d135902551\",\"epoch\":26,\"event_type\":\"CheckpointStarted\",\"kind\":\"DELTA\",\"reason\":\"turn_boundary\"}\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a2095f-581c-7483-a94e-76ee66472c15\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":3,\"capture_ms\":10,\"checkpoint_id\":\"01a20960-5bbf-71d1-a60a-b1d135902551\",\"epoch\":26,\"event\n  RouteReevaluated {\"boundary\":\"QUALITY\",\"cache_state\":null,\"chosen\":\"openai/gemini-3.8-flash\",\"current\":\"openai/gemini-3.8-flash\",\"decision\":\"STAY\",\"economics_version\":\"economics-1\",\"event_type\":\"RouteReevaluated\",\"pla\n  AgentNodeTransitioned {\"agent_id\":\"01a2095a-4355-7c71-9881-82aed923dc38\",\"event_type\":\"AgentNodeTransitioned\",\"from\":\"RUNNING\",\"reason\":\"3 turns without progress\",\"run_id\":\"01a2095a-4347-7170-903c-dec3f5977dac\",\"to\":\"WAITI\n  CapacityTicketReleased {\"event_type\":\"CapacityTicketReleased\",\"holder\":\"run:b1920c83-71ba-f808-25e0-da66741be871\",\"reason\":\"RELEASED\",\"ticket_id\":\"t-1\"}",
+      "schema_bytes_per_request": [],
+      "state": "NotRun",
+      "trial": {
+        "agent_ms": 0,
+        "cached_input_tokens": 0,
+        "cold_ms": 0,
+        "input_tokens": 0,
+        "model_calls": 0,
+        "normalized_tool_calls": 0,
+        "output_tokens": 0,
+        "repeat": 0,
+        "task": "last-n-items",
+        "tool_calls": 0,
+        "tool_schema_bytes": 0,
+        "variant": "exec_only",
+        "verified": false
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 42302,
+        "cached_input_tokens": 22278,
+        "cold_ms": 0,
+        "input_tokens": 59024,
+        "model_calls": 6,
+        "normalized_tool_calls": 1,
+        "output_tokens": 360,
+        "repeat": 0,
+        "task": "implement-slugify",
+        "tool_calls": 1,
+        "tool_schema_bytes": 106485,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 74556,
+        "cached_input_tokens": 32971,
+        "cold_ms": 0,
+        "input_tokens": 77284,
+        "model_calls": 7,
+        "normalized_tool_calls": 1,
+        "output_tokens": 707,
+        "repeat": 0,
+        "task": "implement-slugify",
+        "tool_calls": 1,
+        "tool_schema_bytes": 138157,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": null,
+      "schema_bytes_per_request": [
+        8115,
+        8115,
+        8115,
+        8115,
+        8517,
+        8517,
+        8517,
+        8517
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 56175,
+        "cached_input_tokens": 20256,
+        "cold_ms": 0,
+        "input_tokens": 64227,
+        "model_calls": 8,
+        "normalized_tool_calls": 1,
+        "output_tokens": 755,
+        "repeat": 0,
+        "task": "implement-slugify",
+        "tool_calls": 1,
+        "tool_schema_bytes": 66528,
+        "variant": "exec_only",
+        "verified": true
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 26929,
+        "cached_input_tokens": 7601,
+        "cold_ms": 0,
+        "input_tokens": 33439,
+        "model_calls": 4,
+        "normalized_tool_calls": 1,
+        "output_tokens": 516,
+        "repeat": 0,
+        "task": "implement-snake-case",
+        "tool_calls": 1,
+        "tool_schema_bytes": 70329,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        18013,
+        18013,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 41257,
+        "cached_input_tokens": 29160,
+        "cold_ms": 0,
+        "input_tokens": 75152,
+        "model_calls": 8,
+        "normalized_tool_calls": 1,
+        "output_tokens": 938,
+        "repeat": 0,
+        "task": "implement-snake-case",
+        "tool_calls": 1,
+        "tool_schema_bytes": 154159,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": null,
+      "schema_bytes_per_request": [
+        8115,
+        8115,
+        8115,
+        8517,
+        8517,
+        8517,
+        8517
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 32170,
+        "cached_input_tokens": 13718,
+        "cold_ms": 0,
+        "input_tokens": 44783,
+        "model_calls": 7,
+        "normalized_tool_calls": 1,
+        "output_tokens": 792,
+        "repeat": 0,
+        "task": "implement-snake-case",
+        "tool_calls": 1,
+        "tool_schema_bytes": 58413,
+        "variant": "exec_only",
+        "verified": true
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        16095,
+        16095,
+        16095,
+        16095,
+        16095,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 168712,
+        "cached_input_tokens": 79399,
+        "cold_ms": 0,
+        "input_tokens": 160412,
+        "model_calls": 12,
+        "normalized_tool_calls": 1,
+        "output_tokens": 1005,
+        "repeat": 0,
+        "task": "implement-truncate-words",
+        "tool_calls": 1,
+        "tool_schema_bytes": 205038,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        18013,
+        18013,
+        18013,
+        18013,
+        18013,
+        18013,
+        18013,
+        18013,
+        18013,
+        18013,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 130791,
+        "cached_input_tokens": 185518,
+        "cold_ms": 0,
+        "input_tokens": 299098,
+        "model_calls": 19,
+        "normalized_tool_calls": 1,
+        "output_tokens": 1740,
+        "repeat": 0,
+        "task": "implement-truncate-words",
+        "tool_calls": 1,
+        "tool_schema_bytes": 358335,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": "modbit-cli [\"task\", \"run\", \"--session\", \"9175ff665183727fd8bf763c30a7f483\", \"--task\", \"3bccfe76e5c33150a383e999ae651f24\", \"--model\", \"gemini-3.8-flash\", \"--max-turns\", \"40\", \"--wait\"]: run 01a2095eb9b97c70a0648da3bcd74e5f resumed=false endpoint=openai model=gemini-3.8-flash\ntask state=Waiting wait_reason=Approval run_state=Running\n\nVerificationRunRecorded: non-passing checks []\nVerificationRunRecorded: non-passing checks []\nAcceptanceGateEvaluated: {\"candidate_revision\":2,\"event_type\":\"AcceptanceGateEvaluated\",\"gate_ref\":\"04ad4d6e01925effd49bdf7552a331bad47d0efa7c8d3748c0cc773c4778c4b6\",\"gate_version\":\"gate-1\",\"human_required\":false,\"independent_review_required\":true,\"missing_evidence\":[\"independent_review\"],\"realized_risk_ref\":\"46cf097c147915637603ab7567c335a3f0eca74d4cc84373034cb952d5d3ed37\",\"reject_reasons\":[\"a DENY-class diff invariant stands\"],\"required_assurance\":\"GOVERNED\",\"trigger\":\"COMPLETION_RUN\",\"verdict\":\"REJECT\",\"verification_run_id\":\"vr-0599f214fb8f709e\"}\nlast events:\n  StepFailed {\"event_type\":\"StepFailed\",\"failure_code\":\"PROGRAM_FAILED\",\"output_ref\":\"d0939bd6bfa32614f03cb05ae59626a44295fd7d4324d41b1135da0dfc6dfabe\"}\n  TurnVerifying {\"event_type\":\"TurnVerifying\"}\n  TurnCompleted {\"event_type\":\"TurnCompleted\"}\n  CheckpointStarted {\"base_checkpoint_id\":\"01a20964-cc3f-7603-9736-3c9dd0d4a12f\",\"checkpoint_id\":\"01a20964-d76f-7461-bf82-d4b368eec4fd\",\"epoch\":33,\"event_type\":\"CheckpointStarted\",\"kind\":\"DELTA\",\"reason\":\"turn_boundary\"}\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a20964-cc3f-7603-9736-3c9dd0d4a12f\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":2,\"capture_ms\":10,\"checkpoint_id\":\"01a20964-d76f-7461-bf82-d4b368eec4fd\",\"epoch\":33,\"event\n  TurnPrepared {\"event_type\":\"TurnPrepared\",\"ordinal\":33,\"plan_version\":4,\"run_id\":\"01a2095e-b9b9-7c70-a064-8da3bcd74e5f\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":1,\"step_type\":{\"kind\":\"CONTEXT_COMPILE\"},\"turn_id\":\"01a20964-d781-7e50-9fd9-d0790fb3c6c3\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"6a8c97de92458176a6bc1dfc96838ed205aa1b48315f1f9c683ff2a7c4b511c6\"}\n  ContextPackCompiled {\"context_pack_id\":\"ca4b769235d26b2cef723b62c8ed03f00979417b50c0e067188c46b3f5a3656b\",\"event_type\":\"ContextPackCompiled\"}\n  ToolProjectionSelected {\"dropped\":[],\"event_type\":\"ToolProjectionSelected\",\"leg_role\":\"solver\",\"max_projection_bytes\":32768,\"mode\":\"exec_only\",\"projected\":[\"plan.update\",\"proc.exec\",\"proc.wait\",\"task.complete\",\"tool.search\"\n  CapabilitySnapshotRecorded {\"event_type\":\"CapabilitySnapshotRecorded\",\"snapshot\":{\"config_generation\":\"d86df14f4a53374348f688d7\",\"config_ref\":\"d86df14f4a53374348f688d7e1ac7484bd50b68b2ae091f46f300a27c7cdefba\",\"epoch\":33,\"execut\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":\"6a8c97de92458176a6bc1dfc96838ed205aa1b48315f1f9c683ff2a7c4b511c6\",\"ordinal\":2,\"step_type\":{\"kind\":\"MODEL_INVOKE\"},\"turn_id\":\"01a20964-d781-7e50-9fd9-d0790fb3\n  StepStarted {\"event_type\":\"StepStarted\"}\n  ModelInvocationStarted {\"event_type\":\"ModelInvocationStarted\",\"model_route\":{\"cache_key\":\"640e414e02fdef0718b27a48824d31a9427042b2da91dd4e9b49eec40b23d288\",\"endpoint\":\"openai\",\"max_output_tokens\":16384,\"model\":\"gemini-3.8-f\n  ModelUsageRecorded {\"cached_input_tokens\":46045,\"event_type\":\"ModelUsageRecorded\",\"input_tokens\":49120,\"output_tokens\":87,\"reported\":true,\"route\":{\"endpoint\":\"openai\",\"kind\":\"open_ai\",\"provider_request_id\":null,\"reason\"\n  ModelInvocationCompleted {\"event_type\":\"ModelInvocationCompleted\",\"requested_actions\":true}\n  RoutingAttemptRecorded {\"attempt\":33,\"cache_write_tokens\":0,\"cached_input_tokens\":46045,\"cost_minor\":null,\"event_type\":\"RoutingAttemptRecorded\",\"input_tokens\":49120,\"latency_ms\":3895,\"outcome\":\"SUCCEEDED\",\"output_tokens\":87\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"b6104b66c654d218090186da584d491cd457894919a49a58870c31e688e11d75\"}\n  UserQuestionAsked {\"allow_free_text\":false,\"call_id\":\"call_9546548892450041294\",\"event_type\":\"UserQuestionAsked\",\"flags\":[\"CONFIRMS_REPOSITORY_FACT\"],\"options\":[{\"id\":\"yes\",\"label\":\"Yes, update check.py with additional\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":3,\"step_type\":{\"kind\":\"USER_QUESTION\"},\"turn_id\":\"01a20964-d781-7e50-9fd9-d0790fb3c6c3\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"54d652a0d6d4738127335c64cf50aa66ffec6bcdeb56a3ef28531c7e1835cc61\"}\n  AgentNodeTransitioned {\"agent_id\":\"01a2095e-b9c6-7731-a2e1-54deee983167\",\"event_type\":\"AgentNodeTransitioned\",\"from\":\"RUNNING\",\"reason\":\"question q-call9546548892450041294 pending\",\"run_id\":\"01a2095e-b9b9-7c70-a064-8da3bcd\n  CapacityTicketReleased {\"event_type\":\"CapacityTicketReleased\",\"holder\":\"run:3bccfe76-e5c3-3150-a383-e999ae651f24\",\"reason\":\"RELEASED\",\"ticket_id\":\"t-1\"}",
+      "schema_bytes_per_request": [],
+      "state": "NotRun",
+      "trial": {
+        "agent_ms": 0,
+        "cached_input_tokens": 0,
+        "cold_ms": 0,
+        "input_tokens": 0,
+        "model_calls": 0,
+        "normalized_tool_calls": 0,
+        "output_tokens": 0,
+        "repeat": 0,
+        "task": "implement-truncate-words",
+        "tool_calls": 0,
+        "tool_schema_bytes": 0,
+        "variant": "exec_only",
+        "verified": false
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 16290,
+        "cached_input_tokens": 13025,
+        "cold_ms": 0,
+        "input_tokens": 43177,
+        "model_calls": 5,
+        "normalized_tool_calls": 1,
+        "output_tokens": 598,
+        "repeat": 0,
+        "task": "rename-get-user",
+        "tool_calls": 1,
+        "tool_schema_bytes": 88407,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 40730,
+        "cached_input_tokens": 14677,
+        "cold_ms": 0,
+        "input_tokens": 48735,
+        "model_calls": 5,
+        "normalized_tool_calls": 1,
+        "output_tokens": 1019,
+        "repeat": 0,
+        "task": "rename-get-user",
+        "tool_calls": 1,
+        "tool_schema_bytes": 98109,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": "modbit-cli [\"task\", \"run\", \"--session\", \"c2204bc214595474f27abb22a7fdd63c\", \"--task\", \"36520599209abc831d7a0a97130330c5\", \"--model\", \"gemini-3.8-flash\", \"--max-turns\", \"40\", \"--wait\"]: run 01a20960190673c0a3e6fd7eccd0590d resumed=false endpoint=openai model=gemini-3.8-flash\ntask state=Waiting wait_reason=Approval run_state=Running\n\nVerificationRunRecorded: non-passing checks []\nVerificationRunRecorded: non-passing checks []\nAcceptanceGateEvaluated: {\"candidate_revision\":4,\"event_type\":\"AcceptanceGateEvaluated\",\"gate_ref\":\"396a70871a3d3043cc71f79005d0998ba3e24e8cb2fd5a589683b697cd80cacb\",\"gate_version\":\"gate-1\",\"human_required\":false,\"independent_review_required\":true,\"missing_evidence\":[\"independent_review\"],\"realized_risk_ref\":\"81c2dd5727b5dead8d3faf8893cb5fc8f4d4128bcb789736c69d970bc49ac48b\",\"reject_reasons\":[\"a DENY-class diff invariant stands\"],\"required_assurance\":\"GOVERNED\",\"trigger\":\"COMPLETION_RUN\",\"verdict\":\"REJECT\",\"verification_run_id\":\"vr-2e75d163916b82e5\"}\nlast events:\n  CheckpointStarted {\"base_checkpoint_id\":\"01a20963-0471-73e3-ba6a-63e61a8aa7cf\",\"checkpoint_id\":\"01a20963-1b07-7571-b2bb-0c24cffb2cc2\",\"epoch\":40,\"event_type\":\"CheckpointStarted\",\"kind\":\"DELTA\",\"reason\":\"turn_boundary\"}\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a20963-0471-73e3-ba6a-63e61a8aa7cf\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":6,\"capture_ms\":10,\"checkpoint_id\":\"01a20963-1b07-7571-b2bb-0c24cffb2cc2\",\"epoch\":40,\"event\n  TurnPrepared {\"event_type\":\"TurnPrepared\",\"ordinal\":40,\"plan_version\":2,\"run_id\":\"01a20960-1906-73c0-a3e6-fd7eccd0590d\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":1,\"step_type\":{\"kind\":\"CONTEXT_COMPILE\"},\"turn_id\":\"01a20963-1b1a-7d01-9a87-62bf14301a8c\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"1c1769325f2ab0201b5a8e169922a411bca1ef65a9f9c25f35ca815cf237b836\"}\n  ContextPackCompiled {\"context_pack_id\":\"ab14363fd11afb18ef14c6b311b71bde90d072cd57e86f82a3115a66d55217b1\",\"event_type\":\"ContextPackCompiled\"}\n  ToolProjectionSelected {\"dropped\":[],\"event_type\":\"ToolProjectionSelected\",\"leg_role\":\"solver\",\"max_projection_bytes\":32768,\"mode\":\"exec_only\",\"projected\":[\"plan.update\",\"proc.exec\",\"proc.wait\",\"task.complete\",\"tool.search\"\n  CapabilitySnapshotRecorded {\"event_type\":\"CapabilitySnapshotRecorded\",\"snapshot\":{\"config_generation\":\"d86df14f4a53374348f688d7\",\"config_ref\":\"d86df14f4a53374348f688d7e1ac7484bd50b68b2ae091f46f300a27c7cdefba\",\"epoch\":40,\"execut\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":\"1c1769325f2ab0201b5a8e169922a411bca1ef65a9f9c25f35ca815cf237b836\",\"ordinal\":2,\"step_type\":{\"kind\":\"MODEL_INVOKE\"},\"turn_id\":\"01a20963-1b1a-7d01-9a87-62bf1430\n  StepStarted {\"event_type\":\"StepStarted\"}\n  ModelInvocationStarted {\"event_type\":\"ModelInvocationStarted\",\"model_route\":{\"cache_key\":\"640e414e02fdef0718b27a48824d31a9427042b2da91dd4e9b49eec40b23d288\",\"endpoint\":\"openai\",\"max_output_tokens\":16384,\"model\":\"gemini-3.8-f\n  ModelUsageRecorded {\"cached_input_tokens\":53906,\"event_type\":\"ModelUsageRecorded\",\"input_tokens\":57014,\"output_tokens\":43,\"reported\":true,\"route\":{\"endpoint\":\"openai\",\"kind\":\"open_ai\",\"provider_request_id\":null,\"reason\"\n  ModelInvocationCompleted {\"event_type\":\"ModelInvocationCompleted\",\"requested_actions\":true}\n  RoutingAttemptRecorded {\"attempt\":40,\"cache_write_tokens\":0,\"cached_input_tokens\":53906,\"cost_minor\":null,\"event_type\":\"RoutingAttemptRecorded\",\"input_tokens\":57014,\"latency_ms\":3607,\"outcome\":\"SUCCEEDED\",\"output_tokens\":43\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"32ad8193be6924454e2aaec6ff49f143bbcc6115e045c35821dead52c8d7f648\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":3,\"step_type\":{\"kind\":\"PROCEDURE_RUN\"},\"turn_id\":\"01a20963-1b1a-7d01-9a87-62bf14301a8c\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"7cd25fe6f7825680143a3b8babb873108d1595d9815367b0024bd91fb32eb956\"}\n  TurnVerifying {\"event_type\":\"TurnVerifying\"}\n  TurnCompleted {\"event_type\":\"TurnCompleted\"}\n  CheckpointStarted {\"base_checkpoint_id\":\"01a20963-1b07-7571-b2bb-0c24cffb2cc2\",\"checkpoint_id\":\"01a20963-9e87-7cc0-b65e-6c98ad4ac58d\",\"epoch\":41,\"event_type\":\"CheckpointStarted\",\"kind\":\"DELTA\",\"reason\":\"turn_boundary\"}\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a20963-1b07-7571-b2bb-0c24cffb2cc2\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":6,\"capture_ms\":11,\"checkpoint_id\":\"01a20963-9e87-7cc0-b65e-6c98ad4ac58d\",\"epoch\":41,\"event\n  AgentNodeTransitioned {\"agent_id\":\"01a20960-1915-7a33-b648-53cc8408abb0\",\"event_type\":\"AgentNodeTransitioned\",\"from\":\"RUNNING\",\"reason\":\"budget exhausted: max_turns 40/40 (BUDGET_EXHAUSTED)\",\"run_id\":\"01a20960-1906-73c0-a3\n  CapacityTicketReleased {\"event_type\":\"CapacityTicketReleased\",\"holder\":\"run:36520599-209a-bc83-1d7a-0a97130330c5\",\"reason\":\"RELEASED\",\"ticket_id\":\"t-1\"}",
+      "schema_bytes_per_request": [],
+      "state": "NotRun",
+      "trial": {
+        "agent_ms": 0,
+        "cached_input_tokens": 0,
+        "cold_ms": 0,
+        "input_tokens": 0,
+        "model_calls": 0,
+        "normalized_tool_calls": 0,
+        "output_tokens": 0,
+        "repeat": 0,
+        "task": "rename-get-user",
+        "tool_calls": 0,
+        "tool_schema_bytes": 0,
+        "variant": "exec_only",
+        "verified": false
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 18821,
+        "cached_input_tokens": 13220,
+        "cold_ms": 0,
+        "input_tokens": 43429,
+        "model_calls": 5,
+        "normalized_tool_calls": 1,
+        "output_tokens": 628,
+        "repeat": 0,
+        "task": "rename-load-order",
+        "tool_calls": 1,
+        "tool_schema_bytes": 88407,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 38916,
+        "cached_input_tokens": 50020,
+        "cold_ms": 0,
+        "input_tokens": 95488,
+        "model_calls": 9,
+        "normalized_tool_calls": 1,
+        "output_tokens": 757,
+        "repeat": 0,
+        "task": "rename-load-order",
+        "tool_calls": 1,
+        "tool_schema_bytes": 178205,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": "modbit-cli [\"task\", \"run\", \"--session\", \"b8f33d08dd96ace25e54c0c938492476\", \"--task\", \"855c53ddc20f44d8ff057fb8adcfdf9a\", \"--model\", \"gemini-3.8-flash\", \"--max-turns\", \"40\", \"--wait\"]: run 01a209612b0171a28effbca3b59a627e resumed=false endpoint=openai model=gemini-3.8-flash\ntask state=Waiting wait_reason=UserInput run_state=Suspended\n\nVerificationRunRecorded: non-passing checks []\nVerificationRunRecorded: non-passing checks []\nAcceptanceGateEvaluated: {\"candidate_revision\":4,\"event_type\":\"AcceptanceGateEvaluated\",\"gate_ref\":\"36753cfb41ba328e8efc790661fa43fc1c3ac26838a7b2a8e773d736271a2a63\",\"gate_version\":\"gate-1\",\"human_required\":false,\"independent_review_required\":true,\"missing_evidence\":[\"independent_review\"],\"realized_risk_ref\":\"9a2a4be3fba7db23240c40948e3307e838a7620b891cd2d4bdb1c89f4834f713\",\"reject_reasons\":[\"a DENY-class diff invariant stands\"],\"required_assurance\":\"GOVERNED\",\"trigger\":\"COMPLETION_RUN\",\"verdict\":\"REJECT\",\"verification_run_id\":\"vr-82d3b69d96e58ef4\"}\nlast events:\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a20964-8b9b-7a52-8d02-9f5b5d09e9b9\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":6,\"capture_ms\":9,\"checkpoint_id\":\"01a20964-fa6b-7162-954b-6eea73cedfae\",\"epoch\":23,\"event_\n  TurnPrepared {\"event_type\":\"TurnPrepared\",\"ordinal\":23,\"plan_version\":2,\"run_id\":\"01a20961-2b01-71a2-8eff-bca3b59a627e\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":1,\"step_type\":{\"kind\":\"CONTEXT_COMPILE\"},\"turn_id\":\"01a20964-fa7e-7683-b19a-dee0a7566678\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"33b9176c7b3079487b656579146de446f2d006583f8e01a5804ec273fb1e19de\"}\n  ContextPackCompiled {\"context_pack_id\":\"5f986a540faf9453b12a5a7032b7c1ea866201f2f7a79fa241baa545e42f8f3b\",\"event_type\":\"ContextPackCompiled\"}\n  ToolProjectionSelected {\"dropped\":[],\"event_type\":\"ToolProjectionSelected\",\"leg_role\":\"solver\",\"max_projection_bytes\":32768,\"mode\":\"exec_only\",\"projected\":[\"plan.update\",\"proc.exec\",\"proc.wait\",\"task.complete\",\"tool.search\"\n  CapabilitySnapshotRecorded {\"event_type\":\"CapabilitySnapshotRecorded\",\"snapshot\":{\"config_generation\":\"d86df14f4a53374348f688d7\",\"config_ref\":\"d86df14f4a53374348f688d7e1ac7484bd50b68b2ae091f46f300a27c7cdefba\",\"epoch\":23,\"execut\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":\"33b9176c7b3079487b656579146de446f2d006583f8e01a5804ec273fb1e19de\",\"ordinal\":2,\"step_type\":{\"kind\":\"MODEL_INVOKE\"},\"turn_id\":\"01a20964-fa7e-7683-b19a-dee0a756\n  StepStarted {\"event_type\":\"StepStarted\"}\n  ModelInvocationStarted {\"event_type\":\"ModelInvocationStarted\",\"model_route\":{\"cache_key\":\"1cb040530d1374dcf61dc95de57d281101254ee8b5f7758553bd547876178a9d\",\"endpoint\":\"openai\",\"max_output_tokens\":16384,\"model\":\"gemini-3.8-f\n  ModelUsageRecorded {\"cached_input_tokens\":33265,\"event_type\":\"ModelUsageRecorded\",\"input_tokens\":39758,\"output_tokens\":129,\"reported\":true,\"route\":{\"endpoint\":\"openai\",\"kind\":\"open_ai\",\"provider_request_id\":null,\"reason\n  ModelInvocationCompleted {\"event_type\":\"ModelInvocationCompleted\",\"requested_actions\":true}\n  RoutingAttemptRecorded {\"attempt\":23,\"cache_write_tokens\":0,\"cached_input_tokens\":33265,\"cost_minor\":null,\"event_type\":\"RoutingAttemptRecorded\",\"input_tokens\":39758,\"latency_ms\":8220,\"outcome\":\"SUCCEEDED\",\"output_tokens\":12\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"5416604b5f53abfb80a537b3699389dbfa723d1b2e7c932f886006878e47b1c2\"}\n  UserQuestionAsked {\"allow_free_text\":false,\"call_id\":\"call_460731164665731626\",\"event_type\":\"UserQuestionAsked\",\"flags\":[],\"options\":[{\"id\":\"approve\",\"label\":\"Approve changes to orders.py, view_a.py, and view_b.py\"},{\"\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":3,\"step_type\":{\"kind\":\"USER_QUESTION\"},\"turn_id\":\"01a20964-fa7e-7683-b19a-dee0a7566678\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"5d9c1b17d66d7ed95445f62c7cccad77c8ae4c119937f6ff035d52b9cda3f8be\"}\n  RunSuspended {\"event_type\":\"RunSuspended\"}\n  TaskWaiting {\"event_type\":\"TaskWaiting\",\"reason\":\"USER_INPUT\"}\n  TaskNeedsAttention {\"diagnostic\":{\"class\":\"HARNESS\",\"code\":\"QUESTION_PENDING\",\"detail\":\"question pending: q-call460731164665731626\",\"evidence_refs\":[],\"features\":[\"class:harness\",\"code:question_pending\",\"not_retryable\",\n  RequestOutcomeRecorded {\"accounting_version\":\"request-accounting/1\",\"currency\":\"USD\",\"event_type\":\"RequestOutcomeRecorded\",\"final_outcome\":\"open\",\"first_pass_success\":false,\"initial_leg_success\":null,\"missing_signals\":[\"exp\n  AgentNodeTransitioned {\"agent_id\":\"01a20961-2b0e-7d71-bc87-f2cc5f0867f9\",\"event_type\":\"AgentNodeTransitioned\",\"from\":\"RUNNING\",\"reason\":\"question q-call460731164665731626 pending\",\"run_id\":\"01a20961-2b01-71a2-8eff-bca3b59a\n  CapacityTicketReleased {\"event_type\":\"CapacityTicketReleased\",\"holder\":\"run:855c53dd-c20f-44d8-ff05-7fb8adcfdf9a\",\"reason\":\"RELEASED\",\"ticket_id\":\"t-1\"}",
+      "schema_bytes_per_request": [],
+      "state": "NotRun",
+      "trial": {
+        "agent_ms": 0,
+        "cached_input_tokens": 0,
+        "cold_ms": 0,
+        "input_tokens": 0,
+        "model_calls": 0,
+        "normalized_tool_calls": 0,
+        "output_tokens": 0,
+        "repeat": 0,
+        "task": "rename-load-order",
+        "tool_calls": 0,
+        "tool_schema_bytes": 0,
+        "variant": "exec_only",
+        "verified": false
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 28135,
+        "cached_input_tokens": 27776,
+        "cold_ms": 0,
+        "input_tokens": 68124,
+        "model_calls": 7,
+        "normalized_tool_calls": 1,
+        "output_tokens": 1099,
+        "repeat": 0,
+        "task": "rename-find-item",
+        "tool_calls": 1,
+        "tool_schema_bytes": 124563,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 27638,
+        "cached_input_tokens": 23436,
+        "cold_ms": 0,
+        "input_tokens": 59053,
+        "model_calls": 6,
+        "normalized_tool_calls": 1,
+        "output_tokens": 1261,
+        "repeat": 0,
+        "task": "rename-find-item",
+        "tool_calls": 1,
+        "tool_schema_bytes": 118133,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": "modbit-cli [\"task\", \"run\", \"--session\", \"93a417c6e2a3d4c802f8ea860c09eba0\", \"--task\", \"d2911b3671978159d86fffcb2ce3fa5c\", \"--model\", \"gemini-3.8-flash\", \"--max-turns\", \"40\", \"--wait\"]: run 01a20962235e749087468f6fb9d75fae resumed=false endpoint=openai model=gemini-3.8-flash\ntask state=Waiting wait_reason=UserInput run_state=Suspended\n\nVerificationRunRecorded: non-passing checks []\nVerificationRunRecorded: non-passing checks []\nAcceptanceGateEvaluated: {\"candidate_revision\":4,\"event_type\":\"AcceptanceGateEvaluated\",\"gate_ref\":\"a57edf954034229ee09d13c40111a24eede5c8b6df85d2dcd516ce799f6c9f41\",\"gate_version\":\"gate-1\",\"human_required\":false,\"independent_review_required\":true,\"missing_evidence\":[\"independent_review\"],\"realized_risk_ref\":\"4d9e1ea40fb7ed879293d34503954d7434789ea1c825ad00038e02f0cb7d2423\",\"reject_reasons\":[\"a DENY-class diff invariant stands\"],\"required_assurance\":\"GOVERNED\",\"trigger\":\"COMPLETION_RUN\",\"verdict\":\"REJECT\",\"verification_run_id\":\"vr-fc61b727a2e84def\"}\nlast events:\n  ModelUsageRecorded {\"cached_input_tokens\":61037,\"event_type\":\"ModelUsageRecorded\",\"input_tokens\":66758,\"output_tokens\":72,\"reported\":true,\"route\":{\"endpoint\":\"openai\",\"kind\":\"open_ai\",\"provider_request_id\":null,\"reason\"\n  ModelInvocationCompleted {\"event_type\":\"ModelInvocationCompleted\",\"requested_actions\":true}\n  RoutingAttemptRecorded {\"attempt\":40,\"cache_write_tokens\":0,\"cached_input_tokens\":61037,\"cost_minor\":null,\"event_type\":\"RoutingAttemptRecorded\",\"input_tokens\":66758,\"latency_ms\":13778,\"outcome\":\"SUCCEEDED\",\"output_tokens\":7\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"3d5e3f326c7e511b6a9fd069667029d0e3f6631f36ca3b6c6d9490766dadda89\"}\n  ProgramStarted {\"bindings\":[\"browser.scroll\",\"change.apply\",\"change.batch\",\"context.pack\",\"forge.pr.comments.read\",\"forge.pr.diff\",\"forge.pr.read\",\"fs.glob\",\"fs.list\",\"fs.read\",\"fs.stat\",\"memory.query\",\"search.exact\n  ToolCallProposed {\"arguments_hash\":\"7f7053f9582290f7c8537e251b95804514c7085e90e4f2b0d04ca3a9aaec5722\",\"arguments_ref\":\"7f7053f9582290f7c8537e251b95804514c7085e90e4f2b0d04ca3a9aaec5722\",\"call_id\":\"call_1360233564009417\n  ToolCallValidated {\"event_type\":\"ToolCallValidated\"}\n  ToolCallPolicyDecision {\"allowed\":true,\"approval_required\":false,\"authorization\":{\"epoch\":40,\"snapshot_hash\":\"3cb3bd45ff088d9e11048f432ea61521fc7dbb65e88a3bfea76113e26c2db383\"},\"decision\":\"local_trusted:reversiblewrite\",\"ev\n  ToolCallDispatched {\"event_type\":\"ToolCallDispatched\"}\n  ToolCallSucceeded {\"event_type\":\"ToolCallSucceeded\",\"result_ref\":\"ffe6ee4c496d761e43277e919cd27b44e486dd783bf23af9d6bc74df03108f8c\"}\n  ProgramEnded {\"budget_exhausted\":null,\"elapsed_ms\":56,\"event_type\":\"ProgramEnded\",\"handle\":\"call_13602335640094171794\",\"interrupt_polls\":1,\"outcome_ref\":\"04d3fc94d7a867973d25e70beb4c8baf21771d8026d25c0a397b58298c8\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":3,\"step_type\":{\"kind\":\"PROCEDURE_RUN\"},\"turn_id\":\"01a20965-9bce-7ac3-811e-391d5a3bda10\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"9cc2107efe357794324d49daa553e544d1f0d1b2752135f3103546cd9646b21d\"}\n  TurnVerifying {\"event_type\":\"TurnVerifying\"}\n  TurnCompleted {\"event_type\":\"TurnCompleted\"}\n  CheckpointStarted {\"base_checkpoint_id\":\"01a20965-9bbb-7833-8acb-8b3a0328207a\",\"checkpoint_id\":\"01a20965-d218-7da3-b586-9dabecacc77c\",\"epoch\":41,\"event_type\":\"CheckpointStarted\",\"kind\":\"DELTA\",\"reason\":\"turn_boundary\"}\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a20965-9bbb-7833-8acb-8b3a0328207a\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":6,\"capture_ms\":9,\"checkpoint_id\":\"01a20965-d218-7da3-b586-9dabecacc77c\",\"epoch\":41,\"event_\n  RunSuspended {\"event_type\":\"RunSuspended\"}\n  HarnessBudgetExhausted {\"budget\":\"max_turns\",\"event_type\":\"HarnessBudgetExhausted\",\"limit\":40,\"used\":40}\n  TaskWaiting {\"event_type\":\"TaskWaiting\",\"reason\":\"USER_INPUT\"}\n  TaskNeedsAttention {\"diagnostic\":{\"class\":\"BUDGET\",\"code\":\"BUDGET_EXHAUSTED\",\"detail\":\"max_turns: 40/40\",\"evidence_refs\":[],\"features\":[\"budget:max_turns\",\"class:budget\",\"code:budget_exhausted\",\"not_retryable\",\"source:h\n  RequestOutcomeRecorded {\"accounting_version\":\"request-accounting/1\",\"currency\":\"USD\",\"event_type\":\"RequestOutcomeRecorded\",\"final_outcome\":\"fail\",\"first_pass_success\":false,\"initial_leg_success\":false,\"missing_signals\":[\"ex\n  AgentNodeTransitioned {\"agent_id\":\"01a20962-236b-79f3-9431-f05fd5643fcc\",\"event_type\":\"AgentNodeTransitioned\",\"from\":\"RUNNING\",\"reason\":\"budget exhausted: max_turns 40/40 (BUDGET_EXHAUSTED)\",\"run_id\":\"01a20962-235e-7490-87\n  CapacityTicketReleased {\"event_type\":\"CapacityTicketReleased\",\"holder\":\"run:d2911b36-7197-8159-d86f-ffcb2ce3fa5c\",\"reason\":\"RELEASED\",\"ticket_id\":\"t-1\"}",
+      "schema_bytes_per_request": [],
+      "state": "NotRun",
+      "trial": {
+        "agent_ms": 0,
+        "cached_input_tokens": 0,
+        "cold_ms": 0,
+        "input_tokens": 0,
+        "model_calls": 0,
+        "normalized_tool_calls": 0,
+        "output_tokens": 0,
+        "repeat": 0,
+        "task": "rename-find-item",
+        "tool_calls": 0,
+        "tool_schema_bytes": 0,
+        "variant": "exec_only",
+        "verified": false
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        16095,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 50175,
+        "cached_input_tokens": 40563,
+        "cold_ms": 0,
+        "input_tokens": 91965,
+        "model_calls": 9,
+        "normalized_tool_calls": 1,
+        "output_tokens": 758,
+        "repeat": 0,
+        "task": "validate-port",
+        "tool_calls": 1,
+        "tool_schema_bytes": 158736,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 72852,
+        "cached_input_tokens": 63695,
+        "cold_ms": 0,
+        "input_tokens": 113020,
+        "model_calls": 10,
+        "normalized_tool_calls": 1,
+        "output_tokens": 1613,
+        "repeat": 0,
+        "task": "validate-port",
+        "tool_calls": 1,
+        "tool_schema_bytes": 198229,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": "modbit-cli [\"task\", \"run\", \"--session\", \"ccdbd50dd4661d2a674a702d57fecdb0\", \"--task\", \"2d81ed8ba9b5cb27b4b94c7da3f6c903\", \"--model\", \"gemini-3.8-flash\", \"--max-turns\", \"40\", \"--wait\"]: run 01a20964eacb7ca091891377d6481f6e resumed=false endpoint=openai model=gemini-3.8-flash\ntask state=Waiting wait_reason=Approval run_state=Running\n\nVerificationRunRecorded: non-passing checks []\nVerificationRunRecorded: non-passing checks []\nAcceptanceGateEvaluated: {\"candidate_revision\":2,\"event_type\":\"AcceptanceGateEvaluated\",\"gate_ref\":\"6693e191f0827cffe8c6be2abad76b145d4d6ebc771a50227e01f07591ecb618\",\"gate_version\":\"gate-1\",\"human_required\":false,\"independent_review_required\":true,\"missing_evidence\":[\"independent_review\"],\"realized_risk_ref\":\"e2ad8c645b68bea6b403dfb0e80439afcf45e2e46dd0f110555588abf3eabb72\",\"reject_reasons\":[\"a DENY-class diff invariant stands\"],\"required_assurance\":\"GOVERNED\",\"trigger\":\"COMPLETION_RUN\",\"verdict\":\"REJECT\",\"verification_run_id\":\"vr-18740a203371269a\"}\nVerificationRunRecorded: non-passing checks []\nlast events:\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a2096b-49dd-7ed2-873b-f54d9a367828\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":1,\"capture_ms\":9,\"checkpoint_id\":\"01a2096b-5a07-73a0-9ada-c5894d42b317\",\"epoch\":39,\"event_\n  TurnPrepared {\"event_type\":\"TurnPrepared\",\"ordinal\":39,\"plan_version\":2,\"run_id\":\"01a20964-eacb-7ca0-9189-1377d6481f6e\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":1,\"step_type\":{\"kind\":\"CONTEXT_COMPILE\"},\"turn_id\":\"01a2096b-5a19-7a70-a36a-233a962cac1e\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"de16f624d8ca08b72a32f09da73167c967c2bc7d50492f4c0bb43a29d5b5c1cf\"}\n  ContextPackCompiled {\"context_pack_id\":\"e5d19732bc2d92463f28c1d21b8066c81460bb261649dcac541b0f5893479972\",\"event_type\":\"ContextPackCompiled\"}\n  ToolProjectionSelected {\"dropped\":[],\"event_type\":\"ToolProjectionSelected\",\"leg_role\":\"solver\",\"max_projection_bytes\":32768,\"mode\":\"exec_only\",\"projected\":[\"plan.update\",\"proc.exec\",\"proc.wait\",\"task.complete\",\"tool.search\"\n  CapabilitySnapshotRecorded {\"event_type\":\"CapabilitySnapshotRecorded\",\"snapshot\":{\"config_generation\":\"d86df14f4a53374348f688d7\",\"config_ref\":\"d86df14f4a53374348f688d7e1ac7484bd50b68b2ae091f46f300a27c7cdefba\",\"epoch\":39,\"execut\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":\"de16f624d8ca08b72a32f09da73167c967c2bc7d50492f4c0bb43a29d5b5c1cf\",\"ordinal\":2,\"step_type\":{\"kind\":\"MODEL_INVOKE\"},\"turn_id\":\"01a2096b-5a19-7a70-a36a-233a962c\n  StepStarted {\"event_type\":\"StepStarted\"}\n  ModelInvocationStarted {\"event_type\":\"ModelInvocationStarted\",\"model_route\":{\"cache_key\":\"f081cd6d9ef224eb2f6a2dc7ac8f6c71b592c74c7b2b9639a198c92d3c33b9de\",\"endpoint\":\"openai\",\"max_output_tokens\":16384,\"model\":\"gemini-3.8-f\n  ModelUsageRecorded {\"cached_input_tokens\":99760,\"event_type\":\"ModelUsageRecorded\",\"input_tokens\":103165,\"output_tokens\":170,\"reported\":true,\"route\":{\"endpoint\":\"openai\",\"kind\":\"open_ai\",\"provider_request_id\":null,\"reaso\n  ModelInvocationCompleted {\"event_type\":\"ModelInvocationCompleted\",\"requested_actions\":true}\n  RoutingAttemptRecorded {\"attempt\":39,\"cache_write_tokens\":0,\"cached_input_tokens\":99760,\"cost_minor\":null,\"event_type\":\"RoutingAttemptRecorded\",\"input_tokens\":103165,\"latency_ms\":11594,\"outcome\":\"SUCCEEDED\",\"output_tokens\":\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"aa99eb7114e710ee06b4ca9f97568de1cf002b99453911af09220bce109968a6\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":3,\"step_type\":{\"kind\":\"SELF_REVIEW\"},\"turn_id\":\"01a2096b-5a19-7a70-a36a-233a962cac1e\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepFailed {\"event_type\":\"StepFailed\",\"failure_code\":\"PROGRAM_RUNNING\",\"output_ref\":\"e5deeb2c3e58bd9d750fd12787a8b8f8567ce4d132883a9eef3b3bc9cefb3117\"}\n  TurnVerifying {\"event_type\":\"TurnVerifying\"}\n  TurnCompleted {\"event_type\":\"TurnCompleted\"}\n  CheckpointStarted {\"base_checkpoint_id\":\"01a2096b-5a07-73a0-9ada-c5894d42b317\",\"checkpoint_id\":\"01a2096b-8786-7b40-b45f-cb1025dd6158\",\"epoch\":40,\"event_type\":\"CheckpointStarted\",\"kind\":\"DELTA\",\"reason\":\"turn_boundary\"}\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a2096b-5a07-73a0-9ada-c5894d42b317\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":1,\"capture_ms\":9,\"checkpoint_id\":\"01a2096b-8786-7b40-b45f-cb1025dd6158\",\"epoch\":40,\"event_\n  RouteReevaluated {\"boundary\":\"QUALITY\",\"cache_state\":null,\"chosen\":\"openai/gemini-3.8-flash\",\"current\":\"openai/gemini-3.8-flash\",\"decision\":\"STAY\",\"economics_version\":\"economics-1\",\"event_type\":\"RouteReevaluated\",\"pla\n  AgentNodeTransitioned {\"agent_id\":\"01a20964-ead9-7323-98ca-3b7c47a60458\",\"event_type\":\"AgentNodeTransitioned\",\"from\":\"RUNNING\",\"reason\":\"3 turns without progress\",\"run_id\":\"01a20964-eacb-7ca0-9189-1377d6481f6e\",\"to\":\"WAITI\n  CapacityTicketReleased {\"event_type\":\"CapacityTicketReleased\",\"holder\":\"run:2d81ed8b-a9b5-cb27-b4b9-4c7da3f6c903\",\"reason\":\"RELEASED\",\"ticket_id\":\"t-1\"}",
+      "schema_bytes_per_request": [],
+      "state": "NotRun",
+      "trial": {
+        "agent_ms": 0,
+        "cached_input_tokens": 0,
+        "cold_ms": 0,
+        "input_tokens": 0,
+        "model_calls": 0,
+        "normalized_tool_calls": 0,
+        "output_tokens": 0,
+        "repeat": 0,
+        "task": "validate-port",
+        "tool_calls": 0,
+        "tool_schema_bytes": 0,
+        "variant": "exec_only",
+        "verified": false
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        16095,
+        16095,
+        16095,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 54708,
+        "cached_input_tokens": 35284,
+        "cold_ms": 0,
+        "input_tokens": 92275,
+        "model_calls": 9,
+        "normalized_tool_calls": 1,
+        "output_tokens": 977,
+        "repeat": 0,
+        "task": "validate-percent",
+        "tool_calls": 1,
+        "tool_schema_bytes": 154770,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 64192,
+        "cached_input_tokens": 53494,
+        "cold_ms": 0,
+        "input_tokens": 113434,
+        "model_calls": 10,
+        "normalized_tool_calls": 1,
+        "output_tokens": 1206,
+        "repeat": 0,
+        "task": "validate-percent",
+        "tool_calls": 1,
+        "tool_schema_bytes": 198229,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": "modbit-cli [\"task\", \"run\", \"--session\", \"ceda310519e6c706499de7c6b7099df9\", \"--task\", \"6aff0ef9d48403036a041ea49bc2a457\", \"--model\", \"gemini-3.8-flash\", \"--max-turns\", \"40\", \"--wait\"]: run 01a20965d6027230a497c84ae9186330 resumed=false endpoint=openai model=gemini-3.8-flash\ntask state=Waiting wait_reason=Approval run_state=Running\n\nVerificationRunRecorded: non-passing checks []\nVerificationRunRecorded: non-passing checks []\nAcceptanceGateEvaluated: {\"candidate_revision\":2,\"event_type\":\"AcceptanceGateEvaluated\",\"gate_ref\":\"34b2effb3a151ed8bfb068cc31c1512f35ffb4d2fc04d00d1718a80b932be8e3\",\"gate_version\":\"gate-1\",\"human_required\":false,\"independent_review_required\":true,\"missing_evidence\":[\"independent_review\"],\"realized_risk_ref\":\"df850c733cce2ab035176bdf87fb53e50ad1794fbd0dbb59d1cb6be8392bcac1\",\"reject_reasons\":[\"a DENY-class diff invariant stands\"],\"required_assurance\":\"GOVERNED\",\"trigger\":\"COMPLETION_RUN\",\"verdict\":\"REJECT\",\"verification_run_id\":\"vr-d977cf7069a8977f\"}\nVerificationRunRecorded: non-passing checks []\nlast events:\n  CheckpointStarted {\"base_checkpoint_id\":\"01a20972-0935-70c2-bd9b-d3da9dc8ab75\",\"checkpoint_id\":\"01a20972-257b-7193-a5a0-bd0649530567\",\"epoch\":40,\"event_type\":\"CheckpointStarted\",\"kind\":\"DELTA\",\"reason\":\"turn_boundary\"}\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a20972-0935-70c2-bd9b-d3da9dc8ab75\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":2,\"capture_ms\":11,\"checkpoint_id\":\"01a20972-257b-7193-a5a0-bd0649530567\",\"epoch\":40,\"event\n  TurnPrepared {\"event_type\":\"TurnPrepared\",\"ordinal\":40,\"plan_version\":4,\"run_id\":\"01a20965-d602-7230-a497-c84ae9186330\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":1,\"step_type\":{\"kind\":\"CONTEXT_COMPILE\"},\"turn_id\":\"01a20972-2591-7ef2-a680-b9411470a3d0\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"bd5c748f71705cf04b61c5070f40af93b61f9c9065bb0bfb28f5040b598b22ea\"}\n  ContextPackCompiled {\"context_pack_id\":\"15e69030d5dc7b18c19c8acb5b3852652a3af19e3863d81be808133ffb1c6d57\",\"event_type\":\"ContextPackCompiled\"}\n  ToolProjectionSelected {\"dropped\":[],\"event_type\":\"ToolProjectionSelected\",\"leg_role\":\"solver\",\"max_projection_bytes\":32768,\"mode\":\"exec_only\",\"projected\":[\"plan.update\",\"proc.exec\",\"proc.wait\",\"task.complete\",\"tool.search\"\n  CapabilitySnapshotRecorded {\"event_type\":\"CapabilitySnapshotRecorded\",\"snapshot\":{\"config_generation\":\"d86df14f4a53374348f688d7\",\"config_ref\":\"d86df14f4a53374348f688d7e1ac7484bd50b68b2ae091f46f300a27c7cdefba\",\"epoch\":40,\"execut\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":\"bd5c748f71705cf04b61c5070f40af93b61f9c9065bb0bfb28f5040b598b22ea\",\"ordinal\":2,\"step_type\":{\"kind\":\"MODEL_INVOKE\"},\"turn_id\":\"01a20972-2591-7ef2-a680-b9411470\n  StepStarted {\"event_type\":\"StepStarted\"}\n  ModelInvocationStarted {\"event_type\":\"ModelInvocationStarted\",\"model_route\":{\"cache_key\":\"b7075a327a079f2984e5ff61d3542b7618ba7a5a2778a6435506654938b12e9c\",\"endpoint\":\"openai\",\"max_output_tokens\":16384,\"model\":\"gemini-3.8-f\n  ModelUsageRecorded {\"cached_input_tokens\":57233,\"event_type\":\"ModelUsageRecorded\",\"input_tokens\":77578,\"output_tokens\":41,\"reported\":true,\"route\":{\"endpoint\":\"openai\",\"kind\":\"open_ai\",\"provider_request_id\":null,\"reason\"\n  ModelInvocationCompleted {\"event_type\":\"ModelInvocationCompleted\",\"requested_actions\":true}\n  RoutingAttemptRecorded {\"attempt\":40,\"cache_write_tokens\":0,\"cached_input_tokens\":57233,\"cost_minor\":null,\"event_type\":\"RoutingAttemptRecorded\",\"input_tokens\":77578,\"latency_ms\":4142,\"outcome\":\"SUCCEEDED\",\"output_tokens\":41\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"5732a299e34a24e72e4d0869f830b972b5195f307111ad8d50999474a4964b1b\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":3,\"step_type\":{\"kind\":\"PROCEDURE_RUN\"},\"turn_id\":\"01a20972-2591-7ef2-a680-b9411470a3d0\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"6fbf00117bb91e63316a10a1d2e7fe7b97540176110af448be39d80f2772c28c\"}\n  TurnVerifying {\"event_type\":\"TurnVerifying\"}\n  TurnCompleted {\"event_type\":\"TurnCompleted\"}\n  CheckpointStarted {\"base_checkpoint_id\":\"01a20972-257b-7193-a5a0-bd0649530567\",\"checkpoint_id\":\"01a20972-39cb-7560-8dbb-57572fa75f82\",\"epoch\":41,\"event_type\":\"CheckpointStarted\",\"kind\":\"DELTA\",\"reason\":\"turn_boundary\"}\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a20972-257b-7193-a5a0-bd0649530567\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":2,\"capture_ms\":11,\"checkpoint_id\":\"01a20972-39cb-7560-8dbb-57572fa75f82\",\"epoch\":41,\"event\n  AgentNodeTransitioned {\"agent_id\":\"01a20965-d60f-7911-8be9-231d238d3532\",\"event_type\":\"AgentNodeTransitioned\",\"from\":\"RUNNING\",\"reason\":\"budget exhausted: max_turns 40/40 (BUDGET_EXHAUSTED)\",\"run_id\":\"01a20965-d602-7230-a4\n  CapacityTicketReleased {\"event_type\":\"CapacityTicketReleased\",\"holder\":\"run:6aff0ef9-d484-0303-6a04-1ea49bc2a457\",\"reason\":\"RELEASED\",\"ticket_id\":\"t-1\"}",
+      "schema_bytes_per_request": [],
+      "state": "NotRun",
+      "trial": {
+        "agent_ms": 0,
+        "cached_input_tokens": 0,
+        "cold_ms": 0,
+        "input_tokens": 0,
+        "model_calls": 0,
+        "normalized_tool_calls": 0,
+        "output_tokens": 0,
+        "repeat": 0,
+        "task": "validate-percent",
+        "tool_calls": 0,
+        "tool_schema_bytes": 0,
+        "variant": "exec_only",
+        "verified": false
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 42023,
+        "cached_input_tokens": 31774,
+        "cold_ms": 0,
+        "input_tokens": 66804,
+        "model_calls": 7,
+        "normalized_tool_calls": 1,
+        "output_tokens": 854,
+        "repeat": 0,
+        "task": "validate-age",
+        "tool_calls": 1,
+        "tool_schema_bytes": 124563,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        18013,
+        18013,
+        18013,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 57897,
+        "cached_input_tokens": 46467,
+        "cold_ms": 0,
+        "input_tokens": 108787,
+        "model_calls": 10,
+        "normalized_tool_calls": 1,
+        "output_tokens": 897,
+        "repeat": 0,
+        "task": "validate-age",
+        "tool_calls": 1,
+        "tool_schema_bytes": 192196,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": "modbit-cli [\"task\", \"run\", \"--session\", \"e8cf97218a7d50696f7c669081b15688\", \"--task\", \"db1b7d90ef607a8980af9e1bf0557616\", \"--model\", \"gemini-3.8-flash\", \"--max-turns\", \"40\", \"--wait\"]: run 01a209669c2574318b45fe2699859d29 resumed=false endpoint=openai model=gemini-3.8-flash\ntask state=Waiting wait_reason=Approval run_state=Running\n\nVerificationRunRecorded: non-passing checks []\nVerificationRunRecorded: non-passing checks []\nAcceptanceGateEvaluated: {\"candidate_revision\":2,\"event_type\":\"AcceptanceGateEvaluated\",\"gate_ref\":\"272f3df365149fa5272ec3c1ff7272ddbca2c5c4bf7752447ba2b1a4128614c2\",\"gate_version\":\"gate-1\",\"human_required\":false,\"independent_review_required\":true,\"missing_evidence\":[\"independent_review\"],\"realized_risk_ref\":\"7171a298a3189d15cf52ffd1f609471a5b963963d2b6ca44257dda259820cb7c\",\"reject_reasons\":[\"a DENY-class diff invariant stands\"],\"required_assurance\":\"GOVERNED\",\"trigger\":\"COMPLETION_RUN\",\"verdict\":\"REJECT\",\"verification_run_id\":\"vr-13fca3f75a2327ed\"}\nlast events:\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a20967-759e-7021-9c54-4c51d2fcc6c9\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":2,\"capture_ms\":9,\"checkpoint_id\":\"01a20967-9078-7892-939f-2db0372f1759\",\"epoch\":11,\"event_\n  TurnPrepared {\"event_type\":\"TurnPrepared\",\"ordinal\":11,\"plan_version\":2,\"run_id\":\"01a20966-9c25-7431-8b45-fe2699859d29\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":1,\"step_type\":{\"kind\":\"CONTEXT_COMPILE\"},\"turn_id\":\"01a20967-9089-7c21-bf09-c43465adc92e\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"5c1b924b03cffd04728e4289d7ace71eb0f5371c44267bb76c1a725a53abf9ef\"}\n  ContextPackCompiled {\"context_pack_id\":\"8fe1f02e64e59b3884fb104157b726e378ffbe2f7ef0bf9c13eb928455f5641c\",\"event_type\":\"ContextPackCompiled\"}\n  ToolProjectionSelected {\"dropped\":[],\"event_type\":\"ToolProjectionSelected\",\"leg_role\":\"solver\",\"max_projection_bytes\":32768,\"mode\":\"exec_only\",\"projected\":[\"plan.update\",\"proc.exec\",\"proc.wait\",\"task.complete\",\"tool.search\"\n  CapabilitySnapshotRecorded {\"event_type\":\"CapabilitySnapshotRecorded\",\"snapshot\":{\"config_generation\":\"d86df14f4a53374348f688d7\",\"config_ref\":\"d86df14f4a53374348f688d7e1ac7484bd50b68b2ae091f46f300a27c7cdefba\",\"epoch\":11,\"execut\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":\"5c1b924b03cffd04728e4289d7ace71eb0f5371c44267bb76c1a725a53abf9ef\",\"ordinal\":2,\"step_type\":{\"kind\":\"MODEL_INVOKE\"},\"turn_id\":\"01a20967-9089-7c21-bf09-c43465ad\n  StepStarted {\"event_type\":\"StepStarted\"}\n  ModelInvocationStarted {\"event_type\":\"ModelInvocationStarted\",\"model_route\":{\"cache_key\":\"36ec585a253413c72d9f3470f3f9d2883c45c46ae24c11c7876b7c47ec4055a3\",\"endpoint\":\"openai\",\"max_output_tokens\":16384,\"model\":\"gemini-3.8-f\n  ModelUsageRecorded {\"cached_input_tokens\":9929,\"event_type\":\"ModelUsageRecorded\",\"input_tokens\":12781,\"output_tokens\":42,\"reported\":true,\"route\":{\"endpoint\":\"openai\",\"kind\":\"open_ai\",\"provider_request_id\":null,\"reason\":\n  ModelInvocationCompleted {\"event_type\":\"ModelInvocationCompleted\",\"requested_actions\":true}\n  RoutingAttemptRecorded {\"attempt\":11,\"cache_write_tokens\":0,\"cached_input_tokens\":9929,\"cost_minor\":null,\"event_type\":\"RoutingAttemptRecorded\",\"input_tokens\":12781,\"latency_ms\":6778,\"outcome\":\"SUCCEEDED\",\"output_tokens\":42,\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"fcbfb086ecc4d9ead13740a86eae7339980f8a293dfecd0cb776f668d929e7cf\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":3,\"step_type\":{\"kind\":\"PROCEDURE_RUN\"},\"turn_id\":\"01a20967-9089-7c21-bf09-c43465adc92e\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"c6fd5e60226f0402e078056cd93a0cd5e66e7217836dc77b3774b40bc9fa335b\"}\n  TurnVerifying {\"event_type\":\"TurnVerifying\"}\n  TurnCompleted {\"event_type\":\"TurnCompleted\"}\n  CheckpointStarted {\"base_checkpoint_id\":\"01a20967-9078-7892-939f-2db0372f1759\",\"checkpoint_id\":\"01a20967-bea2-7121-8e63-74f098d4389a\",\"epoch\":12,\"event_type\":\"CheckpointStarted\",\"kind\":\"DELTA\",\"reason\":\"turn_boundary\"}\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a20967-9078-7892-939f-2db0372f1759\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":2,\"capture_ms\":9,\"checkpoint_id\":\"01a20967-bea2-7121-8e63-74f098d4389a\",\"epoch\":12,\"event_\n  RouteReevaluated {\"boundary\":\"QUALITY\",\"cache_state\":null,\"chosen\":\"openai/gemini-3.8-flash\",\"current\":\"openai/gemini-3.8-flash\",\"decision\":\"STAY\",\"economics_version\":\"economics-1\",\"event_type\":\"RouteReevaluated\",\"pla\n  AgentNodeTransitioned {\"agent_id\":\"01a20966-9c32-7b22-964d-7922ecdcd510\",\"event_type\":\"AgentNodeTransitioned\",\"from\":\"RUNNING\",\"reason\":\"3 turns without progress\",\"run_id\":\"01a20966-9c25-7431-8b45-fe2699859d29\",\"to\":\"WAITI\n  CapacityTicketReleased {\"event_type\":\"CapacityTicketReleased\",\"holder\":\"run:db1b7d90-ef60-7a89-80af-9e1bf0557616\",\"reason\":\"RELEASED\",\"ticket_id\":\"t-1\"}",
+      "schema_bytes_per_request": [],
+      "state": "NotRun",
+      "trial": {
+        "agent_ms": 0,
+        "cached_input_tokens": 0,
+        "cold_ms": 0,
+        "input_tokens": 0,
+        "model_calls": 0,
+        "normalized_tool_calls": 0,
+        "output_tokens": 0,
+        "repeat": 0,
+        "task": "validate-age",
+        "tool_calls": 0,
+        "tool_schema_bytes": 0,
+        "variant": "exec_only",
+        "verified": false
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 35016,
+        "cached_input_tokens": 46386,
+        "cold_ms": 0,
+        "input_tokens": 77168,
+        "model_calls": 8,
+        "normalized_tool_calls": 1,
+        "output_tokens": 1281,
+        "repeat": 0,
+        "task": "mutable-default-append-item",
+        "tool_calls": 1,
+        "tool_schema_bytes": 142641,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 17028,
+        "cached_input_tokens": 12845,
+        "cold_ms": 0,
+        "input_tokens": 41544,
+        "model_calls": 5,
+        "normalized_tool_calls": 1,
+        "output_tokens": 542,
+        "repeat": 0,
+        "task": "mutable-default-append-item",
+        "tool_calls": 1,
+        "tool_schema_bytes": 98109,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": "modbit-cli [\"task\", \"run\", \"--session\", \"a22eda54d5f4e6450143848c9f907a1a\", \"--task\", \"f0c1713dcf75db6c02e12ba213b8bfe7\", \"--model\", \"gemini-3.8-flash\", \"--max-turns\", \"40\", \"--wait\"]: run 01a20967f3ec74229856640fdff33abf resumed=false endpoint=openai model=gemini-3.8-flash\ntask state=Waiting wait_reason=Approval run_state=Running\n\nVerificationRunRecorded: non-passing checks []\nVerificationRunRecorded: non-passing checks []\nAcceptanceGateEvaluated: {\"candidate_revision\":2,\"event_type\":\"AcceptanceGateEvaluated\",\"gate_ref\":\"33cd116bbaa7b3a3ebc650733d65b5348e3260ebeca81efdd6f3bc2e96b730c3\",\"gate_version\":\"gate-1\",\"human_required\":false,\"independent_review_required\":true,\"missing_evidence\":[\"independent_review\"],\"realized_risk_ref\":\"8cd97d11cf8c56db2f4bb40df521997a114aae264af7c0ec54a3c977e7005271\",\"reject_reasons\":[\"a DENY-class diff invariant stands\"],\"required_assurance\":\"GOVERNED\",\"trigger\":\"COMPLETION_RUN\",\"verdict\":\"REJECT\",\"verification_run_id\":\"vr-29ccd6f788a27c56\"}\nVerificationRunRecorded: non-passing checks []\nlast events:\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a2096c-9de9-7b61-8394-eef43e947da5\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":2,\"capture_ms\":10,\"checkpoint_id\":\"01a2096d-9468-7d41-8bd4-594c222925b7\",\"epoch\":25,\"event\n  TurnPrepared {\"event_type\":\"TurnPrepared\",\"ordinal\":25,\"plan_version\":2,\"run_id\":\"01a20967-f3ec-7422-9856-640fdff33abf\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":1,\"step_type\":{\"kind\":\"CONTEXT_COMPILE\"},\"turn_id\":\"01a2096d-9479-7ae3-93d1-d8f913e86afe\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"ce1f220f9a1f1ef698b229b803157d7e09d3b69b04e71f5fbf3cfbb551644435\"}\n  ContextPackCompiled {\"context_pack_id\":\"922eed1ea60aca8116b3ffcb8f8c27d99e45f8b62342727feea8bbc4fd312a66\",\"event_type\":\"ContextPackCompiled\"}\n  ToolProjectionSelected {\"dropped\":[],\"event_type\":\"ToolProjectionSelected\",\"leg_role\":\"solver\",\"max_projection_bytes\":32768,\"mode\":\"exec_only\",\"projected\":[\"plan.update\",\"proc.exec\",\"proc.wait\",\"repair.attempt\",\"task.comple\n  CapabilitySnapshotRecorded {\"event_type\":\"CapabilitySnapshotRecorded\",\"snapshot\":{\"config_generation\":\"d86df14f4a53374348f688d7\",\"config_ref\":\"d86df14f4a53374348f688d7e1ac7484bd50b68b2ae091f46f300a27c7cdefba\",\"epoch\":25,\"execut\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":\"ce1f220f9a1f1ef698b229b803157d7e09d3b69b04e71f5fbf3cfbb551644435\",\"ordinal\":2,\"step_type\":{\"kind\":\"MODEL_INVOKE\"},\"turn_id\":\"01a2096d-9479-7ae3-93d1-d8f913e8\n  StepStarted {\"event_type\":\"StepStarted\"}\n  ModelInvocationStarted {\"event_type\":\"ModelInvocationStarted\",\"model_route\":{\"cache_key\":\"1e9233ffdd780f7991987d3a6117663771aafae1800e821adeaeb46f570e96b7\",\"endpoint\":\"openai\",\"max_output_tokens\":16384,\"model\":\"gemini-3.8-f\n  ModelUsageRecorded {\"cached_input_tokens\":28789,\"event_type\":\"ModelUsageRecorded\",\"input_tokens\":31672,\"output_tokens\":33,\"reported\":true,\"route\":{\"endpoint\":\"openai\",\"kind\":\"open_ai\",\"provider_request_id\":null,\"reason\"\n  ModelInvocationCompleted {\"event_type\":\"ModelInvocationCompleted\",\"requested_actions\":true}\n  RoutingAttemptRecorded {\"attempt\":25,\"cache_write_tokens\":0,\"cached_input_tokens\":28789,\"cost_minor\":null,\"event_type\":\"RoutingAttemptRecorded\",\"input_tokens\":31672,\"latency_ms\":4222,\"outcome\":\"SUCCEEDED\",\"output_tokens\":33\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"8fa5ed3649f208d3d1363f5dcae375e5ef15a81f9dcb04cb6e1de0993f2e697a\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":3,\"step_type\":{\"kind\":\"PROCEDURE_RUN\"},\"turn_id\":\"01a2096d-9479-7ae3-93d1-d8f913e86afe\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"363629b803e253972f2ba250fbc3e3fe6eeeeed3b1fe4eb1aa68f1a4c86c1b41\"}\n  TurnVerifying {\"event_type\":\"TurnVerifying\"}\n  TurnCompleted {\"event_type\":\"TurnCompleted\"}\n  CheckpointStarted {\"base_checkpoint_id\":\"01a2096d-9468-7d41-8bd4-594c222925b7\",\"checkpoint_id\":\"01a2096e-8f76-7c63-ae3b-bc33496cd910\",\"epoch\":26,\"event_type\":\"CheckpointStarted\",\"kind\":\"DELTA\",\"reason\":\"turn_boundary\"}\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a2096d-9468-7d41-8bd4-594c222925b7\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":2,\"capture_ms\":10,\"checkpoint_id\":\"01a2096e-8f76-7c63-ae3b-bc33496cd910\",\"epoch\":26,\"event\n  RouteReevaluated {\"boundary\":\"QUALITY\",\"cache_state\":null,\"chosen\":\"openai/gemini-3.8-flash\",\"current\":\"openai/gemini-3.8-flash\",\"decision\":\"STAY\",\"economics_version\":\"economics-1\",\"event_type\":\"RouteReevaluated\",\"pla\n  AgentNodeTransitioned {\"agent_id\":\"01a20967-f3f9-7020-90cc-ecaacd7af753\",\"event_type\":\"AgentNodeTransitioned\",\"from\":\"RUNNING\",\"reason\":\"3 turns without progress\",\"run_id\":\"01a20967-f3ec-7422-9856-640fdff33abf\",\"to\":\"WAITI\n  CapacityTicketReleased {\"event_type\":\"CapacityTicketReleased\",\"holder\":\"run:f0c1713d-cf75-db6c-02e1-2ba213b8bfe7\",\"reason\":\"RELEASED\",\"ticket_id\":\"t-1\"}",
+      "schema_bytes_per_request": [],
+      "state": "NotRun",
+      "trial": {
+        "agent_ms": 0,
+        "cached_input_tokens": 0,
+        "cold_ms": 0,
+        "input_tokens": 0,
+        "model_calls": 0,
+        "normalized_tool_calls": 0,
+        "output_tokens": 0,
+        "repeat": 0,
+        "task": "mutable-default-append-item",
+        "tool_calls": 0,
+        "tool_schema_bytes": 0,
+        "variant": "exec_only",
+        "verified": false
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        16095,
+        16095,
+        16095,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 29440,
+        "cached_input_tokens": 31851,
+        "cold_ms": 0,
+        "input_tokens": 75151,
+        "model_calls": 9,
+        "normalized_tool_calls": 1,
+        "output_tokens": 806,
+        "repeat": 0,
+        "task": "mutable-default-add-tag",
+        "tool_calls": 1,
+        "tool_schema_bytes": 154770,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        18013,
+        18013,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 40019,
+        "cached_input_tokens": 38925,
+        "cold_ms": 0,
+        "input_tokens": 87291,
+        "model_calls": 9,
+        "normalized_tool_calls": 1,
+        "output_tokens": 1009,
+        "repeat": 0,
+        "task": "mutable-default-add-tag",
+        "tool_calls": 1,
+        "tool_schema_bytes": 174183,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": "modbit-cli [\"task\", \"run\", \"--session\", \"9d738aab06ca7941d29c389d3f5f481f\", \"--task\", \"bd7ed8a48210e0441c961114e76c524e\", \"--model\", \"gemini-3.8-flash\", \"--max-turns\", \"40\", \"--wait\"]: run 01a209691a037593812ee4129276386e resumed=false endpoint=openai model=gemini-3.8-flash\ntask state=Waiting wait_reason=Approval run_state=Running\n\nVerificationRunRecorded: non-passing checks []\nVerificationRunRecorded: non-passing checks []\nAcceptanceGateEvaluated: {\"candidate_revision\":2,\"event_type\":\"AcceptanceGateEvaluated\",\"gate_ref\":\"37eb2f4efc01a2a204ff2418646af2d3654073b593e0ca09cd9cbfc6744528a2\",\"gate_version\":\"gate-1\",\"human_required\":false,\"independent_review_required\":true,\"missing_evidence\":[\"independent_review\"],\"realized_risk_ref\":\"8cd97d11cf8c56db2f4bb40df521997a114aae264af7c0ec54a3c977e7005271\",\"reject_reasons\":[\"a DENY-class diff invariant stands\"],\"required_assurance\":\"GOVERNED\",\"trigger\":\"COMPLETION_RUN\",\"verdict\":\"REJECT\",\"verification_run_id\":\"vr-66ca276448f1681b\"}\nVerificationRunRecorded: non-passing checks []\nlast events:\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a20972-dda3-7480-ab1e-241ad90f2637\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":3,\"capture_ms\":12,\"checkpoint_id\":\"01a20972-feaf-7643-890e-ed15430dd24d\",\"epoch\":39,\"event\n  TurnPrepared {\"event_type\":\"TurnPrepared\",\"ordinal\":39,\"plan_version\":4,\"run_id\":\"01a20969-1a03-7593-812e-e4129276386e\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":1,\"step_type\":{\"kind\":\"CONTEXT_COMPILE\"},\"turn_id\":\"01a20972-fec5-7453-9b1e-86c6f84852b9\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"d8996ccc280317e1f1a295b114d870722a395c18daf0eaa2d434e3209bca6fad\"}\n  ContextPackCompiled {\"context_pack_id\":\"d1c77683b913db7a24e96fe55b7650c599c4e9049f169bdb94084f413fb68f04\",\"event_type\":\"ContextPackCompiled\"}\n  ToolProjectionSelected {\"dropped\":[],\"event_type\":\"ToolProjectionSelected\",\"leg_role\":\"solver\",\"max_projection_bytes\":32768,\"mode\":\"exec_only\",\"projected\":[\"plan.update\",\"proc.exec\",\"proc.wait\",\"task.complete\",\"tool.search\"\n  CapabilitySnapshotRecorded {\"event_type\":\"CapabilitySnapshotRecorded\",\"snapshot\":{\"config_generation\":\"d86df14f4a53374348f688d7\",\"config_ref\":\"d86df14f4a53374348f688d7e1ac7484bd50b68b2ae091f46f300a27c7cdefba\",\"epoch\":39,\"execut\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":\"d8996ccc280317e1f1a295b114d870722a395c18daf0eaa2d434e3209bca6fad\",\"ordinal\":2,\"step_type\":{\"kind\":\"MODEL_INVOKE\"},\"turn_id\":\"01a20972-fec5-7453-9b1e-86c6f848\n  StepStarted {\"event_type\":\"StepStarted\"}\n  ModelInvocationStarted {\"event_type\":\"ModelInvocationStarted\",\"model_route\":{\"cache_key\":\"b3febc6da5ff78e3b64b476247f3bbd3eee54b00b8a3810804d430f2a0882900\",\"endpoint\":\"openai\",\"max_output_tokens\":16384,\"model\":\"gemini-3.8-f\n  ModelUsageRecorded {\"cached_input_tokens\":0,\"event_type\":\"ModelUsageRecorded\",\"input_tokens\":52590,\"output_tokens\":32,\"reported\":true,\"route\":{\"endpoint\":\"openai\",\"kind\":\"open_ai\",\"provider_request_id\":null,\"reason\":\"po\n  ModelInvocationCompleted {\"event_type\":\"ModelInvocationCompleted\",\"requested_actions\":true}\n  RoutingAttemptRecorded {\"attempt\":39,\"cache_write_tokens\":0,\"cached_input_tokens\":0,\"cost_minor\":null,\"event_type\":\"RoutingAttemptRecorded\",\"input_tokens\":52590,\"latency_ms\":3756,\"outcome\":\"SUCCEEDED\",\"output_tokens\":32,\"pl\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"d0eb9441d89edc7cfd3f67157406b3644f242fe8023913c01a32a99349f67090\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":3,\"step_type\":{\"kind\":\"PROCEDURE_RUN\"},\"turn_id\":\"01a20972-fec5-7453-9b1e-86c6f84852b9\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"75a69eb3b2043b3f8105cd98f2560edb2b9acda03b8726c922b7ae6b724357d0\"}\n  TurnVerifying {\"event_type\":\"TurnVerifying\"}\n  TurnCompleted {\"event_type\":\"TurnCompleted\"}\n  CheckpointStarted {\"base_checkpoint_id\":\"01a20972-feaf-7643-890e-ed15430dd24d\",\"checkpoint_id\":\"01a20973-f7f1-71b2-a025-f970abd80289\",\"epoch\":40,\"event_type\":\"CheckpointStarted\",\"kind\":\"DELTA\",\"reason\":\"turn_boundary\"}\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a20972-feaf-7643-890e-ed15430dd24d\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":3,\"capture_ms\":9,\"checkpoint_id\":\"01a20973-f7f1-71b2-a025-f970abd80289\",\"epoch\":40,\"event_\n  RouteReevaluated {\"boundary\":\"QUALITY\",\"cache_state\":null,\"chosen\":\"openai/gemini-3.8-flash\",\"current\":\"openai/gemini-3.8-flash\",\"decision\":\"STAY\",\"economics_version\":\"economics-1\",\"event_type\":\"RouteReevaluated\",\"pla\n  AgentNodeTransitioned {\"agent_id\":\"01a20969-1a10-7f83-a07c-97482738d4c4\",\"event_type\":\"AgentNodeTransitioned\",\"from\":\"RUNNING\",\"reason\":\"3 turns without progress\",\"run_id\":\"01a20969-1a03-7593-812e-e4129276386e\",\"to\":\"WAITI\n  CapacityTicketReleased {\"event_type\":\"CapacityTicketReleased\",\"holder\":\"run:bd7ed8a4-8210-e044-1c96-1114e76c524e\",\"reason\":\"RELEASED\",\"ticket_id\":\"t-1\"}",
+      "schema_bytes_per_request": [],
+      "state": "NotRun",
+      "trial": {
+        "agent_ms": 0,
+        "cached_input_tokens": 0,
+        "cold_ms": 0,
+        "input_tokens": 0,
+        "model_calls": 0,
+        "normalized_tool_calls": 0,
+        "output_tokens": 0,
+        "repeat": 0,
+        "task": "mutable-default-add-tag",
+        "tool_calls": 0,
+        "tool_schema_bytes": 0,
+        "variant": "exec_only",
+        "verified": false
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        16095,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 36795,
+        "cached_input_tokens": 38474,
+        "cold_ms": 0,
+        "input_tokens": 85059,
+        "model_calls": 9,
+        "normalized_tool_calls": 1,
+        "output_tokens": 912,
+        "repeat": 0,
+        "task": "mutable-default-collect",
+        "tool_calls": 1,
+        "tool_schema_bytes": 158736,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        18013,
+        18013,
+        18013,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 27871,
+        "cached_input_tokens": 31730,
+        "cold_ms": 0,
+        "input_tokens": 69478,
+        "model_calls": 8,
+        "normalized_tool_calls": 1,
+        "output_tokens": 676,
+        "repeat": 0,
+        "task": "mutable-default-collect",
+        "tool_calls": 1,
+        "tool_schema_bytes": 152148,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": "modbit-cli [\"task\", \"run\", \"--session\", \"873f1d5737fe3b78858459c2232dc679\", \"--task\", \"06253f64e030fcfc8614e4223f2eb422\", \"--model\", \"gemini-3.8-flash\", \"--max-turns\", \"40\", \"--wait\"]: run 01a2096c8c4d73628df8f6f8b3959e29 resumed=false endpoint=openai model=gemini-3.8-flash\ntask state=Waiting wait_reason=Approval run_state=Running\n\nVerificationRunRecorded: non-passing checks []\nVerificationRunRecorded: non-passing checks []\nAcceptanceGateEvaluated: {\"candidate_revision\":2,\"event_type\":\"AcceptanceGateEvaluated\",\"gate_ref\":\"55f67109c91905d2f112a720cc152cf641b61ac56ab501207d2f46e96b919342\",\"gate_version\":\"gate-1\",\"human_required\":false,\"independent_review_required\":true,\"missing_evidence\":[\"independent_review\"],\"realized_risk_ref\":\"661163a17cbd75a9fbc8bf619e315be77eddb7aee4ec3fd3a590b224e051a238\",\"reject_reasons\":[\"a DENY-class diff invariant stands\"],\"required_assurance\":\"GOVERNED\",\"trigger\":\"COMPLETION_RUN\",\"verdict\":\"REJECT\",\"verification_run_id\":\"vr-adb2dbc80e9ec8a2\"}\nlast events:\n  CheckpointCommitted {\"base_checkpoint_id\":null,\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":2,\"capture_ms\":10,\"checkpoint_id\":\"01a2096f-0a45-7b51-bb3f-085f701bfb41\",\"epoch\":10,\"event_offset\":291,\"event_type\":\"Checkpo\n  TurnPrepared {\"event_type\":\"TurnPrepared\",\"ordinal\":10,\"plan_version\":2,\"run_id\":\"01a2096c-8c4d-7362-8df8-f6f8b3959e29\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":1,\"step_type\":{\"kind\":\"CONTEXT_COMPILE\"},\"turn_id\":\"01a2096f-0a56-7cf3-9f3e-93625a6f802e\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"6a25e069dec7575fb37362a1bd76ec61676e88f37cf16eedf6d9cab9f72a8a24\"}\n  ContextPackCompiled {\"context_pack_id\":\"14a360cb4ab4b6089ab3e298c163cee0da49fbf63169170f17a943f4aa114436\",\"event_type\":\"ContextPackCompiled\"}\n  ToolProjectionSelected {\"dropped\":[],\"event_type\":\"ToolProjectionSelected\",\"leg_role\":\"solver\",\"max_projection_bytes\":32768,\"mode\":\"exec_only\",\"projected\":[\"plan.update\",\"proc.exec\",\"proc.wait\",\"task.complete\",\"tool.search\"\n  CapabilitySnapshotRecorded {\"event_type\":\"CapabilitySnapshotRecorded\",\"snapshot\":{\"config_generation\":\"d86df14f4a53374348f688d7\",\"config_ref\":\"d86df14f4a53374348f688d7e1ac7484bd50b68b2ae091f46f300a27c7cdefba\",\"epoch\":10,\"execut\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":\"6a25e069dec7575fb37362a1bd76ec61676e88f37cf16eedf6d9cab9f72a8a24\",\"ordinal\":2,\"step_type\":{\"kind\":\"MODEL_INVOKE\"},\"turn_id\":\"01a2096f-0a56-7cf3-9f3e-93625a6f\n  StepStarted {\"event_type\":\"StepStarted\"}\n  ModelInvocationStarted {\"event_type\":\"ModelInvocationStarted\",\"model_route\":{\"cache_key\":\"36ec585a253413c72d9f3470f3f9d2883c45c46ae24c11c7876b7c47ec4055a3\",\"endpoint\":\"openai\",\"max_output_tokens\":16384,\"model\":\"gemini-3.8-f\n  ModelUsageRecorded {\"cached_input_tokens\":7130,\"event_type\":\"ModelUsageRecorded\",\"input_tokens\":10503,\"output_tokens\":42,\"reported\":true,\"route\":{\"endpoint\":\"openai\",\"kind\":\"open_ai\",\"provider_request_id\":null,\"reason\":\n  ModelInvocationCompleted {\"event_type\":\"ModelInvocationCompleted\",\"requested_actions\":true}\n  RoutingAttemptRecorded {\"attempt\":10,\"cache_write_tokens\":0,\"cached_input_tokens\":7130,\"cost_minor\":null,\"event_type\":\"RoutingAttemptRecorded\",\"input_tokens\":10503,\"latency_ms\":3798,\"outcome\":\"SUCCEEDED\",\"output_tokens\":42,\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"681542c46916d590ac9e1edd857be4d1ba4c071653c71f77da5ffb95b7cb9691\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":3,\"step_type\":{\"kind\":\"PROCEDURE_RUN\"},\"turn_id\":\"01a2096f-0a56-7cf3-9f3e-93625a6f802e\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"02d02e5bdab2f8af007bd2d7820a4a4c115037d38bf0a72f46b7a4803ab09fc6\"}\n  TurnVerifying {\"event_type\":\"TurnVerifying\"}\n  TurnCompleted {\"event_type\":\"TurnCompleted\"}\n  CheckpointStarted {\"base_checkpoint_id\":\"01a2096f-0a45-7b51-bb3f-085f701bfb41\",\"checkpoint_id\":\"01a2096f-1d2d-7d90-99a1-85c6d1539ee0\",\"epoch\":11,\"event_type\":\"CheckpointStarted\",\"kind\":\"DELTA\",\"reason\":\"turn_boundary\"}\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a2096f-0a45-7b51-bb3f-085f701bfb41\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":2,\"capture_ms\":8,\"checkpoint_id\":\"01a2096f-1d2d-7d90-99a1-85c6d1539ee0\",\"epoch\":11,\"event_\n  RouteReevaluated {\"boundary\":\"QUALITY\",\"cache_state\":null,\"chosen\":\"openai/gemini-3.8-flash\",\"current\":\"openai/gemini-3.8-flash\",\"decision\":\"STAY\",\"economics_version\":\"economics-1\",\"event_type\":\"RouteReevaluated\",\"pla\n  AgentNodeTransitioned {\"agent_id\":\"01a2096c-8c5a-7232-90e1-67f1812ab155\",\"event_type\":\"AgentNodeTransitioned\",\"from\":\"RUNNING\",\"reason\":\"3 turns without progress\",\"run_id\":\"01a2096c-8c4d-7362-8df8-f6f8b3959e29\",\"to\":\"WAITI\n  CapacityTicketReleased {\"event_type\":\"CapacityTicketReleased\",\"holder\":\"run:06253f64-e030-fcfc-8614-e4223f2eb422\",\"reason\":\"RELEASED\",\"ticket_id\":\"t-1\"}",
+      "schema_bytes_per_request": [],
+      "state": "NotRun",
+      "trial": {
+        "agent_ms": 0,
+        "cached_input_tokens": 0,
+        "cold_ms": 0,
+        "input_tokens": 0,
+        "model_calls": 0,
+        "normalized_tool_calls": 0,
+        "output_tokens": 0,
+        "repeat": 0,
+        "task": "mutable-default-collect",
+        "tool_calls": 0,
+        "tool_schema_bytes": 0,
+        "variant": "exec_only",
+        "verified": false
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        16095,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 31215,
+        "cached_input_tokens": 19845,
+        "cold_ms": 0,
+        "input_tokens": 62036,
+        "model_calls": 7,
+        "normalized_tool_calls": 1,
+        "output_tokens": 763,
+        "repeat": 0,
+        "task": "config-tax-rate-key",
+        "tool_calls": 1,
+        "tool_schema_bytes": 122580,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        18013,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 34721,
+        "cached_input_tokens": 24543,
+        "cold_ms": 0,
+        "input_tokens": 69197,
+        "model_calls": 7,
+        "normalized_tool_calls": 1,
+        "output_tokens": 942,
+        "repeat": 0,
+        "task": "config-tax-rate-key",
+        "tool_calls": 1,
+        "tool_schema_bytes": 136146,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": null,
+      "schema_bytes_per_request": [
+        8115,
+        8517,
+        8517,
+        8517,
+        8517,
+        8517
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 24654,
+        "cached_input_tokens": 8954,
+        "cold_ms": 0,
+        "input_tokens": 35797,
+        "model_calls": 6,
+        "normalized_tool_calls": 1,
+        "output_tokens": 906,
+        "repeat": 0,
+        "task": "config-tax-rate-key",
+        "tool_calls": 1,
+        "tool_schema_bytes": 50700,
+        "variant": "exec_only",
+        "verified": true
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 16306,
+        "cached_input_tokens": 11622,
+        "cold_ms": 0,
+        "input_tokens": 39563,
+        "model_calls": 5,
+        "normalized_tool_calls": 1,
+        "output_tokens": 578,
+        "repeat": 0,
+        "task": "config-retries-count",
+        "tool_calls": 1,
+        "tool_schema_bytes": 88407,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 39009,
+        "cached_input_tokens": 44996,
+        "cold_ms": 0,
+        "input_tokens": 87489,
+        "model_calls": 9,
+        "normalized_tool_calls": 1,
+        "output_tokens": 1234,
+        "repeat": 0,
+        "task": "config-retries-count",
+        "tool_calls": 1,
+        "tool_schema_bytes": 178205,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": "modbit-cli [\"task\", \"run\", \"--session\", \"b3659f2008f1a876d1be25d726f4f038\", \"--task\", \"ac633e806b54efd7dcf1518303837eb8\", \"--model\", \"gemini-3.8-flash\", \"--max-turns\", \"40\", \"--wait\"]: run 01a2096fc4e27001b128b96c228cc24c resumed=false endpoint=openai model=gemini-3.8-flash\ntask state=Waiting wait_reason=Approval run_state=Running\n\nVerificationRunRecorded: non-passing checks []\nVerificationRunRecorded: non-passing checks []\nAcceptanceGateEvaluated: {\"candidate_revision\":2,\"event_type\":\"AcceptanceGateEvaluated\",\"gate_ref\":\"b04d37b8435138e409454a439e018ba477a9dea150e173154d732381acec918d\",\"gate_version\":\"gate-1\",\"human_required\":false,\"independent_review_required\":true,\"missing_evidence\":[\"independent_review\"],\"realized_risk_ref\":\"5c0ceee216fa98e26c7fe9147af6c0cbba0bc54fc761c914894cdfebfd2f7351\",\"reject_reasons\":[\"a DENY-class diff invariant stands\"],\"required_assurance\":\"GOVERNED\",\"trigger\":\"COMPLETION_RUN\",\"verdict\":\"REJECT\",\"verification_run_id\":\"vr-b900c7f453a9c8e2\"}\nlast events:\n  CheckpointStarted {\"base_checkpoint_id\":\"01a20977-5dfd-7f12-b85a-887164762c6f\",\"checkpoint_id\":\"01a20977-6df8-73b2-bdf2-7e78b5c35610\",\"epoch\":40,\"event_type\":\"CheckpointStarted\",\"kind\":\"DELTA\",\"reason\":\"turn_boundary\"}\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a20977-5dfd-7f12-b85a-887164762c6f\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":2,\"capture_ms\":9,\"checkpoint_id\":\"01a20977-6df8-73b2-bdf2-7e78b5c35610\",\"epoch\":40,\"event_\n  TurnPrepared {\"event_type\":\"TurnPrepared\",\"ordinal\":40,\"plan_version\":2,\"run_id\":\"01a2096f-c4e2-7001-b128-b96c228cc24c\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":1,\"step_type\":{\"kind\":\"CONTEXT_COMPILE\"},\"turn_id\":\"01a20977-6e0b-7a23-9758-20b3d011fbf3\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"4d16a4e63486f705bd5a4b95abb646f64705716fc4845458ec4a7c8e73c1c8bf\"}\n  ContextPackCompiled {\"context_pack_id\":\"b4026d9e40893f640d8c1d5b51a695af3c620028adec7d76385cc45a6bcd52d5\",\"event_type\":\"ContextPackCompiled\"}\n  ToolProjectionSelected {\"dropped\":[],\"event_type\":\"ToolProjectionSelected\",\"leg_role\":\"solver\",\"max_projection_bytes\":32768,\"mode\":\"exec_only\",\"projected\":[\"plan.update\",\"proc.exec\",\"proc.wait\",\"task.complete\",\"tool.search\"\n  CapabilitySnapshotRecorded {\"event_type\":\"CapabilitySnapshotRecorded\",\"snapshot\":{\"config_generation\":\"d86df14f4a53374348f688d7\",\"config_ref\":\"d86df14f4a53374348f688d7e1ac7484bd50b68b2ae091f46f300a27c7cdefba\",\"epoch\":40,\"execut\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":\"4d16a4e63486f705bd5a4b95abb646f64705716fc4845458ec4a7c8e73c1c8bf\",\"ordinal\":2,\"step_type\":{\"kind\":\"MODEL_INVOKE\"},\"turn_id\":\"01a20977-6e0b-7a23-9758-20b3d011\n  StepStarted {\"event_type\":\"StepStarted\"}\n  ModelInvocationStarted {\"event_type\":\"ModelInvocationStarted\",\"model_route\":{\"cache_key\":\"832d0b270fbd3b6e7d0056df6f3cf1d826c94cedac8deb76881782aff2c64121\",\"endpoint\":\"openai\",\"max_output_tokens\":16384,\"model\":\"gemini-3.8-f\n  ModelUsageRecorded {\"cached_input_tokens\":63479,\"event_type\":\"ModelUsageRecorded\",\"input_tokens\":68920,\"output_tokens\":164,\"reported\":true,\"route\":{\"endpoint\":\"openai\",\"kind\":\"open_ai\",\"provider_request_id\":null,\"reason\n  ModelInvocationCompleted {\"event_type\":\"ModelInvocationCompleted\",\"requested_actions\":true}\n  RoutingAttemptRecorded {\"attempt\":40,\"cache_write_tokens\":0,\"cached_input_tokens\":63479,\"cost_minor\":null,\"event_type\":\"RoutingAttemptRecorded\",\"input_tokens\":68920,\"latency_ms\":5270,\"outcome\":\"SUCCEEDED\",\"output_tokens\":16\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"5e05bb0e0e62bcd58a5f2fcc775a00c36270dab5c7cf20e4728f2fb7ac06476f\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":3,\"step_type\":{\"kind\":\"SELF_REVIEW\"},\"turn_id\":\"01a20977-6e0b-7a23-9758-20b3d011fbf3\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepFailed {\"event_type\":\"StepFailed\",\"failure_code\":\"PROGRAM_RUNNING\",\"output_ref\":\"a6eaa709061fb138ae35bc3d3288b86e017a10e42df4e757c88953b1c3de2bb5\"}\n  TurnVerifying {\"event_type\":\"TurnVerifying\"}\n  TurnCompleted {\"event_type\":\"TurnCompleted\"}\n  CheckpointStarted {\"base_checkpoint_id\":\"01a20977-6df8-73b2-bdf2-7e78b5c35610\",\"checkpoint_id\":\"01a20977-82c2-7c00-957d-1e05e15e4660\",\"epoch\":41,\"event_type\":\"CheckpointStarted\",\"kind\":\"DELTA\",\"reason\":\"turn_boundary\"}\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a20977-6df8-73b2-bdf2-7e78b5c35610\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":2,\"capture_ms\":10,\"checkpoint_id\":\"01a20977-82c2-7c00-957d-1e05e15e4660\",\"epoch\":41,\"event\n  AgentNodeTransitioned {\"agent_id\":\"01a2096f-c4f0-78e3-9551-63e94a6cd3b9\",\"event_type\":\"AgentNodeTransitioned\",\"from\":\"RUNNING\",\"reason\":\"budget exhausted: max_turns 40/40 (BUDGET_EXHAUSTED)\",\"run_id\":\"01a2096f-c4e2-7001-b1\n  CapacityTicketReleased {\"event_type\":\"CapacityTicketReleased\",\"holder\":\"run:ac633e80-6b54-efd7-dcf1-518303837eb8\",\"reason\":\"RELEASED\",\"ticket_id\":\"t-1\"}",
+      "schema_bytes_per_request": [],
+      "state": "NotRun",
+      "trial": {
+        "agent_ms": 0,
+        "cached_input_tokens": 0,
+        "cold_ms": 0,
+        "input_tokens": 0,
+        "model_calls": 0,
+        "normalized_tool_calls": 0,
+        "output_tokens": 0,
+        "repeat": 0,
+        "task": "config-retries-count",
+        "tool_calls": 0,
+        "tool_schema_bytes": 0,
+        "variant": "exec_only",
+        "verified": false
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        16095,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 59490,
+        "cached_input_tokens": 67710,
+        "cold_ms": 0,
+        "input_tokens": 118626,
+        "model_calls": 11,
+        "normalized_tool_calls": 1,
+        "output_tokens": 1329,
+        "repeat": 0,
+        "task": "config-timeout-units",
+        "tool_calls": 1,
+        "tool_schema_bytes": 194892,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        18013,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 40083,
+        "cached_input_tokens": 43096,
+        "cold_ms": 0,
+        "input_tokens": 92251,
+        "model_calls": 9,
+        "normalized_tool_calls": 1,
+        "output_tokens": 1013,
+        "repeat": 0,
+        "task": "config-timeout-units",
+        "tool_calls": 1,
+        "tool_schema_bytes": 176194,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": "modbit-cli [\"task\", \"run\", \"--session\", \"4714b7612c9eaea7a653c53ffea27d5e\", \"--task\", \"5e57b2a0864da0d34687cbccd188938b\", \"--model\", \"gemini-3.8-flash\", \"--max-turns\", \"40\", \"--wait\"]: run 01a20971bda67dc09c3a29b08596585b resumed=false endpoint=openai model=gemini-3.8-flash\ntask state=Waiting wait_reason=Approval run_state=Running\n\nVerificationRunRecorded: non-passing checks []\nVerificationRunRecorded: non-passing checks []\nAcceptanceGateEvaluated: {\"candidate_revision\":2,\"event_type\":\"AcceptanceGateEvaluated\",\"gate_ref\":\"d645edc0c5da228d10bf8c340f309d4e2f54ed96294f089684cf4bc705619c87\",\"gate_version\":\"gate-1\",\"human_required\":false,\"independent_review_required\":true,\"missing_evidence\":[\"independent_review\"],\"realized_risk_ref\":\"d6d5fbc445a4b063db2a358cfe74583bd3381a4767d1050c16bc942f54827b17\",\"reject_reasons\":[\"a DENY-class diff invariant stands\"],\"required_assurance\":\"GOVERNED\",\"trigger\":\"COMPLETION_RUN\",\"verdict\":\"REJECT\",\"verification_run_id\":\"vr-273ee7d3ea96544d\"}\nVerificationRunRecorded: non-passing checks []\nlast events:\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a20978-6141-7792-a0a0-5a790d5ac77c\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":1,\"capture_ms\":10,\"checkpoint_id\":\"01a20978-6c33-7b80-ba40-2a6e4fcfd5cb\",\"epoch\":33,\"event\n  TurnPrepared {\"event_type\":\"TurnPrepared\",\"ordinal\":33,\"plan_version\":2,\"run_id\":\"01a20971-bda6-7dc0-9c3a-29b08596585b\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":1,\"step_type\":{\"kind\":\"CONTEXT_COMPILE\"},\"turn_id\":\"01a20978-6c46-7b23-ab0b-fa4504862ec0\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"8ebaf34c09c0830115e061cd676c1c6d7ba7ff7f62fca93f4054c3915112b327\"}\n  ContextPackCompiled {\"context_pack_id\":\"69c726b55370bdf98a7613163e79335ab511574c55ad18916b832d27878e6406\",\"event_type\":\"ContextPackCompiled\"}\n  ToolProjectionSelected {\"dropped\":[],\"event_type\":\"ToolProjectionSelected\",\"leg_role\":\"solver\",\"max_projection_bytes\":32768,\"mode\":\"exec_only\",\"projected\":[\"plan.update\",\"proc.exec\",\"proc.wait\",\"task.complete\",\"tool.search\"\n  CapabilitySnapshotRecorded {\"event_type\":\"CapabilitySnapshotRecorded\",\"snapshot\":{\"config_generation\":\"d86df14f4a53374348f688d7\",\"config_ref\":\"d86df14f4a53374348f688d7e1ac7484bd50b68b2ae091f46f300a27c7cdefba\",\"epoch\":33,\"execut\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":\"8ebaf34c09c0830115e061cd676c1c6d7ba7ff7f62fca93f4054c3915112b327\",\"ordinal\":2,\"step_type\":{\"kind\":\"MODEL_INVOKE\"},\"turn_id\":\"01a20978-6c46-7b23-ab0b-fa450486\n  StepStarted {\"event_type\":\"StepStarted\"}\n  ModelInvocationStarted {\"event_type\":\"ModelInvocationStarted\",\"model_route\":{\"cache_key\":\"b715e370594c9ed532babd8c9125333463d867ceb45008b72b8005646c65a3c2\",\"endpoint\":\"openai\",\"max_output_tokens\":16384,\"model\":\"gemini-3.8-f\n  ModelUsageRecorded {\"cached_input_tokens\":40249,\"event_type\":\"ModelUsageRecorded\",\"input_tokens\":43144,\"output_tokens\":111,\"reported\":true,\"route\":{\"endpoint\":\"openai\",\"kind\":\"open_ai\",\"provider_request_id\":null,\"reason\n  ModelInvocationCompleted {\"event_type\":\"ModelInvocationCompleted\",\"requested_actions\":true}\n  RoutingAttemptRecorded {\"attempt\":33,\"cache_write_tokens\":0,\"cached_input_tokens\":40249,\"cost_minor\":null,\"event_type\":\"RoutingAttemptRecorded\",\"input_tokens\":43144,\"latency_ms\":3776,\"outcome\":\"SUCCEEDED\",\"output_tokens\":11\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"44269989dad573779c625ec44472e9f1ae8cb6e97c6e830cac5c4dc1ac43d8dd\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":3,\"step_type\":{\"kind\":\"SELF_REVIEW\"},\"turn_id\":\"01a20978-6c46-7b23-ab0b-fa4504862ec0\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepFailed {\"event_type\":\"StepFailed\",\"failure_code\":\"PROGRAM_RUNNING\",\"output_ref\":\"dc09e80fe563b932b9d5a4826a6f78763b8ab86d9a6041449eb7e24837c77277\"}\n  TurnVerifying {\"event_type\":\"TurnVerifying\"}\n  TurnCompleted {\"event_type\":\"TurnCompleted\"}\n  CheckpointStarted {\"base_checkpoint_id\":\"01a20978-6c33-7b80-ba40-2a6e4fcfd5cb\",\"checkpoint_id\":\"01a20978-7b23-7d01-9d84-74bbec1185cc\",\"epoch\":34,\"event_type\":\"CheckpointStarted\",\"kind\":\"DELTA\",\"reason\":\"turn_boundary\"}\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a20978-6c33-7b80-ba40-2a6e4fcfd5cb\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":1,\"capture_ms\":11,\"checkpoint_id\":\"01a20978-7b23-7d01-9d84-74bbec1185cc\",\"epoch\":34,\"event\n  RouteReevaluated {\"boundary\":\"QUALITY\",\"cache_state\":null,\"chosen\":\"openai/gemini-3.8-flash\",\"current\":\"openai/gemini-3.8-flash\",\"decision\":\"STAY\",\"economics_version\":\"economics-1\",\"event_type\":\"RouteReevaluated\",\"pla\n  AgentNodeTransitioned {\"agent_id\":\"01a20971-bdb4-7791-8e48-58ba940fcfbd\",\"event_type\":\"AgentNodeTransitioned\",\"from\":\"RUNNING\",\"reason\":\"3 turns without progress\",\"run_id\":\"01a20971-bda6-7dc0-9c3a-29b08596585b\",\"to\":\"WAITI\n  CapacityTicketReleased {\"event_type\":\"CapacityTicketReleased\",\"holder\":\"run:5e57b2a0-864d-a0d3-4687-cbccd188938b\",\"reason\":\"RELEASED\",\"ticket_id\":\"t-1\"}",
+      "schema_bytes_per_request": [],
+      "state": "NotRun",
+      "trial": {
+        "agent_ms": 0,
+        "cached_input_tokens": 0,
+        "cold_ms": 0,
+        "input_tokens": 0,
+        "model_calls": 0,
+        "normalized_tool_calls": 0,
+        "output_tokens": 0,
+        "repeat": 0,
+        "task": "config-timeout-units",
+        "tool_calls": 0,
+        "tool_schema_bytes": 0,
+        "variant": "exec_only",
+        "verified": false
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        16095,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 23363,
+        "cached_input_tokens": 14602,
+        "cold_ms": 0,
+        "input_tokens": 52876,
+        "model_calls": 6,
+        "normalized_tool_calls": 1,
+        "output_tokens": 773,
+        "repeat": 0,
+        "task": "sort-top-scores",
+        "tool_calls": 1,
+        "tool_schema_bytes": 104502,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 52428,
+        "cached_input_tokens": 59664,
+        "cold_ms": 0,
+        "input_tokens": 111541,
+        "model_calls": 9,
+        "normalized_tool_calls": 1,
+        "output_tokens": 2080,
+        "repeat": 0,
+        "task": "sort-top-scores",
+        "tool_calls": 1,
+        "tool_schema_bytes": 178205,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": "modbit-cli [\"task\", \"run\", \"--session\", \"f8293c95f3ec68e6752f767a250d6428\", \"--task\", \"dc940441a0545a6fd159901953b68e7e\", \"--model\", \"gemini-3.8-flash\", \"--max-turns\", \"40\", \"--wait\"]: run 01a209736ab179b28bebd134deb3aa2e resumed=false endpoint=openai model=gemini-3.8-flash\ntask state=Waiting wait_reason=Approval run_state=Running\n\nVerificationRunRecorded: non-passing checks []\nVerificationRunRecorded: non-passing checks []\nAcceptanceGateEvaluated: {\"candidate_revision\":2,\"event_type\":\"AcceptanceGateEvaluated\",\"gate_ref\":\"242fadbe03c0bfacaa36cce10a0ab03cf7ffcff550dae61ea097b1dd8e77f418\",\"gate_version\":\"gate-1\",\"human_required\":false,\"independent_review_required\":true,\"missing_evidence\":[\"independent_review\"],\"realized_risk_ref\":\"ad0c3cf24156a83988a652066cd1fc43230d0fd19e0426a56bc5f919f6430e70\",\"reject_reasons\":[\"a DENY-class diff invariant stands\"],\"required_assurance\":\"GOVERNED\",\"trigger\":\"COMPLETION_RUN\",\"verdict\":\"REJECT\",\"verification_run_id\":\"vr-e70e1d0a9ef85dc1\"}\nlast events:\n  ProgramEnded {\"budget_exhausted\":null,\"elapsed_ms\":70,\"event_type\":\"ProgramEnded\",\"handle\":\"call_6404742206240631761\",\"interrupt_polls\":1,\"outcome_ref\":\"c784b2c439b5ccc844d10ebab6c8a7604dc2d683eb5fc557c4d39d31b031\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":3,\"step_type\":{\"kind\":\"PROCEDURE_RUN\"},\"turn_id\":\"01a20977-e6f6-7cd1-8d7a-bcb045f5bb62\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"6dcb5de5d955270578ef99ef10a1a17dab14588928aee35e5f8873321f2eb881\"}\n  TurnVerifying {\"event_type\":\"TurnVerifying\"}\n  TurnCompleted {\"event_type\":\"TurnCompleted\"}\n  CheckpointStarted {\"base_checkpoint_id\":\"01a20977-e6e5-7d40-888d-5743d07b184b\",\"checkpoint_id\":\"01a20977-f5b1-7dd0-9191-34e7f8949667\",\"epoch\":27,\"event_type\":\"CheckpointStarted\",\"kind\":\"DELTA\",\"reason\":\"turn_boundary\"}\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a20977-e6e5-7d40-888d-5743d07b184b\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":2,\"capture_ms\":10,\"checkpoint_id\":\"01a20977-f5b1-7dd0-9191-34e7f8949667\",\"epoch\":27,\"event\n  TurnPrepared {\"event_type\":\"TurnPrepared\",\"ordinal\":27,\"plan_version\":2,\"run_id\":\"01a20973-6ab1-79b2-8beb-d134deb3aa2e\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":1,\"step_type\":{\"kind\":\"CONTEXT_COMPILE\"},\"turn_id\":\"01a20977-f5c3-74d3-9832-50784766ffd3\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"a5df678947e18e5c8db287b6a90b01a1a6b05202c4eac64b81d35cc1482ce23a\"}\n  ContextPackCompiled {\"context_pack_id\":\"f89f2758ca0886a5b82300c863334ccd618152c039d0966dd21e89ea4a38961d\",\"event_type\":\"ContextPackCompiled\"}\n  ToolProjectionSelected {\"dropped\":[],\"event_type\":\"ToolProjectionSelected\",\"leg_role\":\"solver\",\"max_projection_bytes\":32768,\"mode\":\"exec_only\",\"projected\":[\"plan.update\",\"proc.exec\",\"proc.wait\",\"task.complete\",\"tool.search\"\n  CapabilitySnapshotRecorded {\"event_type\":\"CapabilitySnapshotRecorded\",\"snapshot\":{\"config_generation\":\"d86df14f4a53374348f688d7\",\"config_ref\":\"d86df14f4a53374348f688d7e1ac7484bd50b68b2ae091f46f300a27c7cdefba\",\"epoch\":27,\"execut\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":\"a5df678947e18e5c8db287b6a90b01a1a6b05202c4eac64b81d35cc1482ce23a\",\"ordinal\":2,\"step_type\":{\"kind\":\"MODEL_INVOKE\"},\"turn_id\":\"01a20977-f5c3-74d3-9832-50784766\n  StepStarted {\"event_type\":\"StepStarted\"}\n  ModelInvocationStarted {\"event_type\":\"ModelInvocationStarted\",\"model_route\":{\"cache_key\":\"640e414e02fdef0718b27a48824d31a9427042b2da91dd4e9b49eec40b23d288\",\"endpoint\":\"openai\",\"max_output_tokens\":16384,\"model\":\"gemini-3.8-f\n  ModelUsageRecorded {\"cached_input_tokens\":0,\"event_type\":\"ModelUsageRecorded\",\"input_tokens\":0,\"output_tokens\":0,\"reported\":false,\"route\":{\"endpoint\":\"openai\",\"kind\":\"open_ai\",\"provider_request_id\":null,\"reason\":\"policy\n  RoutingAttemptRecorded {\"attempt\":27,\"cache_write_tokens\":null,\"cached_input_tokens\":null,\"cost_minor\":null,\"event_type\":\"RoutingAttemptRecorded\",\"input_tokens\":null,\"latency_ms\":2645,\"outcome\":\"FAILED\",\"output_tokens\":null\n  StepFailed {\"event_type\":\"StepFailed\",\"failure_code\":\"RATE_LIMITED\",\"output_ref\":null}\n  TurnFailed {\"event_type\":\"TurnFailed\",\"failure_code\":\"RATE_LIMITED\"}\n  RouteReevaluated {\"boundary\":\"PROVIDER\",\"cache_state\":null,\"chosen\":\"openai/gemini-3.8-flash\",\"current\":\"openai/gemini-3.8-flash\",\"decision\":\"STAY\",\"economics_version\":\"economics-1\",\"event_type\":\"RouteReevaluated\",\"pl\n  AgentNodeTransitioned {\"agent_id\":\"01a20973-6abe-7e80-a643-72305e1ca902\",\"event_type\":\"AgentNodeTransitioned\",\"from\":\"RUNNING\",\"reason\":\"provider failure RATE_LIMITED\",\"run_id\":\"01a20973-6ab1-79b2-8beb-d134deb3aa2e\",\"to\":\"\n  CapacityTicketReleased {\"event_type\":\"CapacityTicketReleased\",\"holder\":\"run:dc940441-a054-5a6f-d159-901953b68e7e\",\"reason\":\"RELEASED\",\"ticket_id\":\"t-1\"}",
+      "schema_bytes_per_request": [],
+      "state": "NotRun",
+      "trial": {
+        "agent_ms": 0,
+        "cached_input_tokens": 0,
+        "cold_ms": 0,
+        "input_tokens": 0,
+        "model_calls": 0,
+        "normalized_tool_calls": 0,
+        "output_tokens": 0,
+        "repeat": 0,
+        "task": "sort-top-scores",
+        "tool_calls": 0,
+        "tool_schema_bytes": 0,
+        "variant": "exec_only",
+        "verified": false
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 67738,
+        "cached_input_tokens": 63497,
+        "cold_ms": 0,
+        "input_tokens": 111555,
+        "model_calls": 11,
+        "normalized_tool_calls": 1,
+        "output_tokens": 1640,
+        "repeat": 0,
+        "task": "sort-oldest-first",
+        "tool_calls": 1,
+        "tool_schema_bytes": 196875,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 45397,
+        "cached_input_tokens": 44574,
+        "cold_ms": 0,
+        "input_tokens": 90030,
+        "model_calls": 8,
+        "normalized_tool_calls": 1,
+        "output_tokens": 1429,
+        "repeat": 0,
+        "task": "sort-oldest-first",
+        "tool_calls": 1,
+        "tool_schema_bytes": 158181,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": "modbit-cli [\"task\", \"run\", \"--session\", \"6622732d9aab0a586ab6f04a764cddda\", \"--task\", \"4e27008d7c26c0cc0a90368a859f4d4a\", \"--model\", \"gemini-3.8-flash\", \"--max-turns\", \"40\", \"--wait\"]: run 01a20975ba61775296fb56a0c4b6e7fe resumed=false endpoint=openai model=gemini-3.8-flash\ntask state=Waiting wait_reason=Approval run_state=Running\n\nVerificationRunRecorded: non-passing checks []\nVerificationRunRecorded: non-passing checks []\nAcceptanceGateEvaluated: {\"candidate_revision\":2,\"event_type\":\"AcceptanceGateEvaluated\",\"gate_ref\":\"1918cff812d12eaf5f37567b520a052af2dd5bcf3f57f0523e79dfb8ed126f1c\",\"gate_version\":\"gate-1\",\"human_required\":false,\"independent_review_required\":true,\"missing_evidence\":[\"independent_review\"],\"realized_risk_ref\":\"89ec155626e6661cdc183c8af0a7bafbccab40e8f337899f7e6dd16e98eef59a\",\"reject_reasons\":[\"a DENY-class diff invariant stands\"],\"required_assurance\":\"GOVERNED\",\"trigger\":\"COMPLETION_RUN\",\"verdict\":\"REJECT\",\"verification_run_id\":\"vr-b5fe4fde0df81b28\"}\nlast events:\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"51e35bf33e8dbbd1303c038c1caa7f403585ba4cc00f2fc3c2e680e436533a83\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":3,\"step_type\":{\"kind\":\"PROCEDURE_RUN\"},\"turn_id\":\"01a20977-0474-7d22-8fbd-d62a64425c4d\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"44c254b2a59c6f1914ddb8b7f6aa5a943683c0c06a9aa4c158d3e692b5d1e4e0\"}\n  TurnVerifying {\"event_type\":\"TurnVerifying\"}\n  TurnCompleted {\"event_type\":\"TurnCompleted\"}\n  CheckpointStarted {\"base_checkpoint_id\":\"01a20977-0463-72f2-b6ef-d94b1139b000\",\"checkpoint_id\":\"01a20977-f784-7733-8c3e-98bd7f9fd8ec\",\"epoch\":17,\"event_type\":\"CheckpointStarted\",\"kind\":\"DELTA\",\"reason\":\"turn_boundary\"}\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a20977-0463-72f2-b6ef-d94b1139b000\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":2,\"capture_ms\":10,\"checkpoint_id\":\"01a20977-f784-7733-8c3e-98bd7f9fd8ec\",\"epoch\":17,\"event\n  TurnPrepared {\"event_type\":\"TurnPrepared\",\"ordinal\":17,\"plan_version\":2,\"run_id\":\"01a20975-ba61-7752-96fb-56a0c4b6e7fe\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":1,\"step_type\":{\"kind\":\"CONTEXT_COMPILE\"},\"turn_id\":\"01a20977-f796-7131-b729-81c6558be391\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"e801a8f99d18e663f5aa2a2ba089d7471add7799cb7719ffb8c1d4918e9e9431\"}\n  ContextPackCompiled {\"context_pack_id\":\"64aeee140453cdec9d0588d18d6dfc38ca1c767cdfdbe42b93788515af134792\",\"event_type\":\"ContextPackCompiled\"}\n  ToolProjectionSelected {\"dropped\":[],\"event_type\":\"ToolProjectionSelected\",\"leg_role\":\"solver\",\"max_projection_bytes\":32768,\"mode\":\"exec_only\",\"projected\":[\"plan.update\",\"proc.exec\",\"proc.wait\",\"task.complete\",\"tool.search\"\n  CapabilitySnapshotRecorded {\"event_type\":\"CapabilitySnapshotRecorded\",\"snapshot\":{\"config_generation\":\"d86df14f4a53374348f688d7\",\"config_ref\":\"d86df14f4a53374348f688d7e1ac7484bd50b68b2ae091f46f300a27c7cdefba\",\"epoch\":17,\"execut\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":\"e801a8f99d18e663f5aa2a2ba089d7471add7799cb7719ffb8c1d4918e9e9431\",\"ordinal\":2,\"step_type\":{\"kind\":\"MODEL_INVOKE\"},\"turn_id\":\"01a20977-f796-7131-b729-81c6558b\n  StepStarted {\"event_type\":\"StepStarted\"}\n  ModelInvocationStarted {\"event_type\":\"ModelInvocationStarted\",\"model_route\":{\"cache_key\":\"832d0b270fbd3b6e7d0056df6f3cf1d826c94cedac8deb76881782aff2c64121\",\"endpoint\":\"openai\",\"max_output_tokens\":16384,\"model\":\"gemini-3.8-f\n  ModelUsageRecorded {\"cached_input_tokens\":0,\"event_type\":\"ModelUsageRecorded\",\"input_tokens\":0,\"output_tokens\":0,\"reported\":false,\"route\":{\"endpoint\":\"openai\",\"kind\":\"open_ai\",\"provider_request_id\":null,\"reason\":\"policy\n  RoutingAttemptRecorded {\"attempt\":17,\"cache_write_tokens\":null,\"cached_input_tokens\":null,\"cost_minor\":null,\"event_type\":\"RoutingAttemptRecorded\",\"input_tokens\":null,\"latency_ms\":2326,\"outcome\":\"FAILED\",\"output_tokens\":null\n  StepFailed {\"event_type\":\"StepFailed\",\"failure_code\":\"RATE_LIMITED\",\"output_ref\":null}\n  TurnFailed {\"event_type\":\"TurnFailed\",\"failure_code\":\"RATE_LIMITED\"}\n  RouteReevaluated {\"boundary\":\"PROVIDER\",\"cache_state\":null,\"chosen\":\"openai/gemini-3.8-flash\",\"current\":\"openai/gemini-3.8-flash\",\"decision\":\"STAY\",\"economics_version\":\"economics-1\",\"event_type\":\"RouteReevaluated\",\"pl\n  AgentNodeTransitioned {\"agent_id\":\"01a20975-ba6f-7873-9953-2216b514ac20\",\"event_type\":\"AgentNodeTransitioned\",\"from\":\"RUNNING\",\"reason\":\"provider failure RATE_LIMITED\",\"run_id\":\"01a20975-ba61-7752-96fb-56a0c4b6e7fe\",\"to\":\"\n  CapacityTicketReleased {\"event_type\":\"CapacityTicketReleased\",\"holder\":\"run:4e27008d-7c26-c0cc-0a90-368a859f4d4a\",\"reason\":\"RELEASED\",\"ticket_id\":\"t-1\"}",
+      "schema_bytes_per_request": [],
+      "state": "NotRun",
+      "trial": {
+        "agent_ms": 0,
+        "cached_input_tokens": 0,
+        "cold_ms": 0,
+        "input_tokens": 0,
+        "model_calls": 0,
+        "normalized_tool_calls": 0,
+        "output_tokens": 0,
+        "repeat": 0,
+        "task": "sort-oldest-first",
+        "tool_calls": 0,
+        "tool_schema_bytes": 0,
+        "variant": "exec_only",
+        "verified": false
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 24351,
+        "cached_input_tokens": 13118,
+        "cold_ms": 0,
+        "input_tokens": 41745,
+        "model_calls": 5,
+        "normalized_tool_calls": 1,
+        "output_tokens": 578,
+        "repeat": 0,
+        "task": "sort-longest-names",
+        "tool_calls": 1,
+        "tool_schema_bytes": 88407,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        18013,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 25891,
+        "cached_input_tokens": 21103,
+        "cold_ms": 0,
+        "input_tokens": 56123,
+        "model_calls": 6,
+        "normalized_tool_calls": 1,
+        "output_tokens": 662,
+        "repeat": 0,
+        "task": "sort-longest-names",
+        "tool_calls": 1,
+        "tool_schema_bytes": 116122,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": null,
+      "schema_bytes_per_request": [
+        8115,
+        8517,
+        8517,
+        8517
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 49826,
+        "cached_input_tokens": 2336,
+        "cold_ms": 0,
+        "input_tokens": 22008,
+        "model_calls": 4,
+        "normalized_tool_calls": 1,
+        "output_tokens": 462,
+        "repeat": 0,
+        "task": "sort-longest-names",
+        "tool_calls": 1,
+        "tool_schema_bytes": 33666,
+        "variant": "exec_only",
+        "verified": true
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        16095,
+        16095,
+        16095,
+        16095,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 60686,
+        "cached_input_tokens": 43933,
+        "cold_ms": 0,
+        "input_tokens": 99703,
+        "model_calls": 10,
+        "normalized_tool_calls": 1,
+        "output_tokens": 926,
+        "repeat": 0,
+        "task": "parse-duration",
+        "tool_calls": 1,
+        "tool_schema_bytes": 170865,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        18013,
+        18013,
+        18013,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 52603,
+        "cached_input_tokens": 34103,
+        "cold_ms": 0,
+        "input_tokens": 90465,
+        "model_calls": 9,
+        "normalized_tool_calls": 1,
+        "output_tokens": 913,
+        "repeat": 0,
+        "task": "parse-duration",
+        "tool_calls": 1,
+        "tool_schema_bytes": 172172,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": "modbit-cli [\"task\", \"run\", \"--session\", \"eaaa81d88702bebf4fbc873960020fe4\", \"--task\", \"71698782beaca765524f60bea12e7457\", \"--model\", \"gemini-3.8-flash\", \"--max-turns\", \"40\", \"--wait\"]: run 01a209787ea07b90a613f078f54a226b resumed=false endpoint=openai model=gemini-3.8-flash\ntask state=Waiting wait_reason=Approval run_state=Running\n\nVerificationRunRecorded: non-passing checks []\nlast events:\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a2097b-63a2-7321-afc5-004b8808e8eb\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":2,\"capture_ms\":11,\"checkpoint_id\":\"01a2097b-8620-7411-bc07-c9d3dbcbb853\",\"epoch\":14,\"event\n  TurnPrepared {\"event_type\":\"TurnPrepared\",\"ordinal\":15,\"plan_version\":2,\"run_id\":\"01a20978-7ea0-7b90-a613-f078f54a226b\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":1,\"step_type\":{\"kind\":\"CONTEXT_COMPILE\"},\"turn_id\":\"01a2097b-8634-7532-921b-7b24da2f7bad\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"7169b00fcaec429a70bb53090ea60f2a1c433525f5765c58b11d45eb8867b91b\"}\n  ContextPackCompiled {\"context_pack_id\":\"0857e0a4e802de2687264058e1d3eeb34cebd758b99dede77dc6fea40f0af86e\",\"event_type\":\"ContextPackCompiled\"}\n  ToolProjectionSelected {\"dropped\":[],\"event_type\":\"ToolProjectionSelected\",\"leg_role\":\"solver\",\"max_projection_bytes\":32768,\"mode\":\"exec_only\",\"projected\":[\"plan.update\",\"proc.exec\",\"proc.wait\",\"task.complete\",\"tool.search\"\n  CapabilitySnapshotRecorded {\"event_type\":\"CapabilitySnapshotRecorded\",\"snapshot\":{\"config_generation\":\"d86df14f4a53374348f688d7\",\"config_ref\":\"d86df14f4a53374348f688d7e1ac7484bd50b68b2ae091f46f300a27c7cdefba\",\"epoch\":15,\"execut\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":\"7169b00fcaec429a70bb53090ea60f2a1c433525f5765c58b11d45eb8867b91b\",\"ordinal\":2,\"step_type\":{\"kind\":\"MODEL_INVOKE\"},\"turn_id\":\"01a2097b-8634-7532-921b-7b24da2f\n  StepStarted {\"event_type\":\"StepStarted\"}\n  ModelInvocationStarted {\"event_type\":\"ModelInvocationStarted\",\"model_route\":{\"cache_key\":\"36ec585a253413c72d9f3470f3f9d2883c45c46ae24c11c7876b7c47ec4055a3\",\"endpoint\":\"openai\",\"max_output_tokens\":16384,\"model\":\"gemini-3.8-f\n  ModelUsageRecorded {\"cached_input_tokens\":12214,\"event_type\":\"ModelUsageRecorded\",\"input_tokens\":15070,\"output_tokens\":33,\"reported\":true,\"route\":{\"endpoint\":\"openai\",\"kind\":\"open_ai\",\"provider_request_id\":null,\"reason\"\n  ModelInvocationCompleted {\"event_type\":\"ModelInvocationCompleted\",\"requested_actions\":true}\n  RoutingAttemptRecorded {\"attempt\":15,\"cache_write_tokens\":0,\"cached_input_tokens\":12214,\"cost_minor\":null,\"event_type\":\"RoutingAttemptRecorded\",\"input_tokens\":15070,\"latency_ms\":12341,\"outcome\":\"SUCCEEDED\",\"output_tokens\":3\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"7d773f0224f7f3fe79085a9d6d0b43c76000c3e43329bd0ae1dbf63aaf1ec246\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":3,\"step_type\":{\"kind\":\"PROCEDURE_RUN\"},\"turn_id\":\"01a2097b-8634-7532-921b-7b24da2f7bad\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"4eca4a9ea0afa6246c8cf8309446391e6709c35b0a91c5a41644ab4a7da73772\"}\n  TurnVerifying {\"event_type\":\"TurnVerifying\"}\n  TurnCompleted {\"event_type\":\"TurnCompleted\"}\n  CheckpointStarted {\"base_checkpoint_id\":\"01a2097b-8620-7411-bc07-c9d3dbcbb853\",\"checkpoint_id\":\"01a2097c-a0e5-7570-beca-c885aa66f03d\",\"epoch\":15,\"event_type\":\"CheckpointStarted\",\"kind\":\"DELTA\",\"reason\":\"turn_boundary\"}\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a2097b-8620-7411-bc07-c9d3dbcbb853\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":2,\"capture_ms\":10,\"checkpoint_id\":\"01a2097c-a0e5-7570-beca-c885aa66f03d\",\"epoch\":15,\"event\n  RouteReevaluated {\"boundary\":\"QUALITY\",\"cache_state\":null,\"chosen\":\"openai/gemini-3.8-flash\",\"current\":\"openai/gemini-3.8-flash\",\"decision\":\"STAY\",\"economics_version\":\"economics-1\",\"event_type\":\"RouteReevaluated\",\"pla\n  AgentNodeTransitioned {\"agent_id\":\"01a20978-7eae-7ae3-8a34-96be71c3fa2e\",\"event_type\":\"AgentNodeTransitioned\",\"from\":\"RUNNING\",\"reason\":\"3 turns without progress\",\"run_id\":\"01a20978-7ea0-7b90-a613-f078f54a226b\",\"to\":\"WAITI\n  CapacityTicketReleased {\"event_type\":\"CapacityTicketReleased\",\"holder\":\"run:71698782-beac-a765-524f-60bea12e7457\",\"reason\":\"RELEASED\",\"ticket_id\":\"t-1\"}",
+      "schema_bytes_per_request": [],
+      "state": "NotRun",
+      "trial": {
+        "agent_ms": 0,
+        "cached_input_tokens": 0,
+        "cold_ms": 0,
+        "input_tokens": 0,
+        "model_calls": 0,
+        "normalized_tool_calls": 0,
+        "output_tokens": 0,
+        "repeat": 0,
+        "task": "parse-duration",
+        "tool_calls": 0,
+        "tool_schema_bytes": 0,
+        "variant": "exec_only",
+        "verified": false
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 74047,
+        "cached_input_tokens": 24055,
+        "cold_ms": 0,
+        "input_tokens": 62928,
+        "model_calls": 6,
+        "normalized_tool_calls": 1,
+        "output_tokens": 905,
+        "repeat": 0,
+        "task": "parse-size",
+        "tool_calls": 1,
+        "tool_schema_bytes": 106485,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        18013,
+        18013,
+        18013,
+        18013,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 47541,
+        "cached_input_tokens": 44454,
+        "cold_ms": 0,
+        "input_tokens": 105543,
+        "model_calls": 10,
+        "normalized_tool_calls": 1,
+        "output_tokens": 1096,
+        "repeat": 0,
+        "task": "parse-size",
+        "tool_calls": 1,
+        "tool_schema_bytes": 190185,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": null,
+      "schema_bytes_per_request": [
+        8115,
+        8517,
+        8517,
+        8517,
+        8517,
+        8517,
+        8517,
+        8517,
+        8517
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 70773,
+        "cached_input_tokens": 32985,
+        "cold_ms": 0,
+        "input_tokens": 80515,
+        "model_calls": 9,
+        "normalized_tool_calls": 1,
+        "output_tokens": 996,
+        "repeat": 0,
+        "task": "parse-size",
+        "tool_calls": 1,
+        "tool_schema_bytes": 76251,
+        "variant": "exec_only",
+        "verified": true
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        16095,
+        16095,
+        16095,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 55956,
+        "cached_input_tokens": 35685,
+        "cold_ms": 0,
+        "input_tokens": 85893,
+        "model_calls": 9,
+        "normalized_tool_calls": 1,
+        "output_tokens": 1277,
+        "repeat": 0,
+        "task": "parse-ranges",
+        "tool_calls": 1,
+        "tool_schema_bytes": 154770,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        18013,
+        18013,
+        18013,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 40530,
+        "cached_input_tokens": 20063,
+        "cold_ms": 0,
+        "input_tokens": 67858,
+        "model_calls": 7,
+        "normalized_tool_calls": 1,
+        "output_tokens": 733,
+        "repeat": 0,
+        "task": "parse-ranges",
+        "tool_calls": 1,
+        "tool_schema_bytes": 132124,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": null,
+      "schema_bytes_per_request": [
+        8115,
+        8517,
+        8517,
+        8517,
+        8517,
+        8517
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 42566,
+        "cached_input_tokens": 13347,
+        "cold_ms": 0,
+        "input_tokens": 39194,
+        "model_calls": 6,
+        "normalized_tool_calls": 1,
+        "output_tokens": 770,
+        "repeat": 0,
+        "task": "parse-ranges",
+        "tool_calls": 1,
+        "tool_schema_bytes": 50700,
+        "variant": "exec_only",
+        "verified": true
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        16095,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 53190,
+        "cached_input_tokens": 44431,
+        "cold_ms": 0,
+        "input_tokens": 92201,
+        "model_calls": 10,
+        "normalized_tool_calls": 1,
+        "output_tokens": 1123,
+        "repeat": 0,
+        "task": "dedupe-keep-order",
+        "tool_calls": 1,
+        "tool_schema_bytes": 176814,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 41315,
+        "cached_input_tokens": 58783,
+        "cold_ms": 0,
+        "input_tokens": 104529,
+        "model_calls": 10,
+        "normalized_tool_calls": 1,
+        "output_tokens": 1369,
+        "repeat": 0,
+        "task": "dedupe-keep-order",
+        "tool_calls": 1,
+        "tool_schema_bytes": 198229,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": "modbit-cli [\"task\", \"run\", \"--session\", \"81fded700614f3d5c1c7a7bd1370a277\", \"--task\", \"24415893db81d89deefa412c2e9e27df\", \"--model\", \"gemini-3.8-flash\", \"--max-turns\", \"40\", \"--wait\"]: run 01a2097adeb174208ea88d2a60caa0ac resumed=false endpoint=openai model=gemini-3.8-flash\ntask state=Waiting wait_reason=Approval run_state=Running\n\nVerificationRunRecorded: non-passing checks []\nVerificationRunRecorded: non-passing checks []\nAcceptanceGateEvaluated: {\"candidate_revision\":2,\"event_type\":\"AcceptanceGateEvaluated\",\"gate_ref\":\"f420f315713fc1bf2dfa2177b26df8563b9fbe9523c478d92070caa11b56f86f\",\"gate_version\":\"gate-1\",\"human_required\":false,\"independent_review_required\":true,\"missing_evidence\":[\"independent_review\"],\"realized_risk_ref\":\"7343fea8b02be3782718a6cb9f362f553b6ab1a9b54a4bf21d0e23cc518519d8\",\"reject_reasons\":[\"a DENY-class diff invariant stands\"],\"required_assurance\":\"GOVERNED\",\"trigger\":\"COMPLETION_RUN\",\"verdict\":\"REJECT\",\"verification_run_id\":\"vr-3f6bde3b083ab06a\"}\nlast events:\n  StepFailed {\"event_type\":\"StepFailed\",\"failure_code\":\"PROGRAM_FAILED\",\"output_ref\":\"95fb305310871ed3da879ab80d067870637f4ef0c1fd9ed2fec4ddc4260b2633\"}\n  TurnVerifying {\"event_type\":\"TurnVerifying\"}\n  TurnCompleted {\"event_type\":\"TurnCompleted\"}\n  CheckpointStarted {\"base_checkpoint_id\":\"01a20981-e538-7f83-b2a7-8815f3b0ed88\",\"checkpoint_id\":\"01a20981-f887-7382-914a-b824d2727e4b\",\"epoch\":31,\"event_type\":\"CheckpointStarted\",\"kind\":\"DELTA\",\"reason\":\"turn_boundary\"}\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a20981-e538-7f83-b2a7-8815f3b0ed88\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":2,\"capture_ms\":10,\"checkpoint_id\":\"01a20981-f887-7382-914a-b824d2727e4b\",\"epoch\":31,\"event\n  TurnPrepared {\"event_type\":\"TurnPrepared\",\"ordinal\":31,\"plan_version\":4,\"run_id\":\"01a2097a-deb1-7420-8ea8-8d2a60caa0ac\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":1,\"step_type\":{\"kind\":\"CONTEXT_COMPILE\"},\"turn_id\":\"01a20981-f899-7800-9702-e9acfdaec311\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"fce4f27b22c05f4da4fd88abc7ac746754cef93708d3efee2b2d3f4e6ab40245\"}\n  ContextPackCompiled {\"context_pack_id\":\"d3c139ac71573a82c0210bb3362fdb26653259afdaa2a20ef0a316bd73a3a80b\",\"event_type\":\"ContextPackCompiled\"}\n  ToolProjectionSelected {\"dropped\":[],\"event_type\":\"ToolProjectionSelected\",\"leg_role\":\"solver\",\"max_projection_bytes\":32768,\"mode\":\"exec_only\",\"projected\":[\"plan.update\",\"proc.exec\",\"proc.wait\",\"repair.attempt\",\"task.comple\n  CapabilitySnapshotRecorded {\"event_type\":\"CapabilitySnapshotRecorded\",\"snapshot\":{\"config_generation\":\"d86df14f4a53374348f688d7\",\"config_ref\":\"d86df14f4a53374348f688d7e1ac7484bd50b68b2ae091f46f300a27c7cdefba\",\"epoch\":31,\"execut\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":\"fce4f27b22c05f4da4fd88abc7ac746754cef93708d3efee2b2d3f4e6ab40245\",\"ordinal\":2,\"step_type\":{\"kind\":\"MODEL_INVOKE\"},\"turn_id\":\"01a20981-f899-7800-9702-e9acfdae\n  StepStarted {\"event_type\":\"StepStarted\"}\n  ModelInvocationStarted {\"event_type\":\"ModelInvocationStarted\",\"model_route\":{\"cache_key\":\"ffd49b270725265e18e3c5ece23ffa89c474d4ae5c9a26d0a020a0658f8820b6\",\"endpoint\":\"openai\",\"max_output_tokens\":16384,\"model\":\"gemini-3.8-f\n  ModelUsageRecorded {\"cached_input_tokens\":27396,\"event_type\":\"ModelUsageRecorded\",\"input_tokens\":43600,\"output_tokens\":111,\"reported\":true,\"route\":{\"endpoint\":\"openai\",\"kind\":\"open_ai\",\"provider_request_id\":null,\"reason\n  ModelInvocationCompleted {\"event_type\":\"ModelInvocationCompleted\",\"requested_actions\":true}\n  RoutingAttemptRecorded {\"attempt\":31,\"cache_write_tokens\":0,\"cached_input_tokens\":27396,\"cost_minor\":null,\"event_type\":\"RoutingAttemptRecorded\",\"input_tokens\":43600,\"latency_ms\":4979,\"outcome\":\"SUCCEEDED\",\"output_tokens\":11\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"1a4831f97b9d2f6080b338a284839a7c11c9507bb8ddc274a58ea7314954e1e2\"}\n  UserQuestionAsked {\"allow_free_text\":false,\"call_id\":\"call_14683909410137943256\",\"event_type\":\"UserQuestionAsked\",\"flags\":[],\"options\":[{\"id\":\"approve\",\"label\":\"Approve adding test_dedupe.py and removing cache artifact\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":3,\"step_type\":{\"kind\":\"USER_QUESTION\"},\"turn_id\":\"01a20981-f899-7800-9702-e9acfdaec311\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"6fea5d5abef8a302cf0d2751a5da3af1508bd644deaa39db211dfd3dd0c7b74c\"}\n  AgentNodeTransitioned {\"agent_id\":\"01a2097a-debf-7e33-84f2-5661c1390629\",\"event_type\":\"AgentNodeTransitioned\",\"from\":\"RUNNING\",\"reason\":\"question q-call14683909410137943256 pending\",\"run_id\":\"01a2097a-deb1-7420-8ea8-8d2a60\n  CapacityTicketReleased {\"event_type\":\"CapacityTicketReleased\",\"holder\":\"run:24415893-db81-d89d-eefa-412c2e9e27df\",\"reason\":\"RELEASED\",\"ticket_id\":\"t-1\"}",
+      "schema_bytes_per_request": [],
+      "state": "NotRun",
+      "trial": {
+        "agent_ms": 0,
+        "cached_input_tokens": 0,
+        "cold_ms": 0,
+        "input_tokens": 0,
+        "model_calls": 0,
+        "normalized_tool_calls": 0,
+        "output_tokens": 0,
+        "repeat": 0,
+        "task": "dedupe-keep-order",
+        "tool_calls": 0,
+        "tool_schema_bytes": 0,
+        "variant": "exec_only",
+        "verified": false
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        16095,
+        16095,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 30176,
+        "cached_input_tokens": 36080,
+        "cold_ms": 0,
+        "input_tokens": 71081,
+        "model_calls": 8,
+        "normalized_tool_calls": 1,
+        "output_tokens": 807,
+        "repeat": 0,
+        "task": "merge-counts",
+        "tool_calls": 1,
+        "tool_schema_bytes": 138675,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 37070,
+        "cached_input_tokens": 24726,
+        "cold_ms": 0,
+        "input_tokens": 63928,
+        "model_calls": 6,
+        "normalized_tool_calls": 1,
+        "output_tokens": 1306,
+        "repeat": 0,
+        "task": "merge-counts",
+        "tool_calls": 1,
+        "tool_schema_bytes": 118133,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": "modbit-cli [\"task\", \"run\", \"--session\", \"0fc2d76d1ac6350688d2386a1f44c8e7\", \"--task\", \"866b9fd5aa82dc05303539346cf3dc30\", \"--model\", \"gemini-3.8-flash\", \"--max-turns\", \"40\", \"--wait\"]: run 01a2097ba7ee77628169a2df17862ad8 resumed=false endpoint=openai model=gemini-3.8-flash\ntask state=Waiting wait_reason=Approval run_state=Running\n\nVerificationRunRecorded: non-passing checks []\nVerificationRunRecorded: non-passing checks []\nAcceptanceGateEvaluated: {\"candidate_revision\":2,\"event_type\":\"AcceptanceGateEvaluated\",\"gate_ref\":\"8daea571549fccf37a76fb4ea4753012b0e87ff35ed432ddd3a5bb81099a8c8f\",\"gate_version\":\"gate-1\",\"human_required\":false,\"independent_review_required\":true,\"missing_evidence\":[\"independent_review\"],\"realized_risk_ref\":\"c3433645484a90204f15608d05fc7744e78f4749f96f0642905c583be5d3ce2a\",\"reject_reasons\":[\"a DENY-class diff invariant stands\"],\"required_assurance\":\"GOVERNED\",\"trigger\":\"COMPLETION_RUN\",\"verdict\":\"REJECT\",\"verification_run_id\":\"vr-33b4e4952639530e\"}\nVerificationRunRecorded: non-passing checks []\nlast events:\n  CheckpointStarted {\"base_checkpoint_id\":\"01a20983-d52c-7d62-84c7-fe4ee38d595b\",\"checkpoint_id\":\"01a20983-f9ce-7d42-a91c-dad2e5cb3bac\",\"epoch\":40,\"event_type\":\"CheckpointStarted\",\"kind\":\"DELTA\",\"reason\":\"turn_boundary\"}\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a20983-d52c-7d62-84c7-fe4ee38d595b\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":2,\"capture_ms\":10,\"checkpoint_id\":\"01a20983-f9ce-7d42-a91c-dad2e5cb3bac\",\"epoch\":40,\"event\n  TurnPrepared {\"event_type\":\"TurnPrepared\",\"ordinal\":40,\"plan_version\":2,\"run_id\":\"01a2097b-a7ee-7762-8169-a2df17862ad8\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":1,\"step_type\":{\"kind\":\"CONTEXT_COMPILE\"},\"turn_id\":\"01a20983-f9e3-79d2-889c-9087420437c8\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"121a6014954062a4f5af4d2a9609cea75a815ce54e6364073c98f341f06d0eb1\"}\n  ContextPackCompiled {\"context_pack_id\":\"b4736b7e21cd7700511a0250782872b2377bb4703b251b7eb6e77ede8c9a2016\",\"event_type\":\"ContextPackCompiled\"}\n  ToolProjectionSelected {\"dropped\":[],\"event_type\":\"ToolProjectionSelected\",\"leg_role\":\"solver\",\"max_projection_bytes\":32768,\"mode\":\"exec_only\",\"projected\":[\"plan.update\",\"proc.exec\",\"proc.wait\",\"repair.attempt\",\"task.comple\n  CapabilitySnapshotRecorded {\"event_type\":\"CapabilitySnapshotRecorded\",\"snapshot\":{\"config_generation\":\"d86df14f4a53374348f688d7\",\"config_ref\":\"d86df14f4a53374348f688d7e1ac7484bd50b68b2ae091f46f300a27c7cdefba\",\"epoch\":40,\"execut\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":\"121a6014954062a4f5af4d2a9609cea75a815ce54e6364073c98f341f06d0eb1\",\"ordinal\":2,\"step_type\":{\"kind\":\"MODEL_INVOKE\"},\"turn_id\":\"01a20983-f9e3-79d2-889c-90874204\n  StepStarted {\"event_type\":\"StepStarted\"}\n  ModelInvocationStarted {\"event_type\":\"ModelInvocationStarted\",\"model_route\":{\"cache_key\":\"04fd9a3b8afe1c112539fdb43644372f522b1e10877785fd220ef15c3e4a01ab\",\"endpoint\":\"openai\",\"max_output_tokens\":16384,\"model\":\"gemini-3.8-f\n  ModelUsageRecorded {\"cached_input_tokens\":48677,\"event_type\":\"ModelUsageRecorded\",\"input_tokens\":52334,\"output_tokens\":42,\"reported\":true,\"route\":{\"endpoint\":\"openai\",\"kind\":\"open_ai\",\"provider_request_id\":null,\"reason\"\n  ModelInvocationCompleted {\"event_type\":\"ModelInvocationCompleted\",\"requested_actions\":true}\n  RoutingAttemptRecorded {\"attempt\":40,\"cache_write_tokens\":0,\"cached_input_tokens\":48677,\"cost_minor\":null,\"event_type\":\"RoutingAttemptRecorded\",\"input_tokens\":52334,\"latency_ms\":9242,\"outcome\":\"SUCCEEDED\",\"output_tokens\":42\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"679037b469538f7e9a44037d52854688fc21ac3a5f976e5b549a484238e2a19f\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":3,\"step_type\":{\"kind\":\"PROCEDURE_RUN\"},\"turn_id\":\"01a20983-f9e3-79d2-889c-9087420437c8\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"ee9f7671082dc1f97db20531052ae5efecd59a48bacba6ef7b0d7d72869e32ab\"}\n  TurnVerifying {\"event_type\":\"TurnVerifying\"}\n  TurnCompleted {\"event_type\":\"TurnCompleted\"}\n  CheckpointStarted {\"base_checkpoint_id\":\"01a20983-f9ce-7d42-a91c-dad2e5cb3bac\",\"checkpoint_id\":\"01a20984-2207-7310-9746-b42e9b6b7c2b\",\"epoch\":41,\"event_type\":\"CheckpointStarted\",\"kind\":\"DELTA\",\"reason\":\"turn_boundary\"}\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a20983-f9ce-7d42-a91c-dad2e5cb3bac\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":2,\"capture_ms\":13,\"checkpoint_id\":\"01a20984-2207-7310-9746-b42e9b6b7c2b\",\"epoch\":41,\"event\n  AgentNodeTransitioned {\"agent_id\":\"01a2097b-a7fc-76b0-8eaa-5d606f0df4fd\",\"event_type\":\"AgentNodeTransitioned\",\"from\":\"RUNNING\",\"reason\":\"budget exhausted: max_turns 40/40 (BUDGET_EXHAUSTED)\",\"run_id\":\"01a2097b-a7ee-7762-81\n  CapacityTicketReleased {\"event_type\":\"CapacityTicketReleased\",\"holder\":\"run:866b9fd5-aa82-dc05-3035-39346cf3dc30\",\"reason\":\"RELEASED\",\"ticket_id\":\"t-1\"}",
+      "schema_bytes_per_request": [],
+      "state": "NotRun",
+      "trial": {
+        "agent_ms": 0,
+        "cached_input_tokens": 0,
+        "cold_ms": 0,
+        "input_tokens": 0,
+        "model_calls": 0,
+        "normalized_tool_calls": 0,
+        "output_tokens": 0,
+        "repeat": 0,
+        "task": "merge-counts",
+        "tool_calls": 0,
+        "tool_schema_bytes": 0,
+        "variant": "exec_only",
+        "verified": false
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        16095,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 35775,
+        "cached_input_tokens": 47524,
+        "cold_ms": 0,
+        "input_tokens": 85421,
+        "model_calls": 9,
+        "normalized_tool_calls": 1,
+        "output_tokens": 857,
+        "repeat": 0,
+        "task": "flatten-nested",
+        "tool_calls": 1,
+        "tool_schema_bytes": 158736,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        18013,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 47580,
+        "cached_input_tokens": 38668,
+        "cold_ms": 0,
+        "input_tokens": 88497,
+        "model_calls": 8,
+        "normalized_tool_calls": 1,
+        "output_tokens": 916,
+        "repeat": 0,
+        "task": "flatten-nested",
+        "tool_calls": 1,
+        "tool_schema_bytes": 156170,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": "modbit-cli [\"task\", \"run\", \"--session\", \"4d9055d9843235076de1cc191be5bd61\", \"--task\", \"eec3d0bb84c2f97b893ff084ed0d8cde\", \"--model\", \"gemini-3.8-flash\", \"--max-turns\", \"40\", \"--wait\"]: run 01a2097ca47b7ae381b40eece3d18572 resumed=false endpoint=openai model=gemini-3.8-flash\ntask state=Waiting wait_reason=Approval run_state=Running\n\nVerificationRunRecorded: non-passing checks []\nVerificationRunRecorded: non-passing checks []\nAcceptanceGateEvaluated: {\"candidate_revision\":2,\"event_type\":\"AcceptanceGateEvaluated\",\"gate_ref\":\"8f5528fe41fc148b519d9f2adce7516706418260b5d9445d9d730a990a0f2f92\",\"gate_version\":\"gate-1\",\"human_required\":false,\"independent_review_required\":true,\"missing_evidence\":[\"independent_review\"],\"realized_risk_ref\":\"030f82049ba22ce486f9a95711e718ed55fb232824686024a1260264c10f2c8d\",\"reject_reasons\":[\"a DENY-class diff invariant stands\"],\"required_assurance\":\"GOVERNED\",\"trigger\":\"COMPLETION_RUN\",\"verdict\":\"REJECT\",\"verification_run_id\":\"vr-94be7f9c41bbf37f\"}\nVerificationRunRecorded: non-passing checks []\nlast events:\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a20981-7712-7a51-b143-7a709dce7db7\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":2,\"capture_ms\":10,\"checkpoint_id\":\"01a20982-6a94-75f0-a877-ad43aaeb7653\",\"epoch\":23,\"event\n  TurnPrepared {\"event_type\":\"TurnPrepared\",\"ordinal\":23,\"plan_version\":2,\"run_id\":\"01a2097c-a47b-7ae3-81b4-0eece3d18572\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":1,\"step_type\":{\"kind\":\"CONTEXT_COMPILE\"},\"turn_id\":\"01a20982-6aa6-7283-bf49-478c9eeba6dc\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"ec4561ca6253501e9e144a299d420e6c3e00f66e9929a59fd8b61525cb752da0\"}\n  ContextPackCompiled {\"context_pack_id\":\"e0e8445777a17bb81510cc07d09155b0f205adda3dd924ca1735fca8670c23e7\",\"event_type\":\"ContextPackCompiled\"}\n  ToolProjectionSelected {\"dropped\":[],\"event_type\":\"ToolProjectionSelected\",\"leg_role\":\"solver\",\"max_projection_bytes\":32768,\"mode\":\"exec_only\",\"projected\":[\"plan.update\",\"proc.exec\",\"proc.wait\",\"repair.attempt\",\"task.comple\n  CapabilitySnapshotRecorded {\"event_type\":\"CapabilitySnapshotRecorded\",\"snapshot\":{\"config_generation\":\"d86df14f4a53374348f688d7\",\"config_ref\":\"d86df14f4a53374348f688d7e1ac7484bd50b68b2ae091f46f300a27c7cdefba\",\"epoch\":23,\"execut\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":\"ec4561ca6253501e9e144a299d420e6c3e00f66e9929a59fd8b61525cb752da0\",\"ordinal\":2,\"step_type\":{\"kind\":\"MODEL_INVOKE\"},\"turn_id\":\"01a20982-6aa6-7283-bf49-478c9eeb\n  StepStarted {\"event_type\":\"StepStarted\"}\n  ModelInvocationStarted {\"event_type\":\"ModelInvocationStarted\",\"model_route\":{\"cache_key\":\"bf4863dc04241ea2534bcd6fe5969447ee9224d431d7216c9dcc0ad114b00b05\",\"endpoint\":\"openai\",\"max_output_tokens\":16384,\"model\":\"gemini-3.8-f\n  ModelUsageRecorded {\"cached_input_tokens\":29368,\"event_type\":\"ModelUsageRecorded\",\"input_tokens\":32353,\"output_tokens\":33,\"reported\":true,\"route\":{\"endpoint\":\"openai\",\"kind\":\"open_ai\",\"provider_request_id\":null,\"reason\"\n  ModelInvocationCompleted {\"event_type\":\"ModelInvocationCompleted\",\"requested_actions\":true}\n  RoutingAttemptRecorded {\"attempt\":23,\"cache_write_tokens\":0,\"cached_input_tokens\":29368,\"cost_minor\":null,\"event_type\":\"RoutingAttemptRecorded\",\"input_tokens\":32353,\"latency_ms\":2171,\"outcome\":\"SUCCEEDED\",\"output_tokens\":33\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"9d800505b3f94738072f5728f1d1dfa8908465862c02457ec41ec0fc4a609e66\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":3,\"step_type\":{\"kind\":\"PROCEDURE_RUN\"},\"turn_id\":\"01a20982-6aa6-7283-bf49-478c9eeba6dc\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"be6f436e5c1668512f32a339aa3686f7e00c2b305630fc781464c07071e9bf9b\"}\n  TurnVerifying {\"event_type\":\"TurnVerifying\"}\n  TurnCompleted {\"event_type\":\"TurnCompleted\"}\n  CheckpointStarted {\"base_checkpoint_id\":\"01a20982-6a94-75f0-a877-ad43aaeb7653\",\"checkpoint_id\":\"01a20983-5d9e-7ec3-9e6c-580e289b9b28\",\"epoch\":24,\"event_type\":\"CheckpointStarted\",\"kind\":\"DELTA\",\"reason\":\"turn_boundary\"}\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a20982-6a94-75f0-a877-ad43aaeb7653\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":2,\"capture_ms\":11,\"checkpoint_id\":\"01a20983-5d9e-7ec3-9e6c-580e289b9b28\",\"epoch\":24,\"event\n  RouteReevaluated {\"boundary\":\"QUALITY\",\"cache_state\":null,\"chosen\":\"openai/gemini-3.8-flash\",\"current\":\"openai/gemini-3.8-flash\",\"decision\":\"STAY\",\"economics_version\":\"economics-1\",\"event_type\":\"RouteReevaluated\",\"pla\n  AgentNodeTransitioned {\"agent_id\":\"01a2097c-a489-7191-ad2e-3929798e5bba\",\"event_type\":\"AgentNodeTransitioned\",\"from\":\"RUNNING\",\"reason\":\"3 turns without progress\",\"run_id\":\"01a2097c-a47b-7ae3-81b4-0eece3d18572\",\"to\":\"WAITI\n  CapacityTicketReleased {\"event_type\":\"CapacityTicketReleased\",\"holder\":\"run:eec3d0bb-84c2-f97b-893f-f084ed0d8cde\",\"reason\":\"RELEASED\",\"ticket_id\":\"t-1\"}",
+      "schema_bytes_per_request": [],
+      "state": "NotRun",
+      "trial": {
+        "agent_ms": 0,
+        "cached_input_tokens": 0,
+        "cold_ms": 0,
+        "input_tokens": 0,
+        "model_calls": 0,
+        "normalized_tool_calls": 0,
+        "output_tokens": 0,
+        "repeat": 0,
+        "task": "flatten-nested",
+        "tool_calls": 0,
+        "tool_schema_bytes": 0,
+        "variant": "exec_only",
+        "verified": false
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 39742,
+        "cached_input_tokens": 42952,
+        "cold_ms": 0,
+        "input_tokens": 82895,
+        "model_calls": 9,
+        "normalized_tool_calls": 1,
+        "output_tokens": 831,
+        "repeat": 0,
+        "task": "cart-discount-order",
+        "tool_calls": 1,
+        "tool_schema_bytes": 160719,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        18013,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 35691,
+        "cached_input_tokens": 50840,
+        "cold_ms": 0,
+        "input_tokens": 89964,
+        "model_calls": 9,
+        "normalized_tool_calls": 1,
+        "output_tokens": 884,
+        "repeat": 0,
+        "task": "cart-discount-order",
+        "tool_calls": 1,
+        "tool_schema_bytes": 176194,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": "modbit-cli [\"task\", \"run\", \"--session\", \"44f39957e30084d6bbfc0d2c73836354\", \"--task\", \"0a3a1b0bc22b2f6c9674e6c2b14ef642\", \"--model\", \"gemini-3.8-flash\", \"--max-turns\", \"40\", \"--wait\"]: run 01a2097e664079d2b53b9d17f2e60a95 resumed=false endpoint=openai model=gemini-3.8-flash\ntask state=Waiting wait_reason=Approval run_state=Running\n\nVerificationRunRecorded: non-passing checks []\nVerificationRunRecorded: non-passing checks []\nAcceptanceGateEvaluated: {\"candidate_revision\":2,\"event_type\":\"AcceptanceGateEvaluated\",\"gate_ref\":\"522b55803368c9836a10db106fe10bd2e656a43c97e7cbabc9625bbb106579a8\",\"gate_version\":\"gate-1\",\"human_required\":false,\"independent_review_required\":true,\"missing_evidence\":[\"independent_review\"],\"realized_risk_ref\":\"90d05c931cdc52a740ed87055c9280942e2757a88ac78cf41ef85d7723d74175\",\"reject_reasons\":[\"a DENY-class diff invariant stands\"],\"required_assurance\":\"GOVERNED\",\"trigger\":\"COMPLETION_RUN\",\"verdict\":\"REJECT\",\"verification_run_id\":\"vr-eecf4578fcf4a8b7\"}\nVerificationRunRecorded: non-passing checks []\nlast events:\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a20984-b9dd-74e1-a587-b8d9dbf7f975\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":3,\"capture_ms\":10,\"checkpoint_id\":\"01a20985-ac2b-7343-8b19-69ef64a62de8\",\"epoch\":40,\"event\n  TurnPrepared {\"event_type\":\"TurnPrepared\",\"ordinal\":40,\"plan_version\":2,\"run_id\":\"01a2097e-6640-79d2-b53b-9d17f2e60a95\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":1,\"step_type\":{\"kind\":\"CONTEXT_COMPILE\"},\"turn_id\":\"01a20985-ac3f-7723-9877-f45cd1c29182\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"e3f0ea16ffad3ef995e39f2b4307c43b98a959aa60440136b99b46f44b62540b\"}\n  ContextPackCompiled {\"context_pack_id\":\"57d4c5f03371422b8ad73c278e890949de836a29606074088c2ba8716a47eb3b\",\"event_type\":\"ContextPackCompiled\"}\n  ToolProjectionSelected {\"dropped\":[],\"event_type\":\"ToolProjectionSelected\",\"leg_role\":\"solver\",\"max_projection_bytes\":32768,\"mode\":\"exec_only\",\"projected\":[\"plan.update\",\"proc.exec\",\"proc.wait\",\"repair.attempt\",\"task.comple\n  CapabilitySnapshotRecorded {\"event_type\":\"CapabilitySnapshotRecorded\",\"snapshot\":{\"config_generation\":\"d86df14f4a53374348f688d7\",\"config_ref\":\"d86df14f4a53374348f688d7e1ac7484bd50b68b2ae091f46f300a27c7cdefba\",\"epoch\":40,\"execut\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":\"e3f0ea16ffad3ef995e39f2b4307c43b98a959aa60440136b99b46f44b62540b\",\"ordinal\":2,\"step_type\":{\"kind\":\"MODEL_INVOKE\"},\"turn_id\":\"01a20985-ac3f-7723-9877-f45cd1c2\n  StepStarted {\"event_type\":\"StepStarted\"}\n  ModelInvocationStarted {\"event_type\":\"ModelInvocationStarted\",\"model_route\":{\"cache_key\":\"b95c4ee8b8ec3d696684a01151239ca2a6af07d6e23316747a8d69cde3ae9adb\",\"endpoint\":\"openai\",\"max_output_tokens\":16384,\"model\":\"gemini-3.8-f\n  ModelUsageRecorded {\"cached_input_tokens\":58315,\"event_type\":\"ModelUsageRecorded\",\"input_tokens\":61757,\"output_tokens\":117,\"reported\":true,\"route\":{\"endpoint\":\"openai\",\"kind\":\"open_ai\",\"provider_request_id\":null,\"reason\n  ModelInvocationCompleted {\"event_type\":\"ModelInvocationCompleted\",\"requested_actions\":true}\n  RoutingAttemptRecorded {\"attempt\":40,\"cache_write_tokens\":0,\"cached_input_tokens\":58315,\"cost_minor\":null,\"event_type\":\"RoutingAttemptRecorded\",\"input_tokens\":61757,\"latency_ms\":2684,\"outcome\":\"SUCCEEDED\",\"output_tokens\":11\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"1483451cbe48c15c7fd10022df3248921b19f2866736f18edfb4dcfafc1b1245\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":3,\"step_type\":{\"kind\":\"SELF_REVIEW\"},\"turn_id\":\"01a20985-ac3f-7723-9877-f45cd1c29182\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepFailed {\"event_type\":\"StepFailed\",\"failure_code\":\"PROGRAM_RUNNING\",\"output_ref\":\"03ea220b17834562b893bc9a93fa77e3cb9df7f9352afff4d07ba13c471312d7\"}\n  TurnVerifying {\"event_type\":\"TurnVerifying\"}\n  TurnCompleted {\"event_type\":\"TurnCompleted\"}\n  CheckpointStarted {\"base_checkpoint_id\":\"01a20985-ac2b-7343-8b19-69ef64a62de8\",\"checkpoint_id\":\"01a20985-b6dd-7793-afb0-b97932b792f3\",\"epoch\":41,\"event_type\":\"CheckpointStarted\",\"kind\":\"DELTA\",\"reason\":\"turn_boundary\"}\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a20985-ac2b-7343-8b19-69ef64a62de8\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":3,\"capture_ms\":10,\"checkpoint_id\":\"01a20985-b6dd-7793-afb0-b97932b792f3\",\"epoch\":41,\"event\n  RouteReevaluated {\"boundary\":\"QUALITY\",\"cache_state\":null,\"chosen\":\"openai/gemini-3.8-flash\",\"current\":\"openai/gemini-3.8-flash\",\"decision\":\"STAY\",\"economics_version\":\"economics-1\",\"event_type\":\"RouteReevaluated\",\"pla\n  AgentNodeTransitioned {\"agent_id\":\"01a2097e-664c-7cb3-9960-1c0042da9d3b\",\"event_type\":\"AgentNodeTransitioned\",\"from\":\"RUNNING\",\"reason\":\"3 turns without progress\",\"run_id\":\"01a2097e-6640-79d2-b53b-9d17f2e60a95\",\"to\":\"WAITI\n  CapacityTicketReleased {\"event_type\":\"CapacityTicketReleased\",\"holder\":\"run:0a3a1b0b-c22b-2f6c-9674-e6c2b14ef642\",\"reason\":\"RELEASED\",\"ticket_id\":\"t-1\"}",
+      "schema_bytes_per_request": [],
+      "state": "NotRun",
+      "trial": {
+        "agent_ms": 0,
+        "cached_input_tokens": 0,
+        "cold_ms": 0,
+        "input_tokens": 0,
+        "model_calls": 0,
+        "normalized_tool_calls": 0,
+        "output_tokens": 0,
+        "repeat": 0,
+        "task": "cart-discount-order",
+        "tool_calls": 0,
+        "tool_schema_bytes": 0,
+        "variant": "exec_only",
+        "verified": false
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        16095,
+        16095,
+        16095,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 31652,
+        "cached_input_tokens": 27764,
+        "cold_ms": 0,
+        "input_tokens": 80260,
+        "model_calls": 9,
+        "normalized_tool_calls": 1,
+        "output_tokens": 887,
+        "repeat": 0,
+        "task": "invoice-rounding",
+        "tool_calls": 1,
+        "tool_schema_bytes": 154770,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        18013,
+        18013,
+        18013,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 42534,
+        "cached_input_tokens": 25250,
+        "cold_ms": 0,
+        "input_tokens": 78639,
+        "model_calls": 8,
+        "normalized_tool_calls": 1,
+        "output_tokens": 660,
+        "repeat": 0,
+        "task": "invoice-rounding",
+        "tool_calls": 1,
+        "tool_schema_bytes": 152148,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": "modbit-cli [\"task\", \"run\", \"--session\", \"1007e4caa5dfd4f19d637d8e654abf4a\", \"--task\", \"679a2182c81235600596a75d06b0c1a9\", \"--model\", \"gemini-3.8-flash\", \"--max-turns\", \"40\", \"--wait\"]: run 01a2098335ed79439258df0c5cf85d44 resumed=false endpoint=openai model=gemini-3.8-flash\ntask state=Waiting wait_reason=Approval run_state=Running\n\nVerificationRunRecorded: non-passing checks []\nVerificationRunRecorded: non-passing checks []\nAcceptanceGateEvaluated: {\"candidate_revision\":2,\"event_type\":\"AcceptanceGateEvaluated\",\"gate_ref\":\"de6228c44a46ddd6c475f55a24a0c523b5054576f657af7f7b50aaa592ff57af\",\"gate_version\":\"gate-1\",\"human_required\":false,\"independent_review_required\":true,\"missing_evidence\":[\"independent_review\"],\"realized_risk_ref\":\"df81f47bca9e968ee3b7df0bf6f4018d00bd303a1898c315493dd5f11d969a20\",\"reject_reasons\":[\"a DENY-class diff invariant stands\"],\"required_assurance\":\"GOVERNED\",\"trigger\":\"COMPLETION_RUN\",\"verdict\":\"REJECT\",\"verification_run_id\":\"vr-2ccd74ffba08af11\"}\nVerificationRunRecorded: non-passing checks []\nlast events:\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a20989-34d7-7842-9d3c-3d8dd4972452\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":2,\"capture_ms\":10,\"checkpoint_id\":\"01a20989-5eb6-7903-9b6b-8e31e5b39876\",\"epoch\":39,\"event\n  TurnPrepared {\"event_type\":\"TurnPrepared\",\"ordinal\":39,\"plan_version\":2,\"run_id\":\"01a20983-35ed-7943-9258-df0c5cf85d44\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":1,\"step_type\":{\"kind\":\"CONTEXT_COMPILE\"},\"turn_id\":\"01a20989-5ec9-76c3-b557-0c51ac65c7a9\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"976a1756aa736df178f1d721297a8b81f9dcf714f023b45d54aa3343dbeceb3d\"}\n  ContextPackCompiled {\"context_pack_id\":\"5cb69ad9ff4c402279c5aa9d4fb868e5be7ff1f4a8f0f3e28be4ad8586a9a453\",\"event_type\":\"ContextPackCompiled\"}\n  ToolProjectionSelected {\"dropped\":[],\"event_type\":\"ToolProjectionSelected\",\"leg_role\":\"solver\",\"max_projection_bytes\":32768,\"mode\":\"exec_only\",\"projected\":[\"plan.update\",\"proc.exec\",\"proc.wait\",\"task.complete\",\"tool.search\"\n  CapabilitySnapshotRecorded {\"event_type\":\"CapabilitySnapshotRecorded\",\"snapshot\":{\"config_generation\":\"d86df14f4a53374348f688d7\",\"config_ref\":\"d86df14f4a53374348f688d7e1ac7484bd50b68b2ae091f46f300a27c7cdefba\",\"epoch\":39,\"execut\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":\"976a1756aa736df178f1d721297a8b81f9dcf714f023b45d54aa3343dbeceb3d\",\"ordinal\":2,\"step_type\":{\"kind\":\"MODEL_INVOKE\"},\"turn_id\":\"01a20989-5ec9-76c3-b557-0c51ac65\n  StepStarted {\"event_type\":\"StepStarted\"}\n  ModelInvocationStarted {\"event_type\":\"ModelInvocationStarted\",\"model_route\":{\"cache_key\":\"7f125f6b1ae8793acaea8cf7ac73a5bbb2f2a4720859a8216781eacd1a9f3ba2\",\"endpoint\":\"openai\",\"max_output_tokens\":16384,\"model\":\"gemini-3.8-f\n  ModelUsageRecorded {\"cached_input_tokens\":54802,\"event_type\":\"ModelUsageRecorded\",\"input_tokens\":57881,\"output_tokens\":32,\"reported\":true,\"route\":{\"endpoint\":\"openai\",\"kind\":\"open_ai\",\"provider_request_id\":null,\"reason\"\n  ModelInvocationCompleted {\"event_type\":\"ModelInvocationCompleted\",\"requested_actions\":true}\n  RoutingAttemptRecorded {\"attempt\":39,\"cache_write_tokens\":0,\"cached_input_tokens\":54802,\"cost_minor\":null,\"event_type\":\"RoutingAttemptRecorded\",\"input_tokens\":57881,\"latency_ms\":4034,\"outcome\":\"SUCCEEDED\",\"output_tokens\":32\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"1f0d0300d80a0b24ecdae7c47ffd70f4e2ac18c02ae213cf4b38a292b5a4bf31\"}\n  StepScheduled {\"event_type\":\"StepScheduled\",\"input_ref\":null,\"ordinal\":3,\"step_type\":{\"kind\":\"PROCEDURE_RUN\"},\"turn_id\":\"01a20989-5ec9-76c3-b557-0c51ac65c7a9\"}\n  StepStarted {\"event_type\":\"StepStarted\"}\n  StepSucceeded {\"event_type\":\"StepSucceeded\",\"output_ref\":\"7d75a955abe1bc879e84c8c80c613924b26b29724000a8391595fc898d50524c\"}\n  TurnVerifying {\"event_type\":\"TurnVerifying\"}\n  TurnCompleted {\"event_type\":\"TurnCompleted\"}\n  CheckpointStarted {\"base_checkpoint_id\":\"01a20989-5eb6-7903-9b6b-8e31e5b39876\",\"checkpoint_id\":\"01a2098a-590b-7a52-ad7b-7f5e5de57f2c\",\"epoch\":40,\"event_type\":\"CheckpointStarted\",\"kind\":\"DELTA\",\"reason\":\"turn_boundary\"}\n  CheckpointCommitted {\"base_checkpoint_id\":\"01a20989-5eb6-7903-9b6b-8e31e5b39876\",\"blobs_written\":0,\"bytes_written\":0,\"cache_hits\":2,\"capture_ms\":10,\"checkpoint_id\":\"01a2098a-590b-7a52-ad7b-7f5e5de57f2c\",\"epoch\":40,\"event\n  RouteReevaluated {\"boundary\":\"QUALITY\",\"cache_state\":null,\"chosen\":\"openai/gemini-3.8-flash\",\"current\":\"openai/gemini-3.8-flash\",\"decision\":\"STAY\",\"economics_version\":\"economics-1\",\"event_type\":\"RouteReevaluated\",\"pla\n  AgentNodeTransitioned {\"agent_id\":\"01a20983-35fa-7d00-a620-d111e6775422\",\"event_type\":\"AgentNodeTransitioned\",\"from\":\"RUNNING\",\"reason\":\"3 turns without progress\",\"run_id\":\"01a20983-35ed-7943-9258-df0c5cf85d44\",\"to\":\"WAITI\n  CapacityTicketReleased {\"event_type\":\"CapacityTicketReleased\",\"holder\":\"run:679a2182-c812-3560-0596-a75d06b0c1a9\",\"reason\":\"RELEASED\",\"ticket_id\":\"t-1\"}",
+      "schema_bytes_per_request": [],
+      "state": "NotRun",
+      "trial": {
+        "agent_ms": 0,
+        "cached_input_tokens": 0,
+        "cold_ms": 0,
+        "input_tokens": 0,
+        "model_calls": 0,
+        "normalized_tool_calls": 0,
+        "output_tokens": 0,
+        "repeat": 0,
+        "task": "invoice-rounding",
+        "tool_calls": 0,
+        "tool_schema_bytes": 0,
+        "variant": "exec_only",
+        "verified": false
+      }
+    },
+    {
+      "arm": "direct",
+      "error": null,
+      "schema_bytes_per_request": [
+        16095,
+        16095,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078,
+        18078
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 56913,
+        "cached_input_tokens": 41855,
+        "cold_ms": 0,
+        "input_tokens": 91767,
+        "model_calls": 9,
+        "normalized_tool_calls": 1,
+        "output_tokens": 973,
+        "repeat": 0,
+        "task": "inventory-reserve",
+        "tool_calls": 1,
+        "tool_schema_bytes": 158736,
+        "variant": "direct",
+        "verified": true
+      }
+    },
+    {
+      "arm": "procedural",
+      "error": null,
+      "schema_bytes_per_request": [
+        18013,
+        18013,
+        18013,
+        20024,
+        20024,
+        20024,
+        20024
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 29965,
+        "cached_input_tokens": 21641,
+        "cold_ms": 0,
+        "input_tokens": 68190,
+        "model_calls": 7,
+        "normalized_tool_calls": 1,
+        "output_tokens": 774,
+        "repeat": 0,
+        "task": "inventory-reserve",
+        "tool_calls": 1,
+        "tool_schema_bytes": 134135,
+        "variant": "procedural",
+        "verified": true
+      }
+    },
+    {
+      "arm": "exec_only",
+      "error": null,
+      "schema_bytes_per_request": [
+        8115,
+        8115,
+        8517,
+        8517,
+        8517
+      ],
+      "state": "ReadyForReview",
+      "trial": {
+        "agent_ms": 19889,
+        "cached_input_tokens": 3629,
+        "cold_ms": 0,
+        "input_tokens": 30764,
+        "model_calls": 5,
+        "normalized_tool_calls": 1,
+        "output_tokens": 532,
+        "repeat": 0,
+        "task": "inventory-reserve",
+        "tool_calls": 1,
+        "tool_schema_bytes": 41781,
+        "variant": "exec_only",
+        "verified": true
+      }
+    }
+  ]
+}

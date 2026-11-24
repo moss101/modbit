@@ -4407,6 +4407,7 @@ async fn run_loop(
                         tools: &request.tool_projection,
                         injected_memory: &compiled.injected_memory,
                         request_estimate,
+                        calibration: &calibration,
                     },
                 );
                 overhead_tokens = calibration.apply(

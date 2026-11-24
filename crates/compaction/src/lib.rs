@@ -292,6 +292,12 @@ impl Calibration {
         self.ratio
     }
 
+    /// How many provider counts the ratio was learned from (0: uncalibrated).
+    #[must_use]
+    pub fn samples(&self) -> u32 {
+        self.samples
+    }
+
     /// An estimate corrected by what the provider has reported.
     #[must_use]
     pub fn apply(&self, estimated: u32) -> u32 {
