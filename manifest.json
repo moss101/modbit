@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2510,
+    "root_and_tooling": 2516,
     "docs_bytes": 2402742
   },
   "sections": [
@@ -2567,6 +2567,36 @@
       "path": "evidence/m10/PX-069/real-mac-run-2026-11-09.txt",
       "bytes": 4902,
       "sha256": "428b29ed6c626369af1f475dd93421fb080249a51ad2c70ca48d7bd66adf49b3"
+    },
+    {
+      "path": "evidence/m10/PX-071/TASK_CARD.md",
+      "bytes": 6207,
+      "sha256": "83221531919ee2350802db4a4f98a8a2d889547d4670a286766c5a73121164a4"
+    },
+    {
+      "path": "evidence/m10/PX-071/clippy.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "evidence/m10/PX-071/evidence.json",
+      "bytes": 2181,
+      "sha256": "30568a0d692b35b1d668fea6238386bdaf2e330dbfbc0ca5d2d90e025c107f6f"
+    },
+    {
+      "path": "evidence/m10/PX-071/real-helper-ax-tests-run1-flake.log",
+      "bytes": 4183,
+      "sha256": "0637344aa756af398a932ec90aec41497c915e6e70e64abd466bbcc64653ea82"
+    },
+    {
+      "path": "evidence/m10/PX-071/real-helper-ax-tests.log",
+      "bytes": 6785,
+      "sha256": "dae03071b069c1ac8fd42619c2c43db556a7c0653a13e08e8217ae3c1346104d"
+    },
+    {
+      "path": "evidence/m10/PX-071/tests.log",
+      "bytes": 1630,
+      "sha256": "1d569d7766f2993dd811ebf61c7f59271b599cfc27e69844648906cf280d404e"
     },
     {
       "path": "evidence/m10/PX-074/TASK_CARD.md",
@@ -13420,8 +13450,8 @@
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2645693,
-      "sha256": "51213d647221ad84530d1de90b82f89e5f9f9e0bb2f72249e2a9f96b142768fa"
+      "bytes": 2646252,
+      "sha256": "683a20d52d5b810693a2085061dc80627bf0171f6a8b09ff313ddb4024bdb958"
     },
     {
       "path": "tools/build_graph.py",

@@ -1,0 +1,42 @@
+
+running 26 tests
+..........................
+test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.81s
+
+
+running 12 tests
+iiiiiiiiiiii
+test result: ok. 0 passed; 0 failed; 12 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 15 tests
+...............
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.05s
+
+
+running 1 test
+i
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+test: a_real_person_on_the_keyboard_parks_the_controller_within_one_event, ignore_message: manual: a person must touch the keyboard or pointer when asked
+
+
+running 15 tests
+../var/folders/_1/1xvpd9n50m97rq8_c4ylpw940000gn/T/.tmp6TJsfR/helpers/modbit-actuator-macos-0.2.0: replacing existing signature
+/var/folders/_1/1xvpd9n50m97rq8_c4ylpw940000gn/T/.tmpL9TXBL/helpers/modbit-actuator-macos-0.2.0: replacing existing signature
+/var/folders/_1/1xvpd9n50m97rq8_c4ylpw940000gn/T/.tmpZdQhnd/helpers/modbit-actuator-macos-0.2.0: replacing existing signature
+.............
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.48s
+
+
+running 5 tests
+.....
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.53s
+
+architecture-lint: 50 workspace members, 39 forbid rules, 4 confine rules, 0 violation(s)
+
+running 1 test
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+.
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 58 filtered out; finished in 10.11s
+
