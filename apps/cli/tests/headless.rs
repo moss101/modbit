@@ -486,10 +486,10 @@ fn a_hung_cli_call_is_killed_and_fails_with_its_diagnostics() {
     ]);
     assert_eq!(code, 0, "{err}");
     let tid = out.trim().strip_prefix("task ").unwrap().to_owned();
-    // Long enough for a loaded runner to reach the model call (a 5 s bound once
-    // killed the CLI before the run had asked the model: PR 250, macOS), which
-    // the report below must show the run hanging at.
-    let limit = Duration::from_secs(15);
+    // Long enough for the first turn to reach the model on a loaded debug
+    // runner: seeding retrieval and compiling the pack ran past 5s on
+    // macos-latest, so the run was killed before ModelInvocationStarted.
+    let limit = Duration::from_secs(20);
     let started = std::time::Instant::now();
     let hung = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         cli.run_bounded(
@@ -520,7 +520,10 @@ fn a_hung_cli_call_is_killed_and_fails_with_its_diagnostics() {
         started.elapsed()
     );
     assert!(
-        report.contains("modbit-cli hung: still running after 15s, killed:"),
+        report.contains(&format!(
+            "modbit-cli hung: still running after {}s, killed:",
+            limit.as_secs()
+        )),
         "{report}"
     );
     assert!(
