@@ -883,7 +883,12 @@ async fn closing_the_connection_stops_injection_within_500_ms() {
     c.stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
-        .kill_on_drop(true);
+        .kill_on_drop(true)
+        // Pinned as the Core pins every launch; an unpinned helper welcomes no one.
+        .env(
+            "MODBIT_ACTUATOR_TOKEN_SHA256",
+            hex::encode(<sha2::Sha256 as sha2::Digest>::digest([9u8; 32])),
+        );
     let mut child = c.spawn().unwrap();
     let mut stdin = child.stdin.take().unwrap();
     let mut stdout = child.stdout.take().unwrap();

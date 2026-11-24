@@ -97,6 +97,121 @@ from = "modbit-{skills,procedural-runtime,prompt-compiler,context,retrieval}"
 to = "modbit-memory"
 reason = "REQ-EV-0208: only the runtime composes Engineering Memory; producers of context/skills receive memory items through core-runtime ports, never by owning the store"
 
+# PX-071 (QUAL-PX-071 negative: "a helper holding a credential or file path
+# authority fails the static dependency scan"): the macOS actuator helper holds
+# the operating-system permissions and nothing else. It speaks the actuator RPC
+# of modbit-protocol over its own standard streams; it reaches no credential,
+# workspace, Git, store, policy, network or database crate.
+[[forbid]]
+from = "modbit-actuator-macos"
+to = "modbit-secrets"
+reason = "PX-071: the actuator helper holds no a credential store or broker authority (docs/66 CUC-E01)"
+
+[[forbid]]
+from = "modbit-actuator-macos"
+to = "modbit-providers"
+reason = "PX-071: the actuator helper holds no a model provider (network, keys) authority (docs/66 CUC-E01)"
+
+[[forbid]]
+from = "modbit-actuator-macos"
+to = "modbit-tools"
+reason = "PX-071: the actuator helper holds no the tool runtime and its effectors authority (docs/66 CUC-E01)"
+
+[[forbid]]
+from = "modbit-actuator-macos"
+to = "modbit-workspace"
+reason = "PX-071: the actuator helper holds no workspace file authority authority (docs/66 CUC-E01)"
+
+[[forbid]]
+from = "modbit-actuator-macos"
+to = "modbit-git"
+reason = "PX-071: the actuator helper holds no Git authority authority (docs/66 CUC-E01)"
+
+[[forbid]]
+from = "modbit-actuator-macos"
+to = "modbit-event-store"
+reason = "PX-071: the actuator helper holds no the event and object store authority (docs/66 CUC-E01)"
+
+[[forbid]]
+from = "modbit-actuator-macos"
+to = "modbit-policy"
+reason = "PX-071: the actuator helper holds no policy and grants authority (docs/66 CUC-E01)"
+
+[[forbid]]
+from = "modbit-actuator-macos"
+to = "modbit-effects"
+reason = "PX-071: the actuator helper holds no protected effects authority (docs/66 CUC-E01)"
+
+[[forbid]]
+from = "modbit-actuator-macos"
+to = "modbit-core-runtime"
+reason = "PX-071: the actuator helper holds no the scheduler authority (docs/66 CUC-E01)"
+
+[[forbid]]
+from = "modbit-actuator-macos"
+to = "modbit-browser"
+reason = "PX-071: the actuator helper holds no the browser host authority (docs/66 CUC-E01)"
+
+[[forbid]]
+from = "modbit-actuator-macos"
+to = "modbit-sandbox"
+reason = "PX-071: the actuator helper holds no the sandbox backend authority (docs/66 CUC-E01)"
+
+[[forbid]]
+from = "modbit-actuator-macos"
+to = "modbit-computer"
+reason = "PX-071: the actuator helper holds no the Core-side computer runtime authority (docs/66 CUC-E01)"
+
+[[forbid]]
+from = "modbit-actuator-macos"
+to = "reqwest*"
+reason = "PX-071: the actuator helper holds no an HTTP client authority (docs/66 CUC-E01)"
+
+[[forbid]]
+from = "modbit-actuator-macos"
+to = "hyper*"
+reason = "PX-071: the actuator helper holds no an HTTP stack authority (docs/66 CUC-E01)"
+
+[[forbid]]
+from = "modbit-actuator-macos"
+to = "ureq*"
+reason = "PX-071: the actuator helper holds no an HTTP client authority (docs/66 CUC-E01)"
+
+[[forbid]]
+from = "modbit-actuator-macos"
+to = "git2*"
+reason = "PX-071: the actuator helper holds no a Git library authority (docs/66 CUC-E01)"
+
+[[forbid]]
+from = "modbit-actuator-macos"
+to = "gix*"
+reason = "PX-071: the actuator helper holds no a Git library authority (docs/66 CUC-E01)"
+
+[[forbid]]
+from = "modbit-actuator-macos"
+to = "keyring*"
+reason = "PX-071: the actuator helper holds no a credential store authority (docs/66 CUC-E01)"
+
+[[forbid]]
+from = "modbit-actuator-macos"
+to = "security-framework*"
+reason = "PX-071: the actuator helper holds no the Keychain authority (docs/66 CUC-E01)"
+
+[[forbid]]
+from = "modbit-actuator-macos"
+to = "rusqlite*"
+reason = "PX-071: the actuator helper holds no a database authority (docs/66 CUC-E01)"
+
+[[forbid]]
+from = "modbit-actuator-macos"
+to = "sqlx*"
+reason = "PX-071: the actuator helper holds no a database authority (docs/66 CUC-E01)"
+
+[[forbid]]
+from = "modbit-actuator-macos"
+to = "tokio-postgres*"
+reason = "PX-071: the actuator helper holds no a database authority (docs/66 CUC-E01)"
+
 [[confine]]
 package = "cubesandbox*"
 allowed = ["modbit-sandbox"]

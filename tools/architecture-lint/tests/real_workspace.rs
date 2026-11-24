@@ -130,3 +130,56 @@ fn cli_binary_exits_nonzero_on_violation_and_zero_on_pass() {
         .unwrap();
     assert_eq!(out.status.code(), Some(2));
 }
+
+/// QUAL-PX-071 (negative N4): the shipped rules fail a macOS actuator helper
+/// that links a credential store, a workspace or an HTTP client. A scratch
+/// workspace whose member is named like the helper gains one such edge at a
+/// time; the real `cargo metadata` graph and the shipped rules report it.
+#[test]
+fn qual_px_071_a_helper_holding_a_credential_or_file_path_authority_fails_the_scan() {
+    let root = repo_root();
+    let rules = Rules::load(&root.join("tools/architecture-lint/rules.toml")).unwrap();
+    // The real helper is clean.
+    let graph = Graph::from_cargo_metadata(&root.join("Cargo.toml"), false).unwrap();
+    assert!(graph.members.contains("modbit-actuator-macos"));
+    let real: Vec<_> = check(&graph, &rules)
+        .into_iter()
+        .filter(|v| v.from == "modbit-actuator-macos")
+        .collect();
+    assert!(real.is_empty(), "{real:?}");
+    for forbidden in ["modbit-secrets", "modbit-workspace", "reqwest"] {
+        let dir = tempfile::tempdir().unwrap();
+        let ws = dir.path();
+        write(
+            &ws.join("Cargo.toml"),
+            "[workspace]\nresolver = \"3\"\nmembers = [\"helper\", \"dep\", \"leaf\"]\n",
+        );
+        write(
+            &ws.join("helper/Cargo.toml"),
+            "[package]\nname = \"modbit-actuator-macos\"\nversion = \"0.0.0\"\nedition = \"2024\"\n\n[dependencies]\nmiddle = { path = \"../dep\" }\n",
+        );
+        write(&ws.join("helper/src/lib.rs"), "");
+        // Reached transitively, through an innocent-looking crate.
+        write(
+            &ws.join("dep/Cargo.toml"),
+            &format!(
+                "[package]\nname = \"middle\"\nversion = \"0.0.0\"\nedition = \"2024\"\n\n[dependencies]\n{forbidden} = {{ path = \"../leaf\" }}\n"
+            ),
+        );
+        write(&ws.join("dep/src/lib.rs"), "");
+        write(
+            &ws.join("leaf/Cargo.toml"),
+            &format!(
+                "[package]\nname = \"{forbidden}\"\nversion = \"0.0.0\"\nedition = \"2024\"\n"
+            ),
+        );
+        write(&ws.join("leaf/src/lib.rs"), "");
+        let graph = Graph::from_cargo_metadata(&ws.join("Cargo.toml"), false).unwrap();
+        let v = check(&graph, &rules);
+        assert!(
+            v.iter()
+                .any(|v| v.from == "modbit-actuator-macos" && v.to == forbidden),
+            "{forbidden}: {v:?}"
+        );
+    }
+}
