@@ -2,12 +2,12 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-11-24",
+  "generated_on": "2026-11-25",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2525,
+    "root_and_tooling": 2527,
     "docs_bytes": 2402742
   },
   "sections": [
@@ -3127,6 +3127,16 @@
       "path": "evidence/m10/PX-134/evidence.json",
       "bytes": 1252,
       "sha256": "bba5a8a5662ddf8d142ec8421ea8565cc2b40bc578c65ad97f7363445f5b6545"
+    },
+    {
+      "path": "evidence/m10/PX-137/FUSION_TOP1.md",
+      "bytes": 3867,
+      "sha256": "3ba551dbb3c3b3b315cd80cebe99ee593b27aeacc26b83a3872d49ff18b6fda8"
+    },
+    {
+      "path": "evidence/m10/PX-137/core-tests.log",
+      "bytes": 2001,
+      "sha256": "18e0c1e992f67fb06a0d0c7e1a12108e37da67337609c7c5d37a7e071f19fbad"
     },
     {
       "path": "evidence/m10/PX-141/TASK_CARD.md",
@@ -13491,12 +13501,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 47980,
-      "sha256": "77f58de9f2b1c8c13f50707b9b74784437ea513a78eabc1e9346bc9bfdb736d8"
+      "sha256": "dc960d9727aabbcee3257af9f3a6cc2d5cb02a90db0f18e3573ebb9aa916485e"
     },
     {
       "path": "graph/project-graph.json",
       "bytes": 2646848,
-      "sha256": "ac8e7d6e45a883a2c1a2659720e75b8612e449762ce55020c0ee4b86f15540b2"
+      "sha256": "8a5426907df2fe31a059f3eab67b04e19bc287d0d2a96c894d7325436015e14b"
     },
     {
       "path": "tools/build_graph.py",
