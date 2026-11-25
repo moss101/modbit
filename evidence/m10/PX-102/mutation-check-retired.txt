@@ -1,0 +1,7 @@
+# PX-102 mutation check 2026-11-25 (retired-task rule)
+== mutation: the retired-task branch of decide() never taken
+181:    if let Some(since) = retired_since(store, task).filter(|_| false) // MUTATION: retired rule off
+thread 'qual_px_102_an_archived_applied_task_keeps_only_what_a_hard_reference_needs' (1669759) panicked at services/modbit-core/tests/checkpoints_px.rs:1843:9:
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 18 filtered out; finished in 5.20s
+== restored
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 18 filtered out; finished in 5.13s
