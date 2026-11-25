@@ -47,11 +47,13 @@ test("PX-049: the window opens at 1280 x 800 and cannot be made smaller than 900
     });
     expect(got.minimum).toEqual([900, 600]);
     // 1280 x 800, unless the screen's work area is smaller (a CI runner's
-    // 1024 x 768 display): the OS fits the window to it, and nothing else may.
-    expect(got.initial, `work area ${got.workArea.width} x ${got.workArea.height}`).toEqual([
-      Math.min(1280, got.workArea.width),
-      Math.min(800, got.workArea.height),
-    ]);
+    // 1024 x 768 display): the OS fits the window to it, and nothing else may. Fitting is the OS's own
+    // arithmetic: macOS once fitted a 677 px work area with a 675 px window (main run 45221302102), so a
+    // fitted side may sit up to 4 px inside the work area. A side that fits is exact.
+    const fitted = (want: number, area: number, got: number) => (want <= area ? got === want : got <= area && got >= area - 4);
+    const why = `work area ${got.workArea.width} x ${got.workArea.height}, window ${got.initial[0]} x ${got.initial[1]}`;
+    expect(fitted(1280, got.workArea.width, got.initial[0]!), why).toBe(true);
+    expect(fitted(800, got.workArea.height, got.initial[1]!), why).toBe(true);
     expect(got.clamped[0]).toBeGreaterThanOrEqual(900);
     expect(got.clamped[1]).toBeGreaterThanOrEqual(600);
     // The 900 x 600 minimum applies to the window including its frame (on Windows the content area is ~16 px
