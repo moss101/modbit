@@ -286,8 +286,12 @@ pub async fn run_case(
                     .iter()
                     .zip(&ids)
                     .map(|(c, id)| {
-                        json!({"id": id, "type": "function",
-                        "function": {"name": c.name, "arguments": c.arguments}})
+                        let mut call = json!({"id": id, "type": "function",
+                        "function": {"name": c.name, "arguments": c.arguments}});
+                        if let Some(d) = &c.provider_data {
+                            call["provider_data"] = d.clone();
+                        }
+                        call
                     })
                     .collect(),
             );
