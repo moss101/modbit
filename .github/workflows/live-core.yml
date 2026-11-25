@@ -34,7 +34,7 @@ on:
   workflow_dispatch:
     inputs:
       which:
-        description: "Rows to run, comma separated (px041,px050,px051,px057,px059,px061,px084,px100,px101,px109,px114,px116,px118) or all"
+        description: "Rows to run, comma separated (px041,px050,px051,px057,px059,px061,px084,px100,px101,px103,px109,px114,px116,px118) or all"
         required: true
         default: "all"
       max_cost_usd:
@@ -72,7 +72,7 @@ jobs:
           import os, sys
           # The rows that are Rust legs of live_core.rs, and PX-114 (the paired
           # projection trial, its own harness).
-          core = ["px041", "px050", "px051", "px057", "px059", "px061", "px084", "px100", "px101", "px109", "px116", "px118"]
+          core = ["px041", "px050", "px051", "px057", "px059", "px061", "px084", "px100", "px101", "px103", "px109", "px116", "px118"]
           rows = core + ["px114"]
           which, cap = os.environ["WHICH"].strip().lower(), os.environ["CAP"]
           try:

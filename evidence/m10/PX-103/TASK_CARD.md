@@ -40,3 +40,31 @@
 - The `SIGKILL` is taken after the ack; the revert and the decision are one transaction, so a kill inside it leaves neither (not injected at an arbitrary instant by an external killer). No separate fault point sits between the revert and the notice delivery, because the notice is derived from the decision record at the next boundary.
 - Attribution is by the line state of the replay with a line diff; repeated identical lines can in principle be misaligned and then fail closed to `unattributed` (never to a wrong call); a binary file or a file over 2 MiB written by a process is unattributed.
 - Windows and Linux legs are not run by this task; no release gate is attested.
+
+## Live-gateway leg written (2026-11-25, branch px-103-live-leg from main 6c9c1c79)
+
+The graph still showed PX-103 NOT_STARTED, even though the work above landed in #143. PX-061 was sealed COMPLETE on 2026-11-24, which leaves the live-gateway leg as the only open item. That leg did not exist in `live_core.rs`, so no `live-core` dispatch could close this row. It exists now.
+
+- **New code:**
+  - `services/modbit-core/tests/live_core.rs`: `leg_px103_hunks`, `live_px103_hunks` (ignored unless run live) and `scripted_px103_hunks_leg_mechanics`, which runs the same leg code against the scripted server in normal CI.
+  - `.github/workflows/live-core.yml`: row `px103`.
+- **Keeping the run live:** the real model is told to make four writes in separate steps: `change.apply` on row-02, a shell `>>` redirect adding row-46, the test runner rewriting row-24, and then a program the classifier does not know (`notes-publish`), twice. Each unknown program asks for an approval, and the run waits for it inside its loop, so `loop_alive` holds while the person decides. The leg holds only the `notes-publish` approvals, identified by their arguments on the log, and approves anything else, recording it.
+- **Checked against the live model, all as named checks:**
+  - each hunk names the call on the log that wrote it, and the route the model took is reported;
+  - a stale revision and a stale digest are refused and write nothing;
+  - a write from the test process is shown unattributed, `AUTO_ACCEPT` on it is refused, and an explicit accept of it is allowed;
+  - a live REJECT reverts exactly that hunk by sha256, the run is not restarted, and the notice carries the reason;
+  - a second REJECT, followed by a SIGKILL of the Core before the next boundary, gives after restart exactly one decision, the file at the post-revert hash, a replayed retry that writes nothing, and the same approval still open;
+  - the run then finishes `ReadyForReview`, each rejection is delivered exactly once, and the agent went on after the notice.
+- **Scripted twin:** it also checks the request bodies: each reason appears exactly once, in the first body after its decision.
+- **Local checks (subagent run, re-checked by the session):** `scripted_px103` passed four times; `scripted_px061`, `px118`, `px057` and `px101` pass; clippy and fmt are clean.
+
+### Findings from writing the leg (product code unchanged)
+
+1. **The failure-keyword check refuses a task like this one.** `crates/core-runtime/src/harness.rs` `goal_reports_failure` treats a goal containing "reject", "wrong" or "does not" as a defect report, so the first `change.apply` was refused `HARNESS_REPRODUCTION_REQUIRED`. The leg's goal says "took back" instead. A real task that describes a hunk rejection in those words would hit the same refusal.
+2. **An outside write to a file outside the plan blocks completion.** Such a write gets the DI-1 `DENY` "path outside the plan's write set", and `task.complete` is refused. The leg writes into the planned file instead. This is probably intended policy.
+3. **`TaskStatus` keeps a stale attention after a resumed run completes.** It still reports `failure_class=APPROVAL / RESTART_AWAITING_APPROVAL` from the restart while the state is `ReadyForReview` and the run is `Completed`. The leg asserts `run_state == "Completed"` and records the leftover class.
+
+### Status
+
+Moved to REAL_TESTING: the real-Core proof is complete. E2E_PROVEN and COMPLETE need a `live-core` dispatch with `which=px103`, which needs the Gemini quota restored.

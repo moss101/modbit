@@ -2963,6 +2963,792 @@ async fn live_px118_worktree() {
 }
 
 // ---------------------------------------------------------------------------
+// QUAL-PX-103: hunks name their tool call; a person decides per hunk while
+// the run is live
+// ---------------------------------------------------------------------------
+
+use modbit_protocol::v1::{DecideHunk, DecideHunkAck, GetReviewBundle, HunkView, ReviewBundle};
+
+/// The rows of the file the PX-103 leg edits.
+fn px103_rows() -> String {
+    (1..=45).map(|i| format!("row-{i:02}\n")).collect()
+}
+
+/// The project's test runner: it rewrites a row of the file (QUAL-PX-103's
+/// "a test runner that rewrites a file").
+const PX103_RUNNER: &str =
+    "sed 's/^row-24$/row-24 (runner)/' notes.txt > notes.tmp && mv notes.tmp notes.txt\n";
+
+/// The person's reason for the rejection made while the run waits.
+const PX103_LIVE_REASON: &str = "keep the file without the appended row-46; it was not asked for";
+/// The person's reason for the rejection the Core is killed after.
+const PX103_KILL_REASON: &str = "leave row-24 as the base has it";
+/// What the Core's notice to the agent starts with.
+const PX103_NOTICE: &str = "Core notice: a person rejected one hunk";
+
+/// The task. Its words avoid the failure vocabulary of
+/// `harness::goal_reports_failure` ("reject", "wrong", "does not", ...): a
+/// goal that merely mentions a rejected hunk is otherwise taken for a defect
+/// report and every write waits for a reproduction (`REPRODUCTION_REQUIRED`).
+const PX103_GOAL: &str = "Edit notes.txt in exactly these steps, one tool call per step, using exactly the tool and arguments named in each step. Step 1: call plan.update with expected_files [\"notes.txt\"]. Step 2: with change.apply, change the line `row-02` of notes.txt to `row-02 (change.apply)` (read the file first if change.apply needs it). Step 3: call shell.exec with arguments {\"argv\": [\"sh\", \"-c\", \"echo 'row-46 (redirect)' >> notes.txt\"]}. Step 4: run the project's test runner: call shell.exec with arguments {\"argv\": [\"sh\", \"run_tests.sh\"]}. Step 5: call shell.exec with arguments {\"argv\": [\"notes-publish\", \"draft\"], \"inherit_env\": true}; a person must approve it, so wait for the approval. Step 6: call shell.exec with arguments {\"argv\": [\"notes-publish\", \"final\"], \"inherit_env\": true}; it also needs the person's approval. Then call task.complete. Make no other change to any file. If a Core notice tells you a person took back one of your hunks, do not redo that change; carry on with the remaining steps and say in your task.complete summary which hunk the person took back.";
+
+/// A directory with one executable `notes-publish` that only prints: a
+/// program the classifier does not know, so a call to it is a protected
+/// effect that waits for a person in the task's default mode. It writes
+/// nothing, so it adds no hunk.
+fn publish_tool_dir() -> tempfile::TempDir {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("notes-publish");
+    std::fs::write(&path, "#!/bin/sh\necho \"published $*\"\n").unwrap();
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    dir
+}
+
+fn sha_text(s: &str) -> String {
+    hex::encode(sha2::Sha256::digest(s.as_bytes()))
+}
+
+/// A tool call id as the review projection prints it, as the log's bytes.
+fn call_hex(id: &str) -> String {
+    id.replace('-', "").to_lowercase()
+}
+
+/// The hunk of a bundle that holds `needle`, with its file's path and revision.
+fn px103_hunk<'a>(b: &'a ReviewBundle, needle: &str) -> Option<(&'a HunkView, String, String)> {
+    b.files.iter().find_map(|f| {
+        f.hunks
+            .iter()
+            .find(|h| h.lines.iter().any(|l| l.contains(needle)))
+            .map(|h| (h, f.path.clone(), f.file_revision.clone()))
+    })
+}
+
+/// `text` with exactly one hunk taken back: its new-side lines replaced by
+/// its old-side lines, everything else byte for byte as it was.
+fn without_hunk(text: &str, h: &HunkView) -> String {
+    let lines: Vec<&str> = text.split_inclusive('\n').collect();
+    let start = if h.new_lines == 0 {
+        h.new_start as usize
+    } else {
+        (h.new_start as usize).saturating_sub(1)
+    };
+    let end = (start + h.new_lines as usize).min(lines.len());
+    let old: String = h
+        .lines
+        .iter()
+        .filter(|l| l.starts_with(' ') || l.starts_with('-'))
+        .map(|l| format!("{}\n", l[1..].trim_end_matches('\n')))
+        .collect();
+    format!(
+        "{}{old}{}",
+        lines[..start.min(lines.len())].concat(),
+        lines[end..].concat()
+    )
+}
+
+/// One tool call of the task as the log holds it: its id (hex), its tool and
+/// the arguments it was proposed with (read from the object the proposal
+/// names).
+#[derive(Clone, Debug)]
+struct LoggedCall {
+    id: String,
+    tool: String,
+    args: String,
+}
+
+impl Fx {
+    async fn review_bundle(&mut self, task: &Id) -> ReviewBundle {
+        self.ok(
+            "GetReviewBundle",
+            GetReviewBundle {
+                task_id: Some(task.clone()),
+            },
+            false,
+        )
+        .await
+    }
+
+    /// A per-hunk decision with a chosen command id; the ack or the typed
+    /// refusal.
+    #[allow(clippy::too_many_arguments)]
+    async fn decide_hunk_as(
+        &mut self,
+        cmd: Id,
+        task: &Id,
+        path: &str,
+        hunk: u32,
+        decision: &str,
+        revision: &str,
+        digest: &str,
+        reason: &str,
+    ) -> Result<DecideHunkAck, (String, String)> {
+        match self
+            .c
+            .command(envelope_fenced(
+                cmd,
+                "DecideHunk",
+                DecideHunk {
+                    task_id: Some(task.clone()),
+                    path: path.into(),
+                    hunk_index: hunk,
+                    decision: decision.into(),
+                    expected_file_revision: revision.into(),
+                    expected_hunk_digest: digest.into(),
+                    reason: reason.into(),
+                }
+                .encode_to_vec(),
+                self.g,
+            ))
+            .await
+        {
+            Ok(ack) => Ok(Client::result(&ack).unwrap()),
+            Err(ClientError::Rejected { code, message }) => Err((code, message)),
+            Err(e) => panic!("DecideHunk: {e}"),
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn decide_hunk(
+        &mut self,
+        task: &Id,
+        path: &str,
+        hunk: u32,
+        decision: &str,
+        revision: &str,
+        digest: &str,
+        reason: &str,
+    ) -> Result<DecideHunkAck, (String, String)> {
+        self.decide_hunk_as(
+            rand_id(),
+            task,
+            path,
+            hunk,
+            decision,
+            revision,
+            digest,
+            reason,
+        )
+        .await
+    }
+
+    /// Every tool call of the task, in log order, with its arguments.
+    async fn logged_calls(&mut self, task: &Id) -> Vec<LoggedCall> {
+        let proposed: Vec<Ev> = of_task(self.events().await, task)
+            .into_iter()
+            .filter(|e| e.kind == "ToolCallProposed")
+            .collect();
+        let mut out = Vec::new();
+        for e in proposed {
+            let r = payload_str(&e, "arguments_ref");
+            let args = if r.is_empty() {
+                String::new()
+            } else {
+                String::from_utf8_lossy(&self.read_object(&r).await).into_owned()
+            };
+            out.push(LoggedCall {
+                id: hex::encode(&e.aggregate),
+                tool: payload_str(&e, "tool_name"),
+                args,
+            });
+        }
+        out
+    }
+
+    /// Run until the task asks the person to approve a `notes-publish` call
+    /// it has not asked before (returned, left pending) or its loop ends
+    /// (`None`). Any other approval the run asks on the way is a step the
+    /// person approves; each is counted in `approved`.
+    async fn hold_at_publish(
+        &mut self,
+        task: &Id,
+        held: &[Vec<u8>],
+        approved: &mut Vec<String>,
+    ) -> Option<(ApprovalView, String)> {
+        let secs = if self.env.live { LIVE_IDLE_SECS } else { 120 };
+        let deadline = Instant::now() + Duration::from_secs(secs);
+        loop {
+            let pending = self.pending_for(task).await;
+            if !pending.is_empty() {
+                let calls = self.logged_calls(task).await;
+                for a in pending {
+                    let call = a
+                        .tool_call_id
+                        .as_ref()
+                        .map(|i| i.value.clone())
+                        .unwrap_or_default();
+                    let args = calls
+                        .iter()
+                        .find(|c| c.id == hex::encode(&call))
+                        .map(|c| c.args.clone())
+                        .unwrap_or_default();
+                    if args.contains("notes-publish") && !held.contains(&call) {
+                        return Some((a, args));
+                    }
+                    if !held.contains(&call) {
+                        approved.push(format!("{} {args}", a.tool_name));
+                        self.decide(&a, true).await;
+                    }
+                }
+            }
+            if !self.status(task).await.loop_alive {
+                return None;
+            }
+            if Instant::now() > deadline {
+                self.diagnose(task).await;
+                return None;
+            }
+            tokio::time::sleep(Duration::from_millis(200)).await;
+        }
+    }
+}
+
+/// With the live gateway, a real worktree and the real Core: one task writes
+/// through `change.apply`, a shell redirect and a test runner that rewrites a
+/// row; each hunk names the call on the log that wrote it. The run is kept
+/// live at a protected command the person has not yet approved: while it
+/// waits, a decision on a moved revision or a changed hunk is refused stale
+/// and writes nothing, a write by the test process (no tool call) is shown
+/// unattributed and is refused `AUTO_ACCEPT`, and the person rejects one hunk:
+/// exactly that hunk is reverted (by hash) with the run still live and not
+/// restarted. The agent is told once and goes on. At the second protected
+/// command the person rejects another hunk and the Core is SIGKILLed between
+/// the revert and the notice: the restarted Core holds the decision and the
+/// revert once, a retried command replays without writing, and the resumed
+/// run is told exactly once.
+async fn leg_px103_hunks(env: Arc<LiveEnv>) {
+    let mut leg = Leg::begin(&env, "px103", "hunks", 0.20);
+    let bin = publish_tool_dir();
+    let path = format!(
+        "{}:{}",
+        bin.path().display(),
+        std::env::var("PATH").unwrap_or_default()
+    );
+    let rows = px103_rows();
+    let mut fx = Fx::with_env(
+        &env,
+        &[("notes.txt", rows.as_str()), ("run_tests.sh", PX103_RUNNER)],
+        &[("PATH", path.as_str())],
+    )
+    .await;
+    let notes = Path::new(&fx.root).join("notes.txt");
+    let read_notes = || std::fs::read_to_string(&notes).unwrap_or_default();
+    let task = fx.task(PX103_GOAL).await;
+    fx.start(&task, 30, 6).await;
+    let mut approved: Vec<String> = Vec::new();
+
+    // ---- the first protected command: the run waits for the person ----
+    let hold1 = fx.hold_at_publish(&task, &[], &mut approved).await;
+    leg.check(
+        "run_held_at_the_first_approval",
+        hold1.is_some(),
+        "the run ended (or went silent) without asking to approve a notes-publish call",
+    );
+    let (hold1, hold1_args) = hold1.unwrap();
+    let hold1_call = hold1.tool_call_id.clone().unwrap().value;
+    leg.note(format!("first held call: {hold1_args}"));
+    let st = fx.status(&task).await;
+    leg.check(
+        "run_live_while_the_person_decides",
+        st.loop_alive && st.failure_class.is_empty(),
+        format!("{st:?}"),
+    );
+
+    // Something that is not a tool call of the task writes the file while
+    // the run waits (the file is in the plan's write set, so the write
+    // itself does not block the agent's completion).
+    std::fs::write(
+        &notes,
+        read_notes().replace("row-38\n", "row-38 (stranger)\n"),
+    )
+    .unwrap();
+
+    // ---- each hunk names the call on the log that wrote it ----
+    let calls = fx.logged_calls(&task).await;
+    leg.count("tool_calls_before_the_decision", calls.len());
+    let routes = calls
+        .iter()
+        .map(|c| {
+            format!(
+                "{} {}",
+                c.tool,
+                c.args.chars().take(160).collect::<String>()
+            )
+        })
+        .collect::<Vec<_>>();
+    let apply = calls
+        .iter()
+        .find(|c| c.tool == "change.apply" && c.args.contains("row-02 (change.apply)"));
+    let redirect = calls
+        .iter()
+        .find(|c| c.tool == "shell.exec" && c.args.contains("row-46") && c.args.contains(">>"));
+    let runner = calls.iter().find(|c| {
+        (c.tool == "shell.exec" || c.tool == "test.run") && c.args.contains("run_tests.sh")
+    });
+    leg.check(
+        "change_apply_route_used",
+        apply.is_some(),
+        format!("no change.apply call wrote row-02; the calls: {routes:?}"),
+    );
+    leg.check(
+        "shell_redirect_route_used",
+        redirect.is_some(),
+        format!("no shell.exec call appended row-46 with >>; the calls: {routes:?}"),
+    );
+    leg.check(
+        "test_runner_route_used",
+        runner.is_some(),
+        format!("no shell.exec or test.run call ran run_tests.sh; the calls: {routes:?}"),
+    );
+    let (apply, redirect, runner) = (
+        apply.unwrap().clone(),
+        redirect.unwrap().clone(),
+        runner.unwrap().clone(),
+    );
+    leg.note(format!("the test runner ran through {}", runner.tool));
+    let b = fx.review_bundle(&task).await;
+    let names = |h: Option<&(&HunkView, String, String)>, call: &LoggedCall, basis: &str| {
+        h.is_some_and(|(h, _, _)| {
+            h.attributed
+                && call_hex(&h.tool_call_id) == call.id
+                && h.tool_name == call.tool
+                && h.attribution_basis == basis
+        })
+    };
+    let shown = |h: Option<&(&HunkView, String, String)>| {
+        h.map_or_else(
+            || "no such hunk".to_owned(),
+            |(h, p, _)| {
+                format!(
+                    "{p}#{} call {} tool {} basis {} attributed {}",
+                    h.index, h.tool_call_id, h.tool_name, h.attribution_basis, h.attributed
+                )
+            },
+        )
+    };
+    let h02 = px103_hunk(&b, "+row-02 (change.apply)");
+    let h46 = px103_hunk(&b, "+row-46 (redirect)");
+    let h24 = px103_hunk(&b, "+row-24 (runner)");
+    leg.check(
+        "change_apply_hunk_names_its_call",
+        names(h02.as_ref(), &apply, "CHANGE_TRANSACTION")
+            && h02.as_ref().is_some_and(|(h, _, _)| h.auto_accept_eligible),
+        format!("{} vs call {}", shown(h02.as_ref()), apply.id),
+    );
+    leg.check(
+        "shell_redirect_hunk_names_its_call",
+        names(h46.as_ref(), &redirect, "BARRIER_DIFF"),
+        format!("{} vs call {}", shown(h46.as_ref()), redirect.id),
+    );
+    leg.check(
+        "test_runner_hunk_names_its_call",
+        names(h24.as_ref(), &runner, "BARRIER_DIFF"),
+        format!("{} vs call {}", shown(h24.as_ref()), runner.id),
+    );
+    let notes_file = b.files.iter().find(|f| f.path == "notes.txt");
+    leg.count("hunks_of_notes", notes_file.map_or(0, |f| f.hunks.len()));
+    let before = read_notes();
+    let (h46, _, rev) = h46.unwrap();
+    let (i46, d46) = (h46.index, h46.hunk_digest.clone());
+    let expected1 = without_hunk(&before, h46);
+    leg.check(
+        "shown_revision_is_the_file",
+        sha_text(&before) == rev,
+        format!("{} vs {rev}", sha_text(&before)),
+    );
+
+    // ---- stale decisions are refused and write nothing ----
+    let r = fx
+        .decide_hunk(
+            &task,
+            "notes.txt",
+            i46,
+            "REJECT",
+            &sha_text("not the file"),
+            &d46,
+            "x",
+        )
+        .await;
+    leg.check(
+        "decision_on_a_moved_revision_refused_stale",
+        r.as_ref().err().is_some_and(|(c, _)| c == "STALE_REVISION"),
+        format!("{r:?}"),
+    );
+    let r = fx
+        .decide_hunk(
+            &task,
+            "notes.txt",
+            i46,
+            "REJECT",
+            &rev,
+            &sha_text("another hunk"),
+            "x",
+        )
+        .await;
+    leg.check(
+        "decision_on_a_changed_hunk_refused_stale",
+        r.as_ref().err().is_some_and(|(c, _)| c == "STALE_HUNK"),
+        format!("{r:?}"),
+    );
+    leg.check(
+        "stale_decisions_wrote_nothing",
+        read_notes() == before,
+        "notes.txt changed",
+    );
+
+    // ---- a write outside any tool call is unattributed; never auto-accepted ----
+    let b = fx.review_bundle(&task).await;
+    let stranger = px103_hunk(&b, "+row-38 (stranger)");
+    leg.check(
+        "outside_write_shown_unattributed",
+        stranger.as_ref().is_some_and(|(h, p, _)| {
+            p == "notes.txt"
+                && !h.attributed
+                && h.tool_call_id.is_empty()
+                && h.attribution_basis == "UNATTRIBUTED"
+                && !h.auto_accept_eligible
+        }),
+        shown(stranger.as_ref()),
+    );
+    let (hs, ps, revs) = stranger.unwrap();
+    let (is, ds) = (hs.index, hs.hunk_digest.clone());
+    let r = fx
+        .decide_hunk(&task, &ps, is, "AUTO_ACCEPT", &revs, &ds, "")
+        .await;
+    leg.check(
+        "auto_accept_of_the_unattributed_hunk_refused",
+        r.as_ref()
+            .err()
+            .is_some_and(|(c, _)| c == "UNATTRIBUTED_HUNK"),
+        format!("{r:?}"),
+    );
+    let (h02, p02, rev02) = px103_hunk(&b, "+row-02 (change.apply)").unwrap();
+    let (i02, d02) = (h02.index, h02.hunk_digest.clone());
+    let r = fx
+        .decide_hunk(&task, &p02, i02, "AUTO_ACCEPT", &rev02, &d02, "")
+        .await;
+    leg.check(
+        "attributed_hunk_auto_accepted",
+        r.as_ref().is_ok_and(|a| a.result == "ACCEPTED"),
+        format!("{r:?}"),
+    );
+    let r = fx
+        .decide_hunk(&task, &ps, is, "ACCEPT", &revs, &ds, "")
+        .await;
+    leg.check(
+        "person_may_accept_the_unattributed_hunk_explicitly",
+        r.as_ref()
+            .is_ok_and(|a| a.result == "ACCEPTED" && a.attributed_call_id.is_empty()),
+        format!("{r:?}"),
+    );
+    leg.check(
+        "accepts_wrote_nothing",
+        read_notes() == before,
+        "notes.txt changed",
+    );
+
+    // ---- the person rejects the redirect's hunk while the run waits ----
+    let runs_before = of_kind(&of_task(fx.events().await, &task), "RunStarted").len();
+    let ack1 = fx
+        .decide_hunk(
+            &task,
+            "notes.txt",
+            i46,
+            "REJECT",
+            &rev,
+            &d46,
+            PX103_LIVE_REASON,
+        )
+        .await;
+    leg.check("live_reject_accepted", ack1.is_ok(), format!("{ack1:?}"));
+    let ack1 = ack1.unwrap();
+    leg.check(
+        "reject_made_while_the_run_is_live",
+        ack1.result == "REJECTED" && ack1.run_live,
+        format!("{ack1:?}"),
+    );
+    leg.check(
+        "reject_names_the_call_that_wrote_the_hunk",
+        call_hex(&ack1.attributed_call_id) == redirect.id && ack1.attributed_tool == "shell.exec",
+        format!(
+            "{} {} vs {}",
+            ack1.attributed_call_id, ack1.attributed_tool, redirect.id
+        ),
+    );
+    leg.check(
+        "notice_carries_the_reason",
+        ack1.agent_notice.contains(PX103_NOTICE)
+            && ack1.agent_notice.contains(PX103_LIVE_REASON)
+            && ack1.agent_notice.contains("notes.txt"),
+        ack1.agent_notice.clone(),
+    );
+    let now1 = read_notes();
+    leg.check(
+        "exactly_that_hunk_reverted_by_hash",
+        sha_text(&now1) == sha_text(&expected1)
+            && ack1.file_revision == sha_text(&expected1)
+            && ack1.before_hash == rev
+            && !ack1.checkpoint_id.is_empty(),
+        format!(
+            "file {} expected {} ack {} before {}",
+            sha_text(&now1),
+            sha_text(&expected1),
+            ack1.file_revision,
+            ack1.before_hash
+        ),
+    );
+    let st = fx.status(&task).await;
+    leg.check(
+        "run_still_live_and_not_restarted",
+        st.loop_alive
+            && of_kind(&of_task(fx.events().await, &task), "RunStarted").len() == runs_before,
+        format!("{st:?}"),
+    );
+    let b = fx.review_bundle(&task).await;
+    let still = [
+        ("+row-02 (change.apply)", &apply),
+        ("+row-24 (runner)", &runner),
+    ]
+    .iter()
+    .all(|(needle, call)| {
+        px103_hunk(&b, needle)
+            .is_some_and(|(h, _, _)| h.attributed && call_hex(&h.tool_call_id) == call.id)
+    });
+    leg.check(
+        "other_hunks_still_name_their_calls",
+        still && px103_hunk(&b, "+row-46 (redirect)").is_none(),
+        "a remaining hunk lost its call, or the rejected one is still shown",
+    );
+    let r = fx
+        .decide_hunk(&task, "notes.txt", 0, "REJECT", &rev, "", "again")
+        .await;
+    leg.check(
+        "the_old_revision_is_stale_now",
+        r.as_ref().err().is_some_and(|(c, _)| c == "STALE_REVISION"),
+        format!("{r:?}"),
+    );
+    leg.check(
+        "not_told_before_the_boundary",
+        of_kind(&fx.events().await, "HunkNoticeDelivered").is_empty(),
+        "a notice was delivered while the call still waited for its approval",
+    );
+    fx.decide(&hold1, true).await;
+
+    // ---- the agent goes on; at the second protected command, a reject and a SIGKILL ----
+    let hold2 = fx
+        .hold_at_publish(&task, std::slice::from_ref(&hold1_call), &mut approved)
+        .await;
+    leg.check(
+        "run_held_at_the_second_approval",
+        hold2.is_some(),
+        "the run ended (or went silent) without asking for a second notes-publish call",
+    );
+    let (hold2, hold2_args) = hold2.unwrap();
+    leg.note(format!("second held call: {hold2_args}"));
+    leg.check(
+        "the_rejected_hunk_was_not_redone",
+        read_notes() == expected1,
+        "notes.txt moved after the reject",
+    );
+    let b = fx.review_bundle(&task).await;
+    let h24 = px103_hunk(&b, "+row-24 (runner)");
+    leg.check(
+        "runner_hunk_still_shown",
+        h24.is_some(),
+        "the runner's hunk is gone",
+    );
+    let (h24, _, rev2) = h24.unwrap();
+    let before2 = read_notes();
+    let expected2 = without_hunk(&before2, h24);
+    let (i24, d24) = (h24.index, h24.hunk_digest.clone());
+    let cmd2 = rand_id();
+    let ack2 = fx
+        .decide_hunk_as(
+            cmd2.clone(),
+            &task,
+            "notes.txt",
+            i24,
+            "REJECT",
+            &rev2,
+            &d24,
+            PX103_KILL_REASON,
+        )
+        .await;
+    leg.check(
+        "second_reject_accepted",
+        ack2.as_ref()
+            .is_ok_and(|a| a.result == "REJECTED" && a.run_live && !a.replayed),
+        format!("{ack2:?}"),
+    );
+    let ack2 = ack2.unwrap();
+    leg.check(
+        "second_reject_reverted_exactly_that_hunk",
+        sha_text(&read_notes()) == sha_text(&expected2)
+            && ack2.file_revision == sha_text(&expected2),
+        format!("{} vs {}", sha_text(&read_notes()), sha_text(&expected2)),
+    );
+    // SIGKILL after the revert, before the agent was told.
+    fx.restart().await;
+    let ev = fx.events().await;
+    let decided = |ev: &[Ev], id: &str| {
+        of_kind(ev, "HunkDecided")
+            .iter()
+            .filter(|e| e.payload["decision_id"] == id)
+            .count()
+    };
+    let told = |ev: &[Ev], id: &str| {
+        of_kind(ev, "HunkNoticeDelivered")
+            .iter()
+            .filter(|e| e.payload["decision_id"] == id)
+            .count()
+    };
+    leg.check(
+        "after_the_kill_the_decision_is_held_once",
+        decided(&ev, &ack2.decision_id) == 1 && of_kind(&ev, "ChangesReverted").len() == 2,
+        format!(
+            "{} decisions, {} reverts",
+            decided(&ev, &ack2.decision_id),
+            of_kind(&ev, "ChangesReverted").len()
+        ),
+    );
+    leg.check(
+        "after_the_kill_the_file_is_reverted_once",
+        sha_text(&read_notes()) == sha_text(&expected2),
+        format!("{} vs {}", sha_text(&read_notes()), sha_text(&expected2)),
+    );
+    leg.check(
+        "after_the_kill_not_yet_told",
+        told(&ev, &ack2.decision_id) == 0,
+        "the notice was delivered before the kill",
+    );
+    let again = fx
+        .decide_hunk_as(
+            cmd2,
+            &task,
+            "notes.txt",
+            i24,
+            "REJECT",
+            &rev2,
+            &d24,
+            PX103_KILL_REASON,
+        )
+        .await;
+    leg.check(
+        "retried_decision_replays_without_writing",
+        again
+            .as_ref()
+            .is_ok_and(|a| a.replayed && a.decision_id == ack2.decision_id)
+            && sha_text(&read_notes()) == sha_text(&expected2)
+            && of_kind(&fx.events().await, "ChangesReverted").len() == 2,
+        format!("{again:?}"),
+    );
+    let pending = fx.pending_for(&task).await;
+    leg.check(
+        "the_approval_is_still_open_after_the_kill",
+        pending.iter().any(|a| a.approval_id == hold2.approval_id),
+        format!("{} pending", pending.len()),
+    );
+    // The person approves; the run resumes and is told once.
+    if let Some(a) = pending.iter().find(|a| a.approval_id == hold2.approval_id) {
+        fx.decide(a, true).await;
+    }
+    let (approver, approved_late) = spawn_approver_for(&fx.core, &fx.session, fx.g, |_| true).await;
+    fx.start(&task, 30, 6).await;
+    let end = fx.wait(&task, 300).await;
+    approver.abort();
+    leg.count(
+        "other_approvals_given",
+        approved.len() + approved_late.lock().unwrap().len(),
+    );
+    if !approved.is_empty() {
+        leg.note(format!("the person also approved: {approved:?}"));
+    }
+    leg.check(
+        "run_ended_after_the_resume",
+        !end.loop_alive && end.run_state == "Completed",
+        format!("{end:?}"),
+    );
+    // TaskStatus keeps reporting the latest TaskNeedsAttention (here the
+    // restart's RESTART_AWAITING_APPROVAL) after the resumed run completed;
+    // the run's own state is what says it ended cleanly.
+    if !end.failure_class.is_empty() {
+        leg.note(format!(
+            "status after completion still names the restart's attention: {} {}",
+            end.failure_class, end.failure_code
+        ));
+    }
+    leg.check(
+        "the_agent_answered_and_finished",
+        end.state == "ReadyForReview",
+        format!("{end:?}"),
+    );
+    let ev = fx.events().await;
+    leg.check(
+        "live_reject_told_exactly_once",
+        told(&ev, &ack1.decision_id) == 1,
+        format!("{}", told(&ev, &ack1.decision_id)),
+    );
+    leg.check(
+        "killed_reject_told_exactly_once_after_the_resume",
+        told(&ev, &ack2.decision_id) == 1,
+        format!("{}", told(&ev, &ack2.decision_id)),
+    );
+    let first_notice = of_kind(&ev, "HunkNoticeDelivered")
+        .iter()
+        .map(|e| e.offset)
+        .min()
+        .unwrap_or(u64::MAX);
+    leg.check(
+        "the_agent_went_on_after_the_notice",
+        ev.iter().any(|e| {
+            e.offset > first_notice
+                && matches!(
+                    e.kind.as_str(),
+                    "AssistantMessageCompleted" | "ToolCallProposed"
+                )
+        }),
+        "no model turn completed after the notice",
+    );
+    leg.check(
+        "every_decision_recorded_once",
+        of_kind(&ev, "HunkDecided").len() == 4 && of_kind(&ev, "ChangesReverted").len() == 2,
+        format!(
+            "{} decisions, {} reverts",
+            of_kind(&ev, "HunkDecided").len(),
+            of_kind(&ev, "ChangesReverted").len()
+        ),
+    );
+    leg.check(
+        "file_ends_at_the_post_revert_content",
+        sha_text(&read_notes()) == sha_text(&expected2),
+        format!("{:?}", read_notes()),
+    );
+    let summary = fx
+        .logged_calls(&task)
+        .await
+        .into_iter()
+        .rev()
+        .find(|c| c.tool == "task.complete")
+        .map(|c| c.args)
+        .unwrap_or_default();
+    leg.count(
+        "summary_mentions_a_rejection",
+        ["reject", "took back", "taken back", "revert"]
+            .iter()
+            .any(|w| summary.to_lowercase().contains(w)),
+    );
+    leg.note("the SIGKILL is taken after the reject's ack (the revert and its record are one transaction; a kill inside it leaves neither, proven by the scripted suite); the request bodies the gateway received are not recorded here, so `told once` is read from HunkNoticeDelivered on the log");
+    fx.charge(&mut leg, &task).await;
+    leg.finish();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "live: needs MODBIT_LIVE=1 and the gateway credential (the live-core workflow)"]
+async fn live_px103_hunks() {
+    leg_px103_hunks(LiveEnv::from_process()).await;
+}
+
+// ---------------------------------------------------------------------------
 // QUAL-PX-109: compaction on a live run driven to the model's window
 // ---------------------------------------------------------------------------
 
@@ -5932,6 +6718,55 @@ async fn scripted_px118_worktree_leg_mechanics() {
     )
     .unwrap();
     assert_eq!(rec["passed"], true, "{rec:#}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn scripted_px103_hunks_leg_mechanics() {
+    let edited = px103_rows().replace("row-02\n", "row-02 (change.apply)\n");
+    let (base, seen) = scripted_model_fn(Arc::new(move |_, results| {
+        let sh = |argv: Value| json!({"calls": [{"name": "shell.exec", "args": {"argv": argv, "inherit_env": true}}]});
+        let steps = [
+            json!({"calls": [{"name": "plan.update", "args": {"outcome": "edit the notes", "expected_files": ["notes.txt"]}}]}),
+            json!({"calls": [{"name": "change.apply", "args": {"path": "notes.txt", "op": "replace", "content": edited}}]}),
+            sh(json!(["sh", "-c", "echo 'row-46 (redirect)' >> notes.txt"])),
+            sh(json!(["sh", "run_tests.sh"])),
+            sh(json!(["notes-publish", "draft"])),
+            sh(json!(["notes-publish", "final"])),
+            json!({"calls": [{"name": "task.complete", "args": {"summary": "done; a person rejected the appended row-46 and row-24 hunks", "self_review": {"findings": []}}}]}),
+        ];
+        steps
+            .get(results)
+            .cloned()
+            .unwrap_or_else(|| json!({"text": "done"}))
+    }))
+    .await;
+    let results = tempfile::tempdir().unwrap();
+    leg_px103_hunks(scripted_env(&base, results.path())).await;
+    let rec: Value = serde_json::from_str(
+        &std::fs::read_to_string(results.path().join("px103-hunks.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(rec["passed"], true, "{rec:#}");
+    assert_eq!(rec["live"], false);
+    // What the live harness cannot see: the model was told in its requests,
+    // each notice once, with the person's reason, after the decision.
+    let bodies: Vec<String> = seen
+        .lock()
+        .unwrap()
+        .iter()
+        .map(|b| b["messages"].to_string())
+        .collect();
+    for reason in [PX103_LIVE_REASON, PX103_KILL_REASON] {
+        let first = bodies
+            .iter()
+            .position(|b| b.contains(reason))
+            .unwrap_or_else(|| panic!("the model never received the notice with {reason:?}"));
+        assert_eq!(
+            bodies[first].matches(reason).count(),
+            1,
+            "told once: {reason}"
+        );
+    }
 }
 
 /// The reply of a scripted model for the compaction legs: it reads the parts
