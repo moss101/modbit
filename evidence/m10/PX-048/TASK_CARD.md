@@ -35,3 +35,17 @@ Status unchanged: REAL_TESTING, for the six reasons above, none of which this to
 1. Linux and Windows: CI of this change's PR, not run locally.
 2. Index entries the old read already left in a checkout stay until the person clears them: they cannot be told apart from a person's own `git add -N`, so the Core does not touch them. `git clean` skips those files until then.
 3. A Core killed between copying the index and deleting the copy leaves one `modbit-diff-index-*` file in the git directory. Nothing reads it; the same holds for `modbit-snapshot-index-*`. Not cleaned up.
+
+## Packaged leg and an explicit Leave terminal (2026-11-23)
+
+Status unchanged: REAL_TESTING.
+
+- `e2e/playwright.packaged.config.ts`: `apps-panel`, `changes-app`, `apps-panel-state` and `apps-browser` join `PACKAGED_SUBSET`. CI's packaged desktop job runs them against the package's own Core and execd on macOS, Linux and Windows. This was the graph note's "no packaged run".
+- The Leave terminal button now releases the input lease explicitly through the mounted view (`XtermView` `releaser`), not only as a side effect of focus leaving the terminal. `apps-panel.spec.ts` now clicks the button, where before it called `.focus()`; 11 of 11 pass locally (macOS, unpackaged). A click also moves focus out, so this test does not tell the handler apart from the focus-out release; it proves the person's real gesture.
+- Still open, as listed above:
+  - the agent-terminal read-only versus input-lease decision (QUAL-PX-043/048 against PX-099), which is the owner's;
+  - the user terminal (a new protocol message), which needs the owner or a new task;
+  - Windows line order;
+  - history for a still-running terminal;
+  - review of the preload pin;
+  - a negative that restores a tab under another task's id.

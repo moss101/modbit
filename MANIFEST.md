@@ -430,7 +430,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-045/TASK_CARD.md` | retained evidence | 2091 | `2b67d21ff7e968b175197d1b83baa80341294e4d0dd4e94e51d0442f614ef7d0` |
 | `evidence/m10/PX-045/ci-run-40018683027.json` | retained evidence | 46978 | `4c8f2b65e0e6636167fab16c719c969ad08b38234e126f8d31b52d77d3e8c10e` |
 | `evidence/m10/PX-045/evidence.json` | retained evidence | 2016 | `3a560df28f9b64ca68eb3bbbe39999bf70253105e64eda9f1ce0e9482840a6dc` |
-| `evidence/m10/PX-048/TASK_CARD.md` | retained evidence | 5728 | `00e6d9d8ad04f42b6295d9d84d253072c9ebc161a0cb1f2d99ea0c6f80e3d3e9` |
+| `evidence/m10/PX-048/TASK_CARD.md` | retained evidence | 6932 | `68655d548c47d69cc19e9705da0c45fba7d6abb9adf1fba15f1fe958eb138a9d` |
 | `evidence/m10/PX-048/read-leaves-index/mutations.log` | retained evidence | 2510 | `6736d5f6f697646065beec5a33fc0f9f252feb9e8321ffa4f0dbbe907f77a551` |
 | `evidence/m10/PX-048/read-leaves-index/tests.log` | retained evidence | 9245 | `7194390f084f1ceb65083e85676f7b357ac7b6ee6104417598632bc42a799b62` |
 | `evidence/m10/PX-049/TASK_CARD.md` | retained evidence | 2291 | `e98ec599dff77dcb6058f16967e9798e33d3af05b5bf1179c60037fba07622c0` |

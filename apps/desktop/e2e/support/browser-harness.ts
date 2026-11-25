@@ -12,7 +12,11 @@ import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { packagedExecutable } from "../packaged-app.ts";
 import { openTaskMore, queueTask } from "./new-task.ts";
+
+/** The packaged leg (playwright.packaged.config.ts sets it). */
+const PACKAGED = process.env.MODBIT_E2E_PACKAGED === "1";
 
 export const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const coreBin = process.env.MODBIT_CORE_BIN ?? resolve(appDir, "..", "..", "target", "debug", process.platform === "win32" ? "modbit-core.exe" : "modbit-core");
@@ -69,10 +73,13 @@ export { closeApp } from "./close-app.ts";
 
 /** The real app against a real Core. By default the policy names nothing local: a spec that serves its fixtures on loopback names them. */
 export async function launch(dataDir: string, extraEnv: Record<string, string>): Promise<{ app: ElectronApplication; page: Page }> {
-  const app = await electron.launch({
-    args: [join(appDir, "dist", "main", "main.cjs")],
-    env: { ...process.env, MODBIT_DATA_DIR: dataDir, MODBIT_CORE_BIN: coreBin, OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "", MODBIT_SUPPRESS_OS_NOTIFICATIONS: "1", MODBIT_BROWSER_ALLOW_TARGETS: "", MODBIT_BROWSER_ALLOW_SITES: "http://127.0.0.1:*,http://localhost:*,https://127.0.0.1:*,https://localhost:*", MODBIT_BROWSER_ALLOW_ORIGINS: "", MODBIT_BROWSER_HOSTS: "", ...extraEnv },
-  });
+  const env: Record<string, string> = { ...(process.env as Record<string, string>), MODBIT_DATA_DIR: dataDir, MODBIT_CORE_BIN: coreBin, OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "", MODBIT_SUPPRESS_OS_NOTIFICATIONS: "1", MODBIT_BROWSER_ALLOW_TARGETS: "", MODBIT_BROWSER_ALLOW_SITES: "http://127.0.0.1:*,http://localhost:*,https://127.0.0.1:*,https://localhost:*", MODBIT_BROWSER_ALLOW_ORIGINS: "", MODBIT_BROWSER_HOSTS: "", ...extraEnv };
+  // M10.2 / PX-048: on the packaged leg the package's own executable runs with the Core and execd it carries, as ui-harness does.
+  if (PACKAGED) {
+    delete env.MODBIT_CORE_BIN;
+    delete env.MODBIT_EXECD_BIN;
+  }
+  const app = await electron.launch(PACKAGED ? { executablePath: packagedExecutable().exe, env } : { args: [join(appDir, "dist", "main", "main.cjs")], env });
   const page = await app.firstWindow();
   app.process().stderr?.on("data", (d: Buffer) => process.stderr.write(`[electron] ${d}`));
   await expect(page.getByTestId("core-status")).toContainText("Core connected", { timeout: 60_000 });
