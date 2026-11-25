@@ -36864,8 +36864,17 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-066",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": [],
+   "status": "E2E_PROVEN",
+   "evidence": [
+    "artifact:evidence/m10/PX-066/TASK_CARD.md",
+    "commit:e6221766",
+    "test:services/modbit-core/tests/worktrees_px.rs::px_066_apply_is_a_protected_effect_bound_to_its_intent_and_undo_is_exact",
+    "test:apps/cli/tests/px_066_apply_back.rs::qual_px_066_cli_every_conflict_option_is_exact_and_undo_after_a_second_edit_destroys_nothing",
+    "artifact:evidence/m10/PX-066/tests-2026-11-25.log",
+    "test:services/modbit-core/tests/worktrees_px.rs::qual_px_066_an_external_sigkill_while_the_apply_is_writing_recovers_whole",
+    "test:services/modbit-core/tests/worktrees_px.rs::qual_px_066_a_replayed_apply_with_the_same_command_id_applies_once",
+    "artifact:evidence/m10/PX-066/mutation-check-sigkill.txt"
+   ],
    "notes": [
     {
      "at": "2026-11-07T08:07:29Z",
@@ -36874,7 +36883,7 @@
      "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: IMPLEMENTED-PARTIAL. Real path: services/modbit-core/src/apply_back.rs, crates/git/src/apply.rs, apps/cli/src/worktree_verbs.rs; proof tests/worktrees_px.rs px_066_*, apps/cli/tests/px_066_apply_back.rs. First missing link: UNDO_AND_APPLY is never exercised with a prior apply in force. Same-command-id replay is never sent; ack is never Replayed; PX-061 open."
     }
    ],
-   "status_changed_on": "2026-11-07T08:07:29Z"
+   "status_changed_on": "2026-11-25T16:37:43Z"
   },
   {
    "id": "PX-067",

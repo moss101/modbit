@@ -1362,6 +1362,207 @@ async fn px_066_a_core_killed_after_the_writes_before_the_record_recovers_whole(
     kill_mid_apply("WORKTREE_APPLY_AFTER_WRITES", true).await;
 }
 
+/// QUAL-PX-066 "`SIGKILL` mid-apply": the Core is held between two file
+/// writes and killed from outside with SIGKILL (not an abort it chose), at the
+/// moment the test sees the checkout half-written. Restart recovers the exact
+/// pre-apply hashes, and the same apply then completes whole.
+#[tokio::test]
+async fn qual_px_066_an_external_sigkill_while_the_apply_is_writing_recovers_whole() {
+    let mut fx = Fx::new(
+        &apply_files(),
+        &[("MODBIT_FAULT_WORKTREE_STALL", "WORKTREE_APPLY_MID:120000")],
+    )
+    .await;
+    write(&Path::new(&fx.root).join("keep.txt"), "user edit in keep\n");
+    let task = task_with_changes(&mut fx, 0x5c).await;
+    let before = tree_hashes(Path::new(&fx.root));
+    let pending = fx.apply(&task, "", &[], false).await.unwrap();
+    assert_eq!(pending.status, "APPROVAL_PENDING");
+    fx.resolve(&pending.approval_id, true).await;
+    let id = fx.n();
+    let root = PathBuf::from(&fx.root);
+    let died = {
+        let call = fx.c.command(envelope_fenced(
+            id16(id),
+            "ApplyWorktree",
+            ApplyWorktree {
+                task_id: Some(task.clone()),
+                ..Default::default()
+            }
+            .encode_to_vec(),
+            fx.g,
+        ));
+        tokio::pin!(call);
+        // Wait, on the filesystem, for the half-written checkout.
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(60);
+        loop {
+            tokio::select! {
+                r = &mut call => panic!("the apply returned while it should be held mid-write: {r:?}"),
+                _ = tokio::time::sleep(Duration::from_millis(50)) => {}
+            }
+            if tree_hashes(&root) != before {
+                break;
+            }
+            assert!(
+                tokio::time::Instant::now() < deadline,
+                "the apply never started writing"
+            );
+        }
+        let mid = tree_hashes(&root);
+        assert_ne!(mid.get("a.txt"), before.get("a.txt"), "one file is written");
+        assert_eq!(
+            mid.get("new/dir/b.txt"),
+            None,
+            "and the next one is not: the checkout is half-applied"
+        );
+        // SIGKILL from outside (std's Child::kill), then the call fails.
+        fx.core.kill();
+        call.await
+    };
+    assert!(died.is_err(), "the Core is dead");
+    fx.restart(&[]).await;
+    assert_eq!(
+        tree_hashes(&root),
+        before,
+        "after recovery the checkout is exactly the pre-apply state"
+    );
+    let evs = fx.events().await;
+    assert_eq!(events_of(&evs, "WorktreeApplyStarted").len(), 1);
+    assert_eq!(events_of(&evs, "WorktreeApplyRolledBack").len(), 1);
+    assert!(events_of(&evs, "WorktreeApplied").is_empty());
+    assert!(
+        tree_hashes(&root)
+            .keys()
+            .all(|p| !p.contains(".modbit-apply-")),
+        "no temp file is left behind"
+    );
+    let first = fx.apply(&task, "", &[], false).await.unwrap();
+    assert_eq!(first.status, "APPROVAL_PENDING", "{first:?}");
+    fx.resolve(&first.approval_id, true).await;
+    let done = fx.apply(&task, "", &[], false).await.unwrap();
+    assert_eq!(done.status, "APPLIED", "{done:?}");
+    let after = tree_hashes(&root);
+    let cand = tree_hashes(&fx.worktree_dir(&task));
+    assert_eq!(after["a.txt"], cand["a.txt"]);
+    assert_eq!(after["new/dir/b.txt"], cand["new/dir/b.txt"]);
+    assert!(!after.contains_key("c.txt"));
+    assert_eq!(after["keep.txt"], before["keep.txt"]);
+}
+
+/// Send `ApplyWorktree` with the command id `id` and body `body` under the
+/// current lease generation; the answer's status, or the rejection's code.
+async fn replay_apply(fx: &mut Fx, id: &Id, body: &[u8]) -> String {
+    match fx
+        .c
+        .command(envelope_fenced(
+            id.clone(),
+            "ApplyWorktree",
+            body.to_vec(),
+            fx.g,
+        ))
+        .await
+    {
+        Ok(ack) => Client::result::<WorktreeApplyAck>(&ack)
+            .map(|a| a.status)
+            .unwrap_or_else(|e| format!("undecodable: {e}")),
+        Err(ClientError::Rejected { code, .. }) => code,
+        Err(e) => panic!("ApplyWorktree replay: {e}"),
+    }
+}
+
+/// QUAL-PX-066 negative proof "a replay of Apply with the same command id
+/// applies once": the identical `ApplyWorktree` envelope is sent again after
+/// the apply, after the person edits a file it wrote, after a Core restart and
+/// after an Undo. None of them writes the checkout again; there is one
+/// `WorktreeApplied` and one SUCCESS receipt for the intent.
+#[tokio::test]
+async fn qual_px_066_a_replayed_apply_with_the_same_command_id_applies_once() {
+    let mut fx = Fx::new(&apply_files(), &[]).await;
+    let task = task_with_changes(&mut fx, 0x5d).await;
+    let root = PathBuf::from(&fx.root);
+    let before = tree_hashes(&root);
+    let pending = fx.apply(&task, "", &[], false).await.unwrap();
+    assert_eq!(pending.status, "APPROVAL_PENDING");
+    fx.resolve(&pending.approval_id, true).await;
+    let id = id16(fx.n());
+    let body = ApplyWorktree {
+        task_id: Some(task.clone()),
+        ..Default::default()
+    }
+    .encode_to_vec();
+    let first = replay_apply(&mut fx, &id, &body).await;
+    assert_eq!(first, "APPLIED");
+    let applied = tree_hashes(&root);
+
+    // The person edits a file the apply wrote; a replay must not put the
+    // candidate back over it.
+    write(
+        &root.join("a.txt"),
+        "the person's own edit after the apply\n",
+    );
+    let edited = tree_hashes(&root);
+    let mut answers = Vec::new();
+    for _ in 0..2 {
+        answers.push(replay_apply(&mut fx, &id, &body).await);
+        assert_eq!(
+            tree_hashes(&root),
+            edited,
+            "a replay wrote the checkout: {answers:?}"
+        );
+    }
+
+    // After a restart the client resends the same command (with the new
+    // lease generation): still nothing is written.
+    fx.restart(&[]).await;
+    answers.push(replay_apply(&mut fx, &id, &body).await);
+    assert_eq!(
+        tree_hashes(&root),
+        edited,
+        "a replay after restart wrote the checkout: {answers:?}"
+    );
+
+    // Put the applied bytes back so Undo has no conflict, undo, and replay
+    // the original command once more: an undone apply is not re-applied by a
+    // replay of the command that made it.
+    write(
+        &root.join("a.txt"),
+        "ONE\ntwo\nthree\nfour\nfive\nsix\nseven\neight\nnine\nten\n",
+    );
+    assert_eq!(tree_hashes(&root), applied);
+    let u = fx.undo(&task).await.unwrap();
+    assert_eq!(u.status, "APPROVAL_PENDING", "{u:?}");
+    fx.resolve(&u.approval_id, true).await;
+    let u = fx.undo(&task).await.unwrap();
+    assert_eq!(u.status, "UNDONE", "{u:?}");
+    assert_eq!(tree_hashes(&root), before);
+    answers.push(replay_apply(&mut fx, &id, &body).await);
+    assert_eq!(
+        tree_hashes(&root),
+        before,
+        "a replay after Undo re-applied: {answers:?}"
+    );
+
+    let evs = fx.events().await;
+    assert_eq!(events_of(&evs, "WorktreeApplied").len(), 1, "{answers:?}");
+    assert_eq!(
+        receipts_for(&fx, &pending.intent_hash)
+            .await
+            .iter()
+            .filter(|s| *s == "SUCCESS")
+            .count(),
+        1,
+        "one effect for the intent: {answers:?}"
+    );
+    // A resend is planned again against the checkout as it is now: over the
+    // person's edit it is a conflict (Cancel is the default, nothing written);
+    // after Undo it is a new request that waits for a new approval.
+    assert_eq!(
+        answers,
+        ["CONFLICT", "CONFLICT", "CONFLICT", "APPROVAL_PENDING"],
+        "replay answers"
+    );
+}
+
 // ===========================================================================
 // PX-065: setup commands
 // ===========================================================================

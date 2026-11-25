@@ -1,0 +1,11 @@
+# PX-066 mutation check 2026-11-25 (external SIGKILL leg)
+Mutation: services/modbit-core/src/server.rs startup recovery replaced by 'let rolled_back = 0;' (apply_back::recover not called).
+
+== mutation: apply_back::recover disabled
+thread 'qual_px_066_an_external_sigkill_while_the_apply_is_writing_recovers_whole' (1155144) panicked at services/modbit-core/tests/worktrees_px.rs:1424:5:
+assertion `left == right` failed: after recovery the checkout is exactly the pre-apply state
+  left: {".modbit/verification.json": "31433a2aa848e8d143170ef4b4428c97e7fe73d0736338a1894aa47dba3540c3", "a.txt": "587e148b3eeab07b2a7a045a625dfb352ced2806cfd4fa93c6ad9131c98b1879", "c.txt": "361e43b2807ccd19fee0e8a048e8a5eba22d718a12819a2e98e5e7901c72f433", "keep.txt": "cd850d94d7a9bf0697a01c3c5bf7de4b6e1f4e447987c46f296b45bfaf852127"}
+ right: {".modbit/verification.json": "31433a2aa848e8d143170ef4b4428c97e7fe73d0736338a1894aa47dba3540c3", "a.txt": "af1f7e7f5d20fc911898689b9504e90ca1deaba3d03d83752addfc69bfbc17a4", "c.txt": "361e43b2807ccd19fee0e8a048e8a5eba22d718a12819a2e98e5e7901c72f433", "keep.txt": "cd850d94d7a9bf0697a01c3c5bf7de4b6e1f4e447987c46f296b45bfaf852127"}
+mutated rc=101
+== restored
+restored rc=0
