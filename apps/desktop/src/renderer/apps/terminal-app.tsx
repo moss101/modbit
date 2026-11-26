@@ -37,6 +37,8 @@ export function TerminalApp({ sessionId, taskId, terminals, selectedId, onSelect
   const [error, setError] = useState<string | null>(null);
   const [reachedTop, setReachedTop] = useState(0);
   const leave = useRef<HTMLButtonElement>(null);
+  // The mounted view's "give the input lease back": Leave terminal releases it explicitly, not only by moving focus.
+  const release = useRef<(() => Promise<void>) | null>(null);
   // A different terminal starts with a clean status line.
   useEffect(() => {
     setView(null);
@@ -96,7 +98,15 @@ export function TerminalApp({ sessionId, taskId, terminals, selectedId, onSelect
             {ownerNote(selected)} Shift+Escape leaves the terminal.
           </p>
           <div className="terminal-toolbar">
-            <Button size="sm" ref={leave} data-testid="terminal-leave">
+            <Button
+              size="sm"
+              ref={leave}
+              data-testid="terminal-leave"
+              onClick={() => {
+                void release.current?.();
+                leave.current?.focus();
+              }}
+            >
               Leave terminal
             </Button>
             <span className="meta" role="status" data-testid="terminal-status" data-lease={view?.leaseHeld ? "held" : "free"}>
@@ -104,7 +114,7 @@ export function TerminalApp({ sessionId, taskId, terminals, selectedId, onSelect
             </span>
           </div>
           <TerminalHistory taskId={taskId} terminalId={selected.terminalId} origin={view && view.phase !== "idle" ? view.origin : null} available={selected.hasOutputRef} retainedFrom={BigInt(selected.oldestCursor)} reachedTop={reachedTop} />
-          <XtermView key={selected.terminalId} sessionId={sessionId} terminal={selected} onLeave={() => leave.current?.focus()} onState={setView} onNotice={setNotice} onReachTop={() => setReachedTop((n) => n + 1)} />
+          <XtermView key={selected.terminalId} sessionId={sessionId} terminal={selected} onLeave={() => leave.current?.focus()} onState={setView} onNotice={setNotice} onReachTop={() => setReachedTop((n) => n + 1)} releaser={release} />
           {exit && (
             <p className="meta" role="status" data-testid="terminal-exit">
               {exit.timedOut ? "Timed out" : exit.cancelled ? "Stopped" : exit.signal !== null ? `Ended by signal ${exit.signal}` : `Exited with code ${exit.exitCode ?? "unknown"}`}. The output above is its full replay.

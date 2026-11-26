@@ -7,7 +7,7 @@ import { defineConfig } from "@playwright/test";
 // Besides the packaged-only specs, a representative subset of the checkout suite runs against the packaged executable:
 // ui-harness `launch` reads MODBIT_E2E_PACKAGED and starts the package's own executable with no MODBIT_CORE_BIN, so the
 // Core that connects is the one the package carries. The subset covers the shell and its accessibility pass, a scripted
-// task run end to end, approvals across a Core restart, supervision (Core kill and recovery) and the render budgets.
+// task run end to end, approvals across a Core restart, supervision (Core kill and recovery), the render budgets and the apps panel.
 process.env.MODBIT_E2E_PACKAGED = "1";
 process.env.MODBIT_EXECD_ORPHAN_GRACE_SECS ??= "5";
 // REQ-PX-210: the composer asks the Core for a suggested next message when a turn ends, which is one more model request per
@@ -15,7 +15,9 @@ process.env.MODBIT_EXECD_ORPHAN_GRACE_SECS ??= "5";
 // every spec (the Core then refuses the request and calls no model); px-210-suggestion.spec.ts turns it back on.
 process.env.MODBIT_NEXT_PROMPT_SUGGESTIONS ??= "off";
 
-export const PACKAGED_SUBSET = ["conversation", "approvals", "supervision", "perf-budgets"];
+// PX-048: the typed apps panel (Changes, Terminal with its input lease and replay, per-task panel state, the Browser app) runs on
+// the packaged build too, against the execd and Core the package carries.
+export const PACKAGED_SUBSET = ["conversation", "approvals", "supervision", "perf-budgets", "apps-panel", "changes-app", "apps-panel-state", "apps-browser"];
 
 export default defineConfig({
   testDir: ".",
