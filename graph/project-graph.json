@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-11-25",
+ "generated_on": "2026-11-26",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -38032,7 +38032,7 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-102",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "E2E_PROVEN",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m10/PX-102/TASK_CARD.md",
     "commit:5774ec68",
@@ -38041,9 +38041,12 @@
     "artifact:evidence/m10/PX-102/tests-2026-11-25.log",
     "test:services/modbit-core/tests/checkpoints_px.rs::qual_px_102_an_archived_applied_task_keeps_only_what_a_hard_reference_needs",
     "test:services/modbit-core/tests/checkpoints_px.rs::qual_px_102_a_collection_requested_during_a_restore_never_runs_under_it",
-    "artifact:evidence/m10/PX-102/mutation-check-retired.txt"
+    "artifact:evidence/m10/PX-102/mutation-check-retired.txt",
+    "run:gha-45661876176",
+    "commit:6211d58e",
+    "artifact:evidence/m10/PX-102/ci-run-45661876176.json"
    ],
-   "status_changed_on": "2026-11-25T17:07:44Z"
+   "status_changed_on": "2026-11-26T06:46:12Z"
   },
   {
    "id": "PX-103",

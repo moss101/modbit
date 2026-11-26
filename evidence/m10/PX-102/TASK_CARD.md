@@ -60,3 +60,12 @@ See `tests-2026-11-25.log`, `clippy-2026-11-25.log` and `mutation-check-retired.
 
 - PX-102 is a Core row. No desktop or CLI surface is part of its acceptance.
 - No release gate is attested.
+
+## CI and merge
+
+- PR 257, CI run 45661876176 on head 177d23d3: conclusion success, every job green (`ci-run-45661876176.json`).
+- Merged to main as 6211d58e (squash), 2026-11-26.
+
+## Status
+
+E2E_PROVEN → COMPLETE through `tools/graph.py`, with evidence run:gha-45661876176, commit:6211d58e and `ci-run-45661876176.json`. The owner items under "Findings and interpretations" above stay open as notes. They are not acceptance criteria of QUAL-PX-102.
