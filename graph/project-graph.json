@@ -38074,8 +38074,15 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-103",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": [],
+   "status": "REAL_TESTING",
+   "evidence": [
+    "artifact:evidence/m10/PX-103/TASK_CARD.md",
+    "commit:c8edbf5f",
+    "test:services/modbit-core/tests/px_103_hunks.rs::qual_px_103_hunks_name_their_call_and_a_mid_run_rejection_reverts_exactly_that_hunk",
+    "test:services/modbit-core/tests/px_103_hunks.rs::qual_px_103_sigkill_after_the_revert_recovers_to_one_consistent_outcome",
+    "test:services/modbit-core/tests/px_103_hunks.rs::qual_px_103_an_unattributable_hunk_is_shown_as_such_and_blocks_auto_accept",
+    "artifact:evidence/m10/PX-103/test-log.txt"
+   ],
    "notes": [
     {
      "at": "2026-11-07T08:07:31Z",
@@ -38084,7 +38091,7 @@
      "note": "Audit 2026-11-07 at d4c5458a, code read, not run, evidence/m10/graph-audit-2026-11-07: IMPLEMENTED-PARTIAL. Real path: services/modbit-core/src/hunks.rs, changes.rs revert_impl, tools.rs:1848, runtime.rs:3790; test services/modbit-core/tests/px_103_hunks.rs (real Core, scripted model). First missing link: revert write (changes.rs:704) and HunkDecided commit (:776) are not atomic; a kill between leaves no decision or notice. Live gateway leg not run."
     }
    ],
-   "status_changed_on": "2026-11-07T08:07:31Z"
+   "status_changed_on": "2026-11-25T17:06:33Z"
   },
   {
    "id": "PX-104",

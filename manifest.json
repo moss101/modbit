@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2534,
+    "root_and_tooling": 2535,
     "docs_bytes": 2405242
   },
   "sections": [
@@ -2574,6 +2574,11 @@
       "sha256": "2170f803b0c681a37c403a167e0fcda79a7e0adbcbe2700d26d20f9606a14bd3"
     },
     {
+      "path": "evidence/m10/PX-069/mutation-check-stop-race-2026-11-26.txt",
+      "bytes": 895,
+      "sha256": "b74e4b7c9d6f135985d84632246b1d43c7da85b9756e103f89b9296ecb61afdf"
+    },
+    {
       "path": "evidence/m10/PX-069/mutation-checks-2026-11-09.txt",
       "bytes": 2591,
       "sha256": "bb70f46c2901c811aa203078b1a0f5a9dd71a761adf280c4eff9685e48500730"
@@ -2825,8 +2830,8 @@
     },
     {
       "path": "evidence/m10/PX-103/TASK_CARD.md",
-      "bytes": 6219,
-      "sha256": "9df6c45bcf9f40f419a18336733f119672b82e8e9f0e547b75800a7bb7130ffa"
+      "bytes": 9746,
+      "sha256": "0c230c26efcd064c81b548c0c077bfafbfcb94c1cca143d169bb59667e4c03da"
     },
     {
       "path": "evidence/m10/PX-103/mutation-check.txt",
@@ -13540,8 +13545,8 @@
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2648745,
-      "sha256": "151b2d204dfc856e65f8b2073d8aac328ae23603db8964b9d43ed029b294b7b4"
+      "bytes": 2649269,
+      "sha256": "e46b1f842a5fb98e5ae3d78ae1bea3d3575b65cc1dee90e64642febdab88bf4b"
     },
     {
       "path": "tools/build_graph.py",

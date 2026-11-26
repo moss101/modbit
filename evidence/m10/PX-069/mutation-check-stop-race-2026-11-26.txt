@@ -1,0 +1,17 @@
+# PX-069 close-reason race, 2026-11-26 (PR 258 macOS CI: LATCHED where USER_ABORTED was expected)
+Fix: crates/computer/src/runtime/act.rs unknown_input closes USER_ABORTED when the person aborted the run.
+Test: crates/computer/src/runtime/tests.rs an_input_in_flight_at_the_persons_stop_closes_the_session_as_aborted
+
+== fixed
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 54 filtered out; finished in 0.02s
+== mutation: always LATCHED
+(MUTATION marker present)
+assertion `left == right` failed: [("LATCHED", "LATCHED")]
+  left: [("LATCHED", "LATCHED")]
+ right: [("USER_ABORTED", "STOPPED")]
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 54 filtered out; finished in 0.02s
+(restore re-done from the saved fixed copy; marker count 0)
+== restored
+(MUTATION marker present)
+
+After restore: modbit-computer 55 passed; px_computer qual_px_069 13 passed; clippy clean.
