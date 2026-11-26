@@ -39498,13 +39498,18 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-137",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "E2E_PROVEN",
    "evidence": [
     "commit:4528f7c1",
     "run:38990216920",
     "test:benchmarks/retrieval/tests/external_baseline.rs::a_missing_ripgrep_fails_the_run_instead_of_leaving_the_column_out",
     "test:benchmarks/retrieval/tests/live_agent.rs::rescoring_retained_transcripts_reproduces_the_digest_and_catches_any_edit",
-    "artifact:benchmarks/live-results/px137/38044424486/RUN.md"
+    "artifact:benchmarks/live-results/px137/38044424486/RUN.md",
+    "run:45607051313",
+    "artifact:benchmarks/live-results/px137/45607051313/RUN.md",
+    "commit:c605c2e3",
+    "commit:fdb2c9ce",
+    "test:benchmarks/retrieval/tests/live_agent.rs::a_signed_tool_call_is_replayed_with_its_signature"
    ],
    "notes": [
     {
@@ -39512,10 +39517,16 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "graph integration 2026-10-17 on main dbe83fc9: A complete 77-case live run on ripgrep with a real rg baseline, intervals, 100 MB index times and a reproducing digest exists, but it ran on branch commit 4f0491f with the first direct-HTTP chat client; the harness was later moved onto the  Open: re-run on the current main harness (RUN.md itself says a later re-run exercises the gateway path)"
+    },
+    {
+     "at": "2026-11-25T16:15:10Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "Live re-run on the provider gateway after the fusion fix (#253, c605c2e3) with the bench client replaying provider_data (fdb2c9ce): gemini-3.8-flash, 77/77 cases under both profiles, COMPLETE, 3.91 of 4 USD. Treatment accuracy 74/77 vs baseline 75/77 (delta -0.013, CI [-0.052, 0.026]); input tokens -4914/case (CI [-8396, -1731]); tool calls -0.47 (CI [-0.86, -0.10]). retrieve chosen in 10/77 cases, so the planner's ranking is weakly exercised. Not comparable with run 38044424486 (other model and client)."
     }
    ],
-   "owner_agent": "graph-integrator",
-   "status_changed_on": "2026-10-17T06:34:57Z"
+   "owner_agent": "claude",
+   "status_changed_on": "2026-11-25T16:15:10Z"
   },
   {
    "id": "PX-138",
