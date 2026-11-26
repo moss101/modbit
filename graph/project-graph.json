@@ -38032,8 +38032,21 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-102",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m10/PX-102/TASK_CARD.md",
+    "commit:5774ec68",
+    "test:services/modbit-core/tests/checkpoints_px.rs::px_102_the_collector_thins_a_finished_task_and_never_removes_what_is_referenced",
+    "test:services/modbit-core/tests/checkpoints_px.rs::px_102_sigkill_during_the_sweep_leaves_no_broken_chain_and_the_next_run_completes",
+    "artifact:evidence/m10/PX-102/tests-2026-11-25.log",
+    "test:services/modbit-core/tests/checkpoints_px.rs::qual_px_102_an_archived_applied_task_keeps_only_what_a_hard_reference_needs",
+    "test:services/modbit-core/tests/checkpoints_px.rs::qual_px_102_a_collection_requested_during_a_restore_never_runs_under_it",
+    "artifact:evidence/m10/PX-102/mutation-check-retired.txt",
+    "run:gha-45661876176",
+    "commit:6211d58e",
+    "artifact:evidence/m10/PX-102/ci-run-45661876176.json"
+   ],
+   "status_changed_on": "2026-11-26T06:46:12Z"
   },
   {
    "id": "PX-103",

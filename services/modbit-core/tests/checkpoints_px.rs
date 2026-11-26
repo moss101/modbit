@@ -19,13 +19,13 @@ use std::time::Duration;
 use modbit_protocol::client::{Client, ClientError};
 use modbit_protocol::local::{ReadyLine, decode_hex};
 use modbit_protocol::v1::{
-    AcquireSessionLease, ApprovalList, CancelTask, CheckpointCreated, CheckpointGcReport,
-    CheckpointList, CheckpointNamed, CheckpointRestoreResult, ClientKind, CommandEnvelope,
-    CommandStatus, CreateCheckpoint, CreateSession, CreateTask, ForkTask, GetSessionSnapshot,
-    GetTaskStatus, Id, ListApprovals, ListCheckpoints, NameCheckpoint, PauseTask, ResolveApproval,
-    RestoreCheckpoint, ResumeTask, RunCheckpointGc, SessionCreated, SessionLeaseAcquired,
-    SessionSnapshot, StartTask, TaskCreated, TaskForked, TaskPauseResult, TaskResumeResult,
-    TaskRunStarted, TaskStatus,
+    AcquireSessionLease, ApprovalList, ArchiveTask, CancelTask, CheckpointCreated,
+    CheckpointGcReport, CheckpointList, CheckpointNamed, CheckpointRestoreResult, ClientKind,
+    CommandEnvelope, CommandStatus, CreateCheckpoint, CreateSession, CreateTask, ForkTask,
+    GetSessionSnapshot, GetTaskStatus, Id, ListApprovals, ListCheckpoints, NameCheckpoint,
+    PauseTask, ResolveApproval, RestoreCheckpoint, ResumeTask, RunCheckpointGc, SessionCreated,
+    SessionLeaseAcquired, SessionSnapshot, StartTask, TaskArchived, TaskCreated, TaskForked,
+    TaskPauseResult, TaskResumeResult, TaskRunStarted, TaskStatus,
 };
 use prost::Message;
 use serde_json::{Value, json};
@@ -1715,6 +1715,275 @@ async fn px_102_a_second_collector_and_a_restore_are_refused_while_a_collection_
     assert!(done.removed > 0, "{done:?}");
     // And the lease is free again.
     assert!(gc(&mut fx, 1, false).await.is_ok());
+}
+
+async fn archive(fx: &mut Fx, archived: bool) {
+    let (task, g) = (fx.task.clone(), fx.g);
+    let a: TaskArchived = ok(
+        &mut fx.c,
+        "ArchiveTask",
+        ArchiveTask {
+            task_id: Some(task),
+            archived,
+        },
+        Some(g),
+    )
+    .await;
+    assert_eq!(a.archived, archived);
+}
+
+/// A collection under `policy`, as a dry run or not.
+async fn gc_report(
+    fx: &mut Fx,
+    policy: modbit_protocol::v1::CheckpointRetentionPolicy,
+    dry_run: bool,
+) -> CheckpointGcReport {
+    let (task, session, g) = (fx.task.clone(), fx.session.clone(), fx.g);
+    ok(
+        &mut fx.c,
+        "RunCheckpointGc",
+        RunCheckpointGc {
+            session_id: Some(session),
+            task_id: Some(task),
+            reason: "test".into(),
+            policy: Some(policy),
+            dry_run,
+        },
+        Some(g),
+    )
+    .await
+}
+
+/// QUAL-PX-102 scope "drop all of an archived and applied task after a grace
+/// period", on the real Core: a task that ran in place (its result is in the
+/// checkout) keeps its named, latest and fork-parent checkpoints under the
+/// ordinary policy, while it is not archived, after it is unarchived, and
+/// while it has been archived for less than the policy's age floor. Once that
+/// grace has passed the collector drops every checkpoint except what a hard
+/// reference needs (the fork parent and its chain), and the named one answers
+/// `COLLECTED`.
+#[tokio::test]
+async fn qual_px_102_an_archived_applied_task_keeps_only_what_a_hard_reference_needs() {
+    use modbit_protocol::v1::CheckpointRetentionPolicy as P;
+    let mut fx = many_checkpoints(6).await;
+    let l = fx.checkpoints().await;
+    let id_of = |reason: &str| {
+        l.checkpoints
+            .iter()
+            .find(|c| c.reason == reason)
+            .unwrap_or_else(|| panic!("no checkpoint `{reason}`"))
+            .checkpoint_id
+            .clone()
+    };
+    // The fork parent comes first, so the named one is not a link of its chain.
+    let (named, parent) = (id_of("hand 3"), id_of("hand 1"));
+    let latest = l
+        .checkpoints
+        .iter()
+        .find(|c| c.status == "CURRENT")
+        .unwrap()
+        .checkpoint_id
+        .clone();
+    name(&mut fx, &named, "before the cleanup").await.unwrap();
+    let fork: TaskForked = {
+        let (task, g) = (fx.task.clone(), fx.g);
+        ok(
+            &mut fx.c,
+            "ForkTask",
+            ForkTask {
+                task_id: Some(task),
+                checkpoint_id: parent.clone(),
+                ..Default::default()
+            },
+            Some(g),
+        )
+        .await
+    };
+    assert_eq!(fork.checkpoint_id, parent);
+    let now = P {
+        keep_recent: 1,
+        min_age_ms: 1,
+        max_bytes: 0,
+    };
+    let kept_ids = |r: &CheckpointGcReport| -> Vec<String> {
+        r.kept.iter().map(|k| k.checkpoint_id.clone()).collect()
+    };
+    let ordinary = |r: &CheckpointGcReport, when: &str| {
+        let kept = kept_ids(r);
+        for (id, what) in [
+            (&named, "named"),
+            (&latest, "latest"),
+            (&parent, "fork parent"),
+        ] {
+            assert!(
+                kept.contains(id),
+                "{when}: the {what} checkpoint is kept: {r:?}"
+            );
+        }
+    };
+    // Not archived: the ordinary policy.
+    ordinary(&gc_report(&mut fx, now, true).await, "not archived");
+    // Archived, then unarchived: the ordinary policy again.
+    archive(&mut fx, true).await;
+    archive(&mut fx, false).await;
+    ordinary(&gc_report(&mut fx, now, true).await, "unarchived");
+    // Archived, inside the grace (the default floor of 7 days).
+    archive(&mut fx, true).await;
+    let inside = P {
+        keep_recent: 1,
+        min_age_ms: 0,
+        max_bytes: 0,
+    };
+    ordinary(&gc_report(&mut fx, inside, true).await, "inside the grace");
+    // Past the grace: only the fork parent and its chain stay.
+    let r = gc_report(&mut fx, now, false).await;
+    let kept = kept_ids(&r);
+    assert!(kept.contains(&parent), "{r:?}");
+    for k in &r.kept {
+        assert!(
+            k.why
+                .split(',')
+                .all(|w| matches!(w, "FORK_PARENT" | "CHAIN")),
+            "only a hard reference keeps a checkpoint of a retired task: {k:?}"
+        );
+    }
+    assert!(r.removed_ids.contains(&named), "{r:?}");
+    assert!(r.removed_ids.contains(&latest), "{r:?}");
+    let refused = fx
+        .restore(RestoreCheckpoint {
+            checkpoint_id: named.clone(),
+            ..Default::default()
+        })
+        .await
+        .unwrap()
+        .0;
+    assert_eq!(refused.refusal, "COLLECTED", "{refused:?}");
+    // The fork parent still restores.
+    let back = fx
+        .restore(RestoreCheckpoint {
+            checkpoint_id: parent.clone(),
+            ..Default::default()
+        })
+        .await
+        .unwrap()
+        .0;
+    assert!(back.restored, "{back:?}");
+    assert_eq!(
+        std::fs::read_to_string(format!("{}/hand.txt", fx.root)).unwrap(),
+        "hand-written version 1\n".repeat(40)
+    );
+}
+
+/// Wait until the task's log shows the held restore finished.
+async fn restoring_done(fx: &mut Fx) {
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    while fx.events(&["CheckpointRestored"]).await.is_empty() {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the restore never finished"
+        );
+        tokio::time::sleep(Duration::from_millis(200)).await;
+    }
+}
+
+/// QUAL-PX-102 negative proof "a collection while a restore is in flight
+/// fails", on the real Core: a restore is held after its journal (inside its
+/// hold on the gate) and a collector run is requested from another client
+/// while it is held. The collection never runs under the restore: either the
+/// gate refuses it `RESTORE_IN_FLIGHT` with nothing recorded, or the Core
+/// serves it only once the restore is done. Either way, on the log it starts
+/// only after `CheckpointRestored`, and the restore lands exactly.
+#[tokio::test]
+async fn qual_px_102_a_collection_requested_during_a_restore_never_runs_under_it() {
+    let mut fx = many_checkpoints(6).await;
+    let l = fx.checkpoints().await;
+    let target = l
+        .checkpoints
+        .iter()
+        .find(|c| c.reason == "hand 0")
+        .expect("the first hand checkpoint")
+        .checkpoint_id
+        .clone();
+    fx.restart(&[(
+        "MODBIT_FAULT_CHECKPOINT_STALL",
+        "AFTER_RESTORE_JOURNAL:6000",
+    )])
+    .await;
+    let (task, g) = (fx.task.clone(), fx.g);
+    let mut restorer = fx.core.client().await;
+    let restoring = tokio::spawn(async move {
+        send::<_, CheckpointRestoreResult>(
+            &mut restorer,
+            None,
+            "RestoreCheckpoint",
+            RestoreCheckpoint {
+                task_id: Some(task),
+                checkpoint_id: target,
+                ..Default::default()
+            },
+            Some(g),
+        )
+        .await
+    });
+    // The restore journals at once and is then held for six seconds.
+    tokio::time::sleep(Duration::from_millis(1500)).await;
+    if restoring.is_finished() {
+        panic!("the restore was not held: {:?}", restoring.await);
+    }
+    // Two safe answers, depending on whether the collector reaches the gate
+    // while the restore is still held: the typed refusal, or (when the Core
+    // serves it only after the restore) a run that starts after it.
+    let (report, refused_first) = match gc(&mut fx, 1, false).await {
+        Err(ClientError::Rejected { code, .. }) => {
+            assert_eq!(code, "RESTORE_IN_FLIGHT");
+            assert!(
+                fx.events(&["CheckpointGcStarted", "CheckpointCollected"])
+                    .await
+                    .is_empty(),
+                "a refused collection records nothing"
+            );
+            restoring_done(&mut fx).await;
+            (
+                gc(&mut fx, 1, false)
+                    .await
+                    .expect("the gate is free again")
+                    .0,
+                true,
+            )
+        }
+        Ok((r, _)) => (r, false),
+        Err(e) => panic!("RunCheckpointGc: {e}"),
+    };
+    eprintln!("collection during a held restore: refused first = {refused_first}");
+    let (done, _) = restoring.await.unwrap().unwrap();
+    assert!(done.restored, "{done:?}");
+    assert_eq!(
+        std::fs::read_to_string(format!("{}/hand.txt", fx.root)).unwrap(),
+        "hand-written version 0\n".repeat(40),
+        "the restore landed exactly"
+    );
+    let order: Vec<String> = fx
+        .events(&[
+            "CheckpointRestoreStarted",
+            "CheckpointRestored",
+            "CheckpointGcStarted",
+            "CheckpointGcCompleted",
+        ])
+        .await
+        .into_iter()
+        .map(|(t, _)| t)
+        .collect();
+    assert_eq!(
+        order,
+        [
+            "CheckpointRestoreStarted",
+            "CheckpointRestored",
+            "CheckpointGcStarted",
+            "CheckpointGcCompleted"
+        ],
+        "the collection started only after the restore finished"
+    );
+    assert!(report.removed > 0, "{report:?}");
 }
 
 /// What the worktree holds at the checkpoint of turn `t` of a `files_script`

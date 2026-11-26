@@ -122,6 +122,41 @@ fn bytes_of(store: &EventStore, row: &CheckpointRow) -> u64 {
         .sum()
 }
 
+/// When a finished task was retired: archived (its latest
+/// `ConversationArchived` has no later `ConversationUnarchived`) with its
+/// result in the person's checkout. A task that ran in place wrote the
+/// checkout itself; a task that ran in its own worktree needs an apply-back
+/// in force (PX-066: the latest apply is `APPLIED`, not undone or rolled
+/// back). A worktree result that was only merged or discarded does not count:
+/// its checkpoints follow the ordinary policy. Returns the archive time.
+pub(crate) fn retired_since(store: &EventStore, task: &Task) -> Option<i64> {
+    let agg = modbit_domain::conversation::aggregate_id(task.task_id);
+    let events = store
+        .read_aggregate_of_types(
+            &agg,
+            &[
+                modbit_domain::conversation::ARCHIVED,
+                "ConversationUnarchived",
+            ],
+            0,
+        )
+        .unwrap_or_default();
+    let last = events.last()?;
+    if last.envelope.event_type != modbit_domain::conversation::ARCHIVED {
+        return None;
+    }
+    let archived_at = last.envelope.occurred_at.0;
+    let records: Vec<_> = crate::worktrees::registry_of_session(store, &task.session_id)
+        .into_iter()
+        .filter(|r| r.task_id == Some(task.task_id))
+        .collect();
+    let applied = records.is_empty()
+        || records
+            .iter()
+            .any(|r| r.applies.last().is_some_and(|a| a.state == "APPLIED"));
+    applied.then_some(archived_at)
+}
+
 /// Decide what a policy removes from a task.
 pub(crate) fn decide(store: &EventStore, task: &Task, policy: &Policy, now_ms: i64) -> Decision {
     let rows = store.checkpoints(&task.task_id).unwrap_or_default();
@@ -138,6 +173,35 @@ pub(crate) fn decide(store: &EventStore, task: &Task, policy: &Policy, now_ms: i
         return d;
     }
     let l = ledger(store, task);
+    // An archived task whose result is applied loses every checkpoint once
+    // it has been retired for the policy's age floor, except what the hard
+    // references need: fork parents, pre-restore checkpoints, the targets of
+    // a restore in doubt, and their chains. Its names, its latest and its
+    // recent checkpoints no longer keep anything.
+    if let Some(since) = retired_since(store, task)
+        && now_ms - since >= policy.min_age_ms
+    {
+        let mut bare = l.clone();
+        bare.names.clear();
+        let unlatched: Vec<CheckpointRow> = rows
+            .iter()
+            .cloned()
+            .map(|mut r| {
+                if r.status == "CURRENT" {
+                    r.status = "SUPERSEDED".to_owned();
+                }
+                r
+            })
+            .collect();
+        let kept = semantic_protections(&unlatched, &bare, &fork_parents(store, task));
+        for r in &live {
+            match kept.get(&r.checkpoint_id) {
+                Some(why) => d.kept.push((r.checkpoint_id.clone(), why.join(","))),
+                None => d.removable.push(r.checkpoint_id.clone()),
+            }
+        }
+        return d;
+    }
     let mut kept: BTreeMap<String, Vec<&'static str>> =
         semantic_protections(&rows, &l, &fork_parents(store, task));
     let by_id: std::collections::HashMap<&str, &CheckpointRow> = live
