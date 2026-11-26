@@ -450,6 +450,11 @@ test("PX-203: Terminal and Changes pop out and keep working; the guard holds for
     await expect(page.getByTestId("conversation")).toHaveAttribute("data-task-id", taskId);
     await expect(card).toBeVisible({ timeout: 30_000 });
     await card.getByTestId("approval-run").click();
+    // A push cannot be undone, so the card asks twice (AWS-04). The second question renders after the click: wait for it
+    // or for the card to go, instead of looking once and moving on before it is drawn.
+    await expect
+      .poll(async () => ((await card.getByTestId("approval-confirm").isVisible().catch(() => false)) ? "confirm" : (await card.isVisible().catch(() => false)) ? "waiting" : "gone"), { message: "the card asks twice for a push, or is answered", timeout: 15_000 })
+      .not.toBe("waiting");
     if (await card.getByTestId("approval-confirm").isVisible().catch(() => false)) await card.getByTestId("approval-confirm-run").click();
     await expect(commitWin.getByTestId("changes-result"), "the commit went on in the window once allowed").toHaveAttribute("data-status", "COMPLETED", { timeout: 60_000 });
     expect(git(bare, "branch", "--list").trim(), "the branch is on the remote").not.toBe("");
