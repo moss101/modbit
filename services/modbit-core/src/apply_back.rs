@@ -95,6 +95,18 @@ impl Drop for ApplyingGuard {
 /// Kill the Core at a named point, as a `SIGKILL` there would
 /// (`MODBIT_FAULT_WORKTREE=<point>`; unset in production).
 pub(crate) fn fault_point(point: &str) {
+    // `MODBIT_FAULT_WORKTREE_STALL="<point>:<ms>"` holds the apply at `point`
+    // so a test can SIGKILL the Core from outside while it is there.
+    if let Some(ms) = std::env::var("MODBIT_FAULT_WORKTREE_STALL")
+        .ok()
+        .and_then(|v| {
+            let (p, ms) = v.split_once(':')?;
+            (p == point).then(|| ms.parse::<u64>().ok()).flatten()
+        })
+    {
+        eprintln!("modbit-core: fault injection: stalling {ms} ms at {point}");
+        std::thread::sleep(std::time::Duration::from_millis(ms));
+    }
     if std::env::var("MODBIT_FAULT_WORKTREE").is_ok_and(|v| v == point) {
         eprintln!("modbit-core: fault injection: aborting at {point}");
         std::process::abort();
