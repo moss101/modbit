@@ -698,8 +698,18 @@ impl ComputerRuntime {
                 )
                 .await;
         }
-        self.close_session(control_id, "LATCHED", stop_actuator)
-            .await;
+        // The person's Stop stops the actuator, so the input in flight comes
+        // back here before `stop_task` closes the session itself. The Stop is
+        // the cause: the session closes as the person's abort, not a latch
+        // (PX-069, CUC-D05; macOS CI on PR 258: "LATCHED" where
+        // "USER_ABORTED" was expected).
+        let aborted = self
+            .lock()
+            .aborted
+            .get(&ctx.task_id)
+            .is_some_and(|run| run.is_empty() || *run == ctx.run_id);
+        let why = if aborted { "USER_ABORTED" } else { "LATCHED" };
+        self.close_session(control_id, why, stop_actuator).await;
         Failure::Unknown {
             reason: reason.to_owned(),
             output: json!({

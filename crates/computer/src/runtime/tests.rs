@@ -597,6 +597,43 @@ async fn a_death_notice_between_the_call_and_its_outcome_still_closes_the_sessio
     );
 }
 
+/// The person's Stop lands while an input is in flight (PX-069, CUC-D05):
+/// `stop_task` records the abort, then stops the actuator, and the input comes
+/// back of unknown outcome before `stop_task` closes the session. The session
+/// closes once, as the person's abort (`USER_ABORTED` / `STOPPED`), never as a
+/// latch (the macOS CI failure on PR 258: "LATCHED" where "USER_ABORTED" was
+/// expected).
+#[tokio::test(flavor = "multi_thread")]
+async fn an_input_in_flight_at_the_persons_stop_closes_the_session_as_aborted() {
+    let (a, _log) = fake(0, || Err(CallError::Lost));
+    let rt = Arc::new(runtime());
+    rt.install(a);
+    let c = ctx(TaskId::new());
+    let snap = session_with_snapshot(&rt, &c, "org.example.a").await;
+    let (rt2, task, run) = (Arc::clone(&rt), c.task_id, c.run_id.clone());
+    *rt.shared.after_input.lock().unwrap() = Some(Arc::new(move || {
+        // What `stop_task` has done by the time the stopped input returns.
+        rt2.lock().aborted.insert(task, run.clone());
+    }));
+    let r = rt.invoke(&c, "computer.press", press(&snap)).await;
+    assert!(r.is_err(), "{r:?}");
+    let closed: Vec<_> = rt
+        .drain_events()
+        .into_iter()
+        .filter_map(|p| match p.event {
+            TaskEvent::ComputerSessionClosed {
+                reason, outcome, ..
+            } => Some((reason, outcome)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        closed,
+        vec![("USER_ABORTED".to_owned(), "STOPPED".to_owned())],
+        "{closed:?}"
+    );
+}
+
 /// A window in front of the application's real one (macOS 27 gives an
 /// application with a text view an untitled Siri panel): the window server's
 /// list has no focus state and puts the panel first; the session goes to the
