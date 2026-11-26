@@ -1,0 +1,143 @@
+
+running 19 tests
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 2ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 2ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 3ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 2ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 2ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+false sessions=0 tasks=0 in 1ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: recovery complete: boot_generation=2 events_verified=22 aggregates=4 projections_rebuilt=false sessions=1 tasks=1 in 11ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+.modbit-core: recovery complete: boot_generation=2 events_verified=168 aggregates=32 projections_rebuilt=false sessions=1 tasks=1 in 21ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: fault injection: aborting at MID_CAPTURE
+modbit-core: recovery complete: boot_generation=3 events_verified=170 aggregates=32 projections_rebuilt=false sessions=1 tasks=1 in 19ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: recovery complete: boot_generation=4 events_verified=173 aggregates=32 projections_rebuilt=false sessions=1 tasks=1 in 18ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: fault injection: aborting at AFTER_PRE_RESTORE
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0modbit-core: recovery complete: boot_generation= projections_rebuilt=5false sessions= events_verified=1760 aggregates= tasks=32 projections_rebuilt=false sessions=1 tasks=1 in 020ms
+ in 15ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+.modbit-core: recovery complete: boot_generation=6 events_verified=193 aggregates=32 projections_rebuilt=false sessions=1 tasks=1 in 38ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+.modbit-core: fault injection: aborting at MID_RESTORE_WRITE
+modbit-core: recovery complete: boot_generation=7 events_verified=197 aggregates=32 projections_rebuilt=false sessions=1 tasks=1 in 28ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+..modbit-core: task e716b51a-ac4c-7a90-fd69-a4168c965de9: a restore to 01a213aa-3048-71d1-a330-fc336cc7fe59 was interrupted; rolled back to the pre-restore checkpoint 01a213aa-56d3-7f02-998c-a92553b7d3e1
+..modbit-core: recovery complete: boot_generation=2 events_verified=265 aggregates=47 projections_rebuilt=false sessions=.1 tasks=1 in 32ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: recovery complete: boot_generation=2 events_verified=265 aggregates=47 projections_rebuilt=false sessions=1 tasks=1 in 28ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: fault injection: stalling 6000 ms at AFTER_RESTORE_JOURNAL
+modbit-core: recovery complete: boot_generation=2 events_verified=294 aggregates=47 projections_rebuilt=false sessions=1 tasks=1 in 27ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: fault injection: aborting at AFTER_GC_COLLECT
+modbit-core: recovery complete: boot_generation=2 events_verified=294 aggregates=47 projections_rebuilt=false sessions=1 tasks=1 in 23ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: recovery complete: boot_generation=3 events_verified=297 aggregates=47 projections_rebuilt=false sessions=1 tasks=1 in 27ms
+modbit-core: fault injection: stalling 120000 ms at MID_GC_SWEEP
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: recovery complete: boot_generation=3 events_verified=297 aggregates=47 projections_rebuilt=false sessions=1 tasks=1 in 28ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+.modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 3ms
+...modbit-core: recovery complete: boot_generation=2 events_verified=105 aggregates=20 projections_rebuilt=false sessions=1 tasks=1 in 11ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+....modbit-core: recovery complete: boot_generation=2 events_verified=294 aggregates=47 projections_rebuilt=false sessions=1 tasks=1 in 27ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: fault injection: aborting at MID_GC_SWEEP
+modbit-core: recovery complete: boot_generation=3 events_verified=297 aggregates=47 projections_rebuilt=false sessions=1 tasks=1 in 28ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+...
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 47.48s
+
+
+running 3 tests
+...
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 105 filtered out; finished in 0.00s
+
+
+running 39 tests
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=falsemodbit-core: recovery complete: boot_generation= sessions=01 tasks=0 in 2ms
+ events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 2ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 2ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 aggregates=0 projections_rebuilt=false sessions= tasks=0 in 2ms
+0 tasks=0 in 2msmodbit-core: recovery complete: boot_generation=1 events_verified=0
+ aggregates=0modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0modbit-core: recovery complete: boot_generation= projections_rebuilt=false sessions=1 events_verified=00 projections_rebuilt=false sessions= aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0modbit-core: recovery complete: boot_generation= tasks=modbit-core: recovery complete: boot_generation=01 events_verified=0 aggregates= tasks=0 in 11 in 1msmsmodbit-core: recovery complete: boot_generation=
+0
+1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+ projections_rebuilt=falsemsmodbit-core: recovery complete: boot_generation=modbit-core: recovery complete: boot_generation=
+1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+ sessions=0 tasks=0 in 1ms
+1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1msmodbit-core: recovery complete: boot_generation=
+1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+.modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+.modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 4ms
+..modbit-core: recovery complete: boot_generation=2 events_verified=2 aggregates=1 projections_rebuilt=false sessions=1 tasks=0 in 1ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 28ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 18ms
+...modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 3ms
+.modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 2ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 2ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+...modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 12ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+.modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+.modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+..modbit-core: fault injection: aborting at WORKTREE_APPLY_AFTER_WRITES
+modbit-core: fault injection: aborting at WORKTREE_APPLY_AFTER_STARTED
+modbit-core: recovery complete: boot_generation=2 events_verified=35 aggregates=10 projections_rebuilt=false sessions=1 tasks=1 in 11ms
+modbit-core: recovery complete: boot_generation=2 events_verified=35 aggregates=10 projections_rebuilt=false sessions=1 tasks=1 in 4ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: rolled back modbit-core: reattached to the terminal broker a previous Core left alive
+1 apply-back(s) the last Core left unfinished
+modbit-core: rolled back 1 apply-back(s) the last Core left unfinished
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 4ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+modbit-core: fault injection: aborting at WORKTREE_APPLY_MID
+modbit-core: recovery complete: boot_generation=2 events_verified=35 aggregates=10 projections_rebuilt=false sessions=1 tasks=1 in 5ms
+modbit-core: recovery complete: boot_generation=2 events_verified=13 aggregates=6 projections_rebuilt=false sessions=1 tasks=1 in 3ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: rolled back 1 apply-back(s) the last Core left unfinished
+...modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+.modbit-core: fault injection: aborting at MERGE_AFTER_STARTED
+modbit-core: recovery complete: boot_generation=2 events_verified=15 aggregates=7 projections_rebuilt=false sessions=1 tasks=1 in 3ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: reconciled 1 merge transaction(s) the last Core left open
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+modbit-core: fault injection: aborting at MERGE_AFTER_COMMIT
+modbit-core: recovery complete: boot_generation=2 events_verified=28 aggregates=9 projections_rebuilt=false sessions=1 tasks=1 in 4ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: reconciled 1 merge transaction(s) the last Core left open
+..modbit-core: fault injection: aborting at MERGE_AFTER_BEGIN
+modbit-core: recovery complete: boot_generation=2 events_verified=15 aggregates=7 projections_rebuilt=false sessions=1 tasks=1 in 6ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+...modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=falsemodbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+ sessions=0 tasks=0 in 1ms
+.modbit-core: reconciled 1 merge transaction(s) the last Core left open
+..............
+test result: ok. 39 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 51.53s
+

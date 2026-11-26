@@ -14,14 +14,14 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | Section | Range | Files | Bytes |
 |---|---|---:|---:|
 | Authority and orientation | 00–09 | 8 | 91304 |
-| Architecture and subsystems | 10–29 | 20 | 400770 |
+| Architecture and subsystems | 10–29 | 20 | 403270 |
 | Implementation specifications | 30–39 | 10 | 179986 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351840 |
 | Verification and testing | 50–69 | 20 | 1019389 |
 | Delivery and operations | 70–79 | 10 | 125527 |
 | Agent process and governance | 80–97 | 18 | 218965 |
 | Live state | 98–99 | 1 | 14961 |
-| **Total docs** | | **97** | **2402742** |
+| **Total docs** | | **97** | **2405242** |
 
 ## Specification files (`docs/`)
 
@@ -44,7 +44,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 16 | `docs/16_TOOL_CAPABILITY_AND_PROCEDURAL_RUNTIME.md` | Tool System, Capability Kernel, Procedural Runtime, and MCP | architecture | 37283 | `1e4945a17fc1279aabbc5b2509e5523048f83a953bd3fac913731adc1b14d6a9` |
 | 17 | `docs/17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md` | Canonical Tool and Capability Inventory | architecture | 7044 | `3542409ed94a42a9479b38ff322e578a06eefab925fb3cc60b7bc8cded4c4b65` |
 | 18 | `docs/18_CONTEXT_RETRIEVAL_AND_ENGINEERING_KNOWLEDGE.md` | Context, Retrieval, and Engineering Knowledge Engine | architecture | 5728 | `c6a362588d301b22d0f57bd11accecd6af33a9a5f7abc391afb15d7bef6f2303` |
-| 19 | `docs/19_DURABLE_STATE_MEMORY_COMPACTION_CHECKPOINTS.md` | Durable State, Memory, Compaction, and Checkpoints | architecture | 16793 | `acff8854dd43baf890236375c579746100e05a57eccdfd450a41cba70aed3ad9` |
+| 19 | `docs/19_DURABLE_STATE_MEMORY_COMPACTION_CHECKPOINTS.md` | Durable State, Memory, Compaction, and Checkpoints | architecture | 19293 | `745dcbfb281579d4e4400b4cf3b2afb9deac57acc2e44d9cead81cf6c13e12bd` |
 | 20 | `docs/20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md` | Workspace, Git, Worktrees, Diagnostics, and Trusted Code Surface | architecture | 8423 | `ac88a985ec35e5d9695d671f929ccf2b38d06db01d46ae111926b4b2ed11f7ee` |
 | 21 | `docs/21_TERMINAL_EXECUTION_AND_SANDBOX.md` | Terminal, Execution Router, and Sandbox Architecture | architecture | 30764 | `7373d4480d7ff4165b57db3204cb2df9eb13d3df2050471f6838af1a67329f4f` |
 | 22 | `docs/22_BROWSER_AND_COMPUTER_USE.md` | Browser and Computer-Use Architecture | architecture | 31715 | `0a846ff68035d09959118091e559439cd5d0f893e9d005e4d52b2ce495baebf7` |
@@ -502,7 +502,11 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/PX-101/SEAL.md` | retained evidence | 1145 | `e9ab1c4fa589becce3b23de8b985ceca649022d2627d91fd8cccdbe3c18de7ce` |
 | `evidence/m10/PX-101/ci-run-45265480804.json` | retained evidence | 65329 | `862106ffa216005ff334af48da4456f4fa89dd52b1092ed1768d1785ae4a3af5` |
 | `evidence/m10/PX-101/live-core-run-45221342126.json` | retained evidence | 5586 | `c0e8dd1763d2d4d90b18add55f67ff6144287a5ad90b373908ff4eb9fc1d8860` |
+| `evidence/m10/PX-102/TASK_CARD.md` | retained evidence | 6492 | `e5d9a750e6f52708070198b8e64a4328f091f9bb3b1c16beae7f61438c57bef7` |
+| `evidence/m10/PX-102/clippy-2026-11-25.log` | retained evidence | 0 | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
+| `evidence/m10/PX-102/mutation-check-retired.txt` | retained evidence | 586 | `b73d1f424ea3526bb4e209f9bccddf41ee48509bbcdf6b55fa1cfd04cb21b83c` |
 | `evidence/m10/PX-102/mutation-check.txt` | retained evidence | 2906 | `69e5bda09643bb82b914b55f1e8bc7125926511339919c552f3befa4cf807b5e` |
+| `evidence/m10/PX-102/tests-2026-11-25.log` | retained evidence | 14871 | `22201964ceef8c21bf2f23a8c6cc654d489becdcaca00bb98e584380d3e3ac01` |
 | `evidence/m10/PX-103/TASK_CARD.md` | retained evidence | 6219 | `9df6c45bcf9f40f419a18336733f119672b82e8e9f0e547b75800a7bb7130ffa` |
 | `evidence/m10/PX-103/mutation-check.txt` | retained evidence | 2365 | `4cd514224e19d9d37c134047136dc7e2f9838f4845f988e55c5bd07e914adf33` |
 | `evidence/m10/PX-103/test-log.txt` | retained evidence | 4028 | `39770b0de588976963c57268463f868ce3d6c350a8bbe82dda6ee64d1ca1d369` |
@@ -2644,7 +2648,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/zcode-ui/reference/zcode-computed.json` | retained evidence | 718674 | `9ae8821ce72aa0fff3be44aacd0f4c9d995465c54bad7f17d1a81f92841d1c2d` |
 | `evidence/zcode-ui/reference/zcode-tokens-resolved.json` | retained evidence | 30635 | `066725c00059a05d073fbcdac9a8d965eab05f05c1f5df16e654854ff3e22b91` |
 | `graph/PROJECT_GRAPH.md` | human view of the graph | 47980 | `dc960d9727aabbcee3257af9f3a6cc2d5cb02a90db0f18e3573ebb9aa916485e` |
-| `graph/project-graph.json` | project driver graph with live status | 2646848 | `8a5426907df2fe31a059f3eab67b04e19bc287d0d2a96c894d7325436015e14b` |
+| `graph/project-graph.json` | project driver graph with live status | 2647632 | `d584db7b4be6dc6fc1cb5ffa6b787dcdcd84182bf6d6dc7823710b8bf113f521` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 69551 | `75bcc309c03df0b898705f3bf58a8c289431dc60cbaf52e1c38f4c5d41d06dd7` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 18887 | `1bd2634078a0c20b34a565ccf0f6d9061e83bd0945b7bf719ac137611e3fcf35` |
