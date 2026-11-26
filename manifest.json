@@ -2,13 +2,13 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-11-25",
+  "generated_on": "2026-11-26",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 97,
-    "root_and_tooling": 2530,
-    "docs_bytes": 2407427
+    "root_and_tooling": 2535,
+    "docs_bytes": 2409927
   },
   "sections": [
     {
@@ -212,8 +212,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Durable State, Memory, Compaction, and Checkpoints",
-      "bytes": 16793,
-      "sha256": "acff8854dd43baf890236375c579746100e05a57eccdfd450a41cba70aed3ad9"
+      "bytes": 19293,
+      "sha256": "745dcbfb281579d4e4400b4cf3b2afb9deac57acc2e44d9cead81cf6c13e12bd"
     },
     {
       "path": "docs/20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md",
@@ -2809,9 +2809,34 @@
       "sha256": "c0e8dd1763d2d4d90b18add55f67ff6144287a5ad90b373908ff4eb9fc1d8860"
     },
     {
+      "path": "evidence/m10/PX-102/TASK_CARD.md",
+      "bytes": 6945,
+      "sha256": "580b97f12494ce0fc7cb8e6f906f31065aa722a808d076ca769f4d2fe612f7b4"
+    },
+    {
+      "path": "evidence/m10/PX-102/ci-run-45661876176.json",
+      "bytes": 65329,
+      "sha256": "dff4105fbe9b778bc77162be28e12bc5a0b22b14b01ac5db5e824b0a6bbc4213"
+    },
+    {
+      "path": "evidence/m10/PX-102/clippy-2026-11-25.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "evidence/m10/PX-102/mutation-check-retired.txt",
+      "bytes": 586,
+      "sha256": "b73d1f424ea3526bb4e209f9bccddf41ee48509bbcdf6b55fa1cfd04cb21b83c"
+    },
+    {
       "path": "evidence/m10/PX-102/mutation-check.txt",
       "bytes": 2906,
       "sha256": "69e5bda09643bb82b914b55f1e8bc7125926511339919c552f3befa4cf807b5e"
+    },
+    {
+      "path": "evidence/m10/PX-102/tests-2026-11-25.log",
+      "bytes": 14871,
+      "sha256": "22201964ceef8c21bf2f23a8c6cc654d489becdcaca00bb98e584380d3e3ac01"
     },
     {
       "path": "evidence/m10/PX-103/TASK_CARD.md",
@@ -13516,12 +13541,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 47980,
-      "sha256": "dc960d9727aabbcee3257af9f3a6cc2d5cb02a90db0f18e3573ebb9aa916485e"
+      "sha256": "a27a79ecd063014cd51f47f1d518b20f631612a3ff3e258498865ef2a9ac7029"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 2647566,
-      "sha256": "e434fd26a20f9da802c42c8df1c2c6bd0d326c088d6207aea066b769ba2c8271"
+      "bytes": 2648458,
+      "sha256": "6ed52f1cc7452d4c299324dac480ac714c7dbf5e8df220643af0979171f0b190"
     },
     {
       "path": "tools/build_graph.py",
