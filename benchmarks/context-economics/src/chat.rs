@@ -38,6 +38,11 @@ pub struct ToolCall {
     pub name: String,
     /// The arguments, as the model wrote them.
     pub arguments: String,
+    /// Opaque per-call data the provider requires back when the call is
+    /// replayed in a later request (Gemini's `thought_signature`), as the
+    /// gateway scoped it to the endpoint that streamed it. Carried, never read.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider_data: Option<Value>,
 }
 
 /// One completion.
@@ -141,7 +146,9 @@ fn to_messages(messages: &[Value]) -> Vec<Message> {
                             .as_str()
                             .unwrap_or("{}")
                             .to_owned(),
-                        provider_data: None,
+                        // Replayed as it arrived: a provider that signs its
+                        // calls rejects a history that drops the signature.
+                        provider_data: c.get("provider_data").filter(|d| !d.is_null()).cloned(),
                     });
                 }
                 Message {
@@ -299,11 +306,12 @@ impl Chat {
                     call_id,
                     name,
                     arguments_json,
-                    ..
+                    provider_data,
                 } => calls.push(ToolCall {
                     id: call_id,
                     name,
                     arguments: arguments_json,
+                    provider_data,
                 }),
                 ModelEvent::Usage { usage: u } => usage = Some(u),
                 ModelEvent::Completed { stop_reason } => finish = stop_reason,
@@ -368,6 +376,9 @@ pub mod scripted {
         pub text: String,
         /// Tool calls `(name, arguments JSON)`.
         pub calls: Vec<(String, Value)>,
+        /// An `extra_content` object attached to every tool call, the way
+        /// Gemini's OpenAI-compatible endpoint attaches its `thought_signature`.
+        pub extra_content: Option<Value>,
         /// Usage; `None` leaves the usage block out.
         pub usage: Option<(u64, u64)>,
         /// An HTTP status other than 200, with its body.
@@ -445,10 +456,14 @@ pub mod scripted {
                         );
                     }
                     for (i, (name, args)) in r.calls.iter().enumerate() {
+                        let mut call = json!({"index":i,"id":format!("call_{i}"),"type":"function",
+                            "function":{"name":name,"arguments":args.to_string()}});
+                        if let Some(extra) = &r.extra_content {
+                            call["extra_content"] = extra.clone();
+                        }
                         frames.push(
                             json!({"id":"c","model":"scripted-model","choices":[{"index":0,
-                                "delta":{"tool_calls":[{"index":i,"id":format!("call_{i}"),"type":"function",
-                                    "function":{"name":name,"arguments":args.to_string()}}]},
+                                "delta":{"tool_calls":[call]},
                                 "finish_reason":null}]})
                             .to_string(),
                         );

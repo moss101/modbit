@@ -1,0 +1,14 @@
+{
+  "row": "px137",
+  "complete": true,
+  "missing": [],
+  "spend": {
+    "cap_usd": 4.0,
+    "spent_usd": 3.909704999999998,
+    "calls": 1258,
+    "input_tokens": 5029640,
+    "output_tokens": 36660,
+    "unknown_usage_calls": 0,
+    "stopped_by_cap": false
+  }
+}
