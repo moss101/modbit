@@ -183,6 +183,60 @@ fn read_json(p: &Path) -> Value {
     serde_json::from_str(&std::fs::read_to_string(p).unwrap()).unwrap()
 }
 
+/// A provider that signs its tool calls (Gemini's `thought_signature` on the
+/// OpenAI-compatible wire) rejects any later request whose replayed call
+/// lacks the signature, as the live run on 2026-11-25 found (HTTP 400 on the
+/// second turn of every case). The harness must hand it back unchanged.
+#[tokio::test]
+async fn a_signed_tool_call_is_replayed_with_its_signature() {
+    if !rg_or_skip() {
+        return;
+    }
+    let sig = json!({"google": {"thought_signature": "c2lnLWxpdmU="}});
+    let inner = scripted_model();
+    let expected = sig.clone();
+    let model: Arc<dyn Fn(&Value) -> Scripted + Send + Sync> = Arc::new(move |body| {
+        let replayed: Vec<&Value> = body["messages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|m| m["role"] == "assistant")
+            .flat_map(|m| m["tool_calls"].as_array().into_iter().flatten())
+            .collect();
+        if replayed.iter().any(|c| c["extra_content"] != expected) {
+            return Scripted {
+                status: Some((
+                    400,
+                    r#"{"error":{"code":400,"message":"Function call is missing a thought_signature"}}"#
+                        .into(),
+                )),
+                ..Scripted::default()
+            };
+        }
+        let mut reply = inner(body);
+        if !reply.calls.is_empty() {
+            reply.extra_content = Some(expected.clone());
+        }
+        reply
+    });
+    let fx = fixture(4, 5.0);
+    let (base, seen) = serve(model).await;
+    let chat = chat(&base);
+    let meter = SpendMeter::new(5.0).unwrap();
+    let status = execute(&fx.spec, &chat, &meter, Knobs::default())
+        .await
+        .unwrap();
+    assert!(status.complete, "{:?}", status.missing);
+    let replays = seen
+        .lock()
+        .unwrap()
+        .iter()
+        .flat_map(|b| b["messages"].as_array().cloned().unwrap_or_default())
+        .filter(|m| m["role"] == "assistant" && m["tool_calls"].is_array())
+        .count();
+    assert!(replays > 0, "no request replayed a tool call");
+}
+
 #[tokio::test]
 async fn a_good_run_scores_both_profiles_and_writes_a_complete_bundle() {
     if !rg_or_skip() {
